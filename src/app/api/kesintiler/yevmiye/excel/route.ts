@@ -318,12 +318,9 @@ export async function GET(request: NextRequest) {
         ? [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, '', p.fmBay, '', p.izinS, p.izinUI, p.izinU, p.izinIst]
         : [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, p.fmNor, p.fmBay, fmYtop.toFixed(1), p.izinS, p.izinUI, p.izinU, p.izinIst]
       rows.push(kodRow.map((v, colIdx) => {
-        const stil = { ...dataStil }
-        if (colIdx >= 3 && colIdx < 3 + gunler.length) {
-          const fill = kodRenk(String(v))
-          if (fill) stil.fill = fill
-        }
-        return { v, t: (typeof v === 'number' ? 'n' : 's') as const, s: stil }
+        const fill = colIdx >= 3 && colIdx < 3 + gunler.length ? kodRenk(String(v)) : undefined
+        const stil = fill ? { ...dataStil, fill } : dataStil
+        return { v, t: typeof v === 'number' ? ('n' as const) : ('s' as const), s: stil }
       }))
       borderRows.add(rows.length - 1)
 
@@ -333,7 +330,7 @@ export async function GET(request: NextRequest) {
           return fm > 0 ? fm : ''
         })
         const fmRow = ['', '', '', ...gunFm, '', '', p.fmNor, '', fmYtop.toFixed(1), '', '', '', '']
-        rows.push(fmRow.map(v => ({ v: v || '', t: (typeof v === 'number' ? 'n' : 's') as const, s: dataStil })))
+        rows.push(fmRow.map(v => ({ v: v || '', t: typeof v === 'number' ? ('n' as const) : ('s' as const), s: dataStil })))
         borderRows.add(rows.length - 1)
       }
     }

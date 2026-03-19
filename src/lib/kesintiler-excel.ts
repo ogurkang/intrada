@@ -46,10 +46,8 @@ const DOLGU_YOK_STIL = {
 
 /** Merge edilmiş başlık satırı oluştur */
 export function mergeSatir(text: string, colCount: number, opts?: { gri?: boolean; bold?: boolean; dolguYok?: boolean }): (string | XLSX.CellObject)[] {
-  let stil = opts?.gri ? BOS_HUCRE_STIL : DOLGU_YOK_STIL
-  if (opts?.bold) {
-    stil = { ...stil, font: { bold: true } }
-  }
+  const baseStil = opts?.gri ? BOS_HUCRE_STIL : DOLGU_YOK_STIL
+  const stil = opts?.bold ? { ...baseStil, font: { bold: true } } : baseStil
   const ilk = { v: text, t: 's' as const, s: stil }
   const diger = Array(colCount - 1).fill(null).map(() => ({ v: '', t: 's' as const, s: stil }))
   return [ilk, ...diger]

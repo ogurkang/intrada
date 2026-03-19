@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
     return vals
   }
 
-  const rows: (string | number | { v: string; t: string; s: object })[][] = []
+  const rows: (string | number | { v: string | number; t: string; s: object })[][] = []
   const mergeRows: number[] = []
   const bosSatir = Array(colCount).fill('')
 

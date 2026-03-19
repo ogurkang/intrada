@@ -72,7 +72,7 @@ function DonemForm({ open, onClose, secili, onSubmit, isPending, hata }: {
   )
 }
 
-export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKapat }: Props) {
+export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKapat, onAc }: Props) {
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
