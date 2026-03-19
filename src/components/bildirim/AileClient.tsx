@@ -94,34 +94,6 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
     startTransition(async () => { const r = await onSil(id); if (r.hata) alert(r.hata) })
   }
 
-  function excelIndir() {
-    const baslik = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Medeni Hal', 'Eş Adı', 'Eş TCKN', 'İş Durumu', 'Gelir Durumu', 'Çocuk Sayısı']
-    const satirlar = filtreli.map((k, i) => [
-      i + 1,
-      k.sicil_no,
-      k.ad_soyad ?? '',
-      k.medeni_hal ?? '',
-      k.esin_ad_soyad ?? '',
-      k.esin_tckn ?? '',
-      k.is_durumu ?? '',
-      k.gelir_durumu ?? '',
-      (k.cocuklar_json?.length ?? 0),
-    ])
-    const csvEscape = (v: string | number) => {
-      const s = String(v)
-      return s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const csv = '\uFEFF' + baslik.map(csvEscape).join(';') + '\n' +
-      satirlar.map(row => row.map(csvEscape).join(';')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `aile-bildirimi-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   const k = secili
 
   return (
@@ -132,13 +104,6 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
           <p className="text-sm text-slate-500 mt-0.5">Medeni hal, eş ve çocuk bilgileri</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={excelIndir}
-            className="flex items-center gap-2 border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors font-medium">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Excel İndir
-          </button>
           <button onClick={yeniEkleAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

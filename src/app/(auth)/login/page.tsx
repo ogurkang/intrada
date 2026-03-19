@@ -17,6 +17,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (loading) return
     setError(null)
     setLoading(true)
 
@@ -24,11 +25,12 @@ export default function LoginPage() {
 
     if (error) {
       setError('E-posta veya şifre hatalı.')
+      setLoading(false)
     } else {
       router.push('/')
       router.refresh()
+      // Başarıda loading kalsın, sayfa yönlenecek
     }
-    setLoading(false)
   }
 
   return (
@@ -79,10 +81,18 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-slate-800 text-white py-2.5 rounded-lg text-sm font-medium
-                     hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all
+            ${loading
+              ? 'bg-slate-500 text-white cursor-wait'
+              : 'bg-slate-800 text-white hover:bg-slate-700'
+            } disabled:cursor-not-allowed`}
         >
-          {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+          {loading && (
+            <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full shrink-0" />
+          )}
+          <span className={loading ? 'animate-pulse' : ''}>
+            {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+          </span>
         </button>
       </form>
     </div>
