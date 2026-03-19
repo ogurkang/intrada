@@ -165,8 +165,10 @@ function AileTab({ aileBildirimi }: { aileBildirimi: Aile | null }) {
     )
   }
   const cocuklar = (Array.isArray(aileBildirimi.cocuklar_json) ? aileBildirimi.cocuklar_json : []) as {
-    ad_soyad?: string; dogum_tarihi?: string; cinsiyet?: string
+    ad_soyad?: string; tckn?: string; dogum_tarihi?: string; cinsiyet?: string
   }[]
+  const cinsiyetGoster = (c: string | null | undefined) =>
+    !c ? '—' : c === 'E' || c === 'Erkek' ? 'E' : (c === 'K' || c === 'Kız' || c === 'Kadın') ? 'K' : c
 
   return (
     <div className="space-y-5">
@@ -200,6 +202,7 @@ function AileTab({ aileBildirimi }: { aileBildirimi: Aile | null }) {
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-10">#</th>
                   <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Ad Soyad</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">TCKN</th>
                   <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Doğum Tarihi</th>
                   <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Cinsiyet</th>
                 </tr>
@@ -209,8 +212,9 @@ function AileTab({ aileBildirimi }: { aileBildirimi: Aile | null }) {
                   <tr key={i} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
                     <td className="px-4 py-3 text-slate-700">{c.ad_soyad || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{c.tckn || '—'}</td>
                     <td className="px-4 py-3 text-center text-slate-600">{tarihFormatla(c.dogum_tarihi)}</td>
-                    <td className="px-4 py-3 text-center text-slate-500">{c.cinsiyet ?? '—'}</td>
+                    <td className="px-4 py-3 text-center text-slate-500">{cinsiyetGoster(c.cinsiyet)}</td>
                   </tr>
                 ))}
               </tbody>

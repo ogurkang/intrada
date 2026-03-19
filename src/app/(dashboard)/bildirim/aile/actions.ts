@@ -34,6 +34,8 @@ export async function aileKaydet(fd: FormData): Promise<{ hata?: string }> {
 
   if (error) return { hata: error.message }
   revalidatePath('/bildirim/aile')
+  revalidatePath('/bildirim/aile/[id]', 'page')
+  revalidatePath('/bildirim/aile/[id]/duzenle', 'page')
   return {}
 }
 

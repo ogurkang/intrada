@@ -8,6 +8,7 @@ interface Props {
 
 interface Cocuk {
   ad_soyad?: string
+  tckn?: string
   dogum_tarihi?: string
   cinsiyet?: string
 }
@@ -15,6 +16,13 @@ interface Cocuk {
 function tarihFormatla(t: string | null | undefined) {
   if (!t) return '—'
   try { return new Date(t).toLocaleDateString('tr-TR') } catch { return t }
+}
+
+function cinsiyetGoster(c: string | null | undefined) {
+  if (!c) return '—'
+  if (c === 'E' || c === 'Erkek') return 'E'
+  if (c === 'K' || c === 'Kız' || c === 'Kadın') return 'K'
+  return c
 }
 
 function Alan({ etiket, deger }: { etiket: string; deger?: string | null }) {
@@ -51,10 +59,27 @@ export default async function AileGoruntuPage({ params }: Props) {
       {/* Başlık */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Aile Bildirimi - Görüntüle</h1>
-        <Link href="/bildirim/aile"
-          className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-          ← Listeye Dön
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/bildirim/aile"
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+            ← Geri
+          </Link>
+          <Link href={`/bildirim/aile/${numId}/duzenle`}
+            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Düzenle
+          </Link>
+          <a href={`/api/bildirim/aile/excel?id=${numId}`} download
+            className="flex items-center gap-2 border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Excel İndir
+          </a>
+        </div>
       </div>
 
       <div className="space-y-5">
@@ -93,6 +118,7 @@ export default async function AileGoruntuPage({ params }: Props) {
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-10">#</th>
                     <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Ad Soyad</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-slate-600">TCKN</th>
                     <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Doğum Tarihi</th>
                     <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Cinsiyet</th>
                   </tr>
@@ -102,8 +128,9 @@ export default async function AileGoruntuPage({ params }: Props) {
                     <tr key={i} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
                       <td className="px-4 py-3 text-slate-700">{c.ad_soyad || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-slate-600">{c.tckn || '—'}</td>
                       <td className="px-4 py-3 text-center text-slate-600">{tarihFormatla(c.dogum_tarihi)}</td>
-                      <td className="px-4 py-3 text-center text-slate-500">{c.cinsiyet ?? '—'}</td>
+                      <td className="px-4 py-3 text-center text-slate-500">{cinsiyetGoster(c.cinsiyet)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -118,17 +145,6 @@ export default async function AileGoruntuPage({ params }: Props) {
           </div>
         )}
 
-        {/* Düzenle butonu */}
-        <div className="flex justify-end">
-          <Link href="/bildirim/aile"
-            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Düzenle (Listeye Dön)
-          </Link>
-        </div>
       </div>
     </div>
   )

@@ -2,10 +2,12 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 
 export interface Cocuk {
   ad_soyad:      string
+  tckn?:         string
   dogum_tarihi?: string
   cinsiyet?:     string
 }
@@ -33,6 +35,7 @@ const MEDENI_HAL = ['Evli', 'Bekar', 'Boşanmış', 'Dul']
 const IS_DURUMU  = ['Çalışıyor', 'Çalışmıyor', 'Emekli', 'Serbest Meslek', 'Diğer']
 
 export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
+  const router = useRouter()
   const [arama, setArama]             = useState('')
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<AileBilgisi | null>(null)
@@ -52,13 +55,20 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
   function yeniEkleAc() {
     setSecili(null); setCocuklar([]); setHata(null); setFormAcik(true)
   }
+  function normalizeCinsiyet(c: Cocuk): Cocuk {
+    const cinsiyet = c.cinsiyet === 'Erkek' ? 'E' : (c.cinsiyet === 'Kız' || c.cinsiyet === 'Kadın') ? 'K' : c.cinsiyet
+    return { ...c, cinsiyet: cinsiyet ?? '', tckn: c.tckn ?? '' }
+  }
   function duzenleAc(k: AileBilgisi) {
-    setSecili(k); setCocuklar(k.cocuklar_json ?? []); setHata(null); setFormAcik(true)
+    setSecili(k)
+    setCocuklar((k.cocuklar_json ?? []).map(normalizeCinsiyet))
+    setHata(null)
+    setFormAcik(true)
   }
   function kapat() { setFormAcik(false); setSecili(null); setHata(null) }
 
   function cocukEkle() {
-    setCocuklar(prev => [...prev, { ad_soyad: '', dogum_tarihi: '', cinsiyet: '' }])
+    setCocuklar(prev => [...prev, { ad_soyad: '', tckn: '', dogum_tarihi: '', cinsiyet: '' }])
   }
   function cocukGuncelle(idx: number, alan: keyof Cocuk, deger: string) {
     setCocuklar(prev => prev.map((c, i) => i === idx ? { ...c, [alan]: deger } : c))
@@ -71,7 +81,7 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
     e.preventDefault()
     setHata(null)
     const fd = new FormData(e.currentTarget)
-    fd.set('cocuklar_json', JSON.stringify(cocuklar.filter(c => c.ad_soyad.trim())))
+    fd.set('cocuklar_json', JSON.stringify(cocuklar.filter(c => (c.ad_soyad ?? '').trim())))
     startTransition(async () => {
       const res = await onKaydet(fd)
       if (res.hata) setHata(res.hata)
@@ -155,7 +165,7 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Medeni Hal</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Eş Adı</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Çocuk</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
+              <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -163,7 +173,11 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
               <tr><td colSpan={7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {filtreli.map((k, idx) => (
-              <tr key={k.id} className="hover:bg-slate-50 transition-colors">
+              <tr
+                key={k.id}
+                className="hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={() => router.push(`/bildirim/aile/${k.id}`)}
+              >
                 <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.sicil_no}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">{k.ad_soyad ?? '—'}</td>
@@ -182,15 +196,9 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
                     {k.cocuklar_json?.length ?? 0}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Link href={`/bildirim/aile/${k.id}`}
-                      className="text-xs font-medium text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Görüntüle</Link>
-                    <button onClick={() => duzenleAc(k)}
-                      className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Düzenle</button>
-                    <button onClick={() => handleSil(k.id)} disabled={isPending}
-                      className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
-                  </div>
+                <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => handleSil(k.id)} disabled={isPending}
+                    className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
                 </td>
               </tr>
             ))}
@@ -274,12 +282,18 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
               <p className="text-xs text-slate-400 text-center py-2">Çocuk kaydı yok</p>
             )}
             {cocuklar.map((c, i) => (
-              <div key={i} className="grid grid-cols-3 gap-2 items-end">
-                <div className="col-span-1">
+              <div key={i} className="grid grid-cols-4 gap-2 items-end">
+                <div>
                   <label className="block text-xs text-slate-500 mb-1">Ad Soyad</label>
                   <input value={c.ad_soyad} onChange={e => cocukGuncelle(i, 'ad_soyad', e.target.value)}
                     placeholder="Ad soyad" required
                     className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">TCKN</label>
+                  <input value={c.tckn ?? ''} onChange={e => cocukGuncelle(i, 'tckn', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="11 hane" maxLength={11}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-slate-400" />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Doğum Tarihi</label>
@@ -292,8 +306,8 @@ export default function AileClient({ kayitlar, onKaydet, onSil }: Props) {
                     <select value={c.cinsiyet ?? ''} onChange={e => cocukGuncelle(i, 'cinsiyet', e.target.value)}
                       className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white">
                       <option value="">—</option>
-                      <option value="Erkek">Erkek</option>
-                      <option value="Kız">Kız</option>
+                      <option value="E">E (Erkek)</option>
+                      <option value="K">K (Kadın)</option>
                     </select>
                   </div>
                   <button type="button" onClick={() => cocukSil(i)}
