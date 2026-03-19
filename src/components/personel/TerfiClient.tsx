@@ -1,0 +1,676 @@
+'use client'
+
+import { useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Modal from '@/components/ui/Modal'
+import { ggAayyyyToIso } from '@/lib/tarih'
+import type { Tables } from '@/types/database'
+import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
+
+type TH = Tables<'terfi_hareketleri'>
+
+interface Calisan { sicil_no: string; ad_soyad: string; unvan: string | null; mudurluk: string | null }
+
+interface MemurSatir {
+  sicil_no: string
+  ad_soyad: string
+  gorev_unvani: string | null
+  gorev_mudurlugu: string | null
+  terfi: TH | null
+}
+
+interface Props {
+  kayitlar:    TH[]
+  calisanlar:  Calisan[]
+  memurlar?:   MemurSatir[]
+  onEkle:      (fd: FormData) => Promise<{ hata?: string }>
+  onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil:       (id: number, sicil_no: string) => Promise<{ hata?: string }>
+  onTopluKaydet?: (satirlar: TerfiSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
+  sabitSicil?: string
+}
+
+function fmt(v: string | null) { return v ?? '—' }
+
+const KOLON_GRUPLAR = [
+  {
+    baslik: 'Görev Aylığı',
+    alanlar: [
+      { key: 'gorev_ayligi_derece', label: 'Derece', col: 1 },
+      { key: 'gorev_ayligi_kademe', label: 'Kademe', col: 1 },
+    ],
+  },
+  {
+    baslik: 'KHA',
+    alanlar: [
+      { key: 'kha_derece',  label: 'Derece', col: 1 },
+      { key: 'kha_kademe',  label: 'Kademe', col: 1 },
+      { key: 'kha_tarihi',  label: 'Tarihi',  col: 1, tip: 'date' },
+    ],
+  },
+  {
+    baslik: 'EKEA',
+    alanlar: [
+      { key: 'ekea_derece', label: 'Derece', col: 1 },
+      { key: 'ekea_kademe', label: 'Kademe', col: 1 },
+      { key: 'ekea_tarihi', label: 'Tarihi',  col: 1, tip: 'date' },
+    ],
+  },
+  {
+    baslik: 'Kıdem',
+    alanlar: [
+      { key: 'kidem_yili',           label: 'Yıl',    col: 1 },
+      { key: 'kidem_tarihi',         label: 'Tarihi', col: 1, tip: 'date' },
+      { key: 'iyi_hal_terfi_tarihi', label: 'İyi Hal Terfi', col: 1, tip: 'date' },
+    ],
+  },
+  {
+    baslik: 'Diğer',
+    alanlar: [
+      { key: 'ek_gosterge', label: 'Ek Gösterge', col: 1 },
+      { key: 'ek_odeme',    label: 'Ek Ödeme',    col: 1 },
+      { key: 'oht',         label: 'ÖHT',          col: 1 },
+      { key: 'yan_odeme',   label: 'Yan Ödeme',    col: 1 },
+      { key: 'sds_orani',   label: 'SDS Oranı',    col: 1 },
+    ],
+  },
+]
+
+// combined D/K keys are prefixed with "dk_" — parsed to derece/kademe on save. D/K alanları dar (sayfaya sığması için)
+// Liste satır düzenleme ile aynı yapı: D/K ayrı input (w-10), tarih w-24, diğerleri w-12
+const TOPLU_ALANLAR = [
+  { key: 'dk_ga',               label: 'G.A. D/K', w: 60,  tipo: 'dk' as const },
+  { key: 'dk_kha',              label: 'KHA D/K',  w: 60,  tipo: 'dk' as const },
+  { key: 'kha_tarihi',          label: 'KHA T',    w: 96,  tip: 'date' as const },
+  { key: 'dk_ekea',             label: 'EKEA D/K', w: 60,  tipo: 'dk' as const },
+  { key: 'ekea_tarihi',         label: 'EKEA T',   w: 96,  tip: 'date' as const },
+  { key: 'kidem_yili',          label: 'Kıdem Y',  w: 48 },
+  { key: 'kidem_tarihi',        label: 'Kıdem T',  w: 96,  tip: 'date' as const },
+  { key: 'iyi_hal_terfi_tarihi', label: 'İyi Hal', w: 96,  tip: 'date' as const },
+  { key: 'ek_gosterge',         label: 'Ek Göst',  w: 48 },
+  { key: 'ek_odeme',            label: 'Ek Öd',    w: 48 },
+  { key: 'oht',                 label: 'ÖHT',      w: 48 },
+  { key: 'yan_odeme',           label: 'Yan Öd',   w: 48 },
+  { key: 'sds_orani',           label: 'SDS',      w: 48 },
+] as const
+
+export default function TerfiClient({ kayitlar, calisanlar, memurlar, onEkle, onGuncelle, onSil, onTopluKaydet, sabitSicil }: Props) {
+  const router = useRouter()
+  const [sekme, setSekme]            = useState<'liste' | 'toplu'>('liste')
+  const [arama, setArama]            = useState('')
+  const [formAcik, setFormAcik]      = useState(false)
+  const [secili, setSecili]          = useState<TH | null>(null)
+  const [hata, setHata]              = useState<string | null>(null)
+  const [topluHata, setTopluHata]    = useState<string | null>(null)
+  const [topluBasari, setTopluBasari] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  // Toplu düzenleme state — her memur için düzenlenebilir satır
+  const [topluVeri, setTopluVeri] = useState<Record<string, Partial<TerfiSatir>>>({})
+  const [duzenlenenRowKey, setDuzenlenenRowKey] = useState<string | null>(null)
+  const [inlineVeri, setInlineVeri] = useState<Record<string, Record<string, string>>>({})
+
+  function topluGuncelle(sicil_no: string, alan: string, deger: string) {
+    setTopluVeri(prev => ({
+      ...prev,
+      [sicil_no]: { ...(prev[sicil_no] ?? {}), [alan]: deger },
+    }))
+  }
+
+  function topluDegerAl(m: MemurSatir, alan: string): string {
+    const lokal = topluVeri[m.sicil_no] as Record<string, string> | undefined
+    if (lokal && alan in lokal) return lokal[alan] ?? ''
+    // Combined DK fields
+    if (alan === 'dk_ga')   return [m.terfi?.gorev_ayligi_derece, m.terfi?.gorev_ayligi_kademe].filter(Boolean).join('/') 
+    if (alan === 'dk_kha')  return [m.terfi?.kha_derece,  m.terfi?.kha_kademe ].filter(Boolean).join('/')
+    if (alan === 'dk_ekea') return [m.terfi?.ekea_derece, m.terfi?.ekea_kademe].filter(Boolean).join('/')
+    return (m.terfi as Record<string, unknown> | null)?.[alan] as string ?? ''
+  }
+
+  function parseDK(val: string): [string | null, string | null] {
+    const parts = (val ?? '').split('/')
+    return [parts[0]?.trim() || null, parts[1]?.trim() || null]
+  }
+
+  const filtreli = useMemo(() => {
+    const q = arama.toLowerCase()
+    if (sabitSicil) return kayitlar.filter(r => r.sicil_no === sabitSicil)
+    if (!q) return kayitlar
+    return kayitlar.filter(r =>
+      (r.ad_soyad ?? '').toLowerCase().includes(q) ||
+      r.sicil_no.toLowerCase().includes(q)
+    )
+  }, [kayitlar, arama, sabitSicil])
+
+  type ListRow = { sicil_no: string; ad_soyad: string; terfi: TH | null }
+  const listRows = useMemo((): ListRow[] => {
+    if (sabitSicil) return filtreli.map(r => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? '', terfi: r }))
+    if (memurlar?.length) {
+      const q = arama.toLowerCase()
+      const arr = !q ? memurlar : memurlar.filter(m =>
+        (m.ad_soyad ?? '').toLowerCase().includes(q) || m.sicil_no.toLowerCase().includes(q)
+      )
+      return arr.map(m => ({ sicil_no: m.sicil_no, ad_soyad: m.ad_soyad ?? '', terfi: m.terfi }))
+    }
+    return filtreli.map(r => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? '', terfi: r }))
+  }, [sabitSicil, filtreli, memurlar, arama])
+
+  function yeniAc()        { setSecili(null); setHata(null); setFormAcik(true) }
+  const [yeniSicilNo, setYeniSicilNo] = useState('')
+  const [yeniAdSoyad, setYeniAdSoyad] = useState('')
+  function duzenleAc(r: TH | null, row?: ListRow, idx?: number) {
+    if (r && row) {
+      setDuzenlenenRowKey(`row-${r.id}`)
+      setInlineVeri({ [`row-${r.id}`]: {
+        gorev_ayligi_derece: r.gorev_ayligi_derece ?? '',
+        gorev_ayligi_kademe: r.gorev_ayligi_kademe ?? '',
+        kha_derece: r.kha_derece ?? '',
+        kha_kademe: r.kha_kademe ?? '',
+        kha_tarihi: r.kha_tarihi ? new Date(r.kha_tarihi).toISOString().slice(0, 10) : '',
+        ekea_derece: r.ekea_derece ?? '',
+        ekea_kademe: r.ekea_kademe ?? '',
+        ekea_tarihi: r.ekea_tarihi ? new Date(r.ekea_tarihi).toISOString().slice(0, 10) : '',
+        kidem_yili: r.kidem_yili ?? '',
+        kidem_tarihi: r.kidem_tarihi ? new Date(r.kidem_tarihi).toISOString().slice(0, 10) : '',
+        iyi_hal_terfi_tarihi: r.iyi_hal_terfi_tarihi ? new Date(r.iyi_hal_terfi_tarihi).toISOString().slice(0, 10) : '',
+        ek_gosterge: r.ek_gosterge ?? '',
+        ek_odeme: r.ek_odeme ?? '',
+        oht: r.oht ?? '',
+        yan_odeme: r.yan_odeme ?? '',
+        sds_orani: r.sds_orani ?? '',
+      }})
+      setFormAcik(false)
+      return
+    }
+    if (row && typeof idx === 'number' && !r) {
+      const key = `sicil-${row.sicil_no}-${idx}`
+      setDuzenlenenRowKey(key)
+      setInlineVeri({ [key]: {
+        gorev_ayligi_derece: '', gorev_ayligi_kademe: '',
+        kha_derece: '', kha_kademe: '', kha_tarihi: '',
+        ekea_derece: '', ekea_kademe: '', ekea_tarihi: '',
+        kidem_yili: '', kidem_tarihi: '', iyi_hal_terfi_tarihi: '',
+        ek_gosterge: '', ek_odeme: '', oht: '', yan_odeme: '', sds_orani: '',
+      }})
+      setFormAcik(false)
+      return
+    }
+    if (r) { setSecili(r); setYeniSicilNo(''); setYeniAdSoyad('') }
+    else if (row) { setSecili(null); setYeniSicilNo(row.sicil_no); setYeniAdSoyad(row.ad_soyad) }
+    else { setSecili(null); setYeniSicilNo(''); setYeniAdSoyad('') }
+    setHata(null); setFormAcik(true)
+  }
+
+  async function handleInlineKaydet(row: ListRow) {
+    const r = row.terfi
+    if (r?.id) {
+      const v = inlineVeri[`row-${r.id}`] ?? {}
+      const fd = new FormData()
+      fd.set('sicil_no', row.sicil_no)
+      Object.entries(v).forEach(([k, val]) => fd.set(k, val))
+      setHata(null)
+      startTransition(async () => {
+        const res = await onGuncelle(r.id, fd)
+        if (res.hata) setHata(res.hata)
+        else { setDuzenlenenRowKey(null); setInlineVeri({}); router.refresh() }
+      })
+      return
+    }
+    const rowKey = duzenlenenRowKey?.startsWith('sicil-') ? duzenlenenRowKey : `sicil-${row.sicil_no}-0`
+    const v = inlineVeri[rowKey] ?? {}
+    const fd = new FormData()
+    fd.set('sicil_no', row.sicil_no)
+    fd.set('ad_soyad', row.ad_soyad)
+    Object.entries(v).forEach(([k, val]) => fd.set(k, val))
+    setHata(null)
+    startTransition(async () => {
+      const res = await onEkle(fd)
+      if (res.hata) setHata(res.hata)
+      else { setDuzenlenenRowKey(null); setInlineVeri({}); router.refresh() }
+    })
+  }
+
+  function inlineDeger(row: ListRow, key: string, rowKey?: string): string {
+    const r = row.terfi
+    const keyToUse = r?.id ? `row-${r.id}` : rowKey
+    if (!keyToUse) return ''
+    const v = inlineVeri[keyToUse]
+    if (v && key in v) return v[key] ?? ''
+    if (!r) return ''
+    const val = (r as Record<string, unknown>)[key]
+    if (key.endsWith('_tarihi') && val) return new Date(val as string).toISOString().slice(0, 10)
+    return (val as string) ?? ''
+  }
+
+  function inlineGuncelle(row: ListRow, key: string, deger: string, rowKey?: string) {
+    const r = row.terfi
+    const keyToUse = r?.id ? `row-${r.id}` : rowKey
+    if (!keyToUse) return
+    setInlineVeri(prev => ({
+      ...prev,
+      [keyToUse]: { ...(prev[keyToUse] ?? {}), [key]: deger },
+    }))
+  }
+  function kapat()         { setFormAcik(false); setSecili(null); setYeniSicilNo(''); setYeniAdSoyad(''); setHata(null) }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setHata(null)
+    const fd = new FormData(e.currentTarget)
+    if (sabitSicil) fd.set('sicil_no', sabitSicil)
+    startTransition(async () => {
+      const res = secili?.id != null ? await onGuncelle(secili.id, fd) : await onEkle(fd)
+      if (res.hata) setHata(res.hata)
+      else kapat()
+    })
+  }
+
+  function handleSil(r: TH) {
+    if (!confirm('Bu terfi kaydı silinecek. Onaylıyor musunuz?')) return
+    startTransition(async () => { const res = await onSil(r.id, r.sicil_no); if (res.hata) alert(res.hata) })
+  }
+
+  function handleTopluKaydet() {
+    if (!onTopluKaydet || !memurlar) return
+    setTopluHata(null); setTopluBasari(null)
+    const degistirilmis = memurlar
+      .filter(m => topluVeri[m.sicil_no] && Object.keys(topluVeri[m.sicil_no]).length > 0)
+    if (!degistirilmis.length) { setTopluHata('Değişiklik yapılmadı.'); return }
+    const satirlar: TerfiSatir[] = degistirilmis.map(m => {
+      const lokal = (topluVeri[m.sicil_no] ?? {}) as Record<string, string>
+      const mevcut = m.terfi
+      // Parse combined D/K inputs
+      const [gaDer, gaKad]   = parseDK(lokal.dk_ga   ?? `${mevcut?.gorev_ayligi_derece ?? ''}/${mevcut?.gorev_ayligi_kademe ?? ''}`)
+      const [khaDer, khaKad] = parseDK(lokal.dk_kha  ?? `${mevcut?.kha_derece  ?? ''}/${mevcut?.kha_kademe  ?? ''}`)
+      const [ekDer, ekKad]   = parseDK(lokal.dk_ekea ?? `${mevcut?.ekea_derece ?? ''}/${mevcut?.ekea_kademe ?? ''}`)
+      function v(key: string, fallback: string | null): string | null {
+        return key in lokal ? (lokal[key] || null) : fallback
+      }
+      return {
+        sicil_no:             m.sicil_no,
+        ad_soyad:             m.ad_soyad,
+        gorev_ayligi_derece:  'dk_ga'   in lokal ? gaDer  : mevcut?.gorev_ayligi_derece ?? null,
+        gorev_ayligi_kademe:  'dk_ga'   in lokal ? gaKad  : mevcut?.gorev_ayligi_kademe ?? null,
+        kha_derece:           'dk_kha'  in lokal ? khaDer : mevcut?.kha_derece          ?? null,
+        kha_kademe:           'dk_kha'  in lokal ? khaKad : mevcut?.kha_kademe          ?? null,
+        kha_tarihi:           v('kha_tarihi',          mevcut?.kha_tarihi          ?? null),
+        ekea_derece:          'dk_ekea' in lokal ? ekDer  : mevcut?.ekea_derece         ?? null,
+        ekea_kademe:          'dk_ekea' in lokal ? ekKad  : mevcut?.ekea_kademe         ?? null,
+        ekea_tarihi:          v('ekea_tarihi',         mevcut?.ekea_tarihi         ?? null),
+        kidem_yili:           v('kidem_yili',          mevcut?.kidem_yili          ?? null),
+        kidem_tarihi:         v('kidem_tarihi',        mevcut?.kidem_tarihi        ?? null),
+        iyi_hal_terfi_tarihi: v('iyi_hal_terfi_tarihi', mevcut?.iyi_hal_terfi_tarihi ?? null),
+        ek_gosterge:          v('ek_gosterge',         mevcut?.ek_gosterge         ?? null),
+        ek_odeme:             v('ek_odeme',            mevcut?.ek_odeme            ?? null),
+        oht:                  v('oht',                 mevcut?.oht                 ?? null),
+        yan_odeme:            v('yan_odeme',           mevcut?.yan_odeme           ?? null),
+        sds_orani:            v('sds_orani',           mevcut?.sds_orani           ?? null),
+      }
+    })
+    startTransition(async () => {
+      const res = await onTopluKaydet(satirlar)
+      if (res.hata) setTopluHata(res.hata)
+      else { setTopluBasari(`${res.kaydedilen} kayıt başarıyla güncellendi.`); setTopluVeri({}) }
+    })
+  }
+
+  const s = secili
+  const formSicilNo = s?.sicil_no ?? yeniSicilNo
+  const formAdSoyad = s?.ad_soyad ?? yeniAdSoyad
+
+  return (
+    <div>
+      {!sabitSicil && (
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Terfi Hareketleri</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Toplam <span className="font-semibold">{kayitlar.length}</span> kayıt</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {memurlar && !sabitSicil && (
+              <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+                <button onClick={() => setSekme('liste')}
+                  className={`px-4 py-1.5 text-sm rounded-md transition-colors ${sekme === 'liste' ? 'bg-white shadow text-slate-800 font-medium' : 'text-slate-500 hover:text-slate-700'}`}>
+                  Kayıt Listesi
+                </button>
+                <button onClick={() => setSekme('toplu')}
+                  className={`px-4 py-1.5 text-sm rounded-md transition-colors ${sekme === 'toplu' ? 'bg-white shadow text-slate-800 font-medium' : 'text-slate-500 hover:text-slate-700'}`}>
+                  Toplu Güncelle
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sabitSicil && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-700">Terfi Hareketleri ({listRows.length} kayıt)</h3>
+        </div>
+      )}
+
+      {/* ─── Toplu Düzenle Ekranı ─── */}
+      {sekme === 'toplu' && memurlar && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-slate-600">
+              Statüsü <strong>Memur</strong> olan <strong>{memurlar.length}</strong> personelin katsayı bilgileri.
+              Değiştirdiğiniz satırlar mavi ile işaretlenir.
+            </p>
+            <button onClick={handleTopluKaydet} disabled={isPending}
+              className="flex items-center gap-2 bg-green-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 font-medium">
+              {isPending ? 'Kaydediliyor…' : 'Toplu Kaydet'}
+            </button>
+          </div>
+          {topluHata && <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{topluHata}</p>}
+          {topluBasari && <p className="mb-3 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">{topluBasari}</p>}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full">
+            <table className="text-xs min-w-[900px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="sticky left-0 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 w-10 z-10">#</th>
+                  <th className="sticky left-10 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 w-24 z-10">Sicil</th>
+                  <th className="sticky left-34 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 min-w-44 z-10">Ad Soyad</th>
+                  {TOPLU_ALANLAR.map(a => (
+                    <th key={a.key} className="text-center px-2 py-3 font-semibold text-slate-600 whitespace-nowrap" style={{ minWidth: a.w }}>
+                      {a.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {memurlar.map((m, i) => {
+                  const degisti = !!topluVeri[m.sicil_no] && Object.keys(topluVeri[m.sicil_no]).length > 0
+                  return (
+                    <tr key={m.sicil_no + '-' + i} className={degisti ? 'bg-blue-50' : 'hover:bg-slate-50'}>
+                      <td className="sticky left-0 px-3 py-2 text-slate-400 bg-inherit z-10">{i + 1}</td>
+                      <td className="sticky left-10 px-3 py-2 font-mono text-slate-500 bg-inherit z-10">{m.sicil_no}</td>
+                      <td className="sticky left-34 px-3 py-2 font-medium text-slate-800 bg-inherit z-10 min-w-44">
+                        {m.ad_soyad}
+                        {m.gorev_unvani && <span className="block text-slate-400 font-normal">{m.gorev_unvani}</span>}
+                      </td>
+                      {TOPLU_ALANLAR.map(a => {
+                        const isDk = 'tipo' in a && a.tipo === 'dk'
+                        const changed = !!(topluVeri[m.sicil_no] && a.key in (topluVeri[m.sicil_no] as Record<string, unknown>))
+                        const baseCls = `px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+                          changed ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'
+                        }`
+                        if (isDk) {
+                          const [der, kad] = parseDK(topluDegerAl(m, a.key))
+                          return (
+                            <td key={a.key} className="px-1 py-1">
+                              <div className="flex gap-0.5 justify-center items-center">
+                                <input type="text" value={der ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${e.target.value}/${kad ?? ''}`)}
+                                  className={`w-10 ${baseCls}`} placeholder="D" />
+                                <span className="text-slate-400">/</span>
+                                <input type="text" value={kad ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${der ?? ''}/${e.target.value}`)}
+                                  className={`w-10 ${baseCls}`} placeholder="K" />
+                              </div>
+                            </td>
+                          )
+                        }
+                        const isDate = 'tip' in a && a.tip === 'date'
+                        const val = topluDegerAl(m, a.key)
+                        const dateVal = isDate && val ? (ggAayyyyToIso(val) ?? (val.includes('-') ? val : new Date(val).toISOString().slice(0, 10))) : (isDate ? '' : val)
+                        return (
+                          <td key={a.key} className="px-1 py-1">
+                            <input
+                              type={isDate ? 'date' : 'text'}
+                              value={dateVal}
+                              onChange={e => topluGuncelle(m.sicil_no, a.key, e.target.value)}
+                              className={`w-full ${baseCls}`}
+                              style={{ minWidth: a.w }}
+                            />
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {sekme === 'liste' && (
+      <>
+      {!sabitSicil && (
+        <div className="mb-4">
+          <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ad veya sicil ara…"
+            className="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+        </div>
+      )}
+
+      {hata && sekme === 'liste' && (
+        <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>
+      )}
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[900px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              {!sabitSicil && <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>}
+              {!sabitSicil && <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil</th>}
+              {!sabitSicil && <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>}
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">G.A. D/K</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">KHA D/K</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">KHA Tarihi</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">EKEA D/K</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">EKEA Tarihi</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Kıdem Yılı</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Kıdem Tarihi</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">İyi Hal</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Ek Göst.</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Ek Öd.</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">ÖHT</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Yan Öd.</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">SDS</th>
+              <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {listRows.length === 0 && (
+              <tr><td colSpan={sabitSicil ? 14 : 18} className="text-center py-10 text-slate-400">Kayıt bulunamadı.</td></tr>
+            )}
+            {listRows.map((row, idx) => {
+              const r = row.terfi
+              const rowKey = r?.id ? `row-${r.id}` : `sicil-${row.sicil_no}-${idx}`
+              const duzenleniyor = duzenlenenRowKey === rowKey
+              return (
+                <tr key={rowKey} className={duzenleniyor ? 'bg-blue-50' : 'hover:bg-slate-50'} style={{ transition: 'background 0.2s' }}>
+                  {!sabitSicil && <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>}
+                  {!sabitSicil && <td className="px-4 py-3 font-mono text-slate-500">{row.sicil_no}</td>}
+                  {!sabitSicil && <td className="px-4 py-3 font-medium text-slate-800">{row.ad_soyad || '—'}</td>}
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <div className="flex gap-0.5 justify-center">
+                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_derece', rowKey)} onChange={e => inlineGuncelle(row, 'gorev_ayligi_derece', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" placeholder="D" />
+                        <span className="text-slate-400">/</span>
+                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'gorev_ayligi_kademe', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" placeholder="K" />
+                      </div>
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.gorev_ayligi_derece ?? null)}/{fmt(r?.gorev_ayligi_kademe ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <div className="flex gap-0.5 justify-center">
+                        <input type="text" value={inlineDeger(row, 'kha_derece', rowKey)} onChange={e => inlineGuncelle(row, 'kha_derece', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <span className="text-slate-400">/</span>
+                        <input type="text" value={inlineDeger(row, 'kha_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'kha_kademe', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      </div>
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.kha_derece ?? null)}/{fmt(r?.kha_kademe ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="date" value={inlineDeger(row, 'kha_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'kha_tarihi', e.target.value, rowKey)}
+                        className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="text-slate-500">{r?.kha_tarihi ? new Date(r.kha_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <div className="flex gap-0.5 justify-center">
+                        <input type="text" value={inlineDeger(row, 'ekea_derece', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_derece', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <span className="text-slate-400">/</span>
+                        <input type="text" value={inlineDeger(row, 'ekea_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_kademe', e.target.value, rowKey)}
+                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      </div>
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.ekea_derece ?? null)}/{fmt(r?.ekea_kademe ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="date" value={inlineDeger(row, 'ekea_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_tarihi', e.target.value, rowKey)}
+                        className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="text-slate-500">{r?.ekea_tarihi ? new Date(r.ekea_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'kidem_yili', rowKey)} onChange={e => inlineGuncelle(row, 'kidem_yili', e.target.value, rowKey)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.kidem_yili ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="date" value={inlineDeger(row, 'kidem_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'kidem_tarihi', e.target.value, rowKey)}
+                        className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="text-slate-500">{r?.kidem_tarihi ? new Date(r.kidem_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="date" value={inlineDeger(row, 'iyi_hal_terfi_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'iyi_hal_terfi_tarihi', e.target.value, rowKey)}
+                        className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="text-slate-500">{r?.iyi_hal_terfi_tarihi ? new Date(r.iyi_hal_terfi_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'ek_gosterge', rowKey)} onChange={e => inlineGuncelle(row, 'ek_gosterge', e.target.value, rowKey)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.ek_gosterge ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'ek_odeme', rowKey)} onChange={e => inlineGuncelle(row, 'ek_odeme', e.target.value, rowKey)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.ek_odeme ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'oht', rowKey)} onChange={e => inlineGuncelle(row, 'oht', e.target.value, rowKey)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.oht ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'yan_odeme', rowKey)} onChange={e => inlineGuncelle(row, 'yan_odeme', e.target.value, rowKey)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.yan_odeme ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'sds_orani')} onChange={e => inlineGuncelle(row, 'sds_orani', e.target.value)}
+                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.sds_orani ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {duzenleniyor ? (
+                      <button onClick={() => handleInlineKaydet(row)} disabled={isPending}
+                        className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors disabled:opacity-50">
+                        {isPending ? '…' : 'Kaydet'}
+                      </button>
+                    ) : r ? (
+                      <button onClick={() => duzenleAc(row.terfi ?? null, row)}
+                        className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
+                    ) : (
+                      <button onClick={() => duzenleAc(null, row, idx)}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Ekle</button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Form Modal */}
+      <Modal open={formAcik} onClose={kapat} title={s ? 'Terfi Kaydı Düzenle' : 'Yeni Terfi Kaydı'} size="lg">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {!sabitSicil && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Sicil No *</label>
+                <input name="sicil_no" required list="calisan-list" defaultValue={formSicilNo}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                <datalist id="calisan-list">
+                  {calisanlar.map(c => <option key={c.sicil_no} value={c.sicil_no}>{c.ad_soyad}</option>)}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ad Soyad</label>
+                <input name="ad_soyad" defaultValue={formAdSoyad}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+              </div>
+            </div>
+          )}
+
+          {KOLON_GRUPLAR.map(g => (
+            <div key={g.baslik}>
+              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{g.baslik}</p>
+              <div className="grid grid-cols-3 gap-3">
+                {g.alanlar.map(a => (
+                  <div key={a.key}>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">{a.label}</label>
+                    <input name={a.key} type={a.tip ?? 'text'}
+                      defaultValue={(s as Record<string, unknown>)?.[a.key] as string ?? ''}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={kapat}
+              className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</button>
+            <button type="submit" disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
+              {isPending ? 'Kaydediliyor…' : s ? 'Güncelle' : 'Kaydet'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+      </>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,141 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import Modal from '@/components/ui/Modal'
+import type { Tables } from '@/types/database'
+
+type IzinTuru = Tables<'tanim_izin_tur'>
+
+const HAKKULLANIM_SECENEKLER = ['Evet', 'Yıllık İzin', 'Hastalık İzni', 'Mazeret İzni', 'Ücretsiz İzin', 'Kullanmaz']
+
+interface Props {
+  data: IzinTuru[]
+  onAdd:    (fd: FormData) => Promise<{ hata?: string }>
+  onUpdate: (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onToggle: (id: number, durum: boolean) => Promise<{ hata?: string }>
+}
+
+export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Props) {
+  const [modalAcik, setModalAcik]    = useState(false)
+  const [secili, setSecili]          = useState<IzinTuru | null>(null)
+  const [sunuciHata, setSunuciHata]  = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  function yeniEkle()          { setSecili(null); setSunuciHata(null); setModalAcik(true) }
+  function duzenle(t: IzinTuru){ setSecili(t);    setSunuciHata(null); setModalAcik(true) }
+  function kapat()              { setModalAcik(false); setSecili(null); setSunuciHata(null) }
+
+  function handleToggle(t: IzinTuru) {
+    startTransition(async () => {
+      const res = await onToggle(t.id, t.durum)
+      if (res?.hata) setSunuciHata(res.hata)
+    })
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSunuciHata(null)
+    const fd = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const res = secili ? await onUpdate(secili.id, fd) : await onAdd(fd)
+      if (res?.hata) setSunuciHata(res.hata)
+      else kapat()
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">İzin Türleri</h1>
+        <button onClick={yeniEkle}
+          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Yeni Ekle
+        </button>
+      </div>
+
+      {sunuciHata && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{sunuciHata}</div>}
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-5 py-3 font-semibold text-slate-600 w-12">#</th>
+              <th className="text-left px-5 py-3 font-semibold text-slate-600 w-20">Kod</th>
+              <th className="text-left px-5 py-3 font-semibold text-slate-600">Tür Adı</th>
+              <th className="text-left px-5 py-3 font-semibold text-slate-600">İzin Hakkı Kullanımı</th>
+              <th className="text-center px-5 py-3 font-semibold text-slate-600 w-24">Durum</th>
+              <th className="text-right px-5 py-3 font-semibold text-slate-600 w-28">İşlem</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {data.length === 0 && (
+              <tr><td colSpan={6} className="text-center py-12 text-slate-400">Henüz kayıt yok.</td></tr>
+            )}
+            {data.map((t, i) => (
+              <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-5 py-3 text-slate-400 tabular-nums">{i + 1}</td>
+                <td className="px-5 py-3 font-mono text-slate-500 text-xs">{t.kod ?? '—'}</td>
+                <td className="px-5 py-3 font-medium text-slate-800">{t.tur_adi}</td>
+                <td className="px-5 py-3 text-slate-600 text-xs">{t.izin_hakki_kullanimi ?? '—'}</td>
+                <td className="px-5 py-3 text-center">
+                  <button onClick={() => handleToggle(t)} disabled={isPending}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                      t.durum ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${t.durum ? 'bg-green-500' : 'bg-slate-400'}`} />
+                    {t.durum ? 'Aktif' : 'Pasif'}
+                  </button>
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <button onClick={() => duzenle(t)}
+                    className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                    Düzenle
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.length > 0 && <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">Toplam {data.length} kayıt</div>}
+      </div>
+
+      <Modal open={modalAcik} onClose={kapat} title={secili ? 'İzin Türü Düzenle' : 'Yeni İzin Türü Ekle'} size="md">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Tür Adı <span className="text-red-500">*</span></label>
+              <input name="tur_adi" type="text" required defaultValue={secili?.tur_adi ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                placeholder="Yıllık İzin" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Kısa Kod</label>
+              <input name="kod" type="text" defaultValue={secili?.kod ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                placeholder="YI" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">İzin Hakkı Kullanımı</label>
+            <select name="izin_hakki_kullanimi" defaultValue={secili?.izin_hakki_kullanimi ?? ''}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
+              <option value="">— Seçin —</option>
+              {HAKKULLANIM_SECENEKLER.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {sunuciHata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{sunuciHata}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={kapat}
+              className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
+            <button type="submit" disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+              {isPending ? 'Kaydediliyor…' : secili ? 'Güncelle' : 'Ekle'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  )
+}

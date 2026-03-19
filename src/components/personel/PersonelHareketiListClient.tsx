@@ -1,0 +1,145 @@
+'use client'
+
+import React, { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+
+interface HareketSatir {
+  id:                number
+  sicil_no:          string
+  ad_soyad:          string
+  hareket_tipi:      string | null
+  yururluk_tarihi:   string | null
+  ise_baslama_tarihi: string | null
+  ayrilis_tarihi:    string | null
+  yeni_gorev_yeri:   string | null
+  yeni_unvan:        string | null
+  eski_gorev_yeri:   string | null
+  eski_unvan:        string | null
+  aciklama:          string | null
+  kayit_zamani:      string
+}
+
+interface Props {
+  hareketler:   HareketSatir[]
+  hareketTipleri: string[]
+}
+
+/** gg.aa.yyyy formatında tarih */
+function tarih(t: string | null) {
+  if (!t) return '—'
+  return new Date(t).toLocaleDateString('tr-TR')
+}
+
+const HAREKET_RENK: Record<string, string> = {
+  'Atama':        'bg-indigo-100 text-indigo-700',
+  'Naklen Atama': 'bg-blue-100 text-blue-700',
+  'İstifa':       'bg-red-100 text-red-700',
+  'Emeklilik':    'bg-orange-100 text-orange-700',
+  'Görevlendirme':'bg-teal-100 text-teal-700',
+  'Vekâlet':      'bg-purple-100 text-purple-700',
+  'Ayrılış':      'bg-rose-100 text-rose-700',
+}
+
+export default function PersonelHareketiListClient({ hareketler, hareketTipleri }: Props) {
+  const router = useRouter()
+  const [arama, setArama]       = useState('')
+  const [tipFiltre, setTip]     = useState('')
+  const [yilFiltre, setYil]     = useState('')
+
+  const yillar = useMemo(() => {
+    const s = new Set(hareketler.map(h => h.yururluk_tarihi?.substring(0, 4)).filter(Boolean))
+    return [...s].sort((a, b) => (b ?? '').localeCompare(a ?? ''))
+  }, [hareketler])
+
+  const filtreli = useMemo(() => {
+    const q = arama.toLowerCase()
+    return hareketler.filter(h => {
+      if (q && !(
+        h.ad_soyad.toLowerCase().includes(q) ||
+        h.sicil_no.toLowerCase().includes(q) ||
+        (h.yeni_gorev_yeri ?? '').toLowerCase().includes(q)
+      )) return false
+      if (tipFiltre && (h.hareket_tipi ?? '') !== tipFiltre) return false
+      if (yilFiltre && !h.yururluk_tarihi?.startsWith(yilFiltre)) return false
+      return true
+    })
+  }, [hareketler, arama, tipFiltre, yilFiltre])
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Personel Hareketleri</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Toplam <span className="font-semibold">{hareketler.length}</span> kayıt
+            {filtreli.length !== hareketler.length && (
+              <span className="ml-2 text-indigo-600 font-medium">({filtreli.length} sonuç)</span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Filtreler */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <input value={arama} onChange={e => setArama(e.target.value)}
+          placeholder="Ad, sicil veya yer ara…"
+          className="flex-1 min-w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+        <select value={tipFiltre} onChange={e => setTip(e.target.value)}
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+          <option value="">Tüm Hareket Tipleri</option>
+          {hareketTipleri.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={yilFiltre} onChange={e => setYil(e.target.value)}
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+          <option value="">Tüm Yıllar</option>
+          {yillar.map(y => <option key={y} value={y!}>{y}</option>)}
+        </select>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Sicil</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">Hareket Tipi</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Yürürlük Tarihi</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600">Yeni Yer / Unvan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtreli.length === 0 && (
+              <tr><td colSpan={6} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
+            )}
+            {filtreli.map((h, idx) => (
+              <tr
+                key={h.id}
+                onClick={() => router.push(`/personel-hareketleri/${h.sicil_no}/goruntule`)}
+                className="hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <td className="px-4 py-3 text-center text-xs text-slate-400">{idx + 1}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{h.sicil_no}</td>
+                <td className="px-4 py-3 font-medium text-slate-800">{h.ad_soyad}</td>
+                <td className="px-4 py-3">
+                  {h.hareket_tipi ? (
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${HAREKET_RENK[h.hareket_tipi] ?? 'bg-slate-100 text-slate-600'}`}>
+                      {h.hareket_tipi}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td className="px-4 py-3 text-center text-xs tabular-nums text-slate-500">
+                  {tarih(h.yururluk_tarihi)}
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-600">
+                  {h.yeni_gorev_yeri ? <span className="font-medium">{h.yeni_gorev_yeri}</span> : ''}
+                  {h.yeni_unvan ? <span className="ml-1 text-slate-400">/ {h.yeni_unvan}</span> : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
