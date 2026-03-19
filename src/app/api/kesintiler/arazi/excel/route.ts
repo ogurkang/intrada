@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         .not('asil', 'is', null)
 
       const mudurlukFiltre = mudurluk
-        ? (k: { gorev_mudurlugu?: string; kadro_mudurlugu?: string }) =>
+        ? (k: { gorev_mudurlugu?: string | null; kadro_mudurlugu?: string | null }) =>
             (k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '') === mudurluk
         : () => true
 
