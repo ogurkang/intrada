@@ -15,7 +15,7 @@ interface Props {
 
 function normalizeCocuk(c: Cocuk): Cocuk {
   const cinsiyet = c.cinsiyet === 'Erkek' ? 'E' : (c.cinsiyet === 'Kız' || c.cinsiyet === 'Kadın') ? 'K' : c.cinsiyet
-  return { ...c, cinsiyet: cinsiyet ?? '' }
+  return { ...c, cinsiyet: cinsiyet ?? '', baba_adi: c.baba_adi ?? '', ana_adi: c.ana_adi ?? '' }
 }
 
 export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
@@ -27,7 +27,7 @@ export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
   const [isPending, startTransition] = useTransition()
 
   function cocukEkle() {
-    setCocuklar(prev => [...prev, { ad_soyad: '', tckn: '', dogum_tarihi: '', cinsiyet: '' }])
+    setCocuklar(prev => [...prev, { ad_soyad: '', tckn: '', dogum_tarihi: '', cinsiyet: '', baba_adi: '', ana_adi: '' }])
   }
   function cocukGuncelle(idx: number, alan: keyof Cocuk, deger: string) {
     setCocuklar(prev => prev.map((c, i) => i === idx ? { ...c, [alan]: deger } : c))
@@ -113,7 +113,7 @@ export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
           <p className="text-xs text-slate-400 text-center py-2">Çocuk kaydı yok</p>
         )}
         {cocuklar.map((c, i) => (
-          <div key={i} className="grid grid-cols-4 gap-2 items-end">
+          <div key={i} className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
             <div>
               <label className="block text-xs text-slate-500 mb-1">Ad Soyad</label>
               <input value={c.ad_soyad} onChange={e => cocukGuncelle(i, 'ad_soyad', e.target.value)}
@@ -131,15 +131,27 @@ export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
               <input type="date" value={c.dogum_tarihi ?? ''} onChange={e => cocukGuncelle(i, 'dogum_tarihi', e.target.value)}
                 className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400" />
             </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Cinsiyet</label>
+              <select value={c.cinsiyet ?? ''} onChange={e => cocukGuncelle(i, 'cinsiyet', e.target.value)}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white">
+                <option value="">—</option>
+                <option value="E">E (Erkek)</option>
+                <option value="K">K (Kadın)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Baba Adı</label>
+              <input value={c.baba_adi ?? ''} onChange={e => cocukGuncelle(i, 'baba_adi', e.target.value)}
+                placeholder="Baba adı"
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400" />
+            </div>
             <div className="flex items-end gap-1">
               <div className="flex-1">
-                <label className="block text-xs text-slate-500 mb-1">Cinsiyet</label>
-                <select value={c.cinsiyet ?? ''} onChange={e => cocukGuncelle(i, 'cinsiyet', e.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white">
-                  <option value="">—</option>
-                  <option value="E">E (Erkek)</option>
-                  <option value="K">K (Kadın)</option>
-                </select>
+                <label className="block text-xs text-slate-500 mb-1">Ana Adı</label>
+                <input value={c.ana_adi ?? ''} onChange={e => cocukGuncelle(i, 'ana_adi', e.target.value)}
+                  placeholder="Anne adı"
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-400" />
               </div>
               <button type="button" onClick={() => cocukSil(i)}
                 className="mb-0.5 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">

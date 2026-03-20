@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
+import ExcelJS from 'exceljs'
 import { createClient } from '@/lib/supabase/server'
 import { applyGridBorders } from '@/lib/kesintiler-excel'
 import path from 'path'
@@ -26,10 +27,120 @@ function cinsiyetGoster(c: string | null | undefined) {
   return c
 }
 
-function hucreYaz(ws: XLSX.WorkSheet, adres: string, deger: string) {
-  const cell = ws[adres]
-  const mevcutStil = cell?.s || {}
-  ws[adres] = { v: deger, t: 's' as const, s: mevcutStil }
+/** ExcelJS ile şablon yüklenir; sadece değer yazılır — kenarlık, dolgu, metni kaydır şablonda kalır */
+async function aileExcelExcelJs(
+  templatePath: string,
+  kayit: Record<string, unknown>,
+  cal: { ad_soyad?: string | null; tckn?: string | null } | null,
+  adSoyad: string | null,
+  personelTckn: string,
+  gorevMudurlugu: string,
+  gorevUnvani: string,
+  cocuklar: Cocuk[],
+  kayitTarihi: string,
+) {
+  const buf = fs.readFileSync(templatePath)
+  const workbook = new ExcelJS.Workbook()
+  // @ts-expect-error exceljs Buffer tipi ile @types/node Buffer uyumsuz; çalışma zamanında geçerli
+  await workbook.xlsx.load(buf)
+
+  const ws = workbook.worksheets[0]
+  if (!ws) throw new Error('Sayfa yok')
+
+  const sicil = String(kayit.sicil_no ?? '')
+
+  // Satır 2: BİRİMİ (S2:X2 birleşik — değer sol üst hücreye)
+  ws.getCell('S2').value = gorevMudurlugu
+
+  // Bildirimi veren (satır 3–5)
+  ws.getCell('D3').value = personelTckn
+  ws.getCell('S3').value = '' // S3 verisi istenmiyor
+  ws.getCell('X3').value = sicil
+  ws.getCell('D4').value = adSoyad ?? ''
+  ws.getCell('S4').value = gorevUnvani
+
+  const medeniHal = String(kayit.medeni_hal ?? '').toLowerCase()
+  ws.getCell('F5').value = medeniHal.includes('bekar') ? 'X' : ''
+  ws.getCell('L5').value = medeniHal.includes('evli') ? 'X' : ''
+
+  // Eş: TCKN D8; çalışıyor X E9 (eskiden H9); çalışmıyor H9
+  ws.getCell('A9').value = String(kayit.esin_ad_soyad ?? '')
+  ws.getCell('D8').value = String(kayit.esin_tckn ?? '')
+
+  const isDurumu = String(kayit.is_durumu ?? '').toLowerCase()
+  const gelirDurumu = String(kayit.gelir_durumu ?? '').toLowerCase()
+  ws.getCell('E9').value = isDurumu.includes('çalışıyor') ? 'X' : ''
+  ws.getCell('H9').value = isDurumu.includes('çalışmıyor') ? 'X' : ''
+  // Gelir var / olan → J9 = "X", Geliri yok / olmayan → L9 = "X"
+  const gelirVar =
+    gelirDurumu.includes('geliri var') || gelirDurumu.includes('geliri olan')
+  const gelirYok =
+    gelirDurumu.includes('geliri yok') || gelirDurumu.includes('geliri olmayan')
+  ws.getCell('J9').value = gelirVar ? 'X' : ''
+  ws.getCell('L9').value = gelirYok ? 'X' : ''
+  ws.getCell('M9').value = ''
+
+  // Çocuklar: D=TC, E=doğum, G=cinsiyet, I=baba adı, K=ana
+  const startRow = 13
+  const maxRows = 5
+  for (let i = 0; i < maxRows; i++) {
+    const c = cocuklar[i] || {}
+    const r = startRow + i
+    const ad = c.ad_soyad ?? ''
+    const tckn = c.tckn ?? ''
+    const dogum = tarihFormatla(c.dogum_tarihi)
+    const cins = cinsiyetGoster(c.cinsiyet)
+    const baba = c.baba_adi ?? ''
+    const ana = c.ana_adi ?? ''
+    ws.getCell(`A${r}`).value = ad
+    ws.getCell(`D${r}`).value = tckn
+    ws.getCell(`E${r}`).value = dogum
+    ws.getCell(`G${r}`).value = cins
+    ws.getCell(`I${r}`).value = baba
+    ws.getCell(`K${r}`).value = ana
+  }
+
+  ws.getCell('D19').value = adSoyad ?? ''
+  ws.getCell('X19').value = kayitTarihi
+
+  // Placeholder {{...}} (şablonda varsa)
+  const placeholders: Record<string, string> = {
+    '{{SICIL_NO}}': sicil,
+    '{{ADI_SOYADI}}': adSoyad ?? '',
+    '{{MEDENI_HAL}}': String(kayit.medeni_hal ?? ''),
+    '{{ES_ADI_SOYADI}}': String(kayit.esin_ad_soyad ?? ''),
+    '{{ES_TCKN}}': String(kayit.esin_tckn ?? ''),
+    '{{IS_DURUMU}}': String(kayit.is_durumu ?? ''),
+    '{{GELIR_DURUMU}}': String(kayit.gelir_durumu ?? ''),
+    '{{KAYIT_ZAMANI}}': kayitTarihi,
+  }
+  for (let n = 1; n <= 15; n++) {
+    const co = cocuklar[n - 1] || {}
+    placeholders[`{{COCUK${n}_ADSOYAD}}`] = co.ad_soyad ?? ''
+    placeholders[`{{COCUK${n}_TCKN}}`] = co.tckn ?? ''
+    placeholders[`{{COCUK${n}_DOGUM}}`] = tarihFormatla(co.dogum_tarihi)
+    placeholders[`{{COCUK${n}_CINSIYET}}`] = cinsiyetGoster(co.cinsiyet)
+    placeholders[`{{COCUK${n}_BABA}}`] = co.baba_adi ?? ''
+    placeholders[`{{COCUK${n}_ANA}}`] = co.ana_adi ?? ''
+  }
+
+  ws.eachRow((row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      const v = cell.value
+      if (typeof v === 'string') {
+        let s = v
+        for (const [key, val] of Object.entries(placeholders)) {
+          if (s.includes(key)) s = s.split(key).join(val)
+        }
+        if (s !== v) cell.value = s
+      } else if (v && typeof v === 'object' && 'richText' in (v as object)) {
+        // Rich text — basit metin değilse atla
+      }
+    })
+  })
+
+  const outBuf = await workbook.xlsx.writeBuffer()
+  return Buffer.from(outBuf)
 }
 
 export async function GET(request: NextRequest) {
@@ -77,107 +188,28 @@ export async function GET(request: NextRequest) {
     const templatePath = path.join(process.cwd(), 'public', 'templates', 'aile_durumu_bildirimi.xlsx')
 
     if (fs.existsSync(templatePath)) {
-      const buf = fs.readFileSync(templatePath)
-      const wb = XLSX.read(buf, { type: 'buffer', cellStyles: true })
-      const sheetName = wb.SheetNames[0] ?? 'Sayfa1'
-      const ws = wb.Sheets[sheetName]
+      const outBuf = await aileExcelExcelJs(
+        templatePath,
+        kayit as unknown as Record<string, unknown>,
+        cal,
+        adSoyad,
+        personelTckn,
+        gorevMudurlugu,
+        gorevUnvani,
+        cocuklar,
+        kayitTarihi,
+      )
 
-      if (ws) {
-        // AİLE DURUMU BİLDİRİMİ (EK:1) şablon hücre eşlemesi - resmi form yapısına göre
-        // BİRİMİ: S2 etiket, T2 veri
-        hucreYaz(ws, 'T2', gorevMudurlugu)
-        hucreYaz(ws, 'U2', gorevMudurlugu)
-        // Bildirimi Verenin - satır 3: T.C. Kimlik No, Vergi, Sicil No, Kurum Sicil No
-        hucreYaz(ws, 'B3', personelTckn)
-        hucreYaz(ws, 'D3', personelTckn)
-        hucreYaz(ws, 'F3', kayit.sicil_no ?? '')
-        hucreYaz(ws, 'H3', kayit.sicil_no ?? '')
-        hucreYaz(ws, 'W3', kayit.sicil_no ?? '')
-        hucreYaz(ws, 'B4', adSoyad ?? '')
-        hucreYaz(ws, 'D4', adSoyad ?? '')
-        hucreYaz(ws, 'P4', gorevUnvani)
-        hucreYaz(ws, 'D5', kayit.medeni_hal ?? '')
+      const filename = `Aile_Durumu_Bildirimi_${(adSoyad ?? kayit.sicil_no ?? '').replace(/[/\\?*:\[\]]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
+      const encodedFilename = encodeURIComponent(filename)
+      const fallbackName = 'Aile_Durumu_Bildirimi.xlsx'
 
-        hucreYaz(ws, 'B7', kayit.esin_ad_soyad ?? '')
-        hucreYaz(ws, 'D7', kayit.esin_tckn ?? '')
-        hucreYaz(ws, 'B8', kayit.esin_ad_soyad ?? '')
-        hucreYaz(ws, 'D8', kayit.esin_tckn ?? '')
-        hucreYaz(ws, 'B9', kayit.esin_ad_soyad ?? '')
-        hucreYaz(ws, 'D9', kayit.esin_tckn ?? '')
-        hucreYaz(ws, 'F7', kayit.is_durumu ?? '')
-        hucreYaz(ws, 'F8', kayit.is_durumu ?? '')
-        hucreYaz(ws, 'F9', kayit.is_durumu ?? '')
-        hucreYaz(ws, 'H7', kayit.gelir_durumu ?? '')
-        hucreYaz(ws, 'H8', kayit.gelir_durumu ?? '')
-        hucreYaz(ws, 'H9', kayit.gelir_durumu ?? '')
-
-        const startRow = 13
-        const maxRows = 15
-        for (let i = 0; i < maxRows; i++) {
-          const c = cocuklar[i] || {}
-          const rr = startRow + i
-          hucreYaz(ws, `B${rr}`, c.ad_soyad ?? '')
-          hucreYaz(ws, `D${rr}`, c.tckn ?? '')
-          hucreYaz(ws, `E${rr}`, tarihFormatla(c.dogum_tarihi))
-          hucreYaz(ws, `G${rr}`, cinsiyetGoster(c.cinsiyet))
-          hucreYaz(ws, `I${rr}`, c.baba_adi ?? '')
-          hucreYaz(ws, `K${rr}`, c.ana_adi ?? '')
-        }
-
-        hucreYaz(ws, 'D18', adSoyad ?? '')
-        hucreYaz(ws, 'D19', kayitTarihi)
-
-        // Placeholder değiştirme (şablonda {{X}} varsa)
-        const placeholders: Record<string, string> = {
-          '{{SICIL_NO}}': kayit.sicil_no ?? '',
-          '{{ADI_SOYADI}}': adSoyad ?? '',
-          '{{MEDENI_HAL}}': kayit.medeni_hal ?? '',
-          '{{ES_ADI_SOYADI}}': kayit.esin_ad_soyad ?? '',
-          '{{ES_TCKN}}': kayit.esin_tckn ?? '',
-          '{{IS_DURUMU}}': kayit.is_durumu ?? '',
-          '{{GELIR_DURUMU}}': kayit.gelir_durumu ?? '',
-          '{{KAYIT_ZAMANI}}': kayitTarihi,
-        }
-        for (let n = 1; n <= 15; n++) {
-          const co = cocuklar[n - 1] || {}
-          placeholders[`{{COCUK${n}_ADSOYAD}}`] = co.ad_soyad ?? ''
-          placeholders[`{{COCUK${n}_TCKN}}`] = co.tckn ?? ''
-          placeholders[`{{COCUK${n}_DOGUM}}`] = tarihFormatla(co.dogum_tarihi)
-          placeholders[`{{COCUK${n}_CINSIYET}}`] = cinsiyetGoster(co.cinsiyet)
-          placeholders[`{{COCUK${n}_BABA}}`] = co.baba_adi ?? ''
-          placeholders[`{{COCUK${n}_ANA}}`] = co.ana_adi ?? ''
-        }
-
-        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
-        for (let R = range.s.r; R <= range.e.r; R++) {
-          for (let C = range.s.c; C <= range.e.c; C++) {
-            const addr = XLSX.utils.encode_cell({ r: R, c: C })
-            const cell = ws[addr]
-            if (cell && typeof cell.v === 'string') {
-              let v = cell.v
-              for (const [key, val] of Object.entries(placeholders)) {
-                if (v.includes(key)) v = v.split(key).join(val)
-              }
-              if (v !== cell.v) {
-                const s = cell.s || {}
-                ws[addr] = { v, t: 's' as const, s }
-              }
-            }
-          }
-        }
-
-        const outBuf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
-        const filename = `Aile_Durumu_Bildirimi_${(adSoyad ?? kayit.sicil_no ?? '').replace(/[/\\?*:\[\]]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
-        const encodedFilename = encodeURIComponent(filename)
-        const fallbackName = 'Aile_Durumu_Bildirimi.xlsx'
-
-        return new NextResponse(outBuf, {
-          headers: {
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedFilename}"`,
-          },
-        })
-      }
+      return new NextResponse(outBuf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedFilename}"`,
+        },
+      })
     }
 
     // Şablon yoksa programatik oluştur (fallback)

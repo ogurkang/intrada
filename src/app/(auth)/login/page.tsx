@@ -52,8 +52,8 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="kullanici@kurum.gov.tr"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+            className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
         </div>
 
@@ -67,8 +67,8 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+            className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
         </div>
 

@@ -11,6 +11,8 @@ interface Cocuk {
   tckn?: string
   dogum_tarihi?: string
   cinsiyet?: string
+  baba_adi?: string
+  ana_adi?: string
 }
 
 function tarihFormatla(t: string | null | undefined) {
@@ -121,6 +123,8 @@ export default async function AileGoruntuPage({ params }: Props) {
                     <th className="text-left px-4 py-2.5 font-semibold text-slate-600">TCKN</th>
                     <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Doğum Tarihi</th>
                     <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Cinsiyet</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Baba Adı</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Ana Adı</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -131,6 +135,8 @@ export default async function AileGoruntuPage({ params }: Props) {
                       <td className="px-4 py-3 font-mono text-slate-600">{c.tckn || '—'}</td>
                       <td className="px-4 py-3 text-center text-slate-600">{tarihFormatla(c.dogum_tarihi)}</td>
                       <td className="px-4 py-3 text-center text-slate-500">{cinsiyetGoster(c.cinsiyet)}</td>
+                      <td className="px-4 py-3 text-slate-600">{c.baba_adi || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{c.ana_adi || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

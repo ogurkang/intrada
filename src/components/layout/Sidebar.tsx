@@ -86,7 +86,11 @@ function grupAktifPrefixleri(grup: MenuGroup) {
   return grup.items.map(i => i.href)
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
 
   // Her accordion'ın açık/kapalı durumu grubun adına göre tutulur
@@ -152,6 +156,7 @@ export default function Sidebar() {
                         <Link
                           key={item.href}
                           href={item.href}
+                          onClick={onNavigate}
                           className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
                             aktif
                               ? 'bg-slate-700 text-white font-medium'
@@ -180,6 +185,7 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={`flex items-center gap-3 px-6 py-2.5 text-sm transition-colors ${
                       aktif
                         ? 'bg-slate-700 text-white font-medium'
