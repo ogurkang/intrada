@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { AileBilgisi, Cocuk } from './AileClient'
 
-const MEDENI_HAL = ['Evli', 'Bekar', 'Boşanmış', 'Dul']
+const MEDENI_HAL_TABAN = ['Evli', 'Bekar'] as const
 const IS_DURUMU = ['Çalışıyor', 'Çalışmıyor', 'Emekli', 'Serbest Meslek', 'Diğer']
 
 interface Props {
@@ -20,6 +20,9 @@ function normalizeCocuk(c: Cocuk): Cocuk {
 
 export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
   const router = useRouter()
+  /** Sadece Evli / Bekar; eski kayıtta farklı değer varsa seçim boş başlar */
+  const medeniDefault =
+    kayit.medeni_hal === 'Evli' || kayit.medeni_hal === 'Bekar' ? kayit.medeni_hal : ''
   const [cocuklar, setCocuklar] = useState<Cocuk[]>(
     (kayit.cocuklar_json ?? []).map(normalizeCocuk)
   )
@@ -61,10 +64,10 @@ export default function AileDuzenleClient({ kayit, onKaydet }: Props) {
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">Medeni Hal</label>
-        <select name="medeni_hal" defaultValue={kayit.medeni_hal ?? ''}
+        <select name="medeni_hal" defaultValue={medeniDefault}
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
           <option value="">— Seçiniz —</option>
-          {MEDENI_HAL.map(m => <option key={m} value={m}>{m}</option>)}
+          {MEDENI_HAL_TABAN.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
 

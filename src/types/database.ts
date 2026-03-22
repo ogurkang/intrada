@@ -351,21 +351,27 @@ export interface Database {
       }
       mal_bildirimi: {
         Row: {
-          id: number; sicil_no: string; kimlik_json: Json; tasinmaz_json: Json
+          id: number
+          public_id: string
+          sicil_no: string; kimlik_json: Json; tasinmaz_json: Json
           kooperatif_json: Json; tasitlar_json: Json; diger_tasinirlar_json: Json
           banka_menkul_json: Json; altin_mucevher_json: Json; borc_alacak_json: Json
           haklar_json: Json; son_net_maas: number | null; aciklama: string | null
           beyan_turu: string | null; onay_tarihi: string | null; kayit_zamani: string
         }
         Insert: {
-          id?: number; sicil_no: string; kimlik_json?: Json; tasinmaz_json?: Json
+          id?: number
+          public_id?: string
+          sicil_no: string; kimlik_json?: Json; tasinmaz_json?: Json
           kooperatif_json?: Json; tasitlar_json?: Json; diger_tasinirlar_json?: Json
           banka_menkul_json?: Json; altin_mucevher_json?: Json; borc_alacak_json?: Json
           haklar_json?: Json; son_net_maas?: number | null; aciklama?: string | null
           beyan_turu?: string | null; onay_tarihi?: string | null; kayit_zamani?: string
         }
         Update: {
-          id?: number; sicil_no?: string; kimlik_json?: Json; tasinmaz_json?: Json
+          id?: number
+          public_id?: string
+          sicil_no?: string; kimlik_json?: Json; tasinmaz_json?: Json
           kooperatif_json?: Json; tasitlar_json?: Json; diger_tasinirlar_json?: Json
           banka_menkul_json?: Json; altin_mucevher_json?: Json; borc_alacak_json?: Json
           haklar_json?: Json; son_net_maas?: number | null; aciklama?: string | null
