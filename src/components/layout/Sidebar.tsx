@@ -2,23 +2,26 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import type { AppAccess } from '@/lib/app-access'
+import { sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 
 type MenuItem  = { href: string; label: string }
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
-const menuGroups: MenuGroup[] = [
+function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
+  return [
   {
     grup: 'Personel',
     icon: '👤',
     accordion: true,
     items: [
-      { href: '/personel',            label: 'Çalışanlar'          },
+      { href: calisanlarHref,         label: 'Çalışanlar'          },
       { href: '/personel/ayrilanlar', label: 'Ayrılanlar'          },
       { href: '/firma-calisanlar',    label: 'Firma Personel'      },
       { href: '/kadro',               label: 'Kadro Hareketleri'   },
       { href: '/personel-hareketleri', label: 'Personel Hareketleri'},
-      { href: '/terfi',               label: 'Terfi Hareketleri'   },
+      { href: terfiMenuHref,          label: 'Terfi Hareketleri'   },
     ],
   },
   {
@@ -66,6 +69,12 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    grup: 'Yetkilendirme',
+    icon: '🔐',
+    accordion: true,
+    items: [{ href: '/yetkilendirme', label: 'Genel Bakış' }],
+  },
+  {
     grup: 'Tanımlar',
     icon: '⚙️',
     accordion: true,
@@ -80,7 +89,8 @@ const menuGroups: MenuGroup[] = [
       { href: '/tanimlar/izin-kural', label: 'İzin Kuralları'},
     ],
   },
-]
+  ]
+}
 
 function grupAktifPrefixleri(grup: MenuGroup) {
   return grup.items.map(i => i.href)
@@ -88,10 +98,46 @@ function grupAktifPrefixleri(grup: MenuGroup) {
 
 interface SidebarProps {
   onNavigate?: () => void
+  /** Dashboard layout’tan (sunucu) gelir. */
+  terfiMenuHref?: string
+  access: AppAccess
 }
 
-export default function Sidebar({ onNavigate }: SidebarProps) {
+function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
+  if (access.mode === 'full' || access.mode === 'admin') return access.mode
+  return 'kullanici'
+}
+
+export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }: SidebarProps) {
   const pathname = usePathname()
+
+  const calisanlarHref = useMemo(() => {
+    if (access.mode === 'kullanici') {
+      const sn = access.sicilNo.trim()
+      if (sn) return `/personel/${encodeURIComponent(sn)}`
+    }
+    return '/personel'
+  }, [access])
+
+  const menuGroups = useMemo(
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref),
+    [terfiMenuHref, calisanlarHref],
+  )
+
+  const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}
+  const mode = accessSidebarMode(access)
+
+  const filteredGroups = useMemo(() => {
+    return menuGroups
+      .map(g => {
+        if (!sidebarGrupGoster(g.grup, mode, menuIzinleri)) return null
+        if (g.grup !== 'Personel') return g
+        const terfiAcik = sidebarTerfiGoster(mode, menuIzinleri)
+        const items = terfiAcik ? g.items : g.items.filter(i => i.href !== terfiMenuHref)
+        return items.length ? { ...g, items } : null
+      })
+      .filter((g): g is MenuGroup => g != null)
+  }, [menuGroups, mode, menuIzinleri, terfiMenuHref])
 
   // Her accordion'ın açık/kapalı durumu grubun adına göre tutulur
   const [aciklar, setAciklar] = useState<Record<string, boolean>>(() => {
@@ -103,6 +149,8 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     }
     return ilk
   })
+
+  const grupList = filteredGroups
 
   function toggle(grup: string) {
     setAciklar(prev => ({ ...prev, [grup]: !prev[grup] }))
@@ -118,7 +166,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* Navigasyon */}
       <nav className="flex-1 overflow-y-auto py-4">
-        {menuGroups.map((grup) => {
+        {grupList.map((grup) => {
           const grupAktif = grup.items.some(
             (item) => pathname === item.href || pathname.startsWith(item.href + '/')
           )

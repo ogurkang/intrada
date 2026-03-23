@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import KadroFormModal from './KadroForm'
+import { kadroDetayHref } from '@/lib/kadro-link'
 import type { Tables } from '@/types/database'
 
 type Kadro   = Tables<'kadro_hareketleri'>
@@ -200,7 +201,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
               {filtreli.map((k, idx) => (
                 <tr
                   key={k.id}
-                  onClick={() => router.push(`/kadro/${k.id}`)}
+                  onClick={() => router.push(kadroDetayHref(k))}
                   className="hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>

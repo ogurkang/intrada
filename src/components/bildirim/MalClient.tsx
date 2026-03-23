@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { malBildirimUrlSegment } from '@/lib/mal-bildirim-route'
+import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
 
 export interface MalBildirimi {
   id:           number
@@ -91,7 +91,7 @@ export default function MalClient({ kayitlar, onSil }: Props) {
               <tr
                 key={kayit.id}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
-                onClick={() => router.push(`/bildirim/mal/${malBildirimUrlSegment(kayit)}`)}
+                onClick={() => router.push(malBildirimDetayHref(kayit))}
               >
                 <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{kayit.sicil_no}</td>

@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -70,6 +71,11 @@ export default function LoginPage() {
             className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
                        focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
+          <p className="text-xs text-slate-500 mt-1.5 leading-snug">
+            İlk giriş: T.C. kimlik numaranızın <strong>ilk 3 hanesi</strong> + nokta +{' '}
+            <strong>doğum yılınız 4 hane</strong> (ör. <code className="bg-slate-100 px-1 rounded">252.1987</code>).
+            İlk girişten sonra hesap kurulumunda yeni şifre belirlersiniz.
+          </p>
         </div>
 
         {error && (
@@ -94,6 +100,12 @@ export default function LoginPage() {
             {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
           </span>
         </button>
+
+        <p className="text-center text-sm">
+          <Link href="/sifre-sifirla" className="text-slate-600 underline hover:text-slate-800">
+            Şifremi sıfırla
+          </Link>
+        </p>
       </form>
     </div>
   )

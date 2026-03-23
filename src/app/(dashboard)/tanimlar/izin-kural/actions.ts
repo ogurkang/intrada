@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/izin-kural'
 
@@ -28,6 +29,8 @@ export async function izinKuralEkle(formData: FormData): Promise<{ hata?: string
 }
 
 export async function izinKuralGuncelle(id: number, formData: FormData): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const statu = String(formData.get('statu') ?? '').trim()
   if (!statu) return { hata: 'Statü seçimi zorunludur.' }
 
@@ -45,6 +48,8 @@ export async function izinKuralGuncelle(id: number, formData: FormData): Promise
 }
 
 export async function izinKuralToggleDurum(id: number, mevcutDurum: boolean): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase.from('tanim_izin_kural').update({ durum: !mevcutDurum }).eq('id', id)
   if (error) return { hata: error.message }

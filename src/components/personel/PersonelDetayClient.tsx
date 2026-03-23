@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Tables } from '@/types/database'
+import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -13,6 +14,18 @@ type IzinHareketi = Tables<'izin_hareketleri'>
 type TH           = Tables<'terfi_hareketleri'>
 type Ogrenim      = Tables<'calisan_ogrenim'>
 type Aile         = Tables<'aile_bildirimi'>
+
+/** Personel kartında mal listesi (MalClient ile aynı alanlar; Sil yok) */
+export type PersonelMalBildirimOzet = {
+  id: number
+  public_id?: string | null
+  sicil_no: string
+  ad_soyad: string | null
+  beyan_turu: string | null
+  onay_tarihi: string | null
+  son_net_maas: number | null
+  kayit_zamani: string
+}
 
 const SEKMELER = [
   'Kişisel Bilgiler',
@@ -38,10 +51,12 @@ interface Props {
   terfiKayitlari: TH[]
   ogrenimler: Ogrenim[]
   aileBildirimi: Aile | null
-  malBildirimi?: { sicil_no: string } | null
+  malKayitlari?: PersonelMalBildirimOzet[]
   egitimKatilimlari?: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
   onKisiselGuncelle?: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
+  /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
+  saltOkunur?: boolean
 }
 
 function tarihFormatla(t: string | null | undefined) {
@@ -232,17 +247,60 @@ function AileTab({ aileBildirimi }: { aileBildirimi: Aile | null }) {
 
 // ─── Mal Bildirimleri ─────────────────────────────────────────────────────────
 
-function MalBildirimTab({ malBildirimi }: { malBildirimi: { sicil_no: string } | null }) {
-  if (!malBildirimi) {
+function MalBildirimTab({ malKayitlari }: { malKayitlari: PersonelMalBildirimOzet[] }) {
+  const router = useRouter()
+
+  if (malKayitlari.length === 0) {
     return (
       <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-        Mal bildirimi bulunamadı.
+        Mal bildirimi kaydı bulunamadı.
       </div>
     )
   }
+
   return (
-    <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-      Mal bildirimi kaydı mevcut. Detaylar için Bildirim modülüne bakınız.
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <p className="text-xs text-slate-500 px-4 pt-4 pb-2">
+        Satıra tıklayarak beyan detayını açabilirsiniz.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Sicil No</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-44">Beyan Türü</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Onay Tarihi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {malKayitlari.map((kayit, idx) => (
+              <tr
+                key={kayit.id}
+                className="hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={() => router.push(malBildirimDetayHrefPersonelSaltOkunur(kayit))}
+              >
+                <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{kayit.sicil_no}</td>
+                <td className="px-4 py-3 font-medium text-slate-800">{kayit.ad_soyad ?? '—'}</td>
+                <td className="px-4 py-3">
+                  {kayit.beyan_turu ? (
+                    <span className="inline-flex px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-xs font-medium">
+                      {kayit.beyan_turu}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">
+                  {kayit.onay_tarihi ? new Date(kayit.onay_tarihi).toLocaleDateString('tr-TR') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -635,7 +693,8 @@ function GecmisTab({ hareketler }: { hareketler: PH[] }) {
 
 export default function PersonelDetayClient({
   kaynak, calisan, kadrolar, hareketler, izinHaklari, izinHareketleri,
-  terfiKayitlari, ogrenimler, aileBildirimi,   malBildirimi = null, egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
+  terfiKayitlari, ogrenimler, aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
+  saltOkunur = false,
 }: Props) {
   const searchParams = useSearchParams()
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
@@ -644,6 +703,7 @@ export default function PersonelDetayClient({
     if (searchParams.get('sekme') === 'gecmis') setAktif('Geçmiş')
   }, [searchParams])
   const sicil = (calisan.sicil_no ?? '').trim()
+  const duzenleSegment = encodeURIComponent((calisan as { public_id?: string }).public_id ?? sicil)
   const asilDolu = kadrolar.some(k => (k.asil ?? '').trim() === sicil && (k.durumu ?? '') === 'Dolu')
   const vekilVar = kadrolar.some(k => (k.vekil ?? '').trim() === sicil)
   const kadroDurumu = asilDolu ? 'Dolu' : vekilVar ? 'Vekil' : null
@@ -673,17 +733,23 @@ export default function PersonelDetayClient({
           <p className="text-sm text-slate-600 font-medium">{calisan.ad_soyad}</p>
         </div>
         <div className="flex items-center gap-2">
-          {((aktif === 'Kişisel Bilgiler' || kaynak === 'ayrilanlar') && onKisiselGuncelle) && (
+          {((aktif === 'Kişisel Bilgiler' || kaynak === 'ayrilanlar') && onKisiselGuncelle && !saltOkunur) && (
             <Link
-              href={`/personel/${sicil}/duzenle${kaynak ? `?kaynak=${kaynak}` : ''}`}
+              href={`/personel/${duzenleSegment}/duzenle${kaynak ? `?kaynak=${kaynak}` : ''}`}
               className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
               Değiştir
             </Link>
           )}
-          <Link href={kaynak === 'ayrilanlar' ? '/personel/ayrilanlar' : '/personel'}
-            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-            ← Listeye Dön
-          </Link>
+          {saltOkunur ? (
+            <Link href="/" className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+              Ana sayfa
+            </Link>
+          ) : (
+            <Link href={kaynak === 'ayrilanlar' ? '/personel/ayrilanlar' : '/personel'}
+              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+              ← Listeye Dön
+            </Link>
+          )}
         </div>
       </div>
 
@@ -709,7 +775,7 @@ export default function PersonelDetayClient({
           {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} />}
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
-          {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malBildirimi={malBildirimi} />}
+          {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}
           {aktif === 'Kadro Bilgileri'      && <KadroTab kadrolar={kadrolar} sicilNo={calisan.sicil_no} />}
           {aktif === 'Katsayı Bilgileri'    && <KatsayiTab terfiKayitlari={terfiKayitlari} kadrolar={kadrolar} yevmiyeFazlaMesaiAylik={yevmiyeFazlaMesaiAylik} />}
           {aktif === 'İzin Bilgileri'       && (

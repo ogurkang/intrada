@@ -3,13 +3,18 @@
 import { useState } from 'react'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import PermissionGate from '@/components/auth/PermissionGate'
+import type { AppAccess } from '@/lib/app-access'
 
 interface DashboardShellProps {
   children: React.ReactNode
   userEmail?: string
+  /** Sunucudan gelir; opak terfi yolu (ör. /abc123). */
+  terfiMenuHref?: string
+  access: AppAccess
 }
 
-export default function DashboardShell({ children, userEmail }: DashboardShellProps) {
+export default function DashboardShell({ children, userEmail, terfiMenuHref = '/terfi', access }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -33,13 +38,19 @@ export default function DashboardShell({ children, userEmail }: DashboardShellPr
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        <Sidebar onNavigate={() => setSidebarOpen(false)} />
+        <Sidebar
+          onNavigate={() => setSidebarOpen(false)}
+          terfiMenuHref={terfiMenuHref}
+          access={access}
+        />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header userEmail={userEmail} onMenuClick={() => setSidebarOpen((o) => !o)} />
         <main className="flex-1 p-6 overflow-auto">
-          {children}
+          <PermissionGate access={access} terfiMenuHref={terfiMenuHref}>
+            {children}
+          </PermissionGate>
         </main>
       </div>
     </div>

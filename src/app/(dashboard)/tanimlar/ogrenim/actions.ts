@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/ogrenim'
 
@@ -25,6 +26,8 @@ export async function ogrenimGuncelle(
   id: number,
   formData: FormData
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const isim = String(formData.get('isim') ?? '').trim()
   if (!isim) return { hata: 'İsim alanı boş bırakılamaz.' }
 
@@ -43,6 +46,8 @@ export async function ogrenimToggleAktif(
   id: number,
   mevcutAktif: boolean
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_ogrenim')

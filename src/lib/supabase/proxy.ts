@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Korunmayan (public) rotalar:
  *   - /login
  *   - /auth/callback  (Supabase OAuth dönüş noktası)
+ *   - /sifre-sifirla
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -33,8 +34,6 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // ÖNEMLİ: createServerClient ile supabase.auth.getUser() arasına
-  // başka mantık eklemeyin — oturum hataları ayıklanamaz hale gelir.
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -42,7 +41,8 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isPublicRoute =
     pathname.startsWith('/login') ||
-    pathname.startsWith('/auth/callback')
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/sifre-sifirla')
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
@@ -50,7 +50,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Giriş yapmış kullanıcı /login'e giderse ana sayfaya yönlendir
   if (user && pathname === '/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/'

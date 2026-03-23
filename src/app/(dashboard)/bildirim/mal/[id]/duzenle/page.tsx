@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import MalBildirimFormClient, { type MalDuzenleInitial } from '@/components/bildirim/MalBildirimFormClient'
 import { malBildirimGuncelle } from '../../actions'
 import { parseMalBildirimRouteParam } from '@/lib/mal-bildirim-route'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -15,6 +16,8 @@ export default async function Page({ params }: Props) {
   if (!parsed.ok) notFound()
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
 
   let q = supabase
     .from('mal_bildirimi')
@@ -24,6 +27,11 @@ export default async function Page({ params }: Props) {
   const { data: r, error } = await q.single()
 
   if (error || !r) notFound()
+
+  if (!isAdminLike(access)) {
+    if (access.mode !== 'kullanici') notFound()
+    if (String(access.sicilNo).trim() !== String(r.sicil_no).trim()) notFound()
+  }
 
   const cal = r.calisan as {
     ad_soyad: string | null

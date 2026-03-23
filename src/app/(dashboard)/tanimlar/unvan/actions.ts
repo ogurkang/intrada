@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/unvan'
 
@@ -31,6 +32,8 @@ export async function unvanGuncelle(
   id: number,
   formData: FormData
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const unvan_adi = String(formData.get('unvan_adi') ?? '').trim()
   if (!unvan_adi) return { hata: 'Unvan Adı boş bırakılamaz.' }
 
@@ -53,6 +56,8 @@ export async function unvanToggleAktif(
   id: number,
   mevcutAktif: boolean
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_unvan')

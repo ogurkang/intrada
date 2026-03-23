@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
+import { getAppAccess } from '@/lib/app-access'
 import { izinDurumDegistir } from './izin/actions'
 import type {
   KadroDoluluk, IzinIstatistik, BekleyenIzin,
@@ -8,6 +10,23 @@ import type {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    const access = await getAppAccess(supabase, user.id)
+    if (access.mode === 'kullanici') {
+      const [{ data: cal }, { data: prof }] = await Promise.all([
+        supabase.from('calisan').select('ad_soyad').eq('sicil_no', access.sicilNo).maybeSingle(),
+        supabase.from('app_profiles').select('kullanici_adi').eq('id', user.id).maybeSingle(),
+      ])
+      const adSoyad = (cal?.ad_soyad ?? '').trim() || access.sicilNo
+      const kullaniciAdi = prof?.kullanici_adi ? String(prof.kullanici_adi).trim() : null
+      return <KullaniciAnaSayfa adSoyad={adSoyad} kullaniciAdi={kullaniciAdi || null} />
+    }
+  }
+
   const buYil    = new Date().getFullYear()
   const bugun    = new Date().toISOString().split('T')[0]
 
@@ -18,7 +37,6 @@ export default async function DashboardPage() {
     { data: bekleyenRaw },
     { data: tatilRaw },
     { data: izindekiRaw },
-    { data: calisanAdRaw },
   ] = await Promise.all([
     // 1) Aktif personel sayısı
     supabase.from('personel_kadro_ozet').select('sicil_no', { count: 'exact', head: false }),
@@ -59,14 +77,36 @@ export default async function DashboardPage() {
       .lte('baslama', bugun)
       .gte('ayrilis', bugun)
       .limit(10),
-
-    // 7) Çalışan adları (bekleyen + izindekiler için)
-    supabase.from('calisan').select('sicil_no, ad_soyad'),
   ])
 
-  // Ad haritası
+  // 7) Sadece panoda görünen siciller için çalışan adı / public_id (tüm tabloyu çekme — yavaşlık riski)
+  const sicilSet = new Set<string>()
+  ;(bekleyenRaw ?? []).forEach(iz => {
+    if (iz.sicil_no) sicilSet.add(iz.sicil_no)
+  })
+  ;(izindekiRaw ?? []).forEach(i => {
+    if (i.sicil_no) sicilSet.add(i.sicil_no)
+  })
+  const siciller = [...sicilSet]
+
+  let calisanAdRaw: { sicil_no: string; public_id: string | null; ad_soyad: string | null }[] = []
+  if (siciller.length > 0) {
+    const { data } = await supabase
+      .from('calisan')
+      .select('sicil_no, public_id, ad_soyad')
+      .in('sicil_no', siciller)
+    calisanAdRaw = data ?? []
+  }
+
+  // Ad + canonical link (public_id) haritası
   const adMap: Record<string, string> = {}
-  ;(calisanAdRaw ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
+  const publicIdMap: Record<string, string> = {}
+  ;(calisanAdRaw ?? []).forEach(c => {
+    if (c.sicil_no) {
+      adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
+      if (c.public_id) publicIdMap[c.sicil_no] = c.public_id
+    }
+  })
 
   // Kadro doluluk
   const kadroDoluluk: KadroDoluluk = { dolu: 0, vekil: 0, bos: 0 }
@@ -89,6 +129,7 @@ export default async function DashboardPage() {
   const bekleyenIzinler: BekleyenIzin[] = (bekleyenRaw ?? []).map(iz => ({
     id:               iz.id,
     sicil_no:         iz.sicil_no ?? '',
+    public_id:        publicIdMap[iz.sicil_no ?? ''],
     ad_soyad:         adMap[iz.sicil_no ?? ''] ?? iz.sicil_no ?? '',
     izin_turu:        iz.tur,
     baslangic:        iz.baslama,
@@ -110,6 +151,7 @@ export default async function DashboardPage() {
   const izindekiler: IzindekiPersonel[] = (izindekiRaw ?? []).map(i => ({
     id:        i.id,
     sicil_no:  i.sicil_no ?? '',
+    public_id: publicIdMap[i.sicil_no ?? ''],
     ad_soyad:  adMap[i.sicil_no ?? ''] ?? i.sicil_no ?? '',
     izin_turu: i.tur,
     bitis:     i.ayrilis,

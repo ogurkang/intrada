@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
+import { personelDetayHref } from '@/lib/personel-link'
 
 const CINSIYET = ['Erkek', 'Kadın']
 const KAN_GRUBU = ['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-']
@@ -28,7 +29,13 @@ export default function PersonelYeniClient() {
           window.opener.postMessage('refresh', '*')
           window.close()
         } else {
-          router.push(res.sicil_no ? `/personel/${res.sicil_no}` : '/personel')
+          router.push(
+            res.public_id
+              ? `/link/${res.public_id}`
+              : res.sicil_no
+                ? personelDetayHref({ sicil_no: res.sicil_no })
+                : '/personel',
+          )
         }
       }
     })

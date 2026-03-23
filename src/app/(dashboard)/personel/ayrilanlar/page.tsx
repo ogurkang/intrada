@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { filterOutGodmodeSicilList } from '@/lib/godmode-calisan'
 import AyrılanlarClient from '@/components/personel/AyrılanlarClient'
 import { personelAktifEt } from './actions'
 
 export interface AyrılanSatır {
   sicil_no:        string
+  public_id:       string | null
   ad_soyad:        string
   statu:           string | null
   kadro_unvani:    string | null
@@ -33,12 +35,12 @@ export default async function AyrılanlarPage() {
       sicilMap.set(r.sicil_no, { ayrilis_tarihi: r.ayrilis_tarihi })
     }
   }
-  const siciller = [...sicilMap.keys()]
+  const siciller = filterOutGodmodeSicilList([...sicilMap.keys()])
 
   // Calisan temel bilgilerini çek
   const { data: calisanRaw } = await supabase
     .from('calisan')
-    .select('sicil_no, ad_soyad')
+    .select('sicil_no, public_id, ad_soyad')
     .in('sicil_no', siciller)
 
   // Kadro bilgilerini çek (son kayıt)
@@ -56,6 +58,7 @@ export default async function AyrılanlarPage() {
     const ph      = sicilMap.get(sicil)!
     return {
       sicil_no:        sicil,
+      public_id:       calisan?.public_id ?? null,
       ad_soyad:        calisan?.ad_soyad ?? sicil,
       statu:           kadro?.statu ?? null,
       kadro_unvani:    kadro?.kadro_unvani ?? null,

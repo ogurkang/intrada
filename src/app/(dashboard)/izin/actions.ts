@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import {
   gunBasitHesapla,
   gunYillikIzinHesapla,
@@ -108,7 +109,7 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     }
   }
 
-  const { error } = await supabase.from('izin_hareketleri').insert({
+  const { data: inserted, error } = await supabase.from('izin_hareketleri').insert({
     yil,
     sira_no,
     sicil_no,
@@ -121,11 +122,12 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     bilgi:     bilgiStr,
     durum:     'Taslak' as Durum,
     kayit_tarihi: new Date().toISOString(),
-  })
+  }).select('public_id').single()
 
   if (error) return { hata: error.message }
   revalidatePath('/izin')
   revalidatePath('/izin/haklar')
+  if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   return {}
 }
 
@@ -143,7 +145,7 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
   const supabase = await createClient()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
-    .select('id, sicil_no, yil')
+    .select('id, sicil_no, yil, public_id')
     .eq('id', id)
     .single()
 
@@ -156,7 +158,7 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
   }
   if (gun <= 0) return { hata: 'Gün sayısı 0\'dan büyük olmalıdır.' }
 
-  const { error } = await supabase.from('izin_hareketleri').update({
+  const { data: updated, error } = await supabase.from('izin_hareketleri').update({
     tur,
     ayrilis: ayrilisKayit,
     baslama,
@@ -166,9 +168,11 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
     bilgi:       str(formData, 'bilgi'),
     islem_yapan: str(formData, 'islem_yapan'),
     durum:       durumVal || 'Değiştirildi' as Durum,
-  }).eq('id', id)
+  }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+  const linkPid = updated?.public_id ?? mevcut?.public_id
+  if (linkPid) revalidatePath(`/link/${linkPid}`)
   if (mevcut?.sicil_no && mevcut?.yil) {
     await izinHaklariKullanilanGuncelle(supabase, mevcut.sicil_no, mevcut.yil)
     // İlgili personelin detay ekranını da güncelle
@@ -183,7 +187,7 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
   const supabase = await createClient()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
-    .select('sicil_no, yil')
+    .select('sicil_no, yil, public_id')
     .eq('id', id)
     .single()
   const { error } = await supabase
@@ -192,10 +196,11 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
     .eq('id', id)
 
   if (error) return { hata: error.message }
+  if (mevcut?.public_id) revalidatePath(`/link/${mevcut.public_id}`)
   if (mevcut?.sicil_no && mevcut?.yil) {
     await izinHaklariKullanilanGuncelle(supabase, mevcut.sicil_no, mevcut.yil)
     // İlgili personelin detay ekranını da güncelle
-    revalidatePath(`/personel/${mevcut.sicil_no}`)
+    await revalidatePersonelDetayPaths(mevcut.sicil_no)
   }
   revalidatePath('/izin')
   revalidatePath('/izin/haklar')

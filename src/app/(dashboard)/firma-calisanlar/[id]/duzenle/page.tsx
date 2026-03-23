@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import FirmaPersonelDuzenleClient from '@/components/personel/FirmaPersonelDuzenleClient'
 import { firmaGuncelle } from '../../actions'
+import { resolveFirmaCalisanSegmentToId } from '@/lib/firma-calisan-load'
+import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 import type { Tables } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -9,10 +12,9 @@ export const dynamic = 'force-dynamic'
 export default async function FirmaPersonelDuzenlePage({
   params,
 }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+  const { id: rawSegment } = await params
   const supabase = await createClient()
-  const idNum = parseInt(id, 10)
-  if (Number.isNaN(idNum)) notFound()
+  const idNum = await resolveFirmaCalisanSegmentToId(supabase, rawSegment)
 
   const { data: row, error } = await supabase
     .from('firma_calisanlar')
@@ -22,7 +24,6 @@ export default async function FirmaPersonelDuzenlePage({
 
   if (error || !row) notFound()
 
-  // Yeni Personel ekranıyla aynı veri kaynağı: tanim_mudurluk + firma_calisanlar
   const [
     { data: kayitlar },
     { data: tanimMud },
@@ -49,13 +50,30 @@ export default async function FirmaPersonelDuzenlePage({
     ...(khAyrilis ?? []).map(r => r.ayrilis_nedeni).filter(Boolean),
   ])].sort((a, b) => String(a).localeCompare(String(b), 'tr'))
 
+  const k = row as Tables<'firma_calisanlar'>
+  const detayHref = firmaCalisanDetayHref(k)
+
   return (
-    <FirmaPersonelDuzenleClient
-      kayit={row as Tables<'firma_calisanlar'>}
-      mudurluler={mudurluler}
-      ogrenimler={ogrenimler}
-      ayrilisNedenleri={ayrilisNedenleri as string[]}
-      onGuncelle={firmaGuncelle}
-    />
+    <div>
+      <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
+        <Link href="/firma-calisanlar" className="hover:text-slate-800 transition-colors">
+          Firma Personel
+        </Link>
+        <span className="text-slate-300">/</span>
+        <Link href={detayHref} className="hover:text-slate-800 transition-colors">
+          {k.ad_soyad}
+        </Link>
+        <span className="text-slate-300">/</span>
+        <span className="text-slate-800 font-medium">Düzenle</span>
+      </nav>
+
+      <FirmaPersonelDuzenleClient
+        kayit={k}
+        mudurluler={mudurluler}
+        ogrenimler={ogrenimler}
+        ayrilisNedenleri={ayrilisNedenleri as string[]}
+        onGuncelle={firmaGuncelle}
+      />
+    </div>
   )
 }

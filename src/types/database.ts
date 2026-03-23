@@ -121,7 +121,7 @@ export interface Database {
       // ─────────────────── PERSONEL ───────────────────
       calisan: {
         Row: {
-          sicil_no: string; ad_soyad: string; tckn: string | null; dogum_tarihi: string | null
+          sicil_no: string; public_id: string; ad_soyad: string; tckn: string | null; dogum_tarihi: string | null
           cinsiyet: string | null; kan_grubu: string | null; telefon: string | null
           e_posta: string | null; dogum_yeri: string | null; anne_adi: string | null
           baba_adi: string | null; adresi: string | null; yakini: string | null
@@ -129,7 +129,7 @@ export interface Database {
           created_at: string; updated_at: string
         }
         Insert: {
-          sicil_no: string; ad_soyad: string; tckn?: string | null; dogum_tarihi?: string | null
+          sicil_no: string; ad_soyad: string; public_id?: string; tckn?: string | null; dogum_tarihi?: string | null
           cinsiyet?: string | null; kan_grubu?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
@@ -137,7 +137,7 @@ export interface Database {
           created_at?: string; updated_at?: string
         }
         Update: {
-          sicil_no?: string; ad_soyad?: string; tckn?: string | null; dogum_tarihi?: string | null
+          sicil_no?: string; public_id?: string; ad_soyad?: string; tckn?: string | null; dogum_tarihi?: string | null
           cinsiyet?: string | null; kan_grubu?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
@@ -148,7 +148,7 @@ export interface Database {
       }
       kadro_hareketleri: {
         Row: {
-          id: number; meclis_karar_tarihi: string | null; meclis_karar_no: string | null
+          id: number; public_id: string; meclis_karar_tarihi: string | null; meclis_karar_no: string | null
           kadro_sira_no: string | null; kadro_derecesi: string | null; statu: string | null
           kadro_unvani: string | null; asil: string | null; kadro_mudurlugu: string | null
           gorev_unvani: string | null; vekil: string | null; gorev_mudurlugu: string | null
@@ -158,7 +158,7 @@ export interface Database {
           durumu: 'Dolu' | 'Vekil' | 'Boş'; created_at: string; updated_at: string
         }
         Insert: {
-          id?: number; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
+          id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
           kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null
           kadro_unvani?: string | null; asil?: string | null; kadro_mudurlugu?: string | null
           gorev_unvani?: string | null; vekil?: string | null; gorev_mudurlugu?: string | null
@@ -168,7 +168,7 @@ export interface Database {
           durumu?: 'Dolu' | 'Vekil' | 'Boş'; created_at?: string; updated_at?: string
         }
         Update: {
-          id?: number; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
+          id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
           kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null
           kadro_unvani?: string | null; asil?: string | null; kadro_mudurlugu?: string | null
           gorev_unvani?: string | null; vekil?: string | null; gorev_mudurlugu?: string | null
@@ -184,7 +184,7 @@ export interface Database {
       }
       personel_hareketleri: {
         Row: {
-          id: number; sicil_no: string; hareket_tipi: string | null; kadro_sira_no: string | null
+          id: number; public_id: string; sicil_no: string; hareket_tipi: string | null; kadro_sira_no: string | null
           yururluk_tarihi: string | null; adaylik_suresi: string | null
           asli_memuriyete_atanma_tarihi: string | null; eski_gorev_yeri: string | null
           eski_unvan: string | null; eski_sinif: string | null; eski_kadro_derecesi: string | null
@@ -204,7 +204,7 @@ export interface Database {
           dagitim_mudurlukleri: string | null; kayit_zamani: string
         }
         Insert: {
-          id?: number; sicil_no: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
+          id?: number; public_id?: string; sicil_no: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
           yururluk_tarihi?: string | null; adaylik_suresi?: string | null
           asli_memuriyete_atanma_tarihi?: string | null; eski_gorev_yeri?: string | null
           eski_unvan?: string | null; eski_sinif?: string | null; eski_kadro_derecesi?: string | null
@@ -224,7 +224,7 @@ export interface Database {
           dagitim_mudurlukleri?: string | null; kayit_zamani?: string
         }
         Update: {
-          id?: number; sicil_no?: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
+          id?: number; public_id?: string; sicil_no?: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
           yururluk_tarihi?: string | null; adaylik_suresi?: string | null
           asli_memuriyete_atanma_tarihi?: string | null; eski_gorev_yeri?: string | null
           eski_unvan?: string | null; eski_sinif?: string | null; eski_kadro_derecesi?: string | null
@@ -284,21 +284,21 @@ export interface Database {
       // ─────────────────── İZİN ───────────────────
       izin_hareketleri: {
         Row: {
-          id: number; yil: number; sira_no: string | null; islem_yapan: string | null
+          id: number; public_id: string; yil: number; sira_no: string | null; islem_yapan: string | null
           sicil_no: string; vekalet: string | null; tur: string; ayrilis: string | null
           baslama: string | null; gun: number
           durum: 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
           aciklama: string | null; bilgi: string | null; kayit_tarihi: string
         }
         Insert: {
-          id?: number; yil: number; sira_no?: string | null; islem_yapan?: string | null
+          id?: number; public_id?: string; yil: number; sira_no?: string | null; islem_yapan?: string | null
           sicil_no: string; vekalet?: string | null; tur: string; ayrilis?: string | null
           baslama?: string | null; gun?: number
           durum?: 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
           aciklama?: string | null; bilgi?: string | null; kayit_tarihi?: string
         }
         Update: {
-          id?: number; yil?: number; sira_no?: string | null; islem_yapan?: string | null
+          id?: number; public_id?: string; yil?: number; sira_no?: string | null; islem_yapan?: string | null
           sicil_no?: string; vekalet?: string | null; tur?: string; ayrilis?: string | null
           baslama?: string | null; gun?: number
           durum?: 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
@@ -378,6 +378,61 @@ export interface Database {
           beyan_turu?: string | null; onay_tarihi?: string | null; kayit_zamani?: string
         }
         Relationships: [{ foreignKeyName: "mal_bildirimi_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
+      }
+      /** `/link/{slug}` çözümlemesi — kind genişleyecek */
+      app_links: {
+        Row: {
+          slug: string
+          kind: string
+          ref_key: string
+          created_at: string
+        }
+        Insert: {
+          slug: string
+          kind: string
+          ref_key: string
+          created_at?: string
+        }
+        Update: {
+          slug?: string
+          kind?: string
+          ref_key?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      app_profiles: {
+        Row: {
+          id: string
+          sicil_no: string
+          rol: 'admin' | 'kullanici'
+          menu_izinleri: Json
+          updated_at: string
+          kullanici_adi: string | null
+          ilk_giris_tamam: boolean
+          kurtarma_hash: Json
+        }
+        Insert: {
+          id: string
+          sicil_no: string
+          rol?: 'admin' | 'kullanici'
+          menu_izinleri?: Json
+          updated_at?: string
+          kullanici_adi?: string | null
+          ilk_giris_tamam?: boolean
+          kurtarma_hash?: Json
+        }
+        Update: {
+          id?: string
+          sicil_no?: string
+          rol?: 'admin' | 'kullanici'
+          menu_izinleri?: Json
+          updated_at?: string
+          kullanici_adi?: string | null
+          ilk_giris_tamam?: boolean
+          kurtarma_hash?: Json
+        }
+        Relationships: []
       }
       // ─────────────────── KESİNTİLER ───────────────────
       aylik_yemek_yeni_donem: {
@@ -540,21 +595,21 @@ export interface Database {
       // ─────────────────── FİRMA ÇALIŞANLARI ───────────────────
       firma_calisanlar: {
         Row: {
-          id: number; sira_no: string | null; sicil_no: string | null; tckn: string | null
+          id: number; public_id: string; sira_no: string | null; sicil_no: string | null; tckn: string | null
           ad_soyad: string; cinsiyet: string | null; dogum_tarihi: string | null
           ogrenim: string | null; telefon: string | null; kuruma_giris_tarihi: string | null
           gorev_mudurlugu: string | null; gorevi: string | null; meslegi: string | null
           ayrilis_tarihi: string | null; ayrilis_nedeni: string | null; kayit_zamani: string
         }
         Insert: {
-          id?: number; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
+          id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
           ad_soyad: string; cinsiyet?: string | null; dogum_tarihi?: string | null
           ogrenim?: string | null; telefon?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null
           ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null; kayit_zamani?: string
         }
         Update: {
-          id?: number; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
+          id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
           ad_soyad?: string; cinsiyet?: string | null; dogum_tarihi?: string | null
           ogrenim?: string | null; telefon?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import type {
   YevmiyePuantajYukleResult,
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function YevmiyePuantajClient({ data, donemId }: Props) {
-  const { donem, mudurlukler, statuSekmeleri, kayitOzeti, mudurlukPersonelMap } = data
+  const { donem, mudurlukler, statuSekmeleri, kayitOzeti, mudurlukPersonelMap, mudurlukSaltOkunur } = data
   const ilkMud = statuSekmeleri.find(s => s.statu === 'Sözleşmeli')?.mudurlukler[0]?.mudurlukAdi ?? mudurlukler[0] ?? ''
   const [seciliMudurluk, setSeciliMudurluk] = useState<string>(ilkMud)
   const [seciliStatu, setSeciliStatu] = useState<string>('Sözleşmeli')
@@ -26,6 +26,9 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
   const [fazlaMesaiLocal, setFazlaMesaiLocal] = useState<Record<string, Record<string, number>>>({})
   const [kaydetYukleniyor, setKaydetYukleniyor] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
+  const [puantor, setPuantor] = useState('')
+  const [birimAmiri, setBirimAmiri] = useState('')
+  const [mudur, setMudur] = useState('')
 
   const statuSekme = statuSekmeleri.find(s => s.statu === seciliStatu)
   // Sadece seçili statüde personeli olan müdürlükler dropdown'da
@@ -81,9 +84,23 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
 
   const imzaPersonel = (mudurlukPersonelMap ?? {})[seciliMudurluk] ?? []
 
+  useEffect(() => {
+    setPuantor('')
+    setBirimAmiri('')
+    setMudur('')
+  }, [seciliMudurluk, seciliStatu])
+
   async function excelIndir() {
     try {
-      const url = `/api/kesintiler/yevmiye/excel?donem_id=${donemId}&mudurluk=${encodeURIComponent(seciliMudurluk)}&statu=${encodeURIComponent(seciliStatu)}`
+      const params = new URLSearchParams({
+        donem_id: String(donemId),
+        mudurluk: seciliMudurluk,
+        statu: seciliStatu,
+      })
+      if (puantor) params.set('puantor', puantor)
+      if (birimAmiri) params.set('birim_amiri', birimAmiri)
+      if (mudur) params.set('mudur', mudur)
+      const url = `/api/kesintiler/yevmiye/excel?${params.toString()}`
       const res = await fetch(url)
       if (!res.ok) {
         const ct = res.headers.get('content-type') ?? ''
@@ -186,12 +203,19 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
         <select
           value={seciliMudurluk}
           onChange={e => setSeciliMudurluk(e.target.value)}
-          className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          disabled={mudurlukSaltOkunur}
+          title={mudurlukSaltOkunur ? 'Kadronuzda tek görev müdürlüğü tanımlı; değiştirilemez.' : undefined}
+          className={`w-full max-w-md px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            mudurlukSaltOkunur ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed' : 'border-slate-300'
+          }`}
         >
           {mudurlukSecenekleri.map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
+        {mudurlukSaltOkunur && (
+          <p className="mt-1 text-xs text-slate-500">Kadro görev müdürlüğünüz tek olduğu için seçim salt okunur.</p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -275,7 +299,11 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
       <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-slate-200">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Puantör</label>
-          <select className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]">
+          <select
+            value={puantor}
+            onChange={e => setPuantor(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]"
+          >
             <option value="">Seçiniz</option>
             {imzaPersonel.map(pr => (
               <option key={pr.sicil_no} value={pr.sicil_no}>{pr.ad_soyad} ({pr.sicil_no})</option>
@@ -284,7 +312,11 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Birim Amiri</label>
-          <select className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]">
+          <select
+            value={birimAmiri}
+            onChange={e => setBirimAmiri(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]"
+          >
             <option value="">Seçiniz</option>
             {imzaPersonel.map(pr => (
               <option key={pr.sicil_no} value={pr.sicil_no}>{pr.ad_soyad} ({pr.sicil_no})</option>
@@ -293,7 +325,11 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Müdür</label>
-          <select className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]">
+          <select
+            value={mudur}
+            onChange={e => setMudur(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[180px]"
+          >
             <option value="">Seçiniz</option>
             {imzaPersonel.map(pr => (
               <option key={pr.sicil_no} value={pr.sicil_no}>{pr.ad_soyad} ({pr.sicil_no})</option>

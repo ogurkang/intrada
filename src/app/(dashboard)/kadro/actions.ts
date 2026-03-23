@@ -22,7 +22,7 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('kadro_hareketleri').insert({
+  const { data: inserted, error } = await supabase.from('kadro_hareketleri').insert({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
     kadro_sira_no,
@@ -44,10 +44,11 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
     gittigi_yer:          str(formData, 'gittigi_yer'),
     aciklama:             str(formData, 'aciklama'),
     durumu,
-  })
+  }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
   revalidatePath('/kadro')
+  if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   return {}
 }
 
@@ -62,7 +63,7 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('kadro_hareketleri').update({
+  const { data: updated, error } = await supabase.from('kadro_hareketleri').update({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
     kadro_sira_no,
@@ -84,10 +85,11 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
     gittigi_yer:          str(formData, 'gittigi_yer'),
     aciklama:             str(formData, 'aciklama'),
     durumu,
-  }).eq('id', id)
+  }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
   revalidatePath('/kadro')
   revalidatePath(`/kadro/${id}`)
+  if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
   return {}
 }

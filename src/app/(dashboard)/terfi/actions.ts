@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
+import { revalidateTerfiRoutes } from '@/lib/terfi-app-path'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -38,7 +40,7 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
     sds_orani:              str(fd, 'sds_orani'),
   })
   if (error) return { hata: error.message }
-  revalidatePath('/terfi')
+  revalidateTerfiRoutes()
   revalidatePath(`/personel/${sicil_no}`)
   return {}
 }
@@ -67,8 +69,8 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     sds_orani:              str(fd, 'sds_orani'),
   }).eq('id', id)
   if (error) return { hata: error.message }
-  revalidatePath('/terfi')
-  revalidatePath(`/personel/${sicil_no}`)
+  revalidateTerfiRoutes()
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -76,8 +78,8 @@ export async function terfiSil(id: number, sicil_no: string): Promise<{ hata?: s
   const supabase = await createClient()
   const { error } = await supabase.from('terfi_hareketleri').delete().eq('id', id)
   if (error) return { hata: error.message }
-  revalidatePath('/terfi')
-  revalidatePath(`/personel/${sicil_no}`)
+  revalidateTerfiRoutes()
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -131,6 +133,6 @@ export async function terfiTopluKaydet(
     { onConflict: 'sicil_no' }
   )
   if (error) return { hata: error.message }
-  revalidatePath('/terfi')
+  revalidateTerfiRoutes()
   return { kaydedilen: satirlar.length }
 }

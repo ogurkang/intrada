@@ -2,6 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getAppAccess } from '@/lib/app-access'
+import {
+  assertKullaniciMudurlukErisimi,
+  araziSicilMudurlukteMi,
+} from '@/lib/kullanici-mudurluk'
 
 const MAX_GUN = 20
 
@@ -10,13 +15,28 @@ export async function araziKayitToggle(
   sicil_no: string,
   tarih: string,
   mevcutIsaret: boolean,
-  mevcutSayisi: number
+  mevcutSayisi: number,
+  mudurlukSecili: string,
 ): Promise<{ hata?: string; yeniIsaret: boolean }> {
   if (!mevcutIsaret && mevcutSayisi >= MAX_GUN) {
     return { hata: 'Arazi dönemi içerisinde en fazla 20 gün seçilebilir.', yeniIsaret: false }
   }
 
   const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.', yeniIsaret: mevcutIsaret }
+  const access = await getAppAccess(supabase, user.id)
+  const mudOk = await assertKullaniciMudurlukErisimi(supabase, access, mudurlukSecili)
+  if (!mudOk.ok) return { hata: mudOk.mesaj, yeniIsaret: mevcutIsaret }
+  if (access.mode === 'kullanici') {
+    const sicilUygun = await araziSicilMudurlukteMi(supabase, sicil_no, mudurlukSecili)
+    if (!sicilUygun) {
+      return { hata: 'Seçilen müdürlükte bu personel listelenmiyor.', yeniIsaret: mevcutIsaret }
+    }
+  }
 
   if (mevcutIsaret) {
     const { error } = await supabase
@@ -41,7 +61,8 @@ export async function araziKayitToggle(
 export async function araziKayitTopluKaydet(
   donem_id: number,
   sicilNolar: string[],
-  isaretler: { sicil_no: string; tarih: string }[]
+  isaretler: { sicil_no: string; tarih: string }[],
+  mudurlukSecili: string,
 ): Promise<{ hata?: string }> {
   const sicilGunSayisi: Record<string, number> = {}
   for (const i of isaretler) {
@@ -52,6 +73,21 @@ export async function araziKayitTopluKaydet(
   }
 
   const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  const mudOk = await assertKullaniciMudurlukErisimi(supabase, access, mudurlukSecili)
+  if (!mudOk.ok) return { hata: mudOk.mesaj }
+  if (access.mode === 'kullanici') {
+    for (const s of sicilNolar) {
+      const ok = await araziSicilMudurlukteMi(supabase, s, mudurlukSecili)
+      if (!ok) return { hata: `Personel ${s} seçilen müdürlükte değil.` }
+    }
+  }
+
   const sicilSet = new Set(sicilNolar)
 
   const mevcut: { sicil_no: string; tarih: string }[] = []

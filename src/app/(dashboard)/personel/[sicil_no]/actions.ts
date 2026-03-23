@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -39,7 +40,7 @@ export async function calisanGuncelle(
     .eq('sicil_no', sicil_no)
 
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/personel')
   return {}
 }
@@ -78,7 +79,7 @@ export async function personelHareketiEkle(
   })
 
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -108,7 +109,7 @@ export async function personelHareketiGuncelle(
   }).eq('id', id)
 
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -128,7 +129,7 @@ export async function ogrenimEkle(
     aktif:          true,
   })
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -145,7 +146,7 @@ export async function ogrenimGuncelle(
     mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
   }).eq('id', id)
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -156,7 +157,7 @@ export async function ogrenimSil(
   const supabase = await createClient()
   const { error } = await supabase.from('calisan_ogrenim').delete().eq('id', id)
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -186,7 +187,7 @@ export async function aileKaydet(
     cocuklar_json,
   }, { onConflict: 'sicil_no' })
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -216,6 +217,6 @@ export async function izinHakiEkleGuncelle(
   )
 
   if (error) return { hata: error.message }
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }

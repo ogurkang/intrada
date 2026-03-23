@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { kadroDetayHref } from '@/lib/kadro-link'
 import type { Tables } from '@/types/database'
 
 type Kadro = Tables<'kadro_hareketleri'>
@@ -129,7 +130,7 @@ export default function KadroDuzenleClient({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">Kadro Düzenle — {row.kadro_unvani ?? row.kadro_sira_no ?? `#${row.id}`}</h1>
-        <Link href={`/kadro/${row.id}`}
+        <Link href={kadroDetayHref(row)}
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
           ← İptal
         </Link>
@@ -187,7 +188,7 @@ export default function KadroDuzenleClient({
           </div>
           {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
           <div className="flex flex-row justify-end items-center gap-3 pt-2">
-            <Link href={`/kadro/${row.id}`}
+            <Link href={kadroDetayHref(row)}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</Link>
             <button type="submit" disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">

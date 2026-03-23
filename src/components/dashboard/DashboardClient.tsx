@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { personelDetayHref } from '@/lib/personel-link'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export interface IzinIstatistik {
 export interface BekleyenIzin {
   id:             number
   sicil_no:       string
+  public_id?:     string
   ad_soyad:       string | null
   izin_turu:      string | null
   baslangic:      string | null
@@ -40,6 +42,7 @@ export interface YaklaşanTatil {
 export interface IzindekiPersonel {
   id:         number
   sicil_no:   string
+  public_id?: string
   ad_soyad:   string | null
   izin_turu:  string | null
   bitis:      string | null
@@ -246,7 +249,7 @@ export default function DashboardClient({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <Link href={`/personel/${iz.sicil_no}`}
+                        <Link href={personelDetayHref({ sicil_no: iz.sicil_no, public_id: iz.public_id })}
                           className="font-medium text-sm text-slate-800 hover:text-slate-600 truncate">
                           {iz.ad_soyad ?? iz.sicil_no}
                         </Link>
@@ -347,7 +350,7 @@ export default function DashboardClient({
                 {izindekiler.map(p => (
                   <div key={p.id} className="px-5 py-2.5 flex items-center justify-between">
                     <div>
-                      <Link href={`/personel/${p.sicil_no}`}
+                      <Link href={personelDetayHref({ sicil_no: p.sicil_no, public_id: p.public_id })}
                         className="text-sm font-medium text-slate-800 hover:text-slate-600">
                         {p.ad_soyad ?? p.sicil_no}
                       </Link>

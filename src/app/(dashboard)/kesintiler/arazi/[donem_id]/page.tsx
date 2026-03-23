@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess } from '@/lib/app-access'
+import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import AraziPuantajClient, { type AraziPersonel, type AraziDonemBilgi } from '@/components/kesintiler/AraziPuantajClient'
 import { araziKayitToggle, araziKayitTopluKaydet } from './actions'
 import type { Tables } from '@/types/database'
@@ -78,6 +80,18 @@ export default async function AraziPuantajPage({ params }: Props) {
     }
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  let mudurlukSecenekleri: string[] | undefined
+  let mudurlukSaltOkunur = false
+  if (access.mode === 'kullanici') {
+    const km = await getKullaniciGorevMudurlukleri(supabase, access.sicilNo)
+    mudurlukSecenekleri = km.mudurlukler
+    mudurlukSaltOkunur = km.tekSecimSaltOkunur
+    const izin = new Set(km.mudurlukler)
+    personeller = personeller.filter(p => izin.has((p.mudurluk ?? '').trim()))
+  }
+
   // 4) Dönem içindeki resmi tatiller
   const { data: tatilRaw } = await supabase
     .from('tanim_izin_tatil')
@@ -113,7 +127,10 @@ export default async function AraziPuantajPage({ params }: Props) {
   )
 
   // Müdürlük bazında tüm personel (Puantör/Birim Amiri/Müdür - asil+vekil, görev veya kadro müdürlüğü)
-  const mudurluklerList = [...new Set(personeller.map(p => p.mudurluk ?? ''))]
+  const mudurluklerList =
+    access.mode === 'kullanici' && mudurlukSecenekleri?.length
+      ? mudurlukSecenekleri
+      : [...new Set(personeller.map(p => p.mudurluk ?? ''))]
   const mudurlukPersonelMap: Record<string, { sicil_no: string; ad_soyad: string }[]> = {}
   const { data: kadroTumRaw } = await supabase
     .from('kadro_hareketleri')
@@ -157,6 +174,8 @@ export default async function AraziPuantajPage({ params }: Props) {
       tatilGunler={tatilGunler}
       markedSet={markedSet}
       mudurlukPersonelMap={mudurlukPersonelMap}
+      mudurlukSecenekleri={access.mode === 'kullanici' ? mudurlukSecenekleri : undefined}
+      mudurlukSaltOkunur={access.mode === 'kullanici' ? mudurlukSaltOkunur : undefined}
       onToggle={araziKayitToggle}
       onKaydetToplu={araziKayitTopluKaydet}
     />

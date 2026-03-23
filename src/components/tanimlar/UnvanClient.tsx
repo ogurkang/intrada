@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import type { Tables } from '@/types/database'
 
 type Unvan = Tables<'tanim_unvan'>
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) {
+  const saltOkunur = useTanimlarSaltOkunur()
   const [modalAcik, setModalAcik]    = useState(false)
   const [secili, setSecili]          = useState<Unvan | null>(null)
   const [sunuciHata, setSunuciHata]  = useState<string | null>(null)
@@ -47,6 +49,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) 
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Unvan Tanımları</h1>
+        {!saltOkunur && (
         <button
           onClick={yeniEkle}
           className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2
@@ -57,6 +60,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) 
           </svg>
           Yeni Ekle
         </button>
+        )}
       </div>
 
       {sunuciHata && (
@@ -107,7 +111,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) 
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => handleToggle(u)}
-                      disabled={isPending}
+                      disabled={isPending || saltOkunur}
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
                                   transition-colors disabled:opacity-50 ${
                         u.aktif
@@ -120,6 +124,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) 
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {!saltOkunur ? (
                     <button
                       onClick={() => duzenle(u)}
                       className="text-sm text-slate-600 hover:text-slate-900 font-medium
@@ -127,6 +132,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle }: Props) 
                     >
                       Düzenle
                     </button>
+                    ) : <span className="text-xs text-slate-400">—</span>}
                   </td>
                 </tr>
               ))}

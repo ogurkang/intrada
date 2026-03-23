@@ -2,10 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/izin-hak'
 
 export async function izinHakEkle(formData: FormData): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const statu          = String(formData.get('statu') ?? '').trim()
   const hak_edilen_gun = Number(formData.get('hak_edilen_gun') ?? 0)
   if (!statu)              return { hata: 'Statü seçimi zorunludur.' }
@@ -26,6 +29,8 @@ export async function izinHakEkle(formData: FormData): Promise<{ hata?: string }
 }
 
 export async function izinHakGuncelle(id: number, formData: FormData): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const statu          = String(formData.get('statu') ?? '').trim()
   const hak_edilen_gun = Number(formData.get('hak_edilen_gun') ?? 0)
   if (!statu)              return { hata: 'Statü seçimi zorunludur.' }
@@ -45,6 +50,8 @@ export async function izinHakGuncelle(id: number, formData: FormData): Promise<{
 }
 
 export async function izinHakToggleDurum(id: number, mevcutDurum: boolean): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase.from('tanim_izin_hak').update({ durum: !mevcutDurum }).eq('id', id)
   if (error) return { hata: error.message }

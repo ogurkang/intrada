@@ -1,8 +1,19 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 export default async function BildirimHubPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const kullaniciSicil = !isAdminLike(access) && access.mode === 'kullanici' ? access.sicilNo : null
+
+  const aileCountQ = kullaniciSicil
+    ? supabase.from('aile_bildirimi').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('aile_bildirimi').select('*', { count: 'exact', head: true })
+  const malCountQ = kullaniciSicil
+    ? supabase.from('mal_bildirimi').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('mal_bildirimi').select('*', { count: 'exact', head: true })
 
   const [
     { count: ogrenimSayisi },
@@ -10,8 +21,8 @@ export default async function BildirimHubPage() {
     { count: malSayisi },
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
-    supabase.from('aile_bildirimi').select('*',  { count: 'exact', head: true }),
-    supabase.from('mal_bildirimi').select('*',   { count: 'exact', head: true }),
+    aileCountQ,
+    malCountQ,
   ])
 
   const kartlar = [

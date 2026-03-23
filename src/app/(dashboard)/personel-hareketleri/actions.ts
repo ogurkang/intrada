@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { ggAayyyyToIso } from '@/lib/tarih'
 
 function str(fd: FormData, key: string): string | null {
@@ -27,7 +28,7 @@ export async function personelHareketiGuncelle(
     .single()
   const sicil_no = row?.sicil_no
 
-  const { error } = await supabase.from('personel_hareketleri').update({
+  const { data: updated, error } = await supabase.from('personel_hareketleri').update({
     hareket_tipi:          str(formData, 'hareket_tipi'),
     yururluk_tarihi:       tarihStr(formData, 'yururluk_tarihi'),
     kadro_sira_no:         str(formData, 'kadro_sira_no'),
@@ -44,11 +45,12 @@ export async function personelHareketiGuncelle(
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
-  }).eq('id', id)
+  }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
   revalidatePath('/personel-hareketleri')
-  if (sicil_no) revalidatePath(`/personel/${sicil_no}`)
+  if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
+  if (sicil_no) await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -58,7 +60,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   if (!sicil_no) return { hata: 'Sicil No gerekli.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('personel_hareketleri').insert({
+  const { data: inserted, error } = await supabase.from('personel_hareketleri').insert({
     sicil_no,
     hareket_tipi:                    str(formData, 'hareket_tipi') ?? 'Yukselme',
     kadro_sira_no:                  str(formData, 'kadro_sira_no'),
@@ -101,10 +103,11 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     kayit_no:                       str(formData, 'kayit_no'),
     dagitim_mudurlukleri:           (formData.getAll('dagitim_mudurlukleri') as string[]).filter(Boolean).join('; ') || null,
     kayit_zamani:                   new Date().toISOString(),
-  })
+  }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
   revalidatePath('/personel-hareketleri')
-  revalidatePath(`/personel/${sicil_no}`)
+  if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }

@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 
 interface Props {
   mudurluler: string[]
   ogrenimler: string[]
   ayrilisNedenleri: string[]
-  onEkle: (fd: FormData) => Promise<{ hata?: string }>
+  onEkle: (fd: FormData) => Promise<{ hata?: string; id?: number; public_id?: string }>
 }
 
 export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrilisNedenleri, onEkle }: Props) {
@@ -30,7 +31,13 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
         window.opener.postMessage('refresh', '*')
         window.close()
       } else {
-        router.push('/firma-calisanlar')
+        router.push(
+          res.public_id
+            ? `/link/${res.public_id}`
+            : res.id
+              ? firmaCalisanDetayHref({ id: res.id })
+              : '/firma-calisanlar',
+        )
       }
     }
   }

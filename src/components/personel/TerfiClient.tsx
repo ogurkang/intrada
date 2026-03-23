@@ -94,7 +94,16 @@ const TOPLU_ALANLAR = [
   { key: 'sds_orani',           label: 'SDS',      w: 48 },
 ] as const
 
-export default function TerfiClient({ kayitlar, calisanlar, memurlar, onEkle, onGuncelle, onSil, onTopluKaydet, sabitSicil }: Props) {
+export default function TerfiClient({
+  kayitlar,
+  calisanlar,
+  memurlar,
+  onEkle,
+  onGuncelle,
+  onSil,
+  onTopluKaydet,
+  sabitSicil,
+}: Props) {
   const router = useRouter()
   const [sekme, setSekme]            = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama]            = useState('')
@@ -257,10 +266,17 @@ export default function TerfiClient({ kayitlar, calisanlar, memurlar, onEkle, on
     e.preventDefault(); setHata(null)
     const fd = new FormData(e.currentTarget)
     if (sabitSicil) fd.set('sicil_no', sabitSicil)
+    const editing = secili
     startTransition(async () => {
-      const res = secili?.id != null ? await onGuncelle(secili.id, fd) : await onEkle(fd)
+      if (editing?.id != null) {
+        const res = await onGuncelle(editing.id, fd)
+        if (res.hata) setHata(res.hata)
+        else { kapat(); router.refresh() }
+        return
+      }
+      const res = await onEkle(fd)
       if (res.hata) setHata(res.hata)
-      else kapat()
+      else { kapat(); router.refresh() }
     })
   }
 
@@ -607,10 +623,10 @@ export default function TerfiClient({ kayitlar, calisanlar, memurlar, onEkle, on
                         {isPending ? '…' : 'Kaydet'}
                       </button>
                     ) : r ? (
-                      <button onClick={() => duzenleAc(row.terfi ?? null, row)}
+                      <button type="button" onClick={() => duzenleAc(row.terfi ?? null, row)}
                         className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
                     ) : (
-                      <button onClick={() => duzenleAc(null, row, idx)}
+                      <button type="button" onClick={() => duzenleAc(null, row, idx)}
                         className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Ekle</button>
                     )}
                   </td>

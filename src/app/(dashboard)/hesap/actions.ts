@@ -1,0 +1,44 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import {
+  normalizeKullaniciAdi,
+  kullaniciAdiGecerliMi,
+  kullaniciAdiHataMetni,
+} from '@/lib/kullanici-adi'
+import { yeniSifreGecerliMi, yeniSifreHataMetni, yeniSifreNormalize } from '@/lib/sifre-politikasi'
+
+export async function tamamlaIlkKurulum(formData: FormData): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum bulunamadı. Tekrar giriş yapın.' }
+
+  const kullaniciAdi = normalizeKullaniciAdi(String(formData.get('kullanici_adi') ?? ''))
+  const sifre = yeniSifreNormalize(String(formData.get('sifre') ?? ''))
+  const sifreTekrar = yeniSifreNormalize(String(formData.get('sifre_tekrar') ?? ''))
+
+  if (!kullaniciAdiGecerliMi(kullaniciAdi)) {
+    return { hata: kullaniciAdiHataMetni() }
+  }
+  if (!yeniSifreGecerliMi(sifre)) return { hata: yeniSifreHataMetni() }
+  if (sifre !== sifreTekrar) return { hata: 'Yeni şifre ile tekrarı eşleşmiyor.' }
+
+  const { error: authErr } = await supabase.auth.updateUser({ password: sifre })
+  if (authErr) return { hata: authErr.message }
+
+  const { error: upErr } = await supabase
+    .from('app_profiles')
+    .update({
+      kullanici_adi: kullaniciAdi,
+      ilk_giris_tamam: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id)
+
+  if (upErr) return { hata: upErr.message }
+  revalidatePath('/', 'layout')
+  return {}
+}

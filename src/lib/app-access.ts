@@ -1,0 +1,45 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+/** Profil yok: eski davranış (tam erişim). admin: süper. kullanici: sadece kendi sicil + salt okunur kuralları. */
+export type AppAccess =
+  | { mode: 'full' }
+  | { mode: 'admin' }
+  | { mode: 'kullanici'; sicilNo: string; menuIzinleri: Record<string, boolean> }
+
+export async function getAppAccess(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<AppAccess> {
+  const { data, error } = await supabase
+    .from('app_profiles')
+    .select('sicil_no, rol, menu_izinleri')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error || !data) return { mode: 'full' }
+
+  const menuIzinleri =
+    data.menu_izinleri && typeof data.menu_izinleri === 'object'
+      ? (data.menu_izinleri as Record<string, boolean>)
+      : {}
+
+  if (data.rol === 'admin') return { mode: 'admin' }
+
+  return {
+    mode: 'kullanici',
+    sicilNo: data.sicil_no,
+    menuIzinleri,
+  }
+}
+
+export function isAdminLike(a: AppAccess): boolean {
+  return a.mode === 'admin' || a.mode === 'full'
+}
+
+const UYARI_METNI =
+  'Bu ekranı görme yetkiniz yok veya henüz tanımlanmamış.'
+
+export { UYARI_METNI }
+
+/** @see `@/lib/menu-yetki` — modül bazlı menü + path */
+export { kullaniciPathAllowed } from '@/lib/menu-yetki'

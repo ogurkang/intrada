@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
 
 const GUNLER_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
@@ -264,9 +265,18 @@ export async function GET(request: NextRequest) {
     const donemIdParam = searchParams.get('donem_id')
     const mudurluk = searchParams.get('mudurluk') ?? ''
     const statu = searchParams.get('statu') ?? 'Sözleşmeli'
+    const puantorSicil = searchParams.get('puantor') ?? searchParams.get('puantorSicil') ?? ''
+    const birimAmiriSicil = searchParams.get('birim_amiri') ?? searchParams.get('birimAmiri') ?? ''
+    const mudurSicil = searchParams.get('mudur') ?? searchParams.get('mudurSicil') ?? ''
     const donemId = parseInt(donemIdParam ?? '0', 10)
     if (!donemId || isNaN(donemId)) {
       return NextResponse.json({ error: 'donem_id gerekli' }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+    const mudKontrol = await assertKullaniciMudurlukFromSession(supabase, mudurluk)
+    if (!mudKontrol.ok) {
+      return NextResponse.json({ error: mudKontrol.mesaj }, { status: mudKontrol.status })
     }
 
     const res = await yevmiyeExcelVeriCek(donemId, mudurluk, statu)
@@ -275,6 +285,20 @@ export async function GET(request: NextRequest) {
     }
 
     const { donem, mudurlukAdi, personeller, gunler, grid, fazlaMesaiGrid } = res.data
+
+    const imzaSiciller = [puantorSicil, birimAmiriSicil, mudurSicil].filter(Boolean)
+    let imzaAdMap: Record<string, string> = {}
+    if (imzaSiciller.length > 0) {
+      const { data: imzaCal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', imzaSiciller)
+      ;(imzaCal ?? []).forEach(c => {
+        if (c.sicil_no) imzaAdMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
+      })
+    }
+    const imzaAdlar: [string, string, string] = [
+      puantorSicil ? (imzaAdMap[puantorSicil] ?? puantorSicil) : '',
+      birimAmiriSicil ? (imzaAdMap[birimAmiriSicil] ?? birimAmiriSicil) : '',
+      mudurSicil ? (imzaAdMap[mudurSicil] ?? mudurSicil) : '',
+    ]
 
     const colCount = 3 + gunler.length + 9
     const rows: (string | number | XLSX.CellObject)[][] = []
@@ -345,7 +369,7 @@ export async function GET(request: NextRequest) {
     const imzaLabelsR = rows.length
     rows.push(imzaSatiri(colCount, ['PUANTÖR', 'BİRİM AMİRİ', 'MÜDÜR'], true))
     const imzaNamesR = rows.length
-    rows.push(imzaSatiri(colCount, ['', '', '']))
+    rows.push(imzaSatiri(colCount, imzaAdlar, false))
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     const merges: XLSX.Range[] = [

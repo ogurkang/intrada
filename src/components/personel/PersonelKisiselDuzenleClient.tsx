@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
+import { personelDetayHref } from '@/lib/personel-link'
 
 type Calisan = Tables<'calisan'>
 
@@ -19,7 +20,7 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, onGuncel
   const [isPending, startTransition] = useTransition()
 
   const geriLink = kaynak === 'ayrilanlar' ? '/personel/ayrilanlar' : '/personel'
-  const detayLink = `/personel/${calisan.sicil_no}${kaynak ? `?kaynak=${kaynak}` : ''}`
+  const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

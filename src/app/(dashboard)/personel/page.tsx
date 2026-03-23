@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import PersonelListClient from '@/components/personel/PersonelListClient'
 import type { Tables } from '@/types/database'
+import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 
 export default async function PersonelPage() {
   const supabase = await createClient()
@@ -8,7 +9,7 @@ export default async function PersonelPage() {
   const [{ data: calisanRaw, error }, { data: phRaw }] = await Promise.all([
     supabase
       .from('calisan')
-      .select('sicil_no, ad_soyad, tckn, dogum_tarihi')
+      .select('sicil_no, public_id, ad_soyad, tckn, dogum_tarihi')
       .order('ad_soyad'),
     supabase
       .from('personel_hareketleri')
@@ -22,12 +23,13 @@ export default async function PersonelPage() {
       sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
     }
   }
+  const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
   const aktifSiciller = new Set<string>()
-  ;(calisanRaw ?? []).forEach(c => {
+  calisanFiltreli.forEach(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
     if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
   })
-  const data = (calisanRaw ?? []).filter(c => aktifSiciller.has(c.sicil_no))
+  const data = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
 
   return (
     <>
@@ -37,7 +39,7 @@ export default async function PersonelPage() {
         </div>
       )}
       <PersonelListClient
-        data={data as Pick<Tables<'calisan'>, 'sicil_no' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'>[]}
+        data={data as Pick<Tables<'calisan'>, 'sicil_no' | 'public_id' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'>[]}
       />
     </>
   )

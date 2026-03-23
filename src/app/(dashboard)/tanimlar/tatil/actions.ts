@@ -2,10 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/tatil'
 
 export async function tatilEkle(formData: FormData): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const tatil_adi       = String(formData.get('tatil_adi') ?? '').trim()
   const tatil_baslangici = String(formData.get('tatil_baslangici') ?? '').trim()
   const tatil_bitisi    = String(formData.get('tatil_bitisi') ?? '').trim()
@@ -49,6 +52,8 @@ export async function tatilGuncelle(id: number, formData: FormData): Promise<{ h
 }
 
 export async function tatilToggleDurum(id: number, mevcutDurum: boolean): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase.from('tanim_izin_tatil').update({ durum: !mevcutDurum }).eq('id', id)
   if (error) return { hata: error.message }

@@ -3,9 +3,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { personelDetayHref } from '@/lib/personel-link'
 
 interface AyrılanSatır {
   sicil_no:        string
+  public_id:       string | null
   ad_soyad:        string
   statu:           string | null
   kadro_unvani:    string | null
@@ -113,7 +115,9 @@ export default function AyrılanlarClient({ ayrilanlar, onAktifEt }: Props) {
             {sayfadaki.map((a, i) => (
               <tr
                 key={a.sicil_no}
-                onClick={() => router.push(`/personel/${a.sicil_no}?kaynak=ayrilanlar`)}
+                onClick={() =>
+                  router.push(personelDetayHref(a, { kaynak: 'ayrilanlar' }))
+                }
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <td className="px-4 py-3 text-center text-xs text-slate-400">{sayfa * sayfaBasina + i + 1}</td>

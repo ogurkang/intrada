@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, applyGridBordersRange, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
 
 function tarih(t: string | null) {
@@ -65,6 +66,10 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const mudKontrol = await assertKullaniciMudurlukFromSession(supabase, mudurluk)
+    if (!mudKontrol.ok) {
+      return NextResponse.json({ error: mudKontrol.mesaj }, { status: mudKontrol.status })
+    }
 
     const { data: donemRow, error: donemErr } = await supabase
       .from('arazi_donem')

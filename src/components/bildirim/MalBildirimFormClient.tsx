@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import PersonelAramaSecim, { type PersonelAramaOge } from '@/components/bildirim/PersonelAramaSecim'
 import type { PersonelSecenek } from '@/lib/bildirim-personel'
 import { formatTrMoneyDisplay, parseTrMoneyDisplay, sanitizeTrMoneyTyping } from '@/lib/tr-money-format'
-import { malBildirimUrlSegment } from '@/lib/mal-bildirim-route'
+import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
 
 /** Kimlik listesinde «Seçiniz» = henüz seçim yok */
 const KIMLIK_SECILMEDI = -1
@@ -625,7 +625,6 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const routeSeg = !isCreate ? malBildirimUrlSegment(props.initial) : null
 
   const duzenleKayitId = !isCreate ? props.initial.id : 0
 
@@ -1394,12 +1393,12 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
         : await props.onGuncelle(props.initial.id, fd)
       if (r.hata) setHata(r.hata)
       else if (isCreate) afterSuccessCreate()
-      else router.push(`/bildirim/mal/${malBildirimUrlSegment(props.initial)}`)
+      else router.push(malBildirimDetayHref(props.initial))
     })
   }
 
   const baslik = isCreate ? 'Yeni Mal Bildirimi' : 'Mal Bildirimi - Düzenle'
-  const listLink = isCreate ? '/bildirim/mal' : `/bildirim/mal/${routeSeg ?? ''}`
+  const listLink = isCreate ? '/bildirim/mal' : malBildirimDetayHref(props.initial)
 
   return (
     <div className="max-w-6xl mx-auto p-6">

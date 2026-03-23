@@ -27,3 +27,16 @@ export function malBildirimUrlSegment(k: { public_id?: string | null; id: number
   if (k.public_id && isMalBildirimPublicId(k.public_id)) return k.public_id
   return String(k.id)
 }
+
+/** Uygulama içi detay (kullanıcı rolü `/link` modülü kapalı olduğundan `/bildirim/mal/...` kullanılır). */
+export function malBildirimDetayHref(k: { public_id?: string | null; id: number }): string {
+  return `/bildirim/mal/${malBildirimUrlSegment(k)}`
+}
+
+/**
+ * Personel kartından açılış: detay salt okunur (düzenleme bildirim modülünden).
+ * @see `bildirim/mal/[id]/page.tsx` — `salt=1` + kullanıcı + kendi sicili
+ */
+export function malBildirimDetayHrefPersonelSaltOkunur(k: { public_id?: string | null; id: number }): string {
+  return `${malBildirimDetayHref(k)}?salt=1`
+}

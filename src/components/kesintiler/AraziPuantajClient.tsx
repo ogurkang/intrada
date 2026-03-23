@@ -40,8 +40,12 @@ interface Props {
   tatilGunler:  string[]           // ISO tarih stringleri
   markedSet:    Set<string>        // "sicil_no:YYYY-MM-DD"
   mudurlukPersonelMap: Record<string, MudurlukPersonel[]>
-  onToggle:     (donem_id: number, sicil_no: string, tarih: string, mevcutIsaret: boolean, mevcutSayisi: number) => Promise<{ hata?: string; yeniIsaret: boolean }>
-  onKaydetToplu: (donem_id: number, sicilNolar: string[], isaretler: { sicil_no: string; tarih: string }[]) => Promise<{ hata?: string }>
+  /** Kullanıcı rolü: kadrodan gelen görev müdürlükleri; verilmezse personellerden türetilir */
+  mudurlukSecenekleri?: string[]
+  /** Tek görev müdürlüğü → müdürlük seçimi salt okunur */
+  mudurlukSaltOkunur?: boolean
+  onToggle:     (donem_id: number, sicil_no: string, tarih: string, mevcutIsaret: boolean, mevcutSayisi: number, mudurluk: string) => Promise<{ hata?: string; yeniIsaret: boolean }>
+  onKaydetToplu: (donem_id: number, sicilNolar: string[], isaretler: { sicil_no: string; tarih: string }[], mudurluk: string) => Promise<{ hata?: string }>
 }
 
 function toISO(d: Date): string {
@@ -81,7 +85,15 @@ function donemIcerisinde(dateStr: string, baslangic: string, bitis: string): boo
 }
 
 export default function AraziPuantajClient({
-  donem, personeller, tatilGunler, markedSet: initialMarked, mudurlukPersonelMap = {}, onToggle, onKaydetToplu,
+  donem,
+  personeller,
+  tatilGunler,
+  markedSet: initialMarked,
+  mudurlukPersonelMap = {},
+  mudurlukSecenekleri,
+  mudurlukSaltOkunur,
+  onToggle,
+  onKaydetToplu,
 }: Props) {
   const router = useRouter()
   const [marked, setMarked] = useState<Set<string>>(initialMarked)
@@ -94,7 +106,9 @@ export default function AraziPuantajClient({
   const [birimAmiri, setBirimAmiri] = useState<string>('')
   const [mudur, setMudur] = useState<string>('')
 
-  const mudurlukler = [...new Set(personeller.map(p => p.mudurluk ?? ''))].sort((a, b) => (a || 'zzz').localeCompare(b || 'zzz'))
+  const mudurlukler = (mudurlukSecenekleri && mudurlukSecenekleri.length > 0)
+    ? [...mudurlukSecenekleri].sort((a, b) => (a || 'zzz').localeCompare(b || 'zzz'))
+    : [...new Set(personeller.map(p => p.mudurluk ?? ''))].sort((a, b) => (a || 'zzz').localeCompare(b || 'zzz'))
   const ilkMud = mudurlukler[0] ?? ''
   const aktifMud = seciliMudurluk || ilkMud
   const imzaPersonel = mudurlukPersonelMap[aktifMud] ?? []
@@ -174,7 +188,7 @@ export default function AraziPuantajClient({
     setYuklenenler(prev => new Set(prev).add(key))
     setHatalar(prev => { const n = { ...prev }; delete n[sicil_no]; return n })
 
-    const res = await onToggle(donem.id, sicil_no, tarih, mevcutIsaret, mevcutSayisi)
+    const res = await onToggle(donem.id, sicil_no, tarih, mevcutIsaret, mevcutSayisi, aktifMud)
     setYuklenenler(prev => { const s = new Set(prev); s.delete(key); return s })
 
     if (res.hata) {
@@ -186,7 +200,7 @@ export default function AraziPuantajClient({
       })
       setHatalar(prev => ({ ...prev, [sicil_no]: res.hata! }))
     }
-  }, [marked, yuklenenler, donem.id, readonly, gunleriIsaretleModu])
+  }, [marked, yuklenenler, donem.id, readonly, gunleriIsaretleModu, aktifMud, onToggle])
 
   async function excelIndir() {
     try {
@@ -234,14 +248,14 @@ export default function AraziPuantajClient({
       return { sicil_no, tarih }
     }).filter(i => filtrelenmisPersonel.some(p => p.sicil_no === i.sicil_no))
     const sicilNolar = filtrelenmisPersonel.map(p => p.sicil_no)
-    const res = await onKaydetToplu(donem.id, sicilNolar, isaretler)
+    const res = await onKaydetToplu(donem.id, sicilNolar, isaretler, aktifMud)
     setKaydetYukleniyor(false)
     if (res.hata) setHatalar({ _toplu: res.hata })
     else {
       setGunleriIsaretleModu(false)
       router.refresh()
     }
-  }, [readonly, gunleriIsaretleModu, marked, donem.id, filtrelenmisPersonel, onKaydetToplu])
+  }, [readonly, gunleriIsaretleModu, marked, donem.id, filtrelenmisPersonel, onKaydetToplu, aktifMud])
 
   return (
     <div className="space-y-4">
@@ -292,9 +306,16 @@ export default function AraziPuantajClient({
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Müdürlük</label>
             <select value={aktifMud} onChange={e => setSeciliMudurluk(e.target.value)}
-              className="w-full max-w-md px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+              disabled={mudurlukSaltOkunur}
+              title={mudurlukSaltOkunur ? 'Kadronuzda tek görev müdürlüğü tanımlı; değiştirilemez.' : undefined}
+              className={`w-full max-w-md px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 ${
+                mudurlukSaltOkunur ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed' : 'border-slate-300 bg-white'
+              }`}>
               {mudurlukler.map(m => <option key={m || 'bos'} value={m}>{m || 'Belirtilmemiş'}</option>)}
             </select>
+            {mudurlukSaltOkunur && (
+              <p className="mt-1 text-xs text-slate-500">Kadro görev müdürlüğünüz tek olduğu için seçim salt okunur.</p>
+            )}
           </div>
         )}
       </div>

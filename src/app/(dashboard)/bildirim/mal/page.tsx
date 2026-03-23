@@ -1,14 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import MalClient, { type MalBildirimi } from '@/components/bildirim/MalClient'
 import { malBildirimSil } from './actions'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 export default async function MalPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
 
-  const { data: raw } = await supabase
+  let q = supabase
     .from('mal_bildirimi')
     .select('id, public_id, sicil_no, beyan_turu, onay_tarihi, son_net_maas, kayit_zamani, calisan(ad_soyad)')
-    .order('kayit_zamani', { ascending: false })
+  if (!isAdminLike(access) && access.mode === 'kullanici') {
+    q = q.eq('sicil_no', access.sicilNo)
+  }
+  const { data: raw } = await q.order('kayit_zamani', { ascending: false })
 
   const kayitlar: MalBildirimi[] = (raw ?? []).map(r => ({
     id:           r.id,

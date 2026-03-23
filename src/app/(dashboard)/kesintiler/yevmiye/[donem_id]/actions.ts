@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getKullaniciGorevMudurlukleri, assertKullaniciMudurlukErisimi } from '@/lib/kullanici-mudurluk'
+import { getAppAccess } from '@/lib/app-access'
 
 const GUNLER_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
 
@@ -85,10 +87,23 @@ export interface YevmiyePuantajYukleResult {
   statuSekmeleri: YevmiyeStatuSekme[]
   kayitOzeti: string
   mudurlukPersonelMap: Record<string, YevmiyeMudurlukPersonel[]>
+  /** Kullanıcı rolü: tek görev müdürlüğü → müdürlük seçimi salt okunur */
+  mudurlukSaltOkunur?: boolean
 }
 
-export async function yevmiyePuantajYukle(donem_id: number): Promise<{ data?: YevmiyePuantajYukleResult; hata?: string }> {
+export async function yevmiyePuantajYukle(
+  donem_id: number,
+  opts?: { sicilNo?: string },
+): Promise<{ data?: YevmiyePuantajYukleResult; hata?: string }> {
   const supabase = await createClient()
+
+  let kullaniciMudFiltre: Set<string> | null = null
+  let kullaniciMudSalt = false
+  if (opts?.sicilNo) {
+    const km = await getKullaniciGorevMudurlukleri(supabase, opts.sicilNo)
+    kullaniciMudFiltre = new Set(km.mudurlukler)
+    kullaniciMudSalt = km.tekSecimSaltOkunur
+  }
 
   const { data: donemRow, error: donemErr } = await supabase
     .from('yevmiye_donem')
@@ -107,7 +122,10 @@ export async function yevmiyePuantajYukle(donem_id: number): Promise<{ data?: Ye
     .select('mudurluk_adi')
     .eq('aktif', true)
     .order('mudurluk_adi')
-  const mudurlukler = (mudRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean)
+  let mudurlukler = (mudRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean)
+  if (kullaniciMudFiltre) {
+    mudurlukler = mudurlukler.filter(m => kullaniciMudFiltre!.has(m))
+  }
 
   // Tatil aralıkları (B=Bayram, RT=Resmi Tatil)
   const { data: tatilRaw } = await supabase
@@ -403,6 +421,7 @@ export async function yevmiyePuantajYukle(donem_id: number): Promise<{ data?: Ye
       statuSekmeleri,
       kayitOzeti: `${toplamSatir} satır, ${mudurlukler.length} müdürlük`,
       mudurlukPersonelMap,
+      mudurlukSaltOkunur: Boolean(opts?.sicilNo && kullaniciMudSalt),
     },
   }
 }
@@ -414,6 +433,14 @@ export async function yevmiyePuantajKaydet(
   fazlaMesai: Array<{ sicil_no: string; tarih: string; deger: string; saat: number }>
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  const mudOk = await assertKullaniciMudurlukErisimi(supabase, access, mudurluk)
+  if (!mudOk.ok) return { hata: mudOk.mesaj }
 
   // Sadece fazla mesai > 0 olanları kaydet
   const toInsert = fazlaMesai

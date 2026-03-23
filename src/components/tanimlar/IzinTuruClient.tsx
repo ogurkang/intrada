@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import type { Tables } from '@/types/database'
 
 type IzinTuru = Tables<'tanim_izin_tur'>
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Props) {
+  const saltOkunur = useTanimlarSaltOkunur()
   const [modalAcik, setModalAcik]    = useState(false)
   const [secili, setSecili]          = useState<IzinTuru | null>(null)
   const [sunuciHata, setSunuciHata]  = useState<string | null>(null)
@@ -47,6 +49,7 @@ export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Prop
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">İzin Türleri</h1>
+        {!saltOkunur && (
         <button onClick={yeniEkle}
           className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -54,6 +57,7 @@ export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Prop
           </svg>
           Yeni Ekle
         </button>
+        )}
       </div>
 
       {sunuciHata && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{sunuciHata}</div>}
@@ -81,7 +85,7 @@ export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Prop
                 <td className="px-5 py-3 font-medium text-slate-800">{t.tur_adi}</td>
                 <td className="px-5 py-3 text-slate-600 text-xs">{t.izin_hakki_kullanimi ?? '—'}</td>
                 <td className="px-5 py-3 text-center">
-                  <button onClick={() => handleToggle(t)} disabled={isPending}
+                  <button onClick={() => handleToggle(t)} disabled={isPending || saltOkunur}
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
                       t.durum ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${t.durum ? 'bg-green-500' : 'bg-slate-400'}`} />
@@ -89,10 +93,12 @@ export default function IzinTuruClient({ data, onAdd, onUpdate, onToggle }: Prop
                   </button>
                 </td>
                 <td className="px-5 py-3 text-right">
+                  {!saltOkunur ? (
                   <button onClick={() => duzenle(t)}
                     className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
                     Düzenle
                   </button>
+                  ) : <span className="text-xs text-slate-400">—</span>}
                 </td>
               </tr>
             ))}

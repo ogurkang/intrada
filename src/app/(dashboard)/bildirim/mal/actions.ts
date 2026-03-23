@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Json } from '@/types/database'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -385,6 +386,14 @@ export async function malBildirimEkle(fd: FormData): Promise<{ hata?: string }> 
   if (haklarHata) return { hata: haklarHata }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  if (!isAdminLike(access) && access.mode === 'kullanici') {
+    if (String(access.sicilNo).trim() !== String(sicil_no).trim()) {
+      return { hata: 'Yalnızca kendi siciliniz için beyan ekleyebilirsiniz.' }
+    }
+  }
 
   const { data: kh } = await supabase
     .from('kadro_hareketleri')
@@ -467,6 +476,17 @@ export async function malBildirimGuncelle(id: number, fd: FormData): Promise<{ h
   if (haklarHata) return { hata: haklarHata }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  const { data: mevcutRow } = await supabase.from('mal_bildirimi').select('sicil_no').eq('id', id).maybeSingle()
+  if (!mevcutRow) return { hata: 'Kayıt bulunamadı.' }
+  if (!isAdminLike(access) && access.mode === 'kullanici') {
+    if (String(access.sicilNo).trim() !== String(mevcutRow.sicil_no).trim()) {
+      return { hata: 'Bu kaydı güncelleme yetkiniz yok.' }
+    }
+  }
+
   const { data: pubRow } = await supabase.from('mal_bildirimi').select('public_id').eq('id', id).maybeSingle()
   const urlSeg = pubRow?.public_id ? String(pubRow.public_id) : String(id)
 
@@ -493,11 +513,22 @@ export async function malBildirimGuncelle(id: number, fd: FormData): Promise<{ h
   revalidatePath('/bildirim/mal')
   revalidatePath(`/bildirim/mal/${urlSeg}`)
   revalidatePath(`/bildirim/mal/${urlSeg}/duzenle`)
+  revalidatePath(`/link/${urlSeg}`)
   return {}
 }
 
 export async function malBildirimSil(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  const { data: row } = await supabase.from('mal_bildirimi').select('sicil_no').eq('id', id).maybeSingle()
+  if (!row) return { hata: 'Kayıt bulunamadı.' }
+  if (!isAdminLike(access) && access.mode === 'kullanici') {
+    if (String(access.sicilNo).trim() !== String(row.sicil_no).trim()) {
+      return { hata: 'Bu kaydı silme yetkiniz yok.' }
+    }
+  }
   const { error } = await supabase.from('mal_bildirimi').delete().eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath('/bildirim/mal')

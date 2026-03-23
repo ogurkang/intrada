@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "bulk-auth-users": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs",
+    "bulk-auth-users:dry": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --dry"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

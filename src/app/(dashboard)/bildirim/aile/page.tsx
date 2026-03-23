@@ -1,14 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import AileClient, { type AileBilgisi, type Cocuk } from '@/components/bildirim/AileClient'
 import { aileSil } from './actions'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 export default async function AilePage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
 
-  const { data: raw } = await supabase
-    .from('aile_bildirimi')
-    .select('*, calisan(ad_soyad)')
-    .order('sicil_no', { ascending: true })
+  let q = supabase.from('aile_bildirimi').select('*, calisan(ad_soyad)')
+  if (!isAdminLike(access) && access.mode === 'kullanici') {
+    q = q.eq('sicil_no', access.sicilNo)
+  }
+  const { data: raw } = await q.order('sicil_no', { ascending: true })
 
   const kayitlar: AileBilgisi[] = (raw ?? [])
     .map(r => ({

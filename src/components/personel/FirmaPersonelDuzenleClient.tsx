@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 
 type FC = Tables<'firma_calisanlar'>
 
@@ -28,18 +29,16 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
     startTransition(async () => {
       const res = await onGuncelle(k.id, fd)
       if (res.hata) setHata(res.hata)
-      else router.push(`/firma-calisanlar/${k.id}`)
+      else router.push(firmaCalisanDetayHref(k))
     })
   }
 
+  const detayHref = firmaCalisanDetayHref(k)
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Firma Personel Düzenle — {k.ad_soyad}</h1>
-        <Link href={`/firma-calisanlar/${k.id}`}
-          className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
-          ← İptal
-        </Link>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
@@ -144,7 +143,7 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
 
           {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
           <div className="flex flex-row justify-end items-center gap-3 pt-2">
-            <Link href={`/firma-calisanlar/${k.id}`}
+            <Link href={detayHref}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</Link>
             <button type="submit" disabled={isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">

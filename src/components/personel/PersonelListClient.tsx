@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { personelDetayHref } from '@/lib/personel-link'
 
-type Satir = Pick<Tables<'calisan'>, 'sicil_no' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'>
+type Satir = Pick<Tables<'calisan'>, 'sicil_no' | 'public_id' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'>
 
 interface Props {
   data: Satir[]
@@ -111,7 +112,7 @@ export default function PersonelListClient({ data }: Props) {
               {sayfadaki.map((p, i) => (
                 <tr
                   key={p.sicil_no}
-                  onClick={() => router.push(`/personel/${p.sicil_no}`)}
+                  onClick={() => router.push(personelDetayHref(p))}
                   className="hover:bg-blue-50 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3 text-center text-xs text-slate-400">{sayfa * SAYFA_BOYUTU + i + 1}</td>

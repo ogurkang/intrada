@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
 
 /** gg.aa.yyyy formatındaki tarihi yyyy-mm-dd'ye çevirir */
 function parseTarihFromNeden(neden: string | null): string | null {
@@ -41,30 +42,35 @@ function tarih(fd: FormData, key: string): string | null {
   return str(fd, key)
 }
 
-export async function firmaEkle(fd: FormData): Promise<{ hata?: string }> {
+export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string }> {
   const ad_soyad = str(fd, 'ad_soyad')
   if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('firma_calisanlar').insert({
-    ad_soyad,
-    sira_no:             str(fd, 'sira_no'),
-    sicil_no:            str(fd, 'sicil_no'),
-    tckn:                str(fd, 'tckn'),
-    cinsiyet:            str(fd, 'cinsiyet'),
-    dogum_tarihi:        tarih(fd, 'dogum_tarihi'),
-    ogrenim:             str(fd, 'ogrenim'),
-    telefon:             str(fd, 'telefon'),
-    kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
-    gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
-    gorevi:              str(fd, 'gorevi'),
-    meslegi:             str(fd, 'meslegi'),
-    ayrilis_tarihi:      tarih(fd, 'ayrilis_tarihi'),
-    ayrilis_nedeni:      str(fd, 'ayrilis_nedeni'),
-  })
+  const { data: inserted, error } = await supabase
+    .from('firma_calisanlar')
+    .insert({
+      ad_soyad,
+      sira_no:             str(fd, 'sira_no'),
+      sicil_no:            str(fd, 'sicil_no'),
+      tckn:                str(fd, 'tckn'),
+      cinsiyet:            str(fd, 'cinsiyet'),
+      dogum_tarihi:        tarih(fd, 'dogum_tarihi'),
+      ogrenim:             str(fd, 'ogrenim'),
+      telefon:             str(fd, 'telefon'),
+      kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
+      gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
+      gorevi:              str(fd, 'gorevi'),
+      meslegi:             str(fd, 'meslegi'),
+      ayrilis_tarihi:      tarih(fd, 'ayrilis_tarihi'),
+      ayrilis_nedeni:      str(fd, 'ayrilis_nedeni'),
+    })
+    .select('id, public_id')
+    .single()
   if (error) return { hata: error.message }
   revalidatePath('/firma-calisanlar')
-  return {}
+  if (inserted?.id) await revalidateFirmaCalisanPaths(inserted.id)
+  return { id: inserted?.id, public_id: inserted?.public_id }
 }
 
 export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: string }> {
@@ -96,7 +102,7 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
   }).eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath('/firma-calisanlar')
-  revalidatePath(`/firma-calisanlar/${id}`)
+  await revalidateFirmaCalisanPaths(id)
   return {}
 }
 

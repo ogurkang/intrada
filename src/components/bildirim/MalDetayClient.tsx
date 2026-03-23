@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { formatTrMoneyDisplay, parseTrMoneyDisplay } from '@/lib/tr-money-format'
-import { malBildirimUrlSegment } from '@/lib/mal-bildirim-route'
+import { malBildirimDetayHref, malBildirimUrlSegment } from '@/lib/mal-bildirim-route'
 
 /** Content-Disposition başlığından dosya adı (API UTF-8 filename* kullanıyor). */
 function parseFilenameFromContentDisposition(header: string | null): string | null {
@@ -138,6 +138,8 @@ export type MalDetayKayit = {
 
 interface Props {
   kayit: MalDetayKayit
+  /** Personel kartından `?salt=1` ile: düzenleme / Excel dışa aktarma gizlenir */
+  saltOkunur?: boolean
 }
 
 function str(v: unknown): string {
@@ -385,7 +387,7 @@ function digerTasinirDetayParse(raw: unknown, kimlikRaw: unknown): MalDetayDiger
   })
 }
 
-export default function MalDetayClient({ kayit }: Props) {
+export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
   const [excelBusy, setExcelBusy] = useState(false)
 
   async function malExcelIndir(modCokSatir: boolean) {
@@ -478,36 +480,43 @@ export default function MalDetayClient({ kayit }: Props) {
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             ← Geri
           </Link>
-          <Link href={`/bildirim/mal/${urlSeg}/duzenle`}
-            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
-            Düzenle
-          </Link>
-          <details className="relative">
-            <summary className="list-none flex cursor-pointer items-center gap-1 border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors marker:content-none [&::-webkit-details-marker]:hidden">
-              Excel İndir
-              <span className="text-[10px] opacity-70" aria-hidden>
-                ▾
-              </span>
-            </summary>
-            <div className="absolute right-0 mt-1 z-50 min-w-[220px] rounded-lg border border-slate-200 bg-white shadow-lg py-1">
-              <button
-                type="button"
-                disabled={excelBusy}
-                onClick={() => void malExcelIndir(false)}
-                className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-              >
+          {!saltOkunur && (
+            <Link href={`/bildirim/mal/${urlSeg}/duzenle`}
+              className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
+              Düzenle
+            </Link>
+          )}
+          {!saltOkunur && (
+            <details className="relative">
+              <summary className="list-none flex cursor-pointer items-center gap-1 border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors marker:content-none [&::-webkit-details-marker]:hidden">
                 Excel İndir
-              </button>
-              <button
-                type="button"
-                disabled={excelBusy}
-                onClick={() => void malExcelIndir(true)}
-                className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Çok Satırlı İndir
-              </button>
-            </div>
-          </details>
+                <span className="text-[10px] opacity-70" aria-hidden>
+                  ▾
+                </span>
+              </summary>
+              <div className="absolute right-0 mt-1 z-50 min-w-[220px] rounded-lg border border-slate-200 bg-white shadow-lg py-1">
+                <button
+                  type="button"
+                  disabled={excelBusy}
+                  onClick={() => void malExcelIndir(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Excel İndir
+                </button>
+                <button
+                  type="button"
+                  disabled={excelBusy}
+                  onClick={() => void malExcelIndir(true)}
+                  className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Çok Satırlı İndir
+                </button>
+              </div>
+            </details>
+          )}
+          {saltOkunur && (
+            <p className="text-xs text-slate-500 max-w-xs">Bu ekran salt okunurdur; düzenleme için Bildirim → Mal Beyanı üzerinden ilerleyin.</p>
+          )}
         </div>
       </div>
 

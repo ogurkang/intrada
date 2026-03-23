@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import type { Tables } from '@/types/database'
+import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 
 type FC = Tables<'firma_calisanlar'>
 
@@ -164,7 +165,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
             )}
             {sayfadaki.map((k, i) => (
               <tr key={k.id} className="hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/firma-calisanlar/${k.id}`)}>
+                  onClick={() => router.push(firmaCalisanDetayHref({ id: k.id, public_id: k.public_id }))}>
                 <td className="px-4 py-3 text-center text-xs text-slate-400">{sayfa * SAYFA_BOYUTU + i + 1}</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.sicil_no ?? '—'}</td>
                 <td className="px-4 py-3">

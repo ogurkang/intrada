@@ -2,12 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/mudurluk'
 
 export async function mudurlukEkle(
   formData: FormData
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const mudurluk_adi = String(formData.get('mudurluk_adi') ?? '').trim()
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
 
@@ -25,6 +28,8 @@ export async function mudurlukGuncelle(
   id: number,
   formData: FormData
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const mudurluk_adi = String(formData.get('mudurluk_adi') ?? '').trim()
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
 
@@ -43,6 +48,8 @@ export async function mudurlukToggleAktif(
   id: number,
   mevcutAktif: boolean
 ): Promise<{ hata?: string }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_mudurluk')
