@@ -88,8 +88,8 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
     .select('sicil_no, tur, ayrilis, baslama')
     .neq('durum', 'Taslak')
     .neq('durum', 'İptal Edildi')
-    .lte('baslama', bitis)
-    .gte('ayrilis', baslangic)
+    .lte('ayrilis', bitis)
+    .gt('baslama', baslangic)
 
   const izinHareketleri: { sicil: string; ayrilis: number; baslama: number; kod: string }[] = []
   ;(izinRaw ?? []).forEach(i => {
@@ -199,7 +199,7 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
         const tarihT = tarihParse(g.tarih)!.getTime()
         for (const ih of izinHareketleri) {
           if (ih.sicil !== p.sicil) continue
-          if (tarihT >= ih.ayrilis && tarihT <= ih.baslama) {
+          if (tarihT >= ih.ayrilis && tarihT < ih.baslama) {
             deger = ih.kod || 'S'
             break
           }

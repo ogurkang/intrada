@@ -10,6 +10,25 @@ import {
 
 const MAX_GUN = 20
 
+/** İptal dışındaki izin kayıtlarında (Taslak dahil) bu gün izinli mi? */
+async function araziTarihIzinliMi(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string,
+  tarih: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('izin_hareketleri')
+    .select('id')
+    .eq('sicil_no', sicil_no)
+    .neq('durum', 'İptal Edildi')
+    /* İzinli gün: ayrılış ≤ gün < işe dönüş (başlama) */
+    .lte('ayrilis', tarih)
+    .gt('baslama', tarih)
+    .limit(1)
+  if (error) return false
+  return (data?.length ?? 0) > 0
+}
+
 export async function araziKayitToggle(
   donem_id: number,
   sicil_no: string,
@@ -35,6 +54,13 @@ export async function araziKayitToggle(
     const sicilUygun = await araziSicilMudurlukteMi(supabase, sicil_no, mudurlukSecili)
     if (!sicilUygun) {
       return { hata: 'Seçilen müdürlükte bu personel listelenmiyor.', yeniIsaret: mevcutIsaret }
+    }
+  }
+
+  if (!mevcutIsaret) {
+    const izinli = await araziTarihIzinliMi(supabase, sicil_no, tarih)
+    if (izinli) {
+      return { hata: 'Bu tarih izin hareketlerinde kayıtlı; arazi işaretlenemez.', yeniIsaret: false }
     }
   }
 
@@ -85,6 +111,13 @@ export async function araziKayitTopluKaydet(
     for (const s of sicilNolar) {
       const ok = await araziSicilMudurlukteMi(supabase, s, mudurlukSecili)
       if (!ok) return { hata: `Personel ${s} seçilen müdürlükte değil.` }
+    }
+  }
+
+  for (const i of isaretler) {
+    const izinli = await araziTarihIzinliMi(supabase, i.sicil_no, i.tarih)
+    if (izinli) {
+      return { hata: `${i.sicil_no} için ${i.tarih} izinli gün; arazi işaretlenemez.` }
     }
   }
 

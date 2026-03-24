@@ -17,7 +17,7 @@ Menü kutuları salt okunur gösterilir; tüm modüllere ve tanımlara erişir.
 ### 2.1 Personel modülü
 
 - **Sadece kendi detay ekranı** (`/personel/{kendi sicili}` veya kendi `public_id` ile açılan eşdeğer rota): **salt okunur** (düzenleme yok).
-- Aynı modüldeki diğer menüler (çalışanlar listesi, ayrılanlar, firma, kadro, personel hareketleri, terfi): menüde görünür; tıklanınca **“Bu ekranı görme yetkiniz yok veya henüz tanımlanmamış.”**
+- Aynı modüldeki diğer menüler (çalışanlar listesi, ayrılanlar, firma, kadro, personel hareketleri, terfi): kullanıcı rolünde **Terfi / eğitim / yetkilendirme** ekranları açılmaz; **PermissionGate** üzerinde **«Sorumluluk Sınırı!»** uyarısı ve Anasayfa linki gösterilir.
 
 ### 2.2 İzin yönetimi
 

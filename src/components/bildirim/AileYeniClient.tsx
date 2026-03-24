@@ -8,13 +8,15 @@ import type { Cocuk } from '@/components/bildirim/AileClient'
 interface Props {
   personeller: { sicil_no: string; ad_soyad: string }[]
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
+  /** Kullanıcı: yalnızca kendi sicili, salt okunur */
+  sicilSaltOkunur?: string
 }
 
 const MEDENI_HAL = ['Evli', 'Bekar']
 const IS_DURUMU = ['Çalışıyor', 'Çalışmıyor', 'Emekli', 'Serbest Meslek', 'Diğer']
 
-export default function AileYeniClient({ personeller, onKaydet }: Props) {
-  const [sicil, setSicil] = useState('')
+export default function AileYeniClient({ personeller, onKaydet, sicilSaltOkunur }: Props) {
+  const [sicil, setSicil] = useState(() => (sicilSaltOkunur?.trim() ? sicilSaltOkunur.trim() : ''))
   const [medeniHal, setMedeniHal] = useState('')
   const [cocuklar, setCocuklar] = useState<Cocuk[]>([])
   const [hata, setHata] = useState<string | null>(null)
@@ -82,7 +84,13 @@ export default function AileYeniClient({ personeller, onKaydet }: Props) {
         <div className="flex flex-col lg:flex-row gap-6 lg:items-end">
           <div className="flex-1 min-w-0 space-y-2">
             <label className="block text-sm font-medium text-slate-700">Personel *</label>
-            <PersonelAramaSecim personeller={ogeler} value={sicil} onChange={setSicil} required />
+            <PersonelAramaSecim
+              personeller={ogeler}
+              value={sicil}
+              onChange={setSicil}
+              required
+              readOnly={!!sicilSaltOkunur?.trim()}
+            />
             <input type="hidden" name="sicil_no" value={sicil} />
           </div>
           <div className="flex-1 min-w-[200px] max-w-xs space-y-2">

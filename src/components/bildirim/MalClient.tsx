@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
+import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 
 export interface MalBildirimi {
   id:           number
@@ -18,9 +19,10 @@ export interface MalBildirimi {
 interface Props {
   kayitlar: MalBildirimi[]
   onSil:    (id: number) => Promise<{ hata?: string }>
+  kullaniciModu?: boolean
 }
 
-export default function MalClient({ kayitlar, onSil }: Props) {
+export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Props) {
   const router = useRouter()
   const [arama, setArama] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -55,6 +57,7 @@ export default function MalClient({ kayitlar, onSil }: Props) {
           <p className="text-sm text-slate-500 mt-0.5">Taşınmaz, taşıt, banka ve diğer servet beyanları</p>
         </div>
         <div className="flex items-center gap-2">
+          {kullaniciModu && <DashboardAnaSayfaLink />}
           <button type="button" onClick={yeniSekmedeAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -80,12 +83,14 @@ export default function MalClient({ kayitlar, onSil }: Props) {
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-44">Beyan Türü</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Onay Tarihi</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+              {!kullaniciModu && (
+                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={kullaniciModu ? 5 : 6} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {filtreli.map((kayit, idx) => (
               <tr
@@ -106,10 +111,12 @@ export default function MalClient({ kayitlar, onSil }: Props) {
                 <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">
                   {kayit.onay_tarihi ? new Date(kayit.onay_tarihi).toLocaleDateString('tr-TR') : '—'}
                 </td>
+                {!kullaniciModu && (
                 <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                   <button type="button" onClick={() => handleSil(kayit.id)} disabled={isPending}
                     className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>

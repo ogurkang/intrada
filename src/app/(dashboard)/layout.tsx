@@ -39,9 +39,18 @@ export default async function DashboardLayout({
   const access = await getAppAccess(supabase, user.id)
   const ilkTamam = profil.ilk_giris_tamam
 
+  let kullaniciKarsilamaAd: string | null = null
+  if (access.mode === 'kullanici') {
+    const sn = access.sicilNo.trim()
+    if (sn) {
+      const { data: cal } = await supabase.from('calisan').select('ad_soyad').eq('sicil_no', sn).maybeSingle()
+      kullaniciKarsilamaAd = (cal?.ad_soyad ?? '').trim() || null
+    }
+  }
+
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
-      <DashboardShell userEmail={user.email} access={access}>
+      <DashboardShell userEmail={user.email} kullaniciKarsilamaAd={kullaniciKarsilamaAd} access={access}>
         {children}
       </DashboardShell>
     </IlkKurulumGuard>

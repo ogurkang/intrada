@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
+import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import type { Tables } from '@/types/database'
 
 type YD = Tables<'yevmiye_donem'> & { puantaj_sayisi: number }
@@ -13,6 +14,8 @@ interface Props {
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onKapat:    (id: number) => Promise<{ hata?: string }>
   onAc:       (id: number) => Promise<{ hata?: string }>
+  /** Kullanıcı rolü: yalnızca dönem listesi + detay linki */
+  saltOkunur?: boolean
 }
 
 function tarih(t: string | null) {
@@ -72,7 +75,14 @@ function DonemForm({ open, onClose, secili, onSubmit, isPending, hata }: {
   )
 }
 
-export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKapat, onAc }: Props) {
+export default function YevmiyeDonemClient({
+  donemler,
+  onEkle,
+  onGuncelle,
+  onKapat,
+  onAc,
+  saltOkunur = false,
+}: Props) {
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
@@ -121,6 +131,9 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
           <h1 className="text-2xl font-bold text-slate-800">Yevmiye Puantajı</h1>
           <p className="text-sm text-slate-500 mt-0.5">Günlük saha çalışma puantajı dönemleri</p>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {saltOkunur && <DashboardAnaSayfaLink />}
+          {!saltOkunur && (
         <button onClick={yeniEkleAc}
           className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -128,6 +141,8 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
           </svg>
           Yeni Dönem
         </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
@@ -154,7 +169,9 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Başlangıç</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Bitiş</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-40">İşlem</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-40">
+                {saltOkunur ? 'Detay' : 'İşlem'}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -182,6 +199,8 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                     </Link>
+                    {!saltOkunur && (
+                      <>
                     <button onClick={() => duzenleAc(d)}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                       title="Düzenle">
@@ -207,6 +226,8 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
                         </svg>
                       </button>
                     )}
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -215,7 +236,7 @@ export default function YevmiyeDonemClient({ donemler, onEkle, onGuncelle, onKap
         </table>
       </div>
 
-      <DonemForm open={formAcik} onClose={kapat} secili={seciliDonem}
+      <DonemForm open={formAcik && !saltOkunur} onClose={kapat} secili={seciliDonem}
         onSubmit={handleSubmit} isPending={isPending} hata={sunuciHata} />
     </div>
   )

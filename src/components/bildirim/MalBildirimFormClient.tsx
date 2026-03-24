@@ -126,6 +126,8 @@ type PropsCreate = {
   mode: 'create'
   memurlar: PersonelSecenek[]
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
+  /** Kullanıcı: yalnızca kendi sicili (salt okunur) */
+  kullaniciKendiSicil?: string
 }
 
 type PropsEdit = {
@@ -598,7 +600,11 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
   const isCreate = props.mode === 'create'
   const memurlar = isCreate ? props.memurlar : []
 
-  const [sicil, setSicil] = useState(() => (isCreate ? '' : props.initial.sicil_no))
+  const [sicil, setSicil] = useState(() => {
+    if (!isCreate) return props.initial.sicil_no
+    const ks = props.kullaniciKendiSicil?.trim()
+    return ks || ''
+  })
   const [maasRaw, setMaasRaw] = useState('')
   const [kimlikSatirlari, setKimlikSatirlari] = useState<KimlikFormSatir[]>([])
   const [tasinmazSatirlari, setTasinmazSatirlari] = useState<TasinmazFormSatir[]>([])
@@ -1422,7 +1428,13 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
             {isCreate ? (
               <div className="flex-1 min-w-0 space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Personel *</label>
-                <PersonelAramaSecim personeller={ogeler} value={sicil} onChange={setSicil} required />
+                <PersonelAramaSecim
+                  personeller={ogeler}
+                  value={sicil}
+                  onChange={setSicil}
+                  required
+                  readOnly={Boolean(props.kullaniciKendiSicil?.trim())}
+                />
               </div>
             ) : (
               <div className="flex-1 min-w-0 space-y-1">

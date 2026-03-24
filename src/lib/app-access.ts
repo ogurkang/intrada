@@ -36,10 +36,9 @@ export function isAdminLike(a: AppAccess): boolean {
   return a.mode === 'admin' || a.mode === 'full'
 }
 
-const UYARI_METNI =
+/** @deprecated PermissionGate artık «Sorumluluk Sınırı» metnini kullanır; eski metin referansı için */
+export const UYARI_METNI =
   'Bu ekranı görme yetkiniz yok veya henüz tanımlanmamış.'
-
-export { UYARI_METNI }
 
 /** @see `@/lib/menu-yetki` — modül bazlı menü + path */
 export { kullaniciPathAllowed } from '@/lib/menu-yetki'

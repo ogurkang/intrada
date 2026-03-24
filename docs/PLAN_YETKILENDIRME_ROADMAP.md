@@ -80,3 +80,12 @@ Kamu / iç denetim için sık istenir: **Kim, hangi yetkiyi, ne zaman değiştir
 ## Sonuç
 
 Planda **büyük bir mantık hatası yok**; sadece **ilk admin**, **kullanıcı–personel eşlemesi** ve **RLS ile ekranın birlikte düşünülmesi** üçlüsünü yazılı hale getirmen, ileride sürpribi azaltır.
+
+---
+
+## Bekleyen UX (kullanıcı rolü)
+
+| Konu | Not |
+|------|-----|
+| **Şifre değiştirme** | Normal kullanıcılar için giriş sonrası şifre güncelleme ekranı yok; `/hesap/...` veya benzeri + `supabase.auth.updateUser({ password })` + mevcut `sifre-politikasi` ile eklenecek. |
+| **Ana sayfa widget’ları** | Hoş geldiniz kartına ek olarak, `menu_izinleri` ile açık modüller için kısayol kartları (ör. Personel kartım, Yevmiye/Arazi puantaj) — `KullaniciAnaSayfa` + ortak stil. |

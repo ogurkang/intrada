@@ -9,12 +9,20 @@ import type { AppAccess } from '@/lib/app-access'
 interface DashboardShellProps {
   children: React.ReactNode
   userEmail?: string
+  /** Kullanıcı rolü üst şerit karşılaması (calisan.ad_soyad). */
+  kullaniciKarsilamaAd?: string | null
   /** Sunucudan gelir; opak terfi yolu (ör. /abc123). */
   terfiMenuHref?: string
   access: AppAccess
 }
 
-export default function DashboardShell({ children, userEmail, terfiMenuHref = '/terfi', access }: DashboardShellProps) {
+export default function DashboardShell({
+  children,
+  userEmail,
+  kullaniciKarsilamaAd,
+  terfiMenuHref = '/terfi',
+  access,
+}: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -46,7 +54,11 @@ export default function DashboardShell({ children, userEmail, terfiMenuHref = '/
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userEmail={userEmail} onMenuClick={() => setSidebarOpen((o) => !o)} />
+        <Header
+          userEmail={userEmail}
+          kullaniciKarsilamaAd={kullaniciKarsilamaAd}
+          onMenuClick={() => setSidebarOpen((o) => !o)}
+        />
         <main className="flex-1 p-6 overflow-auto">
           <PermissionGate access={access} terfiMenuHref={terfiMenuHref}>
             {children}

@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import YevmiyeDonemClient from '@/components/kesintiler/YevmiyeDonemClient'
 import { yevmiyeDonemEkle, yevmiyeDonemGuncelle, yevmiyeDonemKapat, yevmiyeDonemAc } from './actions'
+import { getAppAccess } from '@/lib/app-access'
 
 export default async function YevmiyePage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const saltOkunur = access.mode === 'kullanici'
 
   const { data: donemRaw } = await supabase
     .from('yevmiye_donem')
@@ -28,6 +31,7 @@ export default async function YevmiyePage() {
       onGuncelle={yevmiyeDonemGuncelle}
       onKapat={yevmiyeDonemKapat}
       onAc={yevmiyeDonemAc}
+      saltOkunur={saltOkunur}
     />
   )
 }

@@ -50,7 +50,22 @@ export async function appProfilGuncelle(
   const rol = String(formData.get('rol') ?? '').trim()
   if (rol !== 'admin' && rol !== 'kullanici') return { hata: 'Geçersiz rol.' }
 
-  const menu_izinleri = rol === 'admin' ? {} : menuFormdanOku(formData)
+  const { data: mevcutProfil } = await r.supabase
+    .from('app_profiles')
+    .select('menu_izinleri')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  const prevMenu = (mevcutProfil?.menu_izinleri as Record<string, boolean> | null) ?? {}
+  const formdan = menuFormdanOku(formData)
+  /** Yetkilendirme tablosunda «Terfi» yok; mevcut `terfi` bayrağını koru */
+  const menu_izinleri =
+    rol === 'admin'
+      ? {}
+      : {
+          ...formdan,
+          ...(typeof prevMenu.terfi === 'boolean' ? { terfi: prevMenu.terfi } : {}),
+        }
 
   const { error } = await r.supabase
     .from('app_profiles')

@@ -2,14 +2,18 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import { useRouter } from 'next/navigation'
+import { PUANTAJ_KOD_ACIKLAMA } from '@/lib/puantaj-kod-aciklama'
 
 export const MAX_ARAZI_GUN = 20
 
+/** X = arazi işareti (açık mavi); HT/B dışı izin kodları (S, R, …) açık yeşil */
 const KOD_RENKLER = {
   HT: 'bg-[#E0E0E0]',
   B: 'bg-[#FFE4CC]',
   X: 'bg-[#CCE5FF]',
+  YESIL: 'bg-[#E8F5E9]',
 }
 
 export interface AraziPersonel {
@@ -44,7 +48,10 @@ interface Props {
   mudurlukSecenekleri?: string[]
   /** Tek görev müdürlüğü → müdürlük seçimi salt okunur */
   mudurlukSaltOkunur?: boolean
-  onToggle:     (donem_id: number, sicil_no: string, tarih: string, mevcutIsaret: boolean, mevcutSayisi: number, mudurluk: string) => Promise<{ hata?: string; yeniIsaret: boolean }>
+  /** Kullanıcı rolü: üstte Ana sayfa linki */
+  showAnaSayfaLink?: boolean
+  /** İptal hariç izin hareketleri: sicil → tarih → puantaj kodu (S, RR, …) */
+  izinKodlariBySicilGun?: Record<string, Record<string, string>>
   onKaydetToplu: (donem_id: number, sicilNolar: string[], isaretler: { sicil_no: string; tarih: string }[], mudurluk: string) => Promise<{ hata?: string }>
 }
 
@@ -92,12 +99,12 @@ export default function AraziPuantajClient({
   mudurlukPersonelMap = {},
   mudurlukSecenekleri,
   mudurlukSaltOkunur,
-  onToggle,
+  showAnaSayfaLink = false,
+  izinKodlariBySicilGun = {},
   onKaydetToplu,
 }: Props) {
   const router = useRouter()
   const [marked, setMarked] = useState<Set<string>>(initialMarked)
-  const [yuklenenler, setYuklenenler] = useState<Set<string>>(new Set())
   const [hatalar, setHatalar] = useState<Record<string, string>>({})
   const [seciliMudurluk, setSeciliMudurluk] = useState<string>('')
   const [gunleriIsaretleModu, setGunleriIsaretleModu] = useState(false)
@@ -154,53 +161,31 @@ export default function AraziPuantajClient({
     const hafSonu = hGunu === 0 || hGunu === 6
     if (hafSonu) return 'HT'
     if (tatilSet.has(iso)) return 'B'
+    const izinKod = izinKodlariBySicilGun[sicil_no]?.[iso]
+    if (izinKod) return izinKod
     return marked.has(`${sicil_no}:${iso}`) ? 'X' : ''
   }
 
-  const handleToggle = useCallback(async (sicil_no: string, tarih: string) => {
+  /** Yalnızca "Günleri İşaretle" açıkken; tek tıklamada sunucuya gitmez, Kaydet ile toplu kayıt */
+  const handleToggle = useCallback((sicil_no: string, tarih: string) => {
     if (readonly) return
+    if (!gunleriIsaretleModu) return
+    if (izinKodlariBySicilGun[sicil_no]?.[tarih]) return
     const key = `${sicil_no}:${tarih}`
     const mevcutIsaret = marked.has(key)
     const mevcutSayisi = sayiGetir(sicil_no)
-
-    if (gunleriIsaretleModu) {
-      if (!mevcutIsaret && mevcutSayisi >= MAX_ARAZI_GUN) {
-        setHatalar(prev => ({ ...prev, [sicil_no]: `En fazla ${MAX_ARAZI_GUN} gün seçilebilir.` }))
-        return
-      }
-      setMarked(prev => {
-        const next = new Set(prev)
-        if (mevcutIsaret) next.delete(key)
-        else next.add(key)
-        return next
-      })
-      setHatalar(prev => { const n = { ...prev }; delete n[sicil_no]; return n })
+    if (!mevcutIsaret && mevcutSayisi >= MAX_ARAZI_GUN) {
+      setHatalar(prev => ({ ...prev, [sicil_no]: `En fazla ${MAX_ARAZI_GUN} gün seçilebilir.` }))
       return
     }
-
-    if (yuklenenler.has(key)) return
     setMarked(prev => {
       const next = new Set(prev)
       if (mevcutIsaret) next.delete(key)
       else next.add(key)
       return next
     })
-    setYuklenenler(prev => new Set(prev).add(key))
     setHatalar(prev => { const n = { ...prev }; delete n[sicil_no]; return n })
-
-    const res = await onToggle(donem.id, sicil_no, tarih, mevcutIsaret, mevcutSayisi, aktifMud)
-    setYuklenenler(prev => { const s = new Set(prev); s.delete(key); return s })
-
-    if (res.hata) {
-      setMarked(prev => {
-        const next = new Set(prev)
-        if (mevcutIsaret) next.add(key)
-        else next.delete(key)
-        return next
-      })
-      setHatalar(prev => ({ ...prev, [sicil_no]: res.hata! }))
-    }
-  }, [marked, yuklenenler, donem.id, readonly, gunleriIsaretleModu, aktifMud, onToggle])
+  }, [readonly, gunleriIsaretleModu, marked, izinKodlariBySicilGun])
 
   async function excelIndir() {
     try {
@@ -259,6 +244,16 @@ export default function AraziPuantajClient({
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <Link href="/kesintiler/arazi" className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 7-7" />
+          </svg>
+          Geri
+        </Link>
+        {showAnaSayfaLink && <DashboardAnaSayfaLink />}
+      </div>
+
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -270,12 +265,6 @@ export default function AraziPuantajClient({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/kesintiler/arazi" className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 7-7" />
-              </svg>
-              Geri
-            </Link>
             <button type="button" onClick={() => setGunleriIsaretleModu(!gunleriIsaretleModu)} disabled={readonly}
               className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                 gunleriIsaretleModu ? 'bg-amber-50 text-amber-800 border-amber-300' : 'text-slate-600 bg-white border-slate-300 hover:bg-slate-50'
@@ -396,20 +385,40 @@ export default function AraziPuantajClient({
                         const hGunu = new Date(ay.yil, ay.ay, gun).getDay()
                         const hafSonu = hGunu === 0 || hGunu === 6
                         const tatil = tatilSet.has(iso)
+                        const izinKodHucre = izinKodlariBySicilGun[p.sicil_no]?.[iso]
                         const bosHucre = kod === ''
-                        const yukleniyor = yuklenenler.has(`${p.sicil_no}:${iso}`)
-                        const renk = kod === 'HT' ? KOD_RENKLER.HT : kod === 'B' ? KOD_RENKLER.B : kod === 'X' ? KOD_RENKLER.X : '' as const
+                        const hucreKey = `${p.sicil_no}:${iso}`
+                        const izinHucre = Boolean(izinKodHucre)
+                        const araziXIsareti =
+                          (kod === 'X' || (marked.has(hucreKey) && !hafSonu && !tatil && !izinHucre))
+                        const renk =
+                          hafSonu
+                            ? KOD_RENKLER.HT
+                            : tatil
+                              ? KOD_RENKLER.B
+                              : izinHucre
+                                ? KOD_RENKLER.YESIL
+                                : araziXIsareti
+                                  ? KOD_RENKLER.X
+                                  : kod !== ''
+                                    ? KOD_RENKLER.YESIL
+                                    : ''
 
                         const gecerliGun = new Date(ay.yil, ay.ay, gun).getDate() === gun && new Date(ay.yil, ay.ay, gun).getMonth() === ay.ay
                         const donemde = gecerliGun && donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi)
 
-                        const normalModTiklanabilir = !gunleriIsaretleModu && !readonly && !hafSonu && !tatil && !(maxDoldu && kod !== 'X')
+                        const izinSpanCls =
+                          (izinKodHucre?.length ?? 0) > 2
+                            ? 'text-[7px] leading-[1.05] font-bold text-slate-900 px-0.5'
+                            : 'text-[10px] font-bold text-slate-900'
 
                         return (
                           <td key={`${p.sicil_no}-${ay.ayAdi}-${gun}`} className={`w-7 min-w-[28px] text-center py-0.5 border-r border-slate-100 ${renk}`}>
                             {!gecerliGun || !donemde ? '' :
                              hafSonu || tatil ? (
                               <span className={`text-[10px] font-bold ${kod === 'B' ? 'text-slate-900' : 'text-slate-600'}`}>{kod}</span>
+                            ) : izinKodHucre ? (
+                              <span className={izinSpanCls} title={`İzin: ${izinKodHucre}`}>{izinKodHucre}</span>
                             ) : gunleriIsaretleModu ? (
                               bosHucre ? (
                                 <button
@@ -417,9 +426,9 @@ export default function AraziPuantajClient({
                                   onClick={e => {
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    const iso = (e.currentTarget as HTMLButtonElement).dataset.iso
+                                    const isoEl = (e.currentTarget as HTMLButtonElement).dataset.iso
                                     const sicil = (e.currentTarget as HTMLButtonElement).dataset.sicil
-                                    if (iso && sicil) handleToggle(sicil, iso)
+                                    if (isoEl && sicil) handleToggle(sicil, isoEl)
                                   }}
                                   disabled={readonly || maxDoldu}
                                   className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${
@@ -434,30 +443,17 @@ export default function AraziPuantajClient({
                                   <span className="text-[10px] font-bold">+</span>
                                 </button>
                               ) : (
-                                <span className="text-[10px] font-bold text-teal-600">X</span>
+                                <span className="text-[10px] font-bold text-slate-900">X</span>
                               )
                             ) : (
-                              <button
-                                type="button"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  const iso = (e.currentTarget as HTMLButtonElement).dataset.iso
-                                  const sicil = (e.currentTarget as HTMLButtonElement).dataset.sicil
-                                  if (iso && sicil) handleToggle(sicil, iso)
-                                }}
-                                disabled={!normalModTiklanabilir}
-                                data-sicil={p.sicil_no}
-                                data-iso={iso}
-                                data-gun={gun}
-                                title={maxDoldu && kod !== 'X' ? `Max ${MAX_ARAZI_GUN} gün doldu` : `${gun}. gün`}
-                                className={`w-5 h-5 rounded text-[10px] font-bold transition-all ${
-                                  yukleniyor ? 'bg-slate-100 text-slate-400 animate-pulse' :
-                                  kod === 'X' ? 'bg-teal-500 text-white hover:bg-teal-600' :
-                                  !normalModTiklanabilir ? 'text-slate-200 cursor-not-allowed' :
-                                  'hover:bg-teal-100 text-slate-300 hover:text-teal-600'
-                                }`}>
+                              <span
+                                className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold select-none ${
+                                  kod === 'X' ? 'text-slate-900' : 'text-slate-300'
+                                }`}
+                                title={kod === 'X' ? 'Arazi işareti — düzenlemek için Günleri İşaretle’yi açın' : `${gun}. gün`}
+                              >
                                 {kod === 'X' ? 'X' : '·'}
-                              </button>
+                              </span>
                             )}
                           </td>
                         )
@@ -485,22 +481,29 @@ export default function AraziPuantajClient({
             </table>
           </div>
 
-          <div className="px-4 py-3 border-t border-slate-100 flex flex-wrap gap-4 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.X}`}>X</span>
-              İşaretli gün
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.HT}`}>HT</span>
-              Hafta Tatili
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.B}`}>B</span>
-              Bayram/Tatil
-            </span>
-            <span className="ml-auto text-slate-400">
-              Maks. işaretlenebilir gün: <strong className="text-slate-600">{MAX_ARAZI_GUN}</strong>
-            </span>
+          <div className="px-4 py-3 border-t border-slate-100 space-y-2 text-xs text-slate-500">
+            <p className="leading-relaxed text-[11px]">{PUANTAJ_KOD_ACIKLAMA}</p>
+            <div className="flex flex-wrap gap-4 items-center">
+              <span className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.X}`}>X</span>
+                Arazi işareti (çalışılan gün)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[9px] font-bold ${KOD_RENKLER.YESIL}`}>S</span>
+                İzin türü kodu (iptal hariç; yeşil alan)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.HT}`}>HT</span>
+                Hafta tatili
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`w-5 h-5 rounded inline-flex items-center justify-center text-[10px] font-bold ${KOD_RENKLER.B}`}>B</span>
+                Bayram / resmi tatil
+              </span>
+              <span className="ml-auto text-slate-400">
+                Maks. işaretlenebilir gün: <strong className="text-slate-600">{MAX_ARAZI_GUN}</strong>
+              </span>
+            </div>
           </div>
         </div>
       )}

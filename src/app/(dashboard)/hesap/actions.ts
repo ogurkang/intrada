@@ -42,3 +42,24 @@ export async function tamamlaIlkKurulum(formData: FormData): Promise<{ hata?: st
   revalidatePath('/', 'layout')
   return {}
 }
+
+/** Giriş yapmış kullanıcı: yalnızca yeni şifre (ilk kurulumdaki kurallarla). */
+export async function sifreDegistir(formData: FormData): Promise<{ hata?: string; ok?: true }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum bulunamadı. Tekrar giriş yapın.' }
+
+  const sifre = yeniSifreNormalize(String(formData.get('sifre') ?? ''))
+  const sifreTekrar = yeniSifreNormalize(String(formData.get('sifre_tekrar') ?? ''))
+
+  if (!yeniSifreGecerliMi(sifre)) return { hata: yeniSifreHataMetni() }
+  if (sifre !== sifreTekrar) return { hata: 'Yeni şifre ile tekrarı eşleşmiyor.' }
+
+  const { error: authErr } = await supabase.auth.updateUser({ password: sifre })
+  if (authErr) return { hata: authErr.message }
+
+  revalidatePath('/', 'layout')
+  return { ok: true }
+}

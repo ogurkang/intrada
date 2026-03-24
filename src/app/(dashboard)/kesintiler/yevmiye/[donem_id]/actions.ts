@@ -165,8 +165,8 @@ export async function yevmiyePuantajYukle(
     .select('sicil_no, tur, ayrilis, baslama')
     .neq('durum', 'Taslak')
     .neq('durum', 'İptal Edildi')
-    .lte('baslama', bitis)
-    .gte('ayrilis', baslangic)
+    .lte('ayrilis', bitis)
+    .gt('baslama', baslangic)
 
   const izinHareketleri: { sicil: string; ayrilis: number; baslama: number; kod: string }[] = []
   ;(izinRaw ?? []).forEach(i => {
@@ -299,7 +299,7 @@ export async function yevmiyePuantajYukle(
             const tarihT = tarihParse(tarihStr)!.getTime()
             for (const ih of izinHareketleri) {
               if (ih.sicil !== sicilP) continue
-              if (tarihT >= ih.ayrilis && tarihT <= ih.baslama) {
+              if (tarihT >= ih.ayrilis && tarihT < ih.baslama) {
                 deger = ih.kod || 'S'
                 break
               }

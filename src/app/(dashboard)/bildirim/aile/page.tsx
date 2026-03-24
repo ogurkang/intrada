@@ -29,5 +29,11 @@ export default async function AilePage() {
   }))
     .sort((a, b) => String(a.sicil_no).localeCompare(String(b.sicil_no), undefined, { numeric: true }))
 
-  return <AileClient kayitlar={kayitlar} onSil={aileSil} />
+  return (
+    <AileClient
+      kayitlar={kayitlar}
+      onSil={aileSil}
+      kullaniciModu={access.mode === 'kullanici'}
+    />
+  )
 }

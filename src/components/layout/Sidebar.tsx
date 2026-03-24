@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
-import { sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
+import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 
 type MenuItem  = { href: string; label: string }
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
@@ -12,7 +12,7 @@ type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: bo
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   return [
   {
-    grup: 'Personel',
+    grup: 'Personel Yönetimi',
     icon: '👤',
     accordion: true,
     items: [
@@ -34,7 +34,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
-    grup: 'Bildirim',
+    grup: 'Bildirim Yönetimi',
     icon: '📋',
     accordion: true,
     items: [
@@ -45,7 +45,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
-    grup: 'Kesintiler',
+    grup: 'Kesintiler Yönetimi',
     icon: '✂️',
     accordion: true,
     items: [
@@ -60,7 +60,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
-    grup: 'Eğitim',
+    grup: 'Eğitim Yönetimi',
     icon: '🎓',
     accordion: true,
     items: [
@@ -69,13 +69,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
-    grup: 'Yetkilendirme',
-    icon: '🔐',
-    accordion: true,
-    items: [{ href: '/yetkilendirme', label: 'Genel Bakış' }],
-  },
-  {
-    grup: 'Tanımlar',
+    grup: 'Tanımlar Yönetimi',
     icon: '⚙️',
     accordion: true,
     items: [
@@ -88,6 +82,12 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/tatil',      label: 'Tatiller'      },
       { href: '/tanimlar/izin-kural', label: 'İzin Kuralları'},
     ],
+  },
+  {
+    grup: 'Yetkilendirme Yönetimi',
+    icon: '🔐',
+    accordion: true,
+    items: [{ href: '/yetkilendirme', label: 'Genel Bakış' }],
   },
   ]
 }
@@ -131,13 +131,18 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     return menuGroups
       .map(g => {
         if (!sidebarGrupGoster(g.grup, mode, menuIzinleri)) return null
-        if (g.grup !== 'Personel') return g
+        if (g.grup !== 'Personel Yönetimi') return g
+        /** Modül kapalıysa yalnızca kendi personel kartı */
+        if (mode === 'kullanici' && !menuModulAcik('personel', menuIzinleri)) {
+          const tek = { href: calisanlarHref, label: 'Personel Kartım' }
+          return { ...g, items: [tek] }
+        }
         const terfiAcik = sidebarTerfiGoster(mode, menuIzinleri)
         const items = terfiAcik ? g.items : g.items.filter(i => i.href !== terfiMenuHref)
         return items.length ? { ...g, items } : null
       })
       .filter((g): g is MenuGroup => g != null)
-  }, [menuGroups, mode, menuIzinleri, terfiMenuHref])
+  }, [menuGroups, mode, menuIzinleri, terfiMenuHref, calisanlarHref])
 
   // Her accordion'ın açık/kapalı durumu grubun adına göre tutulur
   const [aciklar, setAciklar] = useState<Record<string, boolean>>(() => {

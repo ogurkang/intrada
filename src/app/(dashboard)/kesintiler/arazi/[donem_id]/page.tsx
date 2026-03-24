@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import AraziPuantajClient, { type AraziPersonel, type AraziDonemBilgi } from '@/components/kesintiler/AraziPuantajClient'
-import { araziKayitToggle, araziKayitTopluKaydet } from './actions'
+import { araziKayitTopluKaydet } from './actions'
 import type { Tables } from '@/types/database'
+import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
+import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
 
 interface Props {
   params: Promise<{ donem_id: string }>
@@ -126,6 +128,33 @@ export default async function AraziPuantajPage({ params }: Props) {
     (kayitRaw ?? []).map(k => `${k.sicil_no}:${k.tarih}`)
   )
 
+  // İzin hareketleri: iptal hariç (Taslak dahil), tür kodu ile dönem içi günler
+  const sicilListArazi = personeller.map(p => p.sicil_no)
+  let izinKodlariBySicilGun: Record<string, Record<string, string>> = {}
+  if (sicilListArazi.length > 0) {
+    const { data: izinTurRaw } = await supabase
+      .from('tanim_izin_tur')
+      .select('tur_adi, kod')
+      .eq('durum', true)
+    const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
+
+    const { data: izinRaw } = await supabase
+      .from('izin_hareketleri')
+      .select('sicil_no, baslama, ayrilis, tur, durum')
+      .in('sicil_no', sicilListArazi)
+      .neq('durum', 'İptal Edildi')
+      /* Yarı açık [ayrilis, baslama): dönem ile kesişen kayıtlar */
+      .lte('ayrilis', donem.bitis_tarihi)
+      .gt('baslama', donem.baslangic_tarihi)
+
+    izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
+      izinRaw ?? [],
+      String(donem.baslangic_tarihi).slice(0, 10),
+      String(donem.bitis_tarihi).slice(0, 10),
+      turAdiToKod,
+    )
+  }
+
   // Müdürlük bazında tüm personel (Puantör/Birim Amiri/Müdür - asil+vekil, görev veya kadro müdürlüğü)
   const mudurluklerList =
     access.mode === 'kullanici' && mudurlukSecenekleri?.length
@@ -176,7 +205,8 @@ export default async function AraziPuantajPage({ params }: Props) {
       mudurlukPersonelMap={mudurlukPersonelMap}
       mudurlukSecenekleri={access.mode === 'kullanici' ? mudurlukSecenekleri : undefined}
       mudurlukSaltOkunur={access.mode === 'kullanici' ? mudurlukSaltOkunur : undefined}
-      onToggle={araziKayitToggle}
+      showAnaSayfaLink={access.mode === 'kullanici'}
+      izinKodlariBySicilGun={izinKodlariBySicilGun}
       onKaydetToplu={araziKayitTopluKaydet}
     />
   )

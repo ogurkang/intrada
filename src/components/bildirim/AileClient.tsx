@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 
 export interface Cocuk {
   ad_soyad:      string
@@ -28,9 +29,11 @@ export interface AileBilgisi {
 interface Props {
   kayitlar: AileBilgisi[]
   onSil:    (id: number) => Promise<{ hata?: string }>
+  /** Kullanıcı: tabloda sil yok */
+  kullaniciModu?: boolean
 }
 
-export default function AileClient({ kayitlar, onSil }: Props) {
+export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: Props) {
   const router = useRouter()
   const [arama, setArama] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -64,6 +67,7 @@ export default function AileClient({ kayitlar, onSil }: Props) {
           <p className="text-sm text-slate-500 mt-0.5">Medeni hal, eş ve çocuk bilgileri</p>
         </div>
         <div className="flex items-center gap-2">
+          {kullaniciModu && <DashboardAnaSayfaLink />}
           <button type="button" onClick={yeniSekmedeAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -90,12 +94,14 @@ export default function AileClient({ kayitlar, onSil }: Props) {
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Medeni Hal</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Eş Adı</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Çocuk</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+              {!kullaniciModu && (
+                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={kullaniciModu ? 6 : 7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {filtreli.map((k, idx) => (
               <tr
@@ -121,10 +127,12 @@ export default function AileClient({ kayitlar, onSil }: Props) {
                     {k.cocuklar_json?.length ?? 0}
                   </span>
                 </td>
+                {!kullaniciModu && (
                 <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                   <button type="button" onClick={() => handleSil(k.id)} disabled={isPending}
                     className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>

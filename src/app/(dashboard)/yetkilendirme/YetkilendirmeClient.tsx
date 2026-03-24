@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { appProfilGuncelle, appProfilOlustur, appProfilTopluAdmin } from './actions'
-import { MENU_YETKILENDIRME_MODULLERI, type MenuModulKey } from '@/lib/menu-yetki'
+import {
+  MENU_YETKILENDIRME_MODULLERI,
+  MENU_YETKILENDIRME_TABLO_MODULLERI,
+  type MenuModulKey,
+} from '@/lib/menu-yetki'
 import type { Json } from '@/types/database'
 
 export type YetkiSatir = {
@@ -33,7 +37,7 @@ function menuDbOku(p: YetkiSatir['profil']): Partial<Record<MenuModulKey, boolea
     return m
   }
   const raw = (p.menu_izinleri as Record<string, boolean> | null) ?? {}
-  for (const x of MENU_YETKILENDIRME_MODULLERI) {
+  for (const x of MENU_YETKILENDIRME_TABLO_MODULLERI) {
     if (raw[x.key] === true) m[x.key] = true
   }
   return m
@@ -59,11 +63,15 @@ function baslangicDraft(p: YetkiSatir['profil']): Draft {
   }
 }
 
+const SAYFA_BOYUTU = 10
+
 export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir[] }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [basari, setBasari] = useState<string | null>(null)
+  const [arama, setArama] = useState('')
+  const [sayfa, setSayfa] = useState(1)
 
   const veriImza = useMemo(
     () =>
@@ -95,6 +103,29 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       return o
     })
   }, [veriImza, satirlar])
+
+  const filtreliSatirlar = useMemo(() => {
+    const q = arama.trim().toLowerCase()
+    if (!q) return satirlar
+    return satirlar.filter(
+      s =>
+        s.sicil_no.toLowerCase().includes(q) ||
+        (s.ad_soyad ?? '').toLowerCase().includes(q) ||
+        (s.gorev_unvani ?? '').toLowerCase().includes(q) ||
+        (s.gorev_mudurlugu ?? '').toLowerCase().includes(q),
+    )
+  }, [satirlar, arama])
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtreliSatirlar.length / SAYFA_BOYUTU))
+  const sayfaSatirlari = useMemo(() => {
+    const s = Math.min(Math.max(1, sayfa), toplamSayfa)
+    const start = (s - 1) * SAYFA_BOYUTU
+    return filtreliSatirlar.slice(start, start + SAYFA_BOYUTU)
+  }, [filtreliSatirlar, sayfa, toplamSayfa])
+
+  useEffect(() => {
+    setSayfa(1)
+  }, [arama, veriImza])
 
   const [seciliProfilId, setSeciliProfilId] = useState<Set<string>>(new Set())
 
@@ -150,8 +181,8 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       const fd = new FormData()
       fd.set('profile_id', s.profil.id)
       fd.set('rol', d.rol)
-      if (d.rol === 'kullanici') {
-        for (const x of MENU_YETKILENDIRME_MODULLERI) {
+        if (d.rol === 'kullanici') {
+        for (const x of MENU_YETKILENDIRME_TABLO_MODULLERI) {
           if (d.menu[x.key] === true) fd.set(`menu_${x.key}`, 'on')
         }
       }
@@ -171,11 +202,11 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
     if (uuid) fd.set('auth_user_id', uuid)
     fd.set('sicil_no', s.sicil_no)
     fd.set('rol', d.rol)
-    if (d.rol === 'kullanici') {
-      for (const x of MENU_YETKILENDIRME_MODULLERI) {
-        if (d.menu[x.key] === true) fd.set(`menu_${x.key}`, 'on')
+        if (d.rol === 'kullanici') {
+        for (const x of MENU_YETKILENDIRME_TABLO_MODULLERI) {
+          if (d.menu[x.key] === true) fd.set(`menu_${x.key}`, 'on')
+        }
       }
-    }
     startTransition(async () => {
       const r = await appProfilOlustur(null, fd)
       if (r.hata) setHata(r.hata)
@@ -221,8 +252,9 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-600">
           Statüsü <strong>Memur</strong> olan aktif personel, <strong>Terfi Hareketleri</strong> listesiyle aynı
-          sırada (sicil no). Varsayılan: <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt
-          okunur işaretler).
+          sırada (sicil no). <strong>Terfi</strong> erişimi bu tabloda yok; personel yönetimi üzerinden
+          yönetilir. Varsayılan: <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur
+          işaretler).
         </p>
         <button
           type="button"
@@ -237,8 +269,21 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       {hata && <p className="mb-3 text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
       {basari && <p className="mb-3 text-sm text-green-800 bg-green-50 px-3 py-2 rounded-lg">{basari}</p>}
 
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+        <input
+          type="search"
+          value={arama}
+          onChange={e => setArama(e.target.value)}
+          placeholder="Sicil, ad soyad veya ünvan ara…"
+          className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+        />
+        <p className="text-xs text-slate-500 sm:ml-auto">
+          {filtreliSatirlar.length} kayıt · Sayfa {Math.min(sayfa, toplamSayfa)} / {toplamSayfa}
+        </p>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full shadow-sm">
-        <table className="text-xs min-w-[1100px] w-full">
+        <table className="text-xs min-w-[1000px] w-full">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="sticky left-0 z-10 bg-slate-50 w-10 px-1 py-2 text-center font-semibold text-slate-600 border-r border-slate-100">
@@ -252,7 +297,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
               <th className="text-center px-1 py-2 font-semibold text-slate-600 whitespace-nowrap border-r border-slate-100" colSpan={2}>
                 Rol
               </th>
-              {MENU_YETKILENDIRME_MODULLERI.map(m => (
+              {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
                 <th
                   key={m.key}
                   className="text-center px-1 py-2 font-semibold text-slate-600 whitespace-nowrap min-w-[3rem]"
@@ -275,14 +320,15 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
               <th colSpan={4} />
               <th className="text-center px-1 py-0.5 font-normal">Admin</th>
               <th className="text-center px-1 py-0.5 font-normal border-r border-slate-100">Kullanıcı</th>
-              {MENU_YETKILENDIRME_MODULLERI.map(m => (
+              {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
                 <th key={m.key} className="p-0" />
               ))}
               <th colSpan={2} />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {satirlar.map((s, i) => {
+            {sayfaSatirlari.map((s, ri) => {
+              const i = (Math.min(Math.max(1, sayfa), toplamSayfa) - 1) * SAYFA_BOYUTU + ri
               const d = draft[s.sicil_no] ?? baslangicDraft(s.profil)
               const adminMi = d.rol === 'admin'
               const menuSaltOkunur = adminMi
@@ -328,7 +374,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
                       name={`rol-${s.sicil_no}`}
                     />
                   </td>
-                  {MENU_YETKILENDIRME_MODULLERI.map(m => (
+                  {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
                     <td key={m.key} className="text-center px-0.5 py-1">
                       <input
                         type="checkbox"
@@ -370,6 +416,30 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
           </tbody>
         </table>
       </div>
+
+      {toplamSayfa > 1 && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={sayfa <= 1}
+            onClick={() => setSayfa(p => Math.max(1, p - 1))}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-40"
+          >
+            Önceki
+          </button>
+          <span className="text-sm text-slate-600">
+            {Math.min(sayfa, toplamSayfa)} / {toplamSayfa}
+          </span>
+          <button
+            type="button"
+            disabled={sayfa >= toplamSayfa}
+            onClick={() => setSayfa(p => Math.min(toplamSayfa, p + 1))}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-40"
+          >
+            Sonraki
+          </button>
+        </div>
+      )}
 
       <p className="mt-3 text-xs text-slate-500">
         Profilli satır: {profilliSayisi} / {satirlar.length}. Profil yoksa: Auth’ta hesap + personelde e-posta

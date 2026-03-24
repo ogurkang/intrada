@@ -3,14 +3,20 @@ import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, applyGridBordersRange, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
+import { buildTurAdiToKodMap, PUANTAJ_KOD_ACIKLAMA } from '@/lib/izin-puantaj-kodu'
+import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
 
 function tarih(t: string | null) {
   if (!t) return '—'
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
-function toISO(d: Date): string {
-  return d.toISOString().split('T')[0]
+/** Yerel takvim günü YYYY-MM-DD (toISOString UTC kayması yok; TR sunucu/istemci uyumu) */
+function tarihYerelISO(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const g = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${g}`
 }
 
 const AYLAR_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
@@ -41,15 +47,18 @@ function donemIcerisinde(dateStr: string, baslangic: string, bitis: string): boo
   return dateStr >= baslangic && dateStr <= bitis
 }
 
-// Kod renkleri: HT=Açık Gri, B=Açık Turuncu, Diğer (X vb.)=Açık Mavi
-const KOD_RENKLER: Record<string, string> = {
-  HT: 'E0E0E0',
-  B: 'FFE4CC',
-  X: 'CCE5FF',
-}
+// HT=Gri, B=Turuncu; diğer tüm kodlar (X, S, R, …) açık yeşil
+const RENK_HT = 'E0E0E0'
+const RENK_B = 'FFE4CC'
+const RENK_X = 'CCE5FF'
+const RENK_YESIL = 'E8F5E9'
 
 function kodRenk(kod: string): string | undefined {
-  return KOD_RENKLER[kod] ?? (kod ? KOD_RENKLER.X : undefined)
+  if (!kod) return undefined
+  if (kod === 'HT') return RENK_HT
+  if (kod === 'B') return RENK_B
+  if (kod === 'X') return RENK_X
+  return RENK_YESIL
 }
 
 export async function GET(request: NextRequest) {
@@ -157,7 +166,7 @@ export async function GET(request: NextRequest) {
       const d = new Date(t.tatil_baslangici)
       const son = new Date(t.tatil_bitisi)
       while (d <= son) {
-        tatilSet.add(toISO(d))
+        tatilSet.add(tarihYerelISO(d))
         d.setDate(d.getDate() + 1)
       }
     })
@@ -168,6 +177,29 @@ export async function GET(request: NextRequest) {
       .eq('donem_id', donemId)
 
     const markedSet = new Set<string>((kayitRaw ?? []).map(k => `${k.sicil_no}:${k.tarih}`))
+
+    const { data: izinTurRaw } = await supabase
+      .from('tanim_izin_tur')
+      .select('tur_adi, kod')
+      .eq('durum', true)
+    const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
+    const sicilExcel = personeller.map(p => p.sicil_no)
+    let izinKodlariBySicilGun: Record<string, Record<string, string>> = {}
+    if (sicilExcel.length > 0) {
+      const { data: izinRaw } = await supabase
+        .from('izin_hareketleri')
+        .select('sicil_no, baslama, ayrilis, tur, durum')
+        .in('sicil_no', sicilExcel)
+        .neq('durum', 'İptal Edildi')
+        .lte('ayrilis', donem.bitis_tarihi)
+        .gt('baslama', donem.baslangic_tarihi)
+      izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
+        izinRaw ?? [],
+        String(donem.baslangic_tarihi).slice(0, 10),
+        String(donem.bitis_tarihi).slice(0, 10),
+        turAdiToKod,
+      )
+    }
 
     const imzaSiciller = [puantorSicil, birimAmiriSicil, mudurSicil].filter(Boolean)
     let imzaAdMap: Record<string, string> = {}
@@ -197,6 +229,8 @@ export async function GET(request: NextRequest) {
     rows.push(mergeSatir('', colCount))
     mergeRows.push(rows.length - 1)
     rows.push(mergeSatir(`Dönem: ${tarih(donem.baslangic_tarihi)} - ${tarih(donem.bitis_tarihi)}`, colCount, { gri: true }))
+    mergeRows.push(rows.length - 1)
+    rows.push(mergeSatir(PUANTAJ_KOD_ACIKLAMA, colCount, { dolguYok: true }))
     mergeRows.push(rows.length - 1)
 
     const headerLabels = [
@@ -228,12 +262,14 @@ export async function GET(request: NextRequest) {
     function gunKoduGetir(sicil_no: string, yil: number, ay: number, gun: number): string {
       const d = new Date(yil, ay, gun)
       if (d.getDate() !== gun || d.getMonth() !== ay) return ''
-      const iso = toISO(d)
+      const iso = tarihYerelISO(d)
       if (!donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi)) return ''
       const hGunu = d.getDay()
       const hafSonu = hGunu === 0 || hGunu === 6
       if (hafSonu) return 'HT'
       if (tatilSet.has(iso)) return 'B'
+      const izinKod = izinKodlariBySicilGun[sicil_no]?.[iso]
+      if (izinKod) return izinKod
       return markedSet.has(`${sicil_no}:${iso}`) ? 'X' : ''
     }
 
@@ -242,7 +278,7 @@ export async function GET(request: NextRequest) {
       for (let g = 1; g <= 31; g++) {
         const d = new Date(ay.yil, ay.ay, g)
         if (d.getDate() !== g || d.getMonth() !== ay.ay) continue
-        const iso = toISO(d)
+        const iso = tarihYerelISO(d)
         if (donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi) && markedSet.has(`${sicil_no}:${iso}`))
           say++
       }
@@ -255,7 +291,7 @@ export async function GET(request: NextRequest) {
         for (let g = 1; g <= 31; g++) {
           const d = new Date(ay.yil, ay.ay, g)
           if (d.getDate() !== g || d.getMonth() !== ay.ay) continue
-          const iso = toISO(d)
+          const iso = tarihYerelISO(d)
           if (donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi) && markedSet.has(`${sicil_no}:${iso}`))
             say++
         }
@@ -325,9 +361,6 @@ export async function GET(request: NextRequest) {
     })
 
     const lastDataRow = rows.length - 1
-    const LEGEND = 'HT=Hafta tatili, B=Bayram, R=Rapor, RR=Refakatçı Raporu, HR=Heyet Raporu, Öİ=Ölüm İzni, Eİ=Evlilik İzni, Bİ=Babalık İzni, MEİ=Mehil İzni, Mİ=Mazeret İzni, İİ=İdari İzin, DÖÇ=Doğum Öncesi Çalışamaz, DSÇ=Doğum Sonrası Çalışamaz'
-    rows.push(mergeSatir(LEGEND, colCount))
-    mergeRows.push(rows.length - 1)
     for (let i = 0; i < 8; i++) {
       rows.push(mergeSatir('', colCount))
       mergeRows.push(rows.length - 1)

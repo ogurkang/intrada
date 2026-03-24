@@ -17,13 +17,12 @@ export default async function DashboardPage() {
   if (user) {
     const access = await getAppAccess(supabase, user.id)
     if (access.mode === 'kullanici') {
-      const [{ data: cal }, { data: prof }] = await Promise.all([
-        supabase.from('calisan').select('ad_soyad').eq('sicil_no', access.sicilNo).maybeSingle(),
-        supabase.from('app_profiles').select('kullanici_adi').eq('id', user.id).maybeSingle(),
-      ])
-      const adSoyad = (cal?.ad_soyad ?? '').trim() || access.sicilNo
-      const kullaniciAdi = prof?.kullanici_adi ? String(prof.kullanici_adi).trim() : null
-      return <KullaniciAnaSayfa adSoyad={adSoyad} kullaniciAdi={kullaniciAdi || null} />
+      return (
+        <KullaniciAnaSayfa
+          sicilNo={access.sicilNo}
+          menuIzinleri={access.menuIzinleri}
+        />
+      )
     }
   }
 

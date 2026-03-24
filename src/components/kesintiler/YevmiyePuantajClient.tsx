@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import type {
   YevmiyePuantajYukleResult,
   YevmiyeMudurlukData,
@@ -9,15 +10,16 @@ import type {
   YevmiyeGun,
 } from '@/app/(dashboard)/kesintiler/yevmiye/[donem_id]/actions'
 import { yevmiyePuantajKaydet } from '@/app/(dashboard)/kesintiler/yevmiye/[donem_id]/actions'
-
-const LEGEND = 'X=Çalıştı, S=Yıllık izin, HT=Hafta tatili, B=Bayram, RT=Resmi Tatil, R=Rapor, RR=Refakatçı Raporu, HR=Heyet Raporu, Öİ=Ölüm İzni, Eİ=Evlilik İzni, Bİ=Babalık İzni, MEİ=Mehil İzni, Mİ=Mazeret İzni, İİ=İdari İzin, DÖÇ=Doğum Öncesi Çalışamaz, DSÇ=Doğum Sonrası Çalışamaz'
+import { PUANTAJ_KOD_ACIKLAMA } from '@/lib/puantaj-kod-aciklama'
 
 interface Props {
   data: YevmiyePuantajYukleResult
   donemId: number
+  /** Kullanıcı rolü: üstte Ana sayfa linki */
+  showAnaSayfaLink?: boolean
 }
 
-export default function YevmiyePuantajClient({ data, donemId }: Props) {
+export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink = false }: Props) {
   const { donem, mudurlukler, statuSekmeleri, kayitOzeti, mudurlukPersonelMap, mudurlukSaltOkunur } = data
   const ilkMud = statuSekmeleri.find(s => s.statu === 'Sözleşmeli')?.mudurlukler[0]?.mudurlukAdi ?? mudurlukler[0] ?? ''
   const [seciliMudurluk, setSeciliMudurluk] = useState<string>(ilkMud)
@@ -126,21 +128,24 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Header - Aylık yemek referansı */}
+      <div className="flex justify-end gap-2">
+        <Link
+          href="/kesintiler/yevmiye"
+          className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 7-7" />
+          </svg>
+          Geri
+        </Link>
+        {showAnaSayfaLink && <DashboardAnaSayfaLink />}
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-800">
           {donem.donem_adi ?? `${donem.baslangic_tarihi?.slice(0, 7) ?? ''} Dönemi`}
         </h1>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/kesintiler/yevmiye"
-            className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 7-7" />
-            </svg>
-            Geri
-          </Link>
           {seciliStatu === 'İşçi' && (
             <button
               type="button"
@@ -185,7 +190,7 @@ export default function YevmiyePuantajClient({ data, donemId }: Props) {
         <p>
           <span className="font-medium">Dönem:</span> {tarihFormat(donem.baslangic_tarihi)} – {tarihFormat(donem.bitis_tarihi)}
         </p>
-        <p className="text-slate-500 text-xs">{LEGEND}</p>
+        <p className="text-slate-500 text-xs">{PUANTAJ_KOD_ACIKLAMA}</p>
         <p>
           <span className="font-medium">Kayıt:</span> {kayitOzeti}
         </p>

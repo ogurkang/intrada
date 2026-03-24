@@ -39,6 +39,9 @@ export const MENU_MODUL_TANIMLARI: {
 /** Yetkilendirme ekranı tablosunda gösterilen sütunlar (link yok) */
 export const MENU_YETKILENDIRME_MODULLERI = MENU_MODUL_TANIMLARI.filter(m => m.key !== 'link')
 
+/** Yetkilendirme tablosu: Terfi personel yönetiminde; bu ekranda sütun yok (kayıtta `terfi` korunur). */
+export const MENU_YETKILENDIRME_TABLO_MODULLERI = MENU_YETKILENDIRME_MODULLERI.filter(m => m.key !== 'terfi')
+
 export const MENU_FORM_MODULLERI = MENU_MODUL_TANIMLARI
 
 /** Sadece açıkça `true` ise erişim */
@@ -80,12 +83,15 @@ export function kullaniciPathAllowed(
   // İlk kurulum: modül seçimi olmadan da tamamlanabilmeli (PermissionGate ile çakışmasın)
   if (path === '/hesap/ilk-kurulum' || path.startsWith('/hesap/ilk-kurulum/')) return true
 
+  // Giriş yapmış herkes (kullanıcı / yönetici) kendi şifresini güncelleyebilir
+  if (path === '/hesap/sifre' || path.startsWith('/hesap/sifre/')) return true
+
   const sn = sicilNo.trim()
   const t = (terfiMenuHref || '/terfi').trim()
 
-  // —— Personel: yalnızca kendi sicil kartı (düzenle yok); UUID segmenti sunucuda kendi siciline indirgenir
+  // —— Personel: kendi kartı her kullanıcıda açık (modül kutusu kapalı olsa da)
   if (path === `/personel/${sn}`) {
-    return menuModulAcik('personel', menuIzinleri)
+    return true
   }
   const mUuid = /^\/personel\/([^/]+)(?:\/(.*))?$/.exec(path)
   if (mUuid?.[1] && /^[0-9a-f-]{36}$/i.test(mUuid[1])) {
@@ -100,7 +106,16 @@ export function kullaniciPathAllowed(
   ) {
     return false
   }
-  if (path === t || path.startsWith(`${t}/`)) return false
+  /** Kullanıcı rolü: Terfi, eğitim ve yetkilendirme ekranları kapalı (yönetici işlemleri). */
+  if (path === t || path.startsWith(`${t}/`)) {
+    return false
+  }
+  if (path.startsWith('/egitim')) {
+    return false
+  }
+  if (path.startsWith('/yetkilendirme')) {
+    return false
+  }
 
   // İzin: tamamen kapalı
   if (path.startsWith('/izin')) return false
@@ -120,11 +135,9 @@ export function kullaniciPathAllowed(
     return false
   }
 
-  if (path.startsWith('/egitim')) return false
-  if (path.startsWith('/yetkilendirme')) return false
-
+  /** Kullanıcı rolü: tanımlar ekranları kapalı */
   if (path.startsWith('/tanimlar')) {
-    return menuModulAcik('tanimlar', menuIzinleri)
+    return false
   }
 
   if (path.startsWith('/link')) return false
@@ -138,15 +151,26 @@ export function sidebarGrupGoster(
   menuIzinleri: Record<string, boolean | undefined>,
 ): boolean {
   if (accessMode === 'full' || accessMode === 'admin') return true
+  /** Kullanıcıda «Personel Kartım» her zaman menüde (tek link veya tam grup). */
+  if (accessMode === 'kullanici' && grupEtiket === 'Personel Yönetimi') return true
+  /** Kullanıcı: eğitim / yetkilendirme / tanımlar sol menüde yok */
+  if (
+    accessMode === 'kullanici' &&
+    (grupEtiket === 'Eğitim Yönetimi' ||
+      grupEtiket === 'Yetkilendirme Yönetimi' ||
+      grupEtiket === 'Tanımlar Yönetimi')
+  ) {
+    return false
+  }
 
   const map: Record<string, MenuModulKey> = {
-    Personel: 'personel',
+    'Personel Yönetimi': 'personel',
     'İzin Yönetimi': 'izin',
-    Bildirim: 'bildirim',
-    Kesintiler: 'kesintiler',
-    Eğitim: 'egitim',
-    Yetkilendirme: 'yetkilendirme',
-    Tanımlar: 'tanimlar',
+    'Bildirim Yönetimi': 'bildirim',
+    'Kesintiler Yönetimi': 'kesintiler',
+    'Eğitim Yönetimi': 'egitim',
+    'Yetkilendirme Yönetimi': 'yetkilendirme',
+    'Tanımlar Yönetimi': 'tanimlar',
   }
   const key = map[grupEtiket]
   if (!key) return true
@@ -158,5 +182,7 @@ export function sidebarTerfiGoster(
   menuIzinleri: Record<string, boolean | undefined>,
 ): boolean {
   if (accessMode === 'full' || accessMode === 'admin') return true
+  /** Kullanıcı rolü: Terfi menüde gösterilmez */
+  if (accessMode === 'kullanici') return false
   return menuModulAcik('terfi', menuIzinleri)
 }

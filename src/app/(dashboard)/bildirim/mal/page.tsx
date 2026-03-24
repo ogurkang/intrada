@@ -27,5 +27,11 @@ export default async function MalPage() {
     kayit_zamani: r.kayit_zamani,
   }))
 
-  return <MalClient kayitlar={kayitlar} onSil={malBildirimSil} />
+  return (
+    <MalClient
+      kayitlar={kayitlar}
+      onSil={malBildirimSil}
+      kullaniciModu={access.mode === 'kullanici'}
+    />
+  )
 }

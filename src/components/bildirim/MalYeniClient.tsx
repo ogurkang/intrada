@@ -8,9 +8,17 @@ export type { KimlikFormSatir, TasinmazFormSatir, KooperatifFormSatir, TasitForm
 interface Props {
   memurlar: PersonelSecenek[]
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
+  kullaniciKendiSicil?: string
 }
 
 /** Yeni mal bildirimi — tam form; düzenleme için `MalBildirimFormClient` `mode="edit"` kullanılır. */
-export default function MalYeniClient({ memurlar, onKaydet }: Props) {
-  return <MalBildirimFormClient mode="create" memurlar={memurlar} onKaydet={onKaydet} />
+export default function MalYeniClient({ memurlar, onKaydet, kullaniciKendiSicil }: Props) {
+  return (
+    <MalBildirimFormClient
+      mode="create"
+      memurlar={memurlar}
+      onKaydet={onKaydet}
+      kullaniciKendiSicil={kullaniciKendiSicil}
+    />
+  )
 }

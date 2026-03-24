@@ -15,6 +15,8 @@ interface Props {
   onChange: (sicil_no: string) => void
   placeholder?: string
   required?: boolean
+  /** Seçim değiştirilemez (salt okunur gösterim) */
+  readOnly?: boolean
 }
 
 export default function PersonelAramaSecim({
@@ -23,6 +25,7 @@ export default function PersonelAramaSecim({
   onChange,
   placeholder = 'Sicil veya ad soyad ile ara…',
   required,
+  readOnly = false,
 }: Props) {
   const [acik, setAcik] = useState(false)
   const [q, setQ] = useState('')
@@ -32,6 +35,18 @@ export default function PersonelAramaSecim({
     () => personeller.find(p => p.sicil_no === value) ?? null,
     [personeller, value],
   )
+
+  if (readOnly && value) {
+    return (
+      <div
+        className="w-full min-h-[42px] px-3 flex items-center border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-800"
+        title="Personel seçimi salt okunur"
+      >
+        <span className="font-medium">{secili?.ad_soyad ?? '—'}</span>
+        <span className="text-slate-500 font-mono text-xs ml-2">({value})</span>
+      </div>
+    )
+  }
 
   const filtre = useMemo(() => {
     const t = q.trim().toLowerCase()
