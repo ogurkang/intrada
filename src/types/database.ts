@@ -720,7 +720,12 @@ export interface Database {
         Relationships: [{ foreignKeyName: "yevmiye_puantaj_kayit_donem_id_fkey"; columns: ["donem_id"]; isOneToOne: false; referencedRelation: "yevmiye_donem"; referencedColumns: ["id"] }]
       }
 
-    Functions:      { [_ in never]: never }
+    Functions: {
+      dogrula_sifre_sifirla_kimlik: {
+        Args: { p_email: string; p_sicil: string; p_tckn: string }
+        Returns: boolean
+      }
+    }
     Enums:          { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
   }

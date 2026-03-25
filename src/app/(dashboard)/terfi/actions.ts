@@ -84,6 +84,8 @@ export async function terfiSil(id: number, sicil_no: string): Promise<{ hata?: s
 }
 
 export interface TerfiSatir {
+  /** Mevcut terfi satırı varsa güncelleme; yoksa yeni insert. */
+  id?: number | null
   sicil_no:             string
   ad_soyad:             string | null
   gorev_ayligi_derece:  string | null
@@ -104,35 +106,57 @@ export interface TerfiSatir {
   sds_orani:            string | null
 }
 
+function terfiKatsayiPayload(s: TerfiSatir) {
+  return {
+    gorev_ayligi_derece: s.gorev_ayligi_derece,
+    gorev_ayligi_kademe: s.gorev_ayligi_kademe,
+    kha_derece: s.kha_derece,
+    kha_kademe: s.kha_kademe,
+    kha_tarihi: s.kha_tarihi,
+    ekea_derece: s.ekea_derece,
+    ekea_kademe: s.ekea_kademe,
+    ekea_tarihi: s.ekea_tarihi,
+    kidem_yili: s.kidem_yili,
+    kidem_tarihi: s.kidem_tarihi,
+    iyi_hal_terfi_tarihi: s.iyi_hal_terfi_tarihi,
+    ek_gosterge: s.ek_gosterge,
+    ek_odeme: s.ek_odeme,
+    oht: s.oht,
+    yan_odeme: s.yan_odeme,
+    sds_orani: s.sds_orani,
+    ad_soyad: s.ad_soyad,
+  }
+}
+
+/** Tabloda sicil_no UNIQUE değil; upsert(onConflict: sicil_no) Postgres hatası verir. Güncelleme id ile, yoksa insert. */
 export async function terfiTopluKaydet(
   satirlar: TerfiSatir[]
 ): Promise<{ hata?: string; kaydedilen?: number }> {
   if (!satirlar.length) return { kaydedilen: 0 }
   const supabase = await createClient()
-  const { error } = await supabase.from('terfi_hareketleri').upsert(
-    satirlar.map(s => ({
-      sicil_no:             s.sicil_no,
-      ad_soyad:             s.ad_soyad,
-      gorev_ayligi_derece:  s.gorev_ayligi_derece,
-      gorev_ayligi_kademe:  s.gorev_ayligi_kademe,
-      kha_derece:           s.kha_derece,
-      kha_kademe:           s.kha_kademe,
-      kha_tarihi:           s.kha_tarihi,
-      ekea_derece:          s.ekea_derece,
-      ekea_kademe:          s.ekea_kademe,
-      ekea_tarihi:          s.ekea_tarihi,
-      kidem_yili:           s.kidem_yili,
-      kidem_tarihi:         s.kidem_tarihi,
-      iyi_hal_terfi_tarihi: s.iyi_hal_terfi_tarihi,
-      ek_gosterge:          s.ek_gosterge,
-      ek_odeme:             s.ek_odeme,
-      oht:                  s.oht,
-      yan_odeme:            s.yan_odeme,
-      sds_orani:            s.sds_orani,
-    })),
-    { onConflict: 'sicil_no' }
-  )
-  if (error) return { hata: error.message }
+
+  for (const s of satirlar) {
+    const id = s.id != null && Number.isFinite(s.id) ? s.id : null
+    if (id != null) {
+      const { error } = await supabase.from('terfi_hareketleri').update(terfiKatsayiPayload(s)).eq('id', id)
+      if (error) return { hata: error.message }
+    } else {
+      const { error } = await supabase.from('terfi_hareketleri').insert({
+        sicil_no: s.sicil_no,
+        rol: null,
+        kadro_sira_no: null,
+        unvan: null,
+        mudurluk: null,
+        ...terfiKatsayiPayload(s),
+      })
+      if (error) return { hata: error.message }
+    }
+  }
+
   revalidateTerfiRoutes()
+  const siciller = [...new Set(satirlar.map(s => s.sicil_no))]
+  for (const sicil of siciller) {
+    await revalidatePersonelDetayPaths(sicil)
+  }
   return { kaydedilen: satirlar.length }
 }

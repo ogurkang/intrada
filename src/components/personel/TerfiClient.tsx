@@ -302,6 +302,7 @@ export default function TerfiClient({
         return key in lokal ? (lokal[key] || null) : fallback
       }
       return {
+        id:                   mevcut?.id,
         sicil_no:             m.sicil_no,
         ad_soyad:             m.ad_soyad,
         gorev_ayligi_derece:  'dk_ga'   in lokal ? gaDer  : mevcut?.gorev_ayligi_derece ?? null,
