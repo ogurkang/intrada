@@ -12,11 +12,15 @@ type TH = Tables<'terfi_hareketleri'>
 interface Calisan { sicil_no: string; ad_soyad: string; unvan: string | null; mudurluk: string | null }
 
 interface MemurSatir {
+  liste_satir_id: string
   sicil_no: string
   ad_soyad: string
   gorev_unvani: string | null
   gorev_mudurlugu: string | null
   terfi: TH | null
+  ogrenim_turu?: string | null
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  kadro_derecesi?: string | null
 }
 
 interface Props {
@@ -105,6 +109,9 @@ export default function TerfiClient({
   sabitSicil,
 }: Props) {
   const router = useRouter()
+  const showMemurMeta = !sabitSicil && Array.isArray(memurlar) && memurlar.length > 0
+  const listeKolonSayisi =
+    (sabitSicil ? 0 : 3 + (showMemurMeta ? 2 : 0)) + 11 + 1
   const [sekme, setSekme]            = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama]            = useState('')
   const [formAcik, setFormAcik]      = useState(false)
@@ -151,17 +158,45 @@ export default function TerfiClient({
     )
   }, [kayitlar, arama, sabitSicil])
 
-  type ListRow = { sicil_no: string; ad_soyad: string; terfi: TH | null }
+  type ListRow = {
+    liste_satir_id: string
+    sicil_no: string
+    ad_soyad: string
+    terfi: TH | null
+    ogrenim_turu?: string | null
+    kadro_rolu?: 'Asil' | 'Vekil' | null
+    kadro_derecesi?: string | null
+  }
   const listRows = useMemo((): ListRow[] => {
-    if (sabitSicil) return filtreli.map(r => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? '', terfi: r }))
+    if (sabitSicil) {
+      return filtreli.map(r => ({
+        liste_satir_id: `terfi-${r.id}`,
+        sicil_no: r.sicil_no,
+        ad_soyad: r.ad_soyad ?? '',
+        terfi: r,
+      }))
+    }
     if (memurlar?.length) {
       const q = arama.toLowerCase()
       const arr = !q ? memurlar : memurlar.filter(m =>
         (m.ad_soyad ?? '').toLowerCase().includes(q) || m.sicil_no.toLowerCase().includes(q)
       )
-      return arr.map(m => ({ sicil_no: m.sicil_no, ad_soyad: m.ad_soyad ?? '', terfi: m.terfi }))
+      return arr.map(m => ({
+        liste_satir_id: m.liste_satir_id,
+        sicil_no: m.sicil_no,
+        ad_soyad: m.ad_soyad ?? '',
+        terfi: m.terfi,
+        ogrenim_turu: m.ogrenim_turu ?? null,
+        kadro_rolu: m.kadro_rolu ?? null,
+        kadro_derecesi: m.kadro_derecesi ?? null,
+      }))
     }
-    return filtreli.map(r => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? '', terfi: r }))
+    return filtreli.map(r => ({
+      liste_satir_id: `terfi-${r.id}`,
+      sicil_no: r.sicil_no,
+      ad_soyad: r.ad_soyad ?? '',
+      terfi: r,
+    }))
   }, [sabitSicil, filtreli, memurlar, arama])
 
   function yeniAc()        { setSecili(null); setHata(null); setFormAcik(true) }
@@ -169,8 +204,8 @@ export default function TerfiClient({
   const [yeniAdSoyad, setYeniAdSoyad] = useState('')
   function duzenleAc(r: TH | null, row?: ListRow, idx?: number) {
     if (r && row) {
-      setDuzenlenenRowKey(`row-${r.id}`)
-      setInlineVeri({ [`row-${r.id}`]: {
+      setDuzenlenenRowKey(row.liste_satir_id)
+      setInlineVeri({ [row.liste_satir_id]: {
         gorev_ayligi_derece: r.gorev_ayligi_derece ?? '',
         gorev_ayligi_kademe: r.gorev_ayligi_kademe ?? '',
         kha_derece: r.kha_derece ?? '',
@@ -192,7 +227,7 @@ export default function TerfiClient({
       return
     }
     if (row && typeof idx === 'number' && !r) {
-      const key = `sicil-${row.sicil_no}-${idx}`
+      const key = row.liste_satir_id
       setDuzenlenenRowKey(key)
       setInlineVeri({ [key]: {
         gorev_ayligi_derece: '', gorev_ayligi_kademe: '',
@@ -213,7 +248,7 @@ export default function TerfiClient({
   async function handleInlineKaydet(row: ListRow) {
     const r = row.terfi
     if (r?.id) {
-      const v = inlineVeri[`row-${r.id}`] ?? {}
+      const v = inlineVeri[row.liste_satir_id] ?? {}
       const fd = new FormData()
       fd.set('sicil_no', row.sicil_no)
       Object.entries(v).forEach(([k, val]) => fd.set(k, val))
@@ -225,7 +260,7 @@ export default function TerfiClient({
       })
       return
     }
-    const rowKey = duzenlenenRowKey?.startsWith('sicil-') ? duzenlenenRowKey : `sicil-${row.sicil_no}-0`
+    const rowKey = row.liste_satir_id
     const v = inlineVeri[rowKey] ?? {}
     const fd = new FormData()
     fd.set('sicil_no', row.sicil_no)
@@ -239,10 +274,9 @@ export default function TerfiClient({
     })
   }
 
-  function inlineDeger(row: ListRow, key: string, rowKey?: string): string {
+  function inlineDeger(row: ListRow, key: string): string {
     const r = row.terfi
-    const keyToUse = r?.id ? `row-${r.id}` : rowKey
-    if (!keyToUse) return ''
+    const keyToUse = row.liste_satir_id
     const v = inlineVeri[keyToUse]
     if (v && key in v) return v[key] ?? ''
     if (!r) return ''
@@ -251,10 +285,8 @@ export default function TerfiClient({
     return (val as string) ?? ''
   }
 
-  function inlineGuncelle(row: ListRow, key: string, deger: string, rowKey?: string) {
-    const r = row.terfi
-    const keyToUse = r?.id ? `row-${r.id}` : rowKey
-    if (!keyToUse) return
+  function inlineGuncelle(row: ListRow, key: string, deger: string) {
+    const keyToUse = row.liste_satir_id
     setInlineVeri(prev => ({
       ...prev,
       [keyToUse]: { ...(prev[keyToUse] ?? {}), [key]: deger },
@@ -370,8 +402,8 @@ export default function TerfiClient({
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-slate-600">
-              Statüsü <strong>Memur</strong> olan <strong>{memurlar.length}</strong> personelin katsayı bilgileri.
-              Değiştirdiğiniz satırlar mavi ile işaretlenir.
+              Statüsü <strong>Memur</strong> olan personel için <strong>{memurlar.length}</strong> liste satırı (asil/vekil ayrı satır).
+              Değiştirdiğiniz siciller mavi ile işaretlenir.
             </p>
             <button onClick={handleTopluKaydet} disabled={isPending}
               className="flex items-center gap-2 bg-green-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 font-medium">
@@ -381,14 +413,27 @@ export default function TerfiClient({
           {topluHata && <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{topluHata}</p>}
           {topluBasari && <p className="mb-3 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">{topluBasari}</p>}
           <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full">
-            <table className="text-xs min-w-[900px]">
+            <table className="text-[10px] sm:text-xs min-w-[720px] w-full">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="sticky left-0 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 w-10 z-10">#</th>
-                  <th className="sticky left-10 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 w-24 z-10">Sicil</th>
-                  <th className="sticky left-34 bg-slate-50 text-left px-3 py-3 font-semibold text-slate-600 min-w-44 z-10">Ad Soyad</th>
+                  <th className="sticky left-0 bg-slate-50 text-center px-1 py-2 font-semibold text-slate-600 w-8 z-10">
+                    <span className="block leading-tight text-[9px]">Sıra</span>
+                    <span className="block leading-tight text-[9px]">No</span>
+                  </th>
+                  <th className="sticky left-8 bg-slate-50 text-left px-1 py-2 font-semibold text-slate-600 w-[3.25rem] z-10">Sicil</th>
+                  <th className="sticky left-[4.75rem] bg-slate-50 text-left px-1 py-2 font-semibold text-slate-600 min-w-[7rem] max-w-[9rem] z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                    Adı Soyadı
+                  </th>
+                  <th className="text-center px-1 py-2 font-semibold text-slate-600 w-[3.5rem]">
+                    <span className="block leading-tight text-[9px]">Kadro</span>
+                    <span className="block leading-tight text-[9px]">Durumu</span>
+                  </th>
+                  <th className="text-center px-1 py-2 font-semibold text-slate-600 w-[3.5rem]">
+                    <span className="block leading-tight text-[9px]">Kadro</span>
+                    <span className="block leading-tight text-[9px]">Derecesi</span>
+                  </th>
                   {TOPLU_ALANLAR.map(a => (
-                    <th key={a.key} className="text-center px-2 py-3 font-semibold text-slate-600 whitespace-nowrap" style={{ minWidth: a.w }}>
+                    <th key={a.key} className="text-center px-0.5 py-2 font-semibold text-slate-600 whitespace-nowrap text-[9px] sm:text-[10px]" style={{ minWidth: Math.min(a.w, 72) }}>
                       {a.label}
                     </th>
                   ))}
@@ -397,13 +442,23 @@ export default function TerfiClient({
               <tbody className="divide-y divide-slate-100">
                 {memurlar.map((m, i) => {
                   const degisti = !!topluVeri[m.sicil_no] && Object.keys(topluVeri[m.sicil_no]).length > 0
+                  const ogTxt = m.ogrenim_turu?.trim()
                   return (
-                    <tr key={m.sicil_no + '-' + i} className={degisti ? 'bg-blue-50' : 'hover:bg-slate-50'}>
-                      <td className="sticky left-0 px-3 py-2 text-slate-400 bg-inherit z-10">{i + 1}</td>
-                      <td className="sticky left-10 px-3 py-2 font-mono text-slate-500 bg-inherit z-10">{m.sicil_no}</td>
-                      <td className="sticky left-34 px-3 py-2 font-medium text-slate-800 bg-inherit z-10 min-w-44">
-                        {m.ad_soyad}
-                        {m.gorev_unvani && <span className="block text-slate-400 font-normal">{m.gorev_unvani}</span>}
+                    <tr key={m.liste_satir_id} className={degisti ? 'bg-blue-50' : 'hover:bg-slate-50'}>
+                      <td className="sticky left-0 px-1 py-1.5 text-slate-400 bg-inherit z-10 text-center tabular-nums">{i + 1}</td>
+                      <td className="sticky left-8 px-1 py-1.5 font-mono text-slate-500 bg-inherit z-10 text-[10px]">{m.sicil_no}</td>
+                      <td className="sticky left-[4.75rem] px-1 py-1.5 font-medium text-slate-800 bg-inherit z-10 min-w-[7rem] max-w-[9rem] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
+                        <span className="block leading-snug">{m.ad_soyad}</span>
+                        <span className="block text-slate-600 font-medium text-[10px] mt-0.5 leading-snug">
+                          {ogTxt || '—'}
+                        </span>
+                        {m.gorev_unvani && <span className="block text-slate-400 font-normal text-[10px]">{m.gorev_unvani}</span>}
+                      </td>
+                      <td className="px-1 py-1.5 align-top text-slate-700 text-center text-[10px]">
+                        {m.kadro_rolu === 'Asil' || m.kadro_rolu === 'Vekil' ? m.kadro_rolu : '—'}
+                      </td>
+                      <td className="px-1 py-1.5 align-top text-slate-700 text-center tabular-nums text-[10px]">
+                        {m.kadro_derecesi?.trim() ? m.kadro_derecesi : '—'}
                       </td>
                       {TOPLU_ALANLAR.map(a => {
                         const isDk = 'tipo' in a && a.tipo === 'dk'
@@ -417,10 +472,10 @@ export default function TerfiClient({
                             <td key={a.key} className="px-1 py-1">
                               <div className="flex gap-0.5 justify-center items-center">
                                 <input type="text" value={der ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${e.target.value}/${kad ?? ''}`)}
-                                  className={`w-10 ${baseCls}`} placeholder="D" />
+                                  className={`w-8 min-w-0 ${baseCls}`} placeholder="D" />
                                 <span className="text-slate-400">/</span>
                                 <input type="text" value={kad ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${der ?? ''}/${e.target.value}`)}
-                                  className={`w-10 ${baseCls}`} placeholder="K" />
+                                  className={`w-8 min-w-0 ${baseCls}`} placeholder="K" />
                               </div>
                             </td>
                           )
@@ -462,162 +517,203 @@ export default function TerfiClient({
         <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full">
+        <table className="w-full min-w-0 table-auto text-[10px] sm:text-xs leading-tight">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              {!sabitSicil && <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>}
-              {!sabitSicil && <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil</th>}
-              {!sabitSicil && <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>}
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">G.A. D/K</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">KHA D/K</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">KHA Tarihi</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">EKEA D/K</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">EKEA Tarihi</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Kıdem Yılı</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Kıdem Tarihi</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">İyi Hal</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Ek Göst.</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Ek Öd.</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">ÖHT</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">Yan Öd.</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs">SDS</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
+              {!sabitSicil && (
+                <th className="text-center px-1 py-2 font-semibold text-slate-600 w-9">
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">Sıra</span>
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">No</span>
+                </th>
+              )}
+              {!sabitSicil && <th className="text-left px-1 py-2 font-semibold text-slate-600 w-[4.5rem]">Sicil</th>}
+              {!sabitSicil && (
+                <th className="text-left px-1 py-2 font-semibold text-slate-600 w-[7.5rem] sm:w-36">Adı Soyadı</th>
+              )}
+              {showMemurMeta && (
+                <th className="text-center px-1 py-2 font-semibold text-slate-600 w-[3.5rem] sm:w-16">
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">Kadro</span>
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">Durumu</span>
+                </th>
+              )}
+              {showMemurMeta && (
+                <th className="text-center px-1 py-2 font-semibold text-slate-600 w-[3.5rem] sm:w-16">
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">Kadro</span>
+                  <span className="block leading-tight text-[9px] sm:text-[10px]">Derecesi</span>
+                </th>
+              )}
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">G.A. D/K</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">KHA D/K</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">KHA T</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">EKEA D/K</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">EKEA T</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Kıd.Y</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Kıd.T</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">İ.H.</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Ek G.</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Ek Ö.</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">ÖHT</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Yan Ö.</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">SDS</th>
+              <th className="text-right px-1 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs w-14">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {listRows.length === 0 && (
-              <tr><td colSpan={sabitSicil ? 14 : 18} className="text-center py-10 text-slate-400">Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={listeKolonSayisi} className="text-center py-10 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {listRows.map((row, idx) => {
               const r = row.terfi
-              const rowKey = r?.id ? `row-${r.id}` : `sicil-${row.sicil_no}-${idx}`
+              const rowKey = row.liste_satir_id
               const duzenleniyor = duzenlenenRowKey === rowKey
+              const ogTxt = row.ogrenim_turu?.trim()
               return (
-                <tr key={rowKey} className={duzenleniyor ? 'bg-blue-50' : 'hover:bg-slate-50'} style={{ transition: 'background 0.2s' }}>
-                  {!sabitSicil && <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>}
-                  {!sabitSicil && <td className="px-4 py-3 font-mono text-slate-500">{row.sicil_no}</td>}
-                  {!sabitSicil && <td className="px-4 py-3 font-medium text-slate-800">{row.ad_soyad || '—'}</td>}
-                  <td className="px-2 py-2 text-center">
+                <tr key={row.liste_satir_id} className={duzenleniyor ? 'bg-blue-50' : 'hover:bg-slate-50'} style={{ transition: 'background 0.2s' }}>
+                  {!sabitSicil && <td className="px-1 py-1.5 text-center text-slate-400 tabular-nums">{idx + 1}</td>}
+                  {!sabitSicil && <td className="px-1 py-1.5 font-mono text-slate-500 text-[10px] sm:text-xs break-all">{row.sicil_no}</td>}
+                  {!sabitSicil && (
+                    <td className="px-1 py-1.5 align-top">
+                      <span className="font-medium text-slate-800 block leading-snug">{row.ad_soyad || '—'}</span>
+                      {showMemurMeta && (
+                        <span className="block text-[10px] sm:text-[11px] text-slate-600 font-medium mt-0.5 leading-snug">
+                          {ogTxt || '—'}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {showMemurMeta && (
+                    <td className="px-1 py-1.5 align-top text-slate-700 text-center">
+                      {row.kadro_rolu === 'Asil' || row.kadro_rolu === 'Vekil'
+                        ? row.kadro_rolu
+                        : '—'}
+                    </td>
+                  )}
+                  {showMemurMeta && (
+                    <td className="px-1 py-1.5 align-top text-slate-700 text-center tabular-nums">
+                      {row.kadro_derecesi?.trim() ? row.kadro_derecesi : '—'}
+                    </td>
+                  )}
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
                       <div className="flex gap-0.5 justify-center">
-                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_derece', rowKey)} onChange={e => inlineGuncelle(row, 'gorev_ayligi_derece', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" placeholder="D" />
+                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_derece')} onChange={e => inlineGuncelle(row, 'gorev_ayligi_derece', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" placeholder="D" />
                         <span className="text-slate-400">/</span>
-                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'gorev_ayligi_kademe', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" placeholder="K" />
+                        <input type="text" value={inlineDeger(row, 'gorev_ayligi_kademe')} onChange={e => inlineGuncelle(row, 'gorev_ayligi_kademe', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" placeholder="K" />
                       </div>
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.gorev_ayligi_derece ?? null)}/{fmt(r?.gorev_ayligi_kademe ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
                       <div className="flex gap-0.5 justify-center">
-                        <input type="text" value={inlineDeger(row, 'kha_derece', rowKey)} onChange={e => inlineGuncelle(row, 'kha_derece', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <input type="text" value={inlineDeger(row, 'kha_derece')} onChange={e => inlineGuncelle(row, 'kha_derece', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                         <span className="text-slate-400">/</span>
-                        <input type="text" value={inlineDeger(row, 'kha_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'kha_kademe', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <input type="text" value={inlineDeger(row, 'kha_kademe')} onChange={e => inlineGuncelle(row, 'kha_kademe', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                       </div>
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.kha_derece ?? null)}/{fmt(r?.kha_kademe ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="date" value={inlineDeger(row, 'kha_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'kha_tarihi', e.target.value, rowKey)}
+                      <input type="date" value={inlineDeger(row, 'kha_tarihi')} onChange={e => inlineGuncelle(row, 'kha_tarihi', e.target.value)}
                         className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
                     ) : (
                       <span className="text-slate-500">{r?.kha_tarihi ? new Date(r.kha_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
                       <div className="flex gap-0.5 justify-center">
-                        <input type="text" value={inlineDeger(row, 'ekea_derece', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_derece', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <input type="text" value={inlineDeger(row, 'ekea_derece')} onChange={e => inlineGuncelle(row, 'ekea_derece', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                         <span className="text-slate-400">/</span>
-                        <input type="text" value={inlineDeger(row, 'ekea_kademe', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_kademe', e.target.value, rowKey)}
-                          className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        <input type="text" value={inlineDeger(row, 'ekea_kademe')} onChange={e => inlineGuncelle(row, 'ekea_kademe', e.target.value)}
+                          className="w-8 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                       </div>
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.ekea_derece ?? null)}/{fmt(r?.ekea_kademe ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="date" value={inlineDeger(row, 'ekea_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'ekea_tarihi', e.target.value, rowKey)}
+                      <input type="date" value={inlineDeger(row, 'ekea_tarihi')} onChange={e => inlineGuncelle(row, 'ekea_tarihi', e.target.value)}
                         className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
                     ) : (
                       <span className="text-slate-500">{r?.ekea_tarihi ? new Date(r.ekea_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="text" value={inlineDeger(row, 'kidem_yili', rowKey)} onChange={e => inlineGuncelle(row, 'kidem_yili', e.target.value, rowKey)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      <input type="text" value={inlineDeger(row, 'kidem_yili')} onChange={e => inlineGuncelle(row, 'kidem_yili', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.kidem_yili ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="date" value={inlineDeger(row, 'kidem_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'kidem_tarihi', e.target.value, rowKey)}
+                      <input type="date" value={inlineDeger(row, 'kidem_tarihi')} onChange={e => inlineGuncelle(row, 'kidem_tarihi', e.target.value)}
                         className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
                     ) : (
                       <span className="text-slate-500">{r?.kidem_tarihi ? new Date(r.kidem_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="date" value={inlineDeger(row, 'iyi_hal_terfi_tarihi', rowKey)} onChange={e => inlineGuncelle(row, 'iyi_hal_terfi_tarihi', e.target.value, rowKey)}
+                      <input type="date" value={inlineDeger(row, 'iyi_hal_terfi_tarihi')} onChange={e => inlineGuncelle(row, 'iyi_hal_terfi_tarihi', e.target.value)}
                         className="w-24 px-1 py-0.5 border border-slate-300 rounded text-xs" />
                     ) : (
                       <span className="text-slate-500">{r?.iyi_hal_terfi_tarihi ? new Date(r.iyi_hal_terfi_tarihi).toLocaleDateString('tr-TR') : '—'}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="text" value={inlineDeger(row, 'ek_gosterge', rowKey)} onChange={e => inlineGuncelle(row, 'ek_gosterge', e.target.value, rowKey)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      <input type="text" value={inlineDeger(row, 'ek_gosterge')} onChange={e => inlineGuncelle(row, 'ek_gosterge', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.ek_gosterge ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="text" value={inlineDeger(row, 'ek_odeme', rowKey)} onChange={e => inlineGuncelle(row, 'ek_odeme', e.target.value, rowKey)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      <input type="text" value={inlineDeger(row, 'ek_odeme')} onChange={e => inlineGuncelle(row, 'ek_odeme', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.ek_odeme ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="text" value={inlineDeger(row, 'oht', rowKey)} onChange={e => inlineGuncelle(row, 'oht', e.target.value, rowKey)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      <input type="text" value={inlineDeger(row, 'oht')} onChange={e => inlineGuncelle(row, 'oht', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.oht ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
-                      <input type="text" value={inlineDeger(row, 'yan_odeme', rowKey)} onChange={e => inlineGuncelle(row, 'yan_odeme', e.target.value, rowKey)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                      <input type="text" value={inlineDeger(row, 'yan_odeme')} onChange={e => inlineGuncelle(row, 'yan_odeme', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.yan_odeme ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="px-0.5 py-1 text-center align-top">
                     {duzenleniyor ? (
                       <input type="text" value={inlineDeger(row, 'sds_orani')} onChange={e => inlineGuncelle(row, 'sds_orani', e.target.value)}
-                        className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs" />
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.sds_orani ?? null)}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-1 py-1 text-right align-top">
                     {duzenleniyor ? (
                       <button onClick={() => handleInlineKaydet(row)} disabled={isPending}
                         className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors disabled:opacity-50">

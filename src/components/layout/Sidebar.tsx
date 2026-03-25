@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 
-type MenuItem  = { href: string; label: string }
+type MenuItem  = { href: string; label: string; newTab?: boolean }
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
@@ -74,6 +74,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     accordion: true,
     items: [
       { href: '/tanimlar/ogrenim',    label: 'Öğrenim'       },
+      { href: '/tanimlar/gosterge',  label: 'Gösterge Tanımları' },
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/statu',      label: 'Statü'         },
@@ -211,6 +212,8 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
                         <Link
                           key={item.href}
                           href={item.href}
+                          target={item.newTab ? '_blank' : undefined}
+                          rel={item.newTab ? 'noopener noreferrer' : undefined}
                           onClick={onNavigate}
                           className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
                             aktif
@@ -240,6 +243,8 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
                   <Link
                     key={item.href}
                     href={item.href}
+                    target={item.newTab ? '_blank' : undefined}
+                    rel={item.newTab ? 'noopener noreferrer' : undefined}
                     onClick={onNavigate}
                     className={`flex items-center gap-3 px-6 py-2.5 text-sm transition-colors ${
                       aktif

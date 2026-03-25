@@ -259,7 +259,7 @@ export default function DashboardClient({
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500" title="Ayrılış / izin başlangıcı – işe başlama">
                         {tarihFormatla(iz.baslangic)} – {tarihFormatla(iz.bitis)}
                         {iz.gun_sayisi && <span className="ml-1 font-medium">({iz.gun_sayisi} gün)</span>}
                         {iz.olusturma_tarihi && (

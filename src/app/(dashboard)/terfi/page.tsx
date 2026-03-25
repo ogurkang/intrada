@@ -50,19 +50,97 @@ export default async function TerfiPage() {
     return k?.statu === 'Memur'
   })
 
-  const memurlar = [...memurSiciller]
-    .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
-    .map(sicil_no => {
-      const c = calisanMap.get(sicil_no)
-      const k = kadroMap.get(sicil_no)
-      return {
-        sicil_no,
-        ad_soyad:             c?.ad_soyad ?? k?.ad_soyad ?? sicil_no,
-        gorev_unvani:         k?.gorev_unvani ?? null,
-        gorev_mudurlugu:      k?.gorev_mudurlugu ?? null,
-        terfi:                terfiMap[sicil_no] ?? null,
+  const ogrenimTuruBySicil = new Map<string, string>()
+  const khRows: {
+    id: number
+    asil: string | null
+    vekil: string | null
+    kadro_derecesi: string | null
+  }[] = []
+
+  if (memurSiciller.length > 0) {
+    const [ogRes, khRes] = await Promise.all([
+      supabase
+        .from('calisan_ogrenim')
+        .select('sicil_no, ogrenim_turu, kayit_zamani')
+        .in('sicil_no', memurSiciller)
+        .eq('aktif', true)
+        .order('kayit_zamani', { ascending: false }),
+      supabase
+        .from('kadro_hareketleri')
+        .select('id, asil, vekil, kadro_derecesi')
+        .is('ayrilis_tarihi', null),
+    ])
+
+    const seenOg = new Set<string>()
+    for (const o of ogRes.data ?? []) {
+      if (seenOg.has(o.sicil_no)) continue
+      seenOg.add(o.sicil_no)
+      const t = (o.ogrenim_turu ?? '').trim()
+      if (t) ogrenimTuruBySicil.set(o.sicil_no, t)
+    }
+
+    for (const r of khRes.data ?? []) {
+      khRows.push({
+        id: r.id,
+        asil: r.asil,
+        vekil: r.vekil,
+        kadro_derecesi: r.kadro_derecesi,
+      })
+    }
+  }
+
+  type KadroRol = 'Asil' | 'Vekil'
+  const memurlar: {
+    liste_satir_id: string
+    sicil_no: string
+    ad_soyad: string
+    gorev_unvani: string | null
+    gorev_mudurlugu: string | null
+    terfi: Tables<'terfi_hareketleri'> | null
+    ogrenim_turu: string | null
+    kadro_rolu: KadroRol | null
+    kadro_derecesi: string | null
+  }[] = []
+
+  for (const sicil_no of [...memurSiciller].sort(
+    (a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)
+  )) {
+    const c = calisanMap.get(sicil_no)
+    const k = kadroMap.get(sicil_no)
+    const base = {
+      sicil_no,
+      ad_soyad: c?.ad_soyad ?? k?.ad_soyad ?? sicil_no,
+      gorev_unvani: k?.gorev_unvani ?? null,
+      gorev_mudurlugu: k?.gorev_mudurlugu ?? null,
+      terfi: terfiMap[sicil_no] ?? null,
+      ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
+    }
+
+    const hits: { khId: number; rol: KadroRol; kadro_derecesi: string | null }[] = []
+    for (const r of khRows) {
+      if (r.asil === sicil_no) hits.push({ khId: r.id, rol: 'Asil', kadro_derecesi: r.kadro_derecesi })
+      if (r.vekil === sicil_no) hits.push({ khId: r.id, rol: 'Vekil', kadro_derecesi: r.kadro_derecesi })
+    }
+
+    if (hits.length === 0) {
+      memurlar.push({
+        ...base,
+        liste_satir_id: `${sicil_no}-yok`,
+        kadro_rolu: null,
+        kadro_derecesi: null,
+      })
+    } else {
+      for (const h of hits) {
+        memurlar.push({
+          ...base,
+          liste_satir_id: `${sicil_no}-kh${h.khId}-${h.rol}`,
+          kadro_rolu: h.rol,
+          kadro_derecesi: h.kadro_derecesi,
+        })
       }
-    })
+    }
+  }
 
   return (
     <TerfiClient

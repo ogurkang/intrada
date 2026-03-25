@@ -22,6 +22,36 @@ export interface Database {
         Update: { id?: number; isim?: string; aktif?: boolean; created_at?: string }
         Relationships: []
       }
+      tanim_gosterge: {
+        Row: {
+          id: number
+          derece: number
+          kademe: number
+          gosterge: number
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          derece: number
+          kademe: number
+          gosterge: number
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          derece?: number
+          kademe?: number
+          gosterge?: number
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_unvan: {
         Row: {
           id: number; sira_no: number | null; unvan_kodu: string | null; unvan_adi: string

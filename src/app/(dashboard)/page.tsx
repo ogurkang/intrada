@@ -131,8 +131,9 @@ export default async function DashboardPage() {
     public_id:        publicIdMap[iz.sicil_no ?? ''],
     ad_soyad:         adMap[iz.sicil_no ?? ''] ?? iz.sicil_no ?? '',
     izin_turu:        iz.tur,
-    baslangic:        iz.baslama,
-    bitis:            iz.ayrilis,
+    /** Sol: ayrılış / izin başlangıcı (küçük tarih). Sağ: işe başlama (büyük tarih). */
+    baslangic:        iz.ayrilis,
+    bitis:            iz.baslama,
     gun_sayisi:       iz.gun,
     olusturma_tarihi: iz.kayit_tarihi,
   }))
