@@ -67,7 +67,7 @@ export default function IzinKuralClient({ data, statuler, onAdd, onUpdate, onTog
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Yıllık İzin Kural Tanımları</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Yıllık İzin Kuralları</h1>
           <p className="text-sm text-slate-500 mt-1">Bu kurallar yıllık izin türüne ait kurallardır. Hangi günlerin izin süresinden sayılacağını belirler.</p>
         </div>
         {!saltOkunur && (

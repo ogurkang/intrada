@@ -64,6 +64,22 @@ export default function IzinDuzenleClient({
     const fd = new FormData(e.currentTarget)
     fd.set('gun', String(gun))
     fd.set('bilgi', bilgi)
+    const aciklamaVal = String(fd.get('aciklama') ?? '').trim()
+    const durumVal = String(fd.get('durum') ?? '').trim() as Durum
+    const vekaletVal = String(fd.get('vekalet') ?? '').trim()
+    if (izin.durum === 'Onaylandı') {
+      const degisti =
+        tur !== (izin.tur ?? '') ||
+        ayrilis !== (izin.ayrilis ?? '') ||
+        baslama !== (izin.baslama ?? '') ||
+        gun !== (izin.gun ?? 0) ||
+        vekaletVal !== (izin.vekalet ?? '').trim() ||
+        durumVal !== izin.durum
+      if (degisti && !aciklamaVal) {
+        setHata('Onaylanmış izinde değişiklik için açıklama zorunludur.')
+        return
+      }
+    }
     startTransition(async () => {
       const res = await onGuncelle(izin.id, fd)
       if (res.hata) { setHata(res.hata); return }
@@ -83,9 +99,6 @@ export default function IzinDuzenleClient({
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-6">
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* İşlem Yapan - gizli */}
-        <input name="islem_yapan" type="hidden" value={izin.islem_yapan ?? ''} />
-
         {/* Satır 1: Personel, Vekalet */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

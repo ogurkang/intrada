@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import type { Tables } from '@/types/database'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 type YD = Tables<'yevmiye_donem'> & { puantaj_sayisi: number }
 
@@ -83,6 +85,7 @@ export default function YevmiyeDonemClient({
   onAc,
   saltOkunur = false,
 }: Props) {
+  const router = useRouter()
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
@@ -110,18 +113,36 @@ export default function YevmiyeDonemClient({
     startTransition(async () => {
       const res = seciliDonem ? await onGuncelle(seciliDonem.id, fd) : await onEkle(fd)
       if (res.hata) setSunuciHata(res.hata)
-      else kapat()
+      else {
+        kapat()
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
     })
   }
 
   function handleKapat(id: number) {
     if (!confirm('Bu dönem kapatılacak. Onaylıyor musunuz?')) return
-    startTransition(async () => { const res = await onKapat(id); if (res.hata) alert(res.hata) })
+    startTransition(async () => {
+      const res = await onKapat(id)
+      if (res.hata) alert(res.hata)
+      else {
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
+    })
   }
 
   function handleAc(id: number) {
     if (!confirm('Bu dönem tekrar açılacak. Onaylıyor musunuz?')) return
-    startTransition(async () => { const res = await onAc(id); if (res.hata) alert(res.hata) })
+    startTransition(async () => {
+      const res = await onAc(id)
+      if (res.hata) alert(res.hata)
+      else {
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
+    })
   }
 
   return (

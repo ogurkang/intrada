@@ -420,7 +420,29 @@ export default function AraziPuantajClient({
                             ) : izinKodHucre ? (
                               <span className={izinSpanCls} title={`İzin: ${izinKodHucre}`}>{izinKodHucre}</span>
                             ) : gunleriIsaretleModu ? (
-                              bosHucre ? (
+                              kod === 'X' ? (
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    const isoEl = (e.currentTarget as HTMLButtonElement).dataset.iso
+                                    const sicil = (e.currentTarget as HTMLButtonElement).dataset.sicil
+                                    if (isoEl && sicil) handleToggle(sicil, isoEl)
+                                  }}
+                                  disabled={readonly}
+                                  className={`inline-flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${
+                                    readonly
+                                      ? 'opacity-40 cursor-not-allowed border-slate-200 bg-slate-50'
+                                      : 'border-teal-500 bg-[#CCE5FF] hover:bg-red-100 hover:border-red-400 cursor-pointer text-slate-900'
+                                  }`}
+                                  data-sicil={p.sicil_no}
+                                  data-iso={iso}
+                                  title="Arazi işaretini kaldır"
+                                >
+                                  <span className="text-[10px] font-bold">X</span>
+                                </button>
+                              ) : bosHucre ? (
                                 <button
                                   type="button"
                                   onClick={e => {
@@ -443,7 +465,7 @@ export default function AraziPuantajClient({
                                   <span className="text-[10px] font-bold">+</span>
                                 </button>
                               ) : (
-                                <span className="text-[10px] font-bold text-slate-900">X</span>
+                                <span className="text-[10px] font-bold text-slate-900">·</span>
                               )
                             ) : (
                               <span

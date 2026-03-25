@@ -2,18 +2,19 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { kadroDurumuHesapla } from '@/lib/kadro-durum'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
   return v || null
 }
 
-type Durumu = 'Dolu' | 'Vekil' | 'Boş'
-
 export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> {
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const statu         = str(formData, 'statu')
-  const durumu        = (str(formData, 'durumu') ?? 'Dolu') as Durumu
+  const asil          = str(formData, 'asil') || null
+  const vekil         = str(formData, 'vekil') || null
+  const durumu        = kadroDurumuHesapla(asil, vekil)
 
   // Statüsü Memur, Sözleşmeli veya İşçi olanlarda kadro sıra no zorunlu
   const kadroNoZorunluStatuler = ['Memur', 'Sözleşmeli', 'İşçi']
@@ -32,8 +33,8 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
     gorev_unvani:         str(formData, 'gorev_unvani'),
     gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
-    asil:                 str(formData, 'asil') || null,
-    vekil:                str(formData, 'vekil') || null,
+    asil,
+    vekil,
     meslegi:              str(formData, 'meslegi'),
     memuriyet_tarihi:     str(formData, 'memuriyet_tarihi'),
     kuruma_giris_tarihi:  str(formData, 'kuruma_giris_tarihi'),
@@ -55,7 +56,9 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
 export async function kadroGuncelle(id: number, formData: FormData): Promise<{ hata?: string }> {
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const statu         = str(formData, 'statu')
-  const durumu        = (str(formData, 'durumu') ?? 'Dolu') as Durumu
+  const asil          = str(formData, 'asil') || null
+  const vekil         = str(formData, 'vekil') || null
+  const durumu        = kadroDurumuHesapla(asil, vekil)
 
   const kadroNoZorunluStatuler = ['Memur', 'Sözleşmeli', 'İşçi']
   if (statu && kadroNoZorunluStatuler.includes(statu) && !kadro_sira_no) {
@@ -73,8 +76,8 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
     gorev_unvani:         str(formData, 'gorev_unvani'),
     gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
-    asil:                 str(formData, 'asil') || null,
-    vekil:                str(formData, 'vekil') || null,
+    asil,
+    vekil,
     meslegi:              str(formData, 'meslegi'),
     memuriyet_tarihi:     str(formData, 'memuriyet_tarihi'),
     kuruma_giris_tarihi:  str(formData, 'kuruma_giris_tarihi'),

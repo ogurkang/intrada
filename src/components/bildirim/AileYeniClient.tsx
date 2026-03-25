@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import PersonelAramaSecim, { type PersonelAramaOge } from '@/components/bildirim/PersonelAramaSecim'
 import type { Cocuk } from '@/components/bildirim/AileClient'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 interface Props {
   personeller: { sicil_no: string; ad_soyad: string }[]
@@ -58,9 +59,10 @@ export default function AileYeniClient({ personeller, onKaydet, sicilSaltOkunur 
       const res = await onKaydet(fd)
       if (res.hata) setHata(res.hata)
       else {
+        broadcastIntradaRefresh('aile')
         try {
           if (window.opener && !window.opener.closed) {
-            window.opener.location.href = '/bildirim/aile'
+            window.opener.postMessage({ source: 'intrada-aile-yeni', type: 'refresh' }, window.location.origin)
           }
         } catch { /* ignore */ }
         window.close()

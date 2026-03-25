@@ -5,6 +5,11 @@ import { ogrenimEkle, ogrenimGuncelle, ogrenimSil } from './actions'
 export default async function OgrenimPage() {
   const supabase = await createClient()
 
+  const { data: personellerRaw } = await supabase
+    .from('calisan')
+    .select('sicil_no, ad_soyad')
+    .order('ad_soyad')
+
   const { data: raw } = await supabase
     .from('calisan_ogrenim')
     .select('*, calisan(ad_soyad)')
@@ -28,6 +33,7 @@ export default async function OgrenimPage() {
   return (
     <OgrenimClient
       kayitlar={kayitlar}
+      personeller={(personellerRaw ?? []) as { sicil_no: string; ad_soyad: string }[]}
       onEkle={ogrenimEkle}
       onGuncelle={ogrenimGuncelle}
       onSil={ogrenimSil}

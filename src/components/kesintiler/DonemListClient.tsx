@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
@@ -54,11 +55,12 @@ function tarih(t: string | null) {
 
 // ─── Seçim Modalı ────────────────────────────────────────────────────────────
 function SecimModal({
-  open, onClose, donem, onGetir, onKaydet,
+  open, onClose, donem, onGetir, onKaydet, onKaydetSonrasi,
 }: {
   open: boolean; onClose: () => void; donem: Donem | null
   onGetir: (id: number) => Promise<{ izinler: IzinSatir[]; secimler: { izin_sira_no: string; dahil: boolean }[] }>
   onKaydet: (id: number, s: { izin_sira_no: string; dahil: boolean }[]) => Promise<{ hata?: string }>
+  onKaydetSonrasi?: () => void
 }) {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [izinler, setIzinler]       = useState<IzinSatir[]>([])
@@ -106,7 +108,10 @@ function SecimModal({
       const payload = Array.from(secimler.entries()).map(([izin_sira_no, dahil]) => ({ izin_sira_no, dahil }))
       const res = await onKaydet(donem.id, payload)
       if (res.hata) setHata(res.hata)
-      else onClose()
+      else {
+        onClose()
+        onKaydetSonrasi?.()
+      }
     })
   }
 
@@ -284,7 +289,11 @@ export default function DonemListClient({
     startTransition(async () => {
       const res = seciliDonem ? await onGuncelle(seciliDonem.id, fd) : await onEkle(fd)
       if (res.hata) setSunuciHata(res.hata)
-      else formKapat()
+      else {
+        formKapat()
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
     })
   }
 
@@ -293,6 +302,10 @@ export default function DonemListClient({
     startTransition(async () => {
       const res = await onKapat(id)
       if (res.hata) alert(res.hata)
+      else {
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
     })
   }
 
@@ -301,6 +314,10 @@ export default function DonemListClient({
     startTransition(async () => {
       const res = await onAc(id)
       if (res.hata) alert(res.hata)
+      else {
+        broadcastIntradaRefresh('kesintiler')
+        router.refresh()
+      }
     })
   }
 
@@ -451,6 +468,10 @@ export default function DonemListClient({
           donem={seciliDonem}
           onGetir={onSecimGetir}
           onKaydet={onSecimKaydet}
+          onKaydetSonrasi={() => {
+            broadcastIntradaRefresh('kesintiler')
+            router.refresh()
+          }}
         />
       )}
     </div>

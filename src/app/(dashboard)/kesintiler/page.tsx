@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import KesintilerListeTabSync from '@/components/kesintiler/KesintilerListeTabSync'
 import { getCariYilAraligi } from '@/lib/tarih'
 
 const TANIMLAR = [
@@ -42,6 +43,7 @@ export default async function KesintilerPage() {
 
   return (
     <div>
+      <KesintilerListeTabSync />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Kesinti Yönetimi</h1>
         <p className="text-sm text-slate-500 mt-0.5">Dönem bazlı kesinti ve puantaj yönetimi</p>

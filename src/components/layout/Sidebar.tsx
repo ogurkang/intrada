@@ -78,9 +78,9 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/statu',      label: 'Statü'         },
       { href: '/tanimlar/izin-turu',  label: 'İzin Türleri'  },
-      { href: '/tanimlar/izin-hak',   label: 'İzin Hakları'  },
+      { href: '/tanimlar/izin-hak',   label: 'İzin Tanımları' },
       { href: '/tanimlar/tatil',      label: 'Tatiller'      },
-      { href: '/tanimlar/izin-kural', label: 'İzin Kuralları'},
+      { href: '/tanimlar/izin-kural', label: 'Yıllık İzin Kuralları' },
     ],
   },
   {
@@ -165,7 +165,9 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* Logo */}
       <div className="px-6 py-5 border-b border-slate-700">
-        <span className="text-xl font-bold tracking-wide text-white">INTRADA</span>
+        <Link href="/" onClick={onNavigate} className="text-xl font-bold tracking-wide text-white hover:text-slate-200 transition-colors block">
+          INTRADA
+        </Link>
         <span className="block text-xs text-slate-400 mt-0.5">v4 · Personel Yönetimi</span>
       </div>
 

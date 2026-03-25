@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect } from 'react'
 import Modal from '@/components/ui/Modal'
 import type { Tables } from '@/types/database'
 
@@ -19,19 +19,43 @@ function formatGGAAYYYY(val: string | null | undefined): string {
 
 const TURLER = ['İlköğretim', 'Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora', 'Diğer']
 
+interface PersonelOpt { sicil_no: string; ad_soyad: string }
+
 interface Props {
-  kayitlar:   Ogrenim[]
-  onEkle:     (fd: FormData) => Promise<{ hata?: string }>
-  onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
-  onSil:      (id: number) => Promise<{ hata?: string }>
+  kayitlar:    Ogrenim[]
+  personeller: PersonelOpt[]
+  onEkle:      (fd: FormData) => Promise<{ hata?: string }>
+  onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil:       (id: number) => Promise<{ hata?: string }>
 }
 
-export default function OgrenimClient({ kayitlar, onEkle, onGuncelle, onSil }: Props) {
+export default function OgrenimClient({ kayitlar, personeller, onEkle, onGuncelle, onSil }: Props) {
   const [arama, setArama]             = useState('')
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<Ogrenim | null>(null)
   const [hata, setHata]               = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
+  const [sicilArama, setSicilArama]   = useState('')
+  const [secilenSicil, setSecilenSicil] = useState('')
+  const [aramaAcik, setAramaAcik]     = useState(false)
+
+  useEffect(() => {
+    if (!formAcik) {
+      setSicilArama('')
+      setSecilenSicil('')
+      setAramaAcik(false)
+    }
+  }, [formAcik])
+
+  const filtreliPersonel = useMemo(() => {
+    const q = sicilArama.toLowerCase()
+    if (!q) return personeller.slice(0, 12)
+    return personeller
+      .filter(p => p.sicil_no.toLowerCase().includes(q) || p.ad_soyad.toLowerCase().includes(q))
+      .slice(0, 12)
+  }, [personeller, sicilArama])
+
+  const secilenPersonel = personeller.find(p => p.sicil_no === secilenSicil)
 
   const filtreli = useMemo(() => {
     const q = arama.toLowerCase()
@@ -51,7 +75,12 @@ export default function OgrenimClient({ kayitlar, onEkle, onGuncelle, onSil }: P
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setHata(null)
+    if (!secili && !secilenSicil.trim()) {
+      setHata('Personel seçin veya sicil ile arayıp listeden seçin.')
+      return
+    }
     const fd = new FormData(e.currentTarget)
+    if (!secili) fd.set('sicil_no', secilenSicil)
     startTransition(async () => {
       const res = secili ? await onGuncelle(secili.id, fd) : await onEkle(fd)
       if (res.hata) setHata(res.hata)
@@ -152,9 +181,45 @@ export default function OgrenimClient({ kayitlar, onEkle, onGuncelle, onSil }: P
         <form onSubmit={handleSubmit} className="space-y-4">
           {!k && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sicil No *</label>
-              <input name="sicil_no" required placeholder="Personel sicil numarası"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Personel</label>
+              {secilenPersonel ? (
+                <div className="flex items-center justify-between p-2.5 border border-green-300 bg-green-50 rounded-lg">
+                  <div>
+                    <span className="text-sm font-medium text-slate-800">{secilenPersonel.ad_soyad}</span>
+                    <span className="text-xs text-slate-500 ml-2 font-mono">{secilenPersonel.sicil_no}</span>
+                  </div>
+                  <button type="button" onClick={() => { setSecilenSicil(''); setSicilArama('') }}
+                    className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="İsim veya sicil no ile ara…"
+                    value={sicilArama}
+                    onChange={e => { setSicilArama(e.target.value); setAramaAcik(true) }}
+                    onFocus={() => setAramaAcik(true)}
+                    onBlur={() => setTimeout(() => setAramaAcik(false), 200)}
+                    autoComplete="off"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  />
+                  {aramaAcik && filtreliPersonel.length > 0 && (
+                    <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filtreliPersonel.map(p => (
+                        <li key={p.sicil_no}>
+                          <button type="button"
+                            onMouseDown={() => { setSecilenSicil(p.sicil_no); setSicilArama(''); setAramaAcik(false) }}
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm">
+                            <span className="font-medium text-slate-800">{p.ad_soyad}</span>
+                            <span className="text-slate-400 text-xs ml-2 font-mono">{p.sicil_no}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-slate-400 mt-1">Sicil yazınca listeden seçin; doğrudan yazmak yeterli değildir.</p>
             </div>
           )}
           <div>

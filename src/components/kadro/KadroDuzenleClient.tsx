@@ -1,20 +1,37 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { kadroDetayHref } from '@/lib/kadro-link'
 import type { Tables } from '@/types/database'
+import { kadroDurumuHesapla } from '@/lib/kadro-durum'
+
+const KADRO_DURUM_BADGE: Record<string, string> = {
+  Dolu:  'bg-green-100 text-green-700',
+  Vekil: 'bg-amber-100 text-amber-700',
+  Boş:   'bg-slate-100 text-slate-500',
+}
 
 type Kadro = Tables<'kadro_hareketleri'>
 interface Personel { sicil_no: string; ad_soyad: string }
 
 function PersonelSecici({
-  name, label, personeller, defaultValue,
-}: { name: string; label: string; personeller: Personel[]; defaultValue?: string | null }) {
+  name, label, personeller, defaultValue, onSeciliChange,
+}: {
+  name: string
+  label: string
+  personeller: Personel[]
+  defaultValue?: string | null
+  onSeciliChange?: (sicil: string) => void
+}) {
   const [q, setQ] = useState(defaultValue ? (personeller.find(p => p.sicil_no === defaultValue)?.ad_soyad ?? defaultValue) : '')
   const [secili, setSecili] = useState(defaultValue ?? '')
   const [acik, setAcik] = useState(false)
+
+  useEffect(() => {
+    onSeciliChange?.(secili)
+  }, [secili, onSeciliChange])
   const filtreli = useMemo(() => {
     const lower = q.toLowerCase()
     if (!lower) return personeller.slice(0, 6)
@@ -114,6 +131,15 @@ export default function KadroDuzenleClient({
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const d = row
+  const [asilSicil, setAsilSicil] = useState(d.asil ?? '')
+  const [vekilSicil, setVekilSicil] = useState(d.vekil ?? '')
+
+  useEffect(() => {
+    setAsilSicil(d.asil ?? '')
+    setVekilSicil(d.vekil ?? '')
+  }, [d.id, d.asil, d.vekil])
+
+  const hesaplananDurum = kadroDurumuHesapla(asilSicil, vekilSicil)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -163,8 +189,22 @@ export default function KadroDuzenleClient({
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Personel Bilgileri</p>
             <div className="grid grid-cols-2 gap-3">
-              <PersonelSecici name="asil" label="Asil" personeller={personeller} defaultValue={d?.asil} />
-              <PersonelSecici name="vekil" label="Vekil" personeller={personeller} defaultValue={d?.vekil} />
+              <PersonelSecici
+                key={`asil-${d.id}`}
+                name="asil"
+                label="Asil"
+                personeller={personeller}
+                defaultValue={d.asil}
+                onSeciliChange={setAsilSicil}
+              />
+              <PersonelSecici
+                key={`vekil-${d.id}`}
+                name="vekil"
+                label="Vekil"
+                personeller={personeller}
+                defaultValue={d.vekil}
+                onSeciliChange={setVekilSicil}
+              />
             </div>
             <div className="grid grid-cols-3 gap-3 mt-3">
               {input(d, 'memuriyet_tarihi', 'Memuriyet Tarihi', { type: 'date' })}
@@ -177,7 +217,15 @@ export default function KadroDuzenleClient({
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Durum & Ayrılış</p>
             <div className="grid grid-cols-3 gap-3">
-              {sel(d, 'durumu', 'Kadro Durumu', ['Dolu', 'Vekil', 'Boş'])}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Kadro durumu</label>
+                <p className="text-[11px] text-slate-500 mb-1.5 leading-snug">
+                  Asil seçiliyse <strong>Dolu</strong>, yalnız vekil seçiliyse <strong>Vekil</strong>, ikisi boşsa <strong>Boş</strong> — kayıtta otomatik atanır.
+                </p>
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${KADRO_DURUM_BADGE[hesaplananDurum] ?? ''}`}>
+                  {hesaplananDurum}
+                </span>
+              </div>
               {input(d, 'ayrilis_tarihi', 'Ayrılış Tarihi', { type: 'date' })}
               {sel(d, 'ayrilis_nedeni', 'Ayrılış Nedeni', ayrilisNedenleri ?? [])}
             </div>

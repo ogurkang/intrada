@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
+import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 
 export interface Cocuk {
   ad_soyad:      string
@@ -52,11 +53,12 @@ export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: P
     startTransition(async () => {
       const r = await onSil(id)
       if (r.hata) alert(r.hata)
+      else router.refresh()
     })
   }
 
   function yeniSekmedeAc() {
-    window.open('/bildirim/aile/yeni', '_blank', 'noopener,noreferrer')
+    window.open('/bildirim/aile/yeni', '_blank')
   }
 
   return (

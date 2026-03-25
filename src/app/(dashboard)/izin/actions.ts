@@ -54,6 +54,29 @@ function str(fd: FormData, key: string): string | null {
   return v || null
 }
 
+/** Süper yönetici için varsayılan görünen kullanıcı adı (profilde özel ad yoksa). */
+const SUPER_ADMIN_ISLEM_ETIKETI = 'IKEM'
+
+/** Oturum açan kullanıcının izin ekranında gösterilecek işlem etiketi (kullanıcı adı veya ad soyad). */
+async function getIslemYapanEtiketi(): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: prof } = await supabase
+    .from('app_profiles')
+    .select('kullanici_adi, sicil_no, rol')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (prof?.kullanici_adi?.trim()) return prof.kullanici_adi.trim()
+  if (prof?.rol === 'admin') return SUPER_ADMIN_ISLEM_ETIKETI
+  if (prof?.sicil_no) {
+    const { data: c } = await supabase.from('calisan').select('ad_soyad').eq('sicil_no', prof.sicil_no).maybeSingle()
+    if (c?.ad_soyad?.trim()) return c.ad_soyad.trim()
+  }
+  const mail = user.email?.split('@')[0]
+  return mail || null
+}
+
 /** Yıl içinde bir sonraki sıra numarasını üretir: "001", "002" ... */
 async function siradakiSiraNo(supabase: Awaited<ReturnType<typeof createClient>>, yil: number): Promise<string> {
   const { data } = await supabase
@@ -109,6 +132,8 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     }
   }
 
+  const islemEtiketi = await getIslemYapanEtiketi()
+
   const { data: inserted, error } = await supabase.from('izin_hareketleri').insert({
     yil,
     sira_no,
@@ -122,6 +147,7 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     bilgi:     bilgiStr,
     durum:     'Taslak' as Durum,
     kayit_tarihi: new Date().toISOString(),
+    islem_yapan: islemEtiketi,
   }).select('public_id').single()
 
   if (error) return { hata: error.message }
@@ -145,7 +171,7 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
   const supabase = await createClient()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
-    .select('id, sicil_no, yil, public_id')
+    .select('id, sicil_no, yil, public_id, tur, ayrilis, baslama, gun, vekalet, aciklama, durum, bilgi')
     .eq('id', id)
     .single()
 
@@ -158,16 +184,38 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
   }
   if (gun <= 0) return { hata: 'Gün sayısı 0\'dan büyük olmalıdır.' }
 
+  const yeniDurum = (durumVal || 'Değiştirildi') as Durum
+  const vekaletStr = str(formData, 'vekalet')
+  const aciklamaStr = str(formData, 'aciklama')
+
+  if (mevcut?.durum === 'Onaylandı') {
+    const eskiAyrilis = mevcut.ayrilis ?? ''
+    const eskiBaslama = mevcut.baslama ?? ''
+    const eskiVekalet = (mevcut.vekalet ?? '').trim()
+    const degisti =
+      tur !== (mevcut.tur ?? '') ||
+      (ayrilisKayit ?? '') !== eskiAyrilis ||
+      baslama !== eskiBaslama ||
+      gun !== (mevcut.gun ?? 0) ||
+      (vekaletStr ?? '') !== eskiVekalet ||
+      yeniDurum !== mevcut.durum
+    if (degisti && !aciklamaStr) {
+      return { hata: 'Onaylanmış izinde değişiklik için açıklama zorunludur.' }
+    }
+  }
+
+  const islemEtiketi = await getIslemYapanEtiketi()
+
   const { data: updated, error } = await supabase.from('izin_hareketleri').update({
     tur,
     ayrilis: ayrilisKayit,
     baslama,
     gun,
-    vekalet:     str(formData, 'vekalet'),
-    aciklama:    str(formData, 'aciklama'),
+    vekalet:     vekaletStr,
+    aciklama:    aciklamaStr,
     bilgi:       str(formData, 'bilgi'),
-    islem_yapan: str(formData, 'islem_yapan'),
-    durum:       durumVal || 'Değiştirildi' as Durum,
+    islem_yapan: islemEtiketi,
+    durum:       yeniDurum,
   }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
@@ -185,6 +233,7 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
 
 export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const islemEtiketi = await getIslemYapanEtiketi()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
     .select('sicil_no, yil, public_id')
@@ -192,7 +241,7 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
     .single()
   const { error } = await supabase
     .from('izin_hareketleri')
-    .update({ durum: yeniDurum })
+    .update({ durum: yeniDurum, islem_yapan: islemEtiketi })
     .eq('id', id)
 
   if (error) return { hata: error.message }

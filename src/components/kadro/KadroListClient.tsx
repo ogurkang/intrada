@@ -70,6 +70,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
         (k.gorev_unvani ?? '').toLowerCase().includes(q) ||
         (k.kadro_mudurlugu ?? '').toLowerCase().includes(q) ||
         (k.asil ? (adMap[k.asil] ?? k.asil).toLowerCase().includes(q) : false) ||
+        (k.vekil ? (adMap[k.vekil] ?? k.vekil).toLowerCase().includes(q) : false) ||
         (k.statu ?? '').toLowerCase().includes(q)
       )
     }
@@ -188,13 +189,14 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Müdürlük</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Statü</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Asil Personel</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Vekil Personel</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Giriş Tarihi</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtreli.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-16 text-slate-400">
+                <tr><td colSpan={9} className="text-center py-16 text-slate-400">
                   {aramaQ ? 'Arama sonucu bulunamadı.' : 'Kadro kaydı yok.'}
                 </td></tr>
               )}
@@ -224,6 +226,14 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                       <>
                         <span className="font-medium text-slate-800">{adMap[k.asil] ?? k.asil}</span>
                         <span className="block text-xs text-slate-400 font-mono">{k.asil}</span>
+                      </>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {k.vekil ? (
+                      <>
+                        <span className="font-medium text-slate-800">{adMap[k.vekil] ?? k.vekil}</span>
+                        <span className="block text-xs text-slate-400 font-mono">{k.vekil}</span>
                       </>
                     ) : <span className="text-slate-300">—</span>}
                   </td>

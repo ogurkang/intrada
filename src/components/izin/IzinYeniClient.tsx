@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { izinGunHesapla } from '@/app/(dashboard)/izin/actions'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 interface Personel { sicil_no: string; ad_soyad: string }
 
@@ -81,9 +82,17 @@ export default function IzinYeniClient({
         setHata(res.hata)
         return
       }
+      broadcastIntradaRefresh('izin')
       if (typeof window !== 'undefined' && window.opener) {
-        window.opener.postMessage('refresh', '*')
+        try {
+          window.opener.postMessage({ source: 'intrada-izin-yeni', type: 'refresh' }, window.location.origin)
+        } catch {
+          window.opener.postMessage({ source: 'intrada-izin-yeni', type: 'refresh' }, '*')
+        }
         window.close()
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') router.push(`/izin?yil=${yil}`)
+        }, 300)
       } else {
         router.push(`/izin?yil=${yil}`)
       }

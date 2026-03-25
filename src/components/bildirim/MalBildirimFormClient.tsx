@@ -7,6 +7,7 @@ import PersonelAramaSecim, { type PersonelAramaOge } from '@/components/bildirim
 import type { PersonelSecenek } from '@/lib/bildirim-personel'
 import { formatTrMoneyDisplay, parseTrMoneyDisplay, sanitizeTrMoneyTyping } from '@/lib/tr-money-format'
 import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 /** Kimlik listesinde «Seçiniz» = henüz seçim yok */
 const KIMLIK_SECILMEDI = -1
@@ -1024,9 +1025,10 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
   }
 
   function afterSuccessCreate() {
+    broadcastIntradaRefresh('mal')
     try {
       if (window.opener && !window.opener.closed) {
-        window.opener.location.href = '/bildirim/mal'
+        window.opener.postMessage({ source: 'intrada-mal-yeni', type: 'refresh' }, window.location.origin)
       }
     } catch { /* ignore */ }
     window.close()

@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 
 type IzinHareketi = Tables<'izin_hareketleri'>
 type Durum = IzinHareketi['durum']
@@ -36,6 +36,7 @@ export default function IzinListClient({
   hareketler, secilenYil, yillar, personeller, izinTurleri, hakMap,
 }: Props) {
   const router = useRouter()
+  useIntradaTabRefresh('izin', router)
   const [durumFiltre, setDurumFiltre] = useState<Durum | 'Tümü'>('Tümü')
   const [aramaQ, setAramaQ]           = useState('')
   const [sayfa, setSayfa]             = useState(0)
@@ -69,11 +70,17 @@ export default function IzinListClient({
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data === 'refresh') window.location.reload()
+      const ok =
+        e.data === 'refresh' ||
+        (typeof e.data === 'object' &&
+          e.data != null &&
+          (e.data as { source?: string; type?: string }).source === 'intrada-izin-yeni' &&
+          (e.data as { type?: string }).type === 'refresh')
+      if (ok) router.refresh()
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [])
+  }, [router])
 
   const istatistik = useMemo(() => ({
     toplam:     hareketler.length,
@@ -105,13 +112,15 @@ export default function IzinListClient({
               onChange={e => setAramaQ(e.target.value)}
               className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 w-48" />
           </div>
-          <Link href={`/izin/yeni?yil=${secilenYil}`} target="_blank"
+          <button
+            type="button"
+            onClick={() => { window.open(`/izin/yeni?yil=${secilenYil}`, '_blank') }}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium whitespace-nowrap">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Yeni İzin
-          </Link>
+          </button>
         </div>
       </div>
 

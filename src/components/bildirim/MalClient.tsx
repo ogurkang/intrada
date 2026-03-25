@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
+import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 
 export interface MalBildirimi {
   id:           number
@@ -42,11 +43,12 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Pr
     startTransition(async () => {
       const r = await onSil(id)
       if (r.hata) alert(r.hata)
+      else router.refresh()
     })
   }
 
   function yeniSekmedeAc() {
-    window.open('/bildirim/mal/yeni', '_blank', 'noopener,noreferrer')
+    window.open('/bildirim/mal/yeni', '_blank')
   }
 
   return (
