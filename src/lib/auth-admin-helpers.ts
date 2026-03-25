@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const LIST_PER_PAGE = 1000
-const LIST_MAX_PAGES = 20
+/** GoTrue bazı sürümlerde yüksek per_page reddedilebiliyor veya ağ hatası throw edilebiliyor. */
+const LIST_PER_PAGE = 200
+const LIST_MAX_PAGES = 50
 
 /** E-posta ile Auth kullanıcı id (listUsers sayfalama; yedek yol). */
 export async function authUserIdByEmail(
@@ -10,11 +11,15 @@ export async function authUserIdByEmail(
 ): Promise<string | null> {
   const e = email.trim().toLowerCase()
   for (let page = 1; page <= LIST_MAX_PAGES; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: LIST_PER_PAGE })
-    if (error) return null
-    const u = data.users.find(x => (x.email ?? '').toLowerCase() === e)
-    if (u) return u.id
-    if (!data.users.length) break
+    try {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: LIST_PER_PAGE })
+      if (error) return null
+      const u = data.users.find(x => (x.email ?? '').toLowerCase() === e)
+      if (u) return u.id
+      if (!data.users.length) break
+    } catch {
+      return null
+    }
   }
   return null
 }
@@ -28,13 +33,17 @@ export async function authUserIdSifreSifirlaIcin(
   sicilNoDb: string,
   email: string,
 ): Promise<string | null> {
-  const { data, error } = await admin
-    .from('app_profiles')
-    .select('id')
-    .eq('sicil_no', sicilNoDb)
-    .maybeSingle()
+  try {
+    const { data, error } = await admin
+      .from('app_profiles')
+      .select('id')
+      .eq('sicil_no', sicilNoDb)
+      .maybeSingle()
 
-  if (!error && data?.id) return data.id
+    if (!error && data?.id) return data.id
+  } catch {
+    /* ağ / parse; e-posta ile yedek */
+  }
 
   return authUserIdByEmail(admin, email)
 }

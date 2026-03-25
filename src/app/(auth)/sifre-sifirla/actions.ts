@@ -9,6 +9,17 @@ import { revalidatePath } from 'next/cache'
 const GENEL_HATA =
   'E-posta, T.C. kimlik numarası ve sicil bilgisi kayıtlarla eşleşmiyor veya hesap bulunamadı.'
 
+const SUNUCU_YAPILANDIRMA_HATASI =
+  'Şifre sıfırlama sunucuda etkin değil. Sistem yöneticinizin ortam değişkenlerini (Supabase URL ve service role anahtarı) kontrol etmesi gerekir.'
+
+function sunucuHataMesaji(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  if (msg.includes('SUPABASE_SERVICE_ROLE_KEY') || msg.includes('NEXT_PUBLIC_SUPABASE_URL')) {
+    return SUNUCU_YAPILANDIRMA_HATASI
+  }
+  return 'İşlem tamamlanamadı. Bir süre sonra tekrar deneyin veya yöneticinize başvurun.'
+}
+
 function formKimlik(formData: FormData) {
   const email = String(formData.get('email') ?? '')
     .trim()
@@ -27,18 +38,23 @@ export async function dogrulaSifreSifirlaKimlik(
   if (!tckn.trim()) return { hata: 'T.C. kimlik numarası girin.' }
   if (!sicil.trim()) return { hata: 'Sicil numarası girin.' }
 
-  const admin = createServiceRoleClient()
-  const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
-  if (!calisan) return { hata: GENEL_HATA }
+  try {
+    const admin = createServiceRoleClient()
+    const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
+    if (!calisan) return { hata: GENEL_HATA }
 
-  const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
-  if (!authUserId) {
-    return {
-      hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',
+    const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
+    if (!authUserId) {
+      return {
+        hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',
+      }
     }
-  }
 
-  return { ok: true }
+    return { ok: true }
+  } catch (e) {
+    console.error('[dogrulaSifreSifirlaKimlik]', e)
+    return { hata: sunucuHataMesaji(e) }
+  }
 }
 
 /** Adım 2: kimliği tekrar doğrula + yeni şifre (kurallı) kaydet. */
@@ -53,20 +69,25 @@ export async function sifreSifirlaKaydet(formData: FormData): Promise<{ hata?: s
   if (!yeniSifreGecerliMi(sifre)) return { hata: yeniSifreHataMetni() }
   if (sifre !== sifreTekrar) return { hata: 'Şifre ile tekrarı eşleşmiyor.' }
 
-  const admin = createServiceRoleClient()
-  const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
-  if (!calisan) return { hata: GENEL_HATA }
+  try {
+    const admin = createServiceRoleClient()
+    const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
+    if (!calisan) return { hata: GENEL_HATA }
 
-  const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
-  if (!authUserId) {
-    return {
-      hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',
+    const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
+    if (!authUserId) {
+      return {
+        hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',
+      }
     }
+
+    const { error: updErr } = await admin.auth.admin.updateUserById(authUserId, { password: sifre })
+    if (updErr) return { hata: updErr.message }
+
+    revalidatePath('/login')
+    return {}
+  } catch (e) {
+    console.error('[sifreSifirlaKaydet]', e)
+    return { hata: sunucuHataMesaji(e) }
   }
-
-  const { error: updErr } = await admin.auth.admin.updateUserById(authUserId, { password: sifre })
-  if (updErr) return { hata: updErr.message }
-
-  revalidatePath('/login')
-  return {}
 }
