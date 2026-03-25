@@ -2,7 +2,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { calisanBulSifreSifirlaIcin } from '@/lib/calisan-kimlik-dogrula'
-import { authUserIdByEmail } from '@/lib/auth-admin-helpers'
+import { authUserIdSifreSifirlaIcin } from '@/lib/auth-admin-helpers'
 import { yeniSifreGecerliMi, yeniSifreHataMetni, yeniSifreNormalize } from '@/lib/sifre-politikasi'
 import { revalidatePath } from 'next/cache'
 
@@ -31,7 +31,7 @@ export async function dogrulaSifreSifirlaKimlik(
   const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
   if (!calisan) return { hata: GENEL_HATA }
 
-  const authUserId = await authUserIdByEmail(admin, email)
+  const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
   if (!authUserId) {
     return {
       hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',
@@ -57,7 +57,7 @@ export async function sifreSifirlaKaydet(formData: FormData): Promise<{ hata?: s
   const calisan = await calisanBulSifreSifirlaIcin(admin, email, tckn, sicil)
   if (!calisan) return { hata: GENEL_HATA }
 
-  const authUserId = await authUserIdByEmail(admin, email)
+  const authUserId = await authUserIdSifreSifirlaIcin(admin, calisan.sicil_no, email)
   if (!authUserId) {
     return {
       hata: 'Bu e-posta ile sistemde giriş hesabı bulunamadı. Yöneticinize başvurun.',

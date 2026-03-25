@@ -18,28 +18,38 @@ export default function SifreSifirlaPage() {
     e.preventDefault()
     setErr(null)
     setPending(true)
-    const fd = new FormData(e.currentTarget)
-    const r = await dogrulaSifreSifirlaKimlik(fd)
-    setPending(false)
-    if (r.hata) {
-      setErr(r.hata)
-      return
+    try {
+      const fd = new FormData(e.currentTarget)
+      const r = await dogrulaSifreSifirlaKimlik(fd)
+      if (r.hata) {
+        setErr(r.hata)
+        return
+      }
+      setEmail(String(fd.get('email') ?? '').trim().toLowerCase())
+      setTckn(String(fd.get('tckn') ?? ''))
+      setSicil(String(fd.get('sicil') ?? ''))
+      setKimlikOnay(true)
+    } catch {
+      setErr('İşlem tamamlanamadı. Bağlantınızı kontrol edip tekrar deneyin.')
+    } finally {
+      setPending(false)
     }
-    setEmail(String(fd.get('email') ?? '').trim().toLowerCase())
-    setTckn(String(fd.get('tckn') ?? ''))
-    setSicil(String(fd.get('sicil') ?? ''))
-    setKimlikOnay(true)
   }
 
   async function onKaydet(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErr(null)
     setPending(true)
-    const fd = new FormData(e.currentTarget)
-    const r = await sifreSifirlaKaydet(fd)
-    setPending(false)
-    if (r.hata) setErr(r.hata)
-    else setOk(true)
+    try {
+      const fd = new FormData(e.currentTarget)
+      const r = await sifreSifirlaKaydet(fd)
+      if (r.hata) setErr(r.hata)
+      else setOk(true)
+    } catch {
+      setErr('Şifre kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin.')
+    } finally {
+      setPending(false)
+    }
   }
 
   if (ok) {
