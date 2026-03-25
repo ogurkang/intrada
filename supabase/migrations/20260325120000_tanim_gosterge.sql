@@ -17,5 +17,6 @@ COMMENT ON TABLE public.tanim_gosterge IS 'Derece/kademe bazlı ek gösterge tut
 
 ALTER TABLE public.tanim_gosterge ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "authenticated_full_access" ON public.tanim_gosterge;
 CREATE POLICY "authenticated_full_access" ON public.tanim_gosterge
   FOR ALL USING (auth.role() = 'authenticated');

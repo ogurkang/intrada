@@ -74,7 +74,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     accordion: true,
     items: [
       { href: '/tanimlar/ogrenim',    label: 'Öğrenim'       },
-      { href: '/tanimlar/gosterge',  label: 'Gösterge Tanımları' },
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/statu',      label: 'Statü'         },
@@ -82,6 +81,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/izin-hak',   label: 'İzin Tanımları' },
       { href: '/tanimlar/tatil',      label: 'Tatiller'      },
       { href: '/tanimlar/izin-kural', label: 'Yıllık İzin Kuralları' },
+      { href: '/tanimlar/gosterge',  label: 'Gösterge Tanımları' },
     ],
   },
   {
