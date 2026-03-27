@@ -6,6 +6,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { LoginDuyuruModal } from '@/components/auth/LoginDuyuruModal'
+import { LoginKurumsalLogo } from '@/components/branding/IntradaLogos'
 
 export default function LoginPage() {
   const [email, setEmail]       = useState('')
@@ -35,10 +37,12 @@ export default function LoginPage() {
   }
 
   return (
+    <>
+      <LoginDuyuruModal />
     <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
       {/* Başlık */}
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">INTRADA</h1>
+        <LoginKurumsalLogo />
         <p className="text-sm text-slate-500 mt-1">Personel Yönetim Sistemi</p>
       </div>
 
@@ -108,5 +112,6 @@ export default function LoginPage() {
         </p>
       </form>
     </div>
+    </>
   )
 }

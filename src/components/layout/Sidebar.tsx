@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
+import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 
 type MenuItem  = { href: string; label: string; newTab?: boolean }
@@ -166,10 +167,11 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* Logo */}
       <div className="px-6 py-5 border-b border-slate-700">
-        <Link href="/" onClick={onNavigate} className="text-xl font-bold tracking-wide text-white hover:text-slate-200 transition-colors block">
+        <SidebarAmblem />
+        <Link href="/" onClick={onNavigate} className="text-xl font-bold tracking-wide text-white hover:text-slate-200 transition-colors block text-center">
           INTRADA
         </Link>
-        <span className="block text-xs text-slate-400 mt-0.5">v4 · Personel Yönetimi</span>
+        <span className="block text-xs text-slate-400 mt-0.5 text-center">v4 · Personel Yönetimi</span>
       </div>
 
       {/* Navigasyon */}
