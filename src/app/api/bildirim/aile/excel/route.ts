@@ -27,6 +27,19 @@ function cinsiyetGoster(c: string | null | undefined) {
   return c
 }
 
+/** Eski/yeni kayıtlarda metin farklarına dayanıklı: Geliri Yok işareti L9 */
+function gelirDurumuGelirYokMu(raw: string | null | undefined): boolean {
+  const g = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+  if (!g) return false
+  if (g.includes('geliri yok') || g.includes('geliri olmayan')) return true
+  if (g.includes('gelir yok') || g.includes('gelirsiz')) return true
+  if (g === 'yok') return true
+  return false
+}
+
 /** ExcelJS ile şablon yüklenir; sadece değer yazılır — kenarlık, dolgu, metni kaydır şablonda kalır */
 async function aileExcelExcelJs(
   templatePath: string,
@@ -71,13 +84,19 @@ async function aileExcelExcelJs(
   const gelirDurumu = String(kayit.gelir_durumu ?? '').toLowerCase()
   ws.getCell('E9').value = isDurumu.includes('çalışıyor') ? 'X' : ''
   ws.getCell('H9').value = isDurumu.includes('çalışmıyor') ? 'X' : ''
-  // Gelir var / olan → J9 = "X", Geliri yok / olmayan → L9 = "X"
+  // Gelir var / olan → J9 = "X", Geliri yok → L9 = büyük "X"
   const gelirVar =
     gelirDurumu.includes('geliri var') || gelirDurumu.includes('geliri olan')
-  const gelirYok =
-    gelirDurumu.includes('geliri yok') || gelirDurumu.includes('geliri olmayan')
+  const gelirYok = gelirDurumuGelirYokMu(kayit.gelir_durumu as string | null | undefined)
   ws.getCell('J9').value = gelirVar ? 'X' : ''
-  ws.getCell('L9').value = gelirYok ? 'X' : ''
+  const l9 = ws.getCell('L9')
+  if (gelirYok) {
+    l9.value = 'X'
+    l9.font = { name: 'Calibri', size: 20, bold: true }
+    l9.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false }
+  } else {
+    l9.value = ''
+  }
   ws.getCell('M9').value = ''
 
   // Çocuklar: D=TC, E=doğum, G=cinsiyet, I=baba adı, K=ana
@@ -101,7 +120,9 @@ async function aileExcelExcelJs(
   }
 
   ws.getCell('D19').value = adSoyad ?? ''
-  ws.getCell('X19').value = kayitTarihi
+  // Bildirimin yapıldığı tarih (kayıt zamanı) — şablonda W19
+  ws.getCell('W19').value = kayitTarihi
+  ws.getCell('X19').value = ''
 
   // Placeholder {{...}} (şablonda varsa)
   const placeholders: Record<string, string> = {
