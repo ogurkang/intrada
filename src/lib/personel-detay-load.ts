@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
 import { isUuidSegment } from '@/lib/personel-link'
+import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
 
 export type PersonelDetayMalRow = {
   id: number
@@ -137,7 +138,7 @@ export async function fetchPersonelDetayPageData(
   const izinHaklari = (izinHaklariRaw ?? []) as Tables<'izin_haklari'>[]
   const izinHareketleri = (izinHareketleriRaw ?? []) as Tables<'izin_hareketleri'>[]
   const terfiKayitlari = (terfiRaw ?? []) as Tables<'terfi_hareketleri'>[]
-  const ogrenimler = (ogrenimRaw ?? []) as Tables<'calisan_ogrenim'>[]
+  const ogrenimler = sortCalisanOgrenimByTuru((ogrenimRaw ?? []) as Tables<'calisan_ogrenim'>[])
   const aileBildirimi = (aileRaw ?? null) as Tables<'aile_bildirimi'> | null
   const malKayitlari = (malKayitlariRaw ?? []).map(r => ({
     id: r.id,

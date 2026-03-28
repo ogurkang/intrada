@@ -1,88 +1,87 @@
 'use client'
 
 import { useState, useTransition, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
+import { sortBildirimOgrenimList } from '@/lib/ogrenim-sira'
 import type { Tables } from '@/types/database'
 
 type Ogrenim = Tables<'calisan_ogrenim'> & { ad_soyad?: string | null }
 
-/** ISO (yyyy-mm-dd) veya gg.aa.yyyy stringini gg.aa.yyyy olarak döndürür */
 function formatGGAAYYYY(val: string | null | undefined): string {
   if (!val) return '—'
-  const d = val.includes('-') ? val : val.split('.').reverse().join('-') // gg.aa.yyyy -> yyyy-mm-dd
+  const d = val.includes('-') ? val : val.split('.').reverse().join('-')
   const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(d)
   if (!m) return val
   const [, y, a, g] = m
-  return `${g.padStart(2, '0')}.${a.padStart(2, '0')}.${y}`
+  return `${g!.padStart(2, '0')}.${a!.padStart(2, '0')}.${y}`
 }
-
-
-const TURLER = ['İlköğretim', 'Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora', 'Diğer']
-
-interface PersonelOpt { sicil_no: string; ad_soyad: string }
 
 interface Props {
-  kayitlar:    Ogrenim[]
-  personeller: PersonelOpt[]
-  onEkle:      (fd: FormData) => Promise<{ hata?: string }>
-  onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
-  onSil:       (id: number) => Promise<{ hata?: string }>
+  kayitlar: Ogrenim[]
+  ogrenimTurleri: { id: number; isim: string }[]
+  onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil: (id: number) => Promise<{ hata?: string }>
 }
 
-export default function OgrenimClient({ kayitlar, personeller, onEkle, onGuncelle, onSil }: Props) {
-  const [arama, setArama]             = useState('')
-  const [formAcik, setFormAcik]       = useState(false)
-  const [secili, setSecili]           = useState<Ogrenim | null>(null)
-  const [hata, setHata]               = useState<string | null>(null)
-  const [isPending, startTransition]  = useTransition()
-  const [sicilArama, setSicilArama]   = useState('')
-  const [secilenSicil, setSecilenSicil] = useState('')
-  const [aramaAcik, setAramaAcik]     = useState(false)
+export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, onSil }: Props) {
+  const router = useRouter()
+  useIntradaTabRefresh('ogrenim', router)
 
   useEffect(() => {
-    if (!formAcik) {
-      setSicilArama('')
-      setSecilenSicil('')
-      setAramaAcik(false)
+    const handler = (e: MessageEvent) => {
+      const ok =
+        e.data === 'refresh' ||
+        (typeof e.data === 'object' &&
+          e.data != null &&
+          (e.data as { source?: string; type?: string }).source === 'intrada-ogrenim-yeni' &&
+          (e.data as { type?: string }).type === 'refresh')
+      if (ok) router.refresh()
     }
-  }, [formAcik])
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [router])
 
-  const filtreliPersonel = useMemo(() => {
-    const q = sicilArama.toLowerCase()
-    if (!q) return personeller.slice(0, 12)
-    return personeller
-      .filter(p => p.sicil_no.toLowerCase().includes(q) || p.ad_soyad.toLowerCase().includes(q))
-      .slice(0, 12)
-  }, [personeller, sicilArama])
-
-  const secilenPersonel = personeller.find(p => p.sicil_no === secilenSicil)
+  const [arama, setArama] = useState('')
+  const [formAcik, setFormAcik] = useState(false)
+  const [secili, setSecili] = useState<Ogrenim | null>(null)
+  const [hata, setHata] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
     const q = arama.toLowerCase()
-    return kayitlar.filter(k =>
-      !q ||
-      (k.ad_soyad ?? '').toLowerCase().includes(q) ||
-      k.sicil_no.toLowerCase().includes(q) ||
-      (k.ogrenim_turu ?? '').toLowerCase().includes(q) ||
-      (k.okul_adi ?? '').toLowerCase().includes(q)
+    const filtered = kayitlar.filter(
+      (k) =>
+        !q ||
+        (k.ad_soyad ?? '').toLowerCase().includes(q) ||
+        k.sicil_no.toLowerCase().includes(q) ||
+        (k.ogrenim_turu ?? '').toLowerCase().includes(q) ||
+        (k.okul_adi ?? '').toLowerCase().includes(q) ||
+        (k.meslegi ?? '').toLowerCase().includes(q)
     )
+    return sortBildirimOgrenimList(filtered)
   }, [kayitlar, arama])
 
-  function yeniEkleAc()         { setSecili(null); setHata(null); setFormAcik(true) }
-  function duzenleAc(k: Ogrenim){ setSecili(k);    setHata(null); setFormAcik(true) }
-  function kapat()               { setFormAcik(false); setSecili(null); setHata(null) }
+  function duzenleAc(k: Ogrenim) {
+    setSecili(k)
+    setHata(null)
+    setFormAcik(true)
+  }
+
+  function kapat() {
+    setFormAcik(false)
+    setSecili(null)
+    setHata(null)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setHata(null)
-    if (!secili && !secilenSicil.trim()) {
-      setHata('Personel seçin veya sicil ile arayıp listeden seçin.')
-      return
-    }
+    if (!secili) return
     const fd = new FormData(e.currentTarget)
-    if (!secili) fd.set('sicil_no', secilenSicil)
     startTransition(async () => {
-      const res = secili ? await onGuncelle(secili.id, fd) : await onEkle(fd)
+      const res = await onGuncelle(secili.id, fd)
       if (res.hata) setHata(res.hata)
       else kapat()
     })
@@ -105,8 +104,13 @@ export default function OgrenimClient({ kayitlar, personeller, onEkle, onGuncell
           <h1 className="text-2xl font-bold text-slate-800">Öğrenim Bildirimi</h1>
           <p className="text-sm text-slate-500 mt-0.5">Personel öğrenim ve diploma kayıtları</p>
         </div>
-        <button onClick={yeniEkleAc}
-          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
+        <button
+          type="button"
+          onClick={() => {
+            window.open('/bildirim/ogrenim/yeni', '_blank')
+          }}
+          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium"
+        >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
@@ -114,155 +118,183 @@ export default function OgrenimClient({ kayitlar, personeller, onEkle, onGuncell
         </button>
       </div>
 
-      {/* Arama */}
       <div className="mb-4">
-        <input value={arama} onChange={e => setArama(e.target.value)}
-          placeholder="Ad, sicil, öğrenim türü veya okul ara…"
-          className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+        <input
+          value={arama}
+          onChange={(e) => setArama(e.target.value)}
+          placeholder="Ad, sicil, öğrenim türü, okul veya meslek ara…"
+          className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+        />
       </div>
 
-      {/* Tablo */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
+        <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Sicil No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">Öğrenim Türü</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Okul / Bölüm</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[8rem]">Okul / Bölüm</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Mesleği</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Mezuniyet Tarihi</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Durum</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Varsayılan</th>
               <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
-            )}
-            {filtreli.map((k, idx) => (
-              <tr key={k.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.sicil_no}</td>
-                <td className="px-4 py-3 font-medium text-slate-800">{k.ad_soyad ?? '—'}</td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                    {k.ogrenim_turu ?? '—'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  <span>{k.okul_adi ?? '—'}</span>
-                  {k.bolum && <span className="text-slate-400 text-xs ml-1">/ {k.bolum}</span>}
-                </td>
-                <td className="px-4 py-3 text-center text-slate-500 tabular-nums">
-                  {k.mezuniyet_tarihi ? formatGGAAYYYY(k.mezuniyet_tarihi) : '—'}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                    k.aktif ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-                  }`}>{k.aktif ? 'Aktif' : 'Pasif'}</span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => duzenleAc(k)}
-                      className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Düzenle</button>
-                    <button onClick={() => handleSil(k.id)} disabled={isPending}
-                      className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
-                  </div>
+              <tr>
+                <td colSpan={9} className="text-center py-14 text-slate-400">
+                  Kayıt bulunamadı.
                 </td>
               </tr>
-            ))}
+            )}
+            {filtreli.map((row, idx) => {
+              const vars = row.varsayilan ?? row.aktif
+              return (
+                <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.sicil_no}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{row.ad_soyad ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                      {row.ogrenim_turu ?? '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <span>{row.okul_adi ?? '—'}</span>
+                    {row.bolum && <span className="text-slate-400 text-xs ml-1">/ {row.bolum}</span>}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{row.meslegi ?? '—'}</td>
+                  <td className="px-4 py-3 text-center text-slate-500 tabular-nums">
+                    {row.mezuniyet_tarihi
+                      ? formatGGAAYYYY(row.mezuniyet_tarihi)
+                      : row.mezuniyet_yili
+                        ? `01.01.${row.mezuniyet_yili}`
+                        : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                        vars ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {vars ? 'Evet' : 'Hayır'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => duzenleAc(row)}
+                        className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                      >
+                        Düzenle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSil(row.id)}
+                        disabled={isPending}
+                        className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Form Modal */}
-      <Modal open={formAcik} onClose={kapat} title={k ? 'Kayıt Düzenle' : 'Yeni Öğrenim Kaydı'} size="sm">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!k && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Personel</label>
-              {secilenPersonel ? (
-                <div className="flex items-center justify-between p-2.5 border border-green-300 bg-green-50 rounded-lg">
-                  <div>
-                    <span className="text-sm font-medium text-slate-800">{secilenPersonel.ad_soyad}</span>
-                    <span className="text-xs text-slate-500 ml-2 font-mono">{secilenPersonel.sicil_no}</span>
-                  </div>
-                  <button type="button" onClick={() => { setSecilenSicil(''); setSicilArama('') }}
-                    className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="İsim veya sicil no ile ara…"
-                    value={sicilArama}
-                    onChange={e => { setSicilArama(e.target.value); setAramaAcik(true) }}
-                    onFocus={() => setAramaAcik(true)}
-                    onBlur={() => setTimeout(() => setAramaAcik(false), 200)}
-                    autoComplete="off"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                  />
-                  {aramaAcik && filtreliPersonel.length > 0 && (
-                    <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filtreliPersonel.map(p => (
-                        <li key={p.sicil_no}>
-                          <button type="button"
-                            onMouseDown={() => { setSecilenSicil(p.sicil_no); setSicilArama(''); setAramaAcik(false) }}
-                            className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm">
-                            <span className="font-medium text-slate-800">{p.ad_soyad}</span>
-                            <span className="text-slate-400 text-xs ml-2 font-mono">{p.sicil_no}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              <p className="text-xs text-slate-400 mt-1">Sicil yazınca listeden seçin; doğrudan yazmak yeterli değildir.</p>
+      <Modal open={formAcik && !!k} onClose={kapat} title="Kayıt Düzenle" size="xl">
+        {k && (
+          <form onSubmit={handleSubmit} className="space-y-4 max-h-[78vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Öğrenim Türü</label>
+                <select
+                  name="ogrenim_turu"
+                  defaultValue={k.ogrenim_turu ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+                  required
+                >
+                  <option value="">— Seçiniz —</option>
+                  {ogrenimTurleri.map((t) => (
+                    <option key={t.id} value={t.isim}>
+                      {t.isim}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Okul Adı</label>
+                <input
+                  name="okul_adi"
+                  defaultValue={k.okul_adi ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Bölüm</label>
+                <input
+                  name="bolum"
+                  defaultValue={k.bolum ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Mesleği</label>
+                <input
+                  name="meslegi"
+                  defaultValue={k.meslegi ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Mezuniyet Tarihi (gg.aa.yyyy)</label>
+                <input
+                  name="mezuniyet_tarihi"
+                  type="text"
+                  placeholder="gg.aa.yyyy"
+                  defaultValue={k.mezuniyet_tarihi ? formatGGAAYYYY(k.mezuniyet_tarihi) : ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                />
+              </div>
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Öğrenim Türü</label>
-            <select name="ogrenim_turu" defaultValue={k?.ogrenim_turu ?? ''}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
-              <option value="">— Seçiniz —</option>
-              {TURLER.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Okul Adı</label>
-            <input name="okul_adi" defaultValue={k?.okul_adi ?? ''}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Bölüm</label>
-              <input name="bolum" defaultValue={k?.bolum ?? ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+            <div className="flex items-center gap-2">
+              <input
+                name="varsayilan"
+                type="checkbox"
+                id="varsayilan_cb"
+                defaultChecked={k.varsayilan ?? k.aktif}
+                className="w-4 h-4 rounded border-slate-300"
+              />
+              <label htmlFor="varsayilan_cb" className="text-sm text-slate-700">
+                Varsayılan öğrenim
+              </label>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Mezuniyet Tarihi (gg.aa.yyyy)</label>
-              <input name="mezuniyet_tarihi" type="text" placeholder="gg.aa.yyyy"
-                defaultValue={k?.mezuniyet_tarihi ? formatGGAAYYYY(k.mezuniyet_tarihi) : ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+            {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
+            <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={kapat}
+                className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input name="aktif" type="checkbox" id="aktif_cb" defaultChecked={k?.aktif !== false} value="true"
-              className="w-4 h-4 rounded border-slate-300" />
-            <label htmlFor="aktif_cb" className="text-sm text-slate-700">Aktif</label>
-          </div>
-          {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={kapat}
-              className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
-            <button type="submit" disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
-              {isPending ? 'Kaydediliyor…' : k ? 'Güncelle' : 'Kaydet'}
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </Modal>
     </div>
   )

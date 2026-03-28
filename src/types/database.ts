@@ -52,6 +52,54 @@ export interface Database {
         }
         Relationships: []
       }
+      tanim_kazanc_bilgisi: {
+        Row: {
+          id: number
+          sira_no: number | null
+          unvan_id: number
+          ogrenim_id: number
+          derece: number
+          ek_gosterge: string | null
+          ek_odeme: string | null
+          oht: string | null
+          yan_odeme: string | null
+          sds_orani: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          unvan_id: number
+          ogrenim_id: number
+          derece: number
+          ek_gosterge?: string | null
+          ek_odeme?: string | null
+          oht?: string | null
+          yan_odeme?: string | null
+          sds_orani?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          unvan_id?: number
+          ogrenim_id?: number
+          derece?: number
+          ek_gosterge?: string | null
+          ek_odeme?: string | null
+          oht?: string | null
+          yan_odeme?: string | null
+          sds_orani?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'tanim_kazanc_bilgisi_ogrenim_id_fkey'; columns: ['ogrenim_id']; isOneToOne: false; referencedRelation: 'tanim_ogrenim'; referencedColumns: ['id'] },
+          { foreignKeyName: 'tanim_kazanc_bilgisi_unvan_id_fkey'; columns: ['unvan_id']; isOneToOne: false; referencedRelation: 'tanim_unvan'; referencedColumns: ['id'] },
+        ]
+      }
       tanim_unvan: {
         Row: {
           id: number; sira_no: number | null; unvan_kodu: string | null; unvan_adi: string
@@ -353,9 +401,9 @@ export interface Database {
       }
       // ─────────────────── BİLDİRİM ───────────────────
       calisan_ogrenim: {
-        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; aktif: boolean; kayit_zamani: string }
-        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; aktif?: boolean; kayit_zamani?: string }
-        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; aktif?: boolean; kayit_zamani?: string }
+        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; aktif: boolean; kayit_zamani: string }
+        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
+        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
         Relationships: [{ foreignKeyName: "calisan_ogrenim_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
       aile_bildirimi: {

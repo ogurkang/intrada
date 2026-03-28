@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { ggAayyyyToIso } from '@/lib/tarih'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 
 function str(fd: FormData, key: string): string | null {
@@ -115,21 +116,43 @@ export async function personelHareketiGuncelle(
 
 // ─── Öğrenim Bilgileri ───────────────────────────────────────────────────────
 
+function mezIso(val: string | null | undefined): string | null {
+  if (!val?.trim()) return null
+  return ggAayyyyToIso(val.trim().replace(/\//g, '.'))
+}
+
+async function digerOgrenimVarsayilanKapat(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string,
+  haricId: number | null
+) {
+  let q = supabase.from('calisan_ogrenim').update({ varsayilan: false, aktif: false }).eq('sicil_no', sicil_no)
+  if (haricId != null) q = q.neq('id', haricId)
+  await q
+}
+
 export async function ogrenimEkle(
   sicil_no: string,
   fd: FormData
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
+  if (varsayilan) await digerOgrenimVarsayilanKapat(supabase, sicil_no, null)
+
   const { error } = await supabase.from('calisan_ogrenim').insert({
     sicil_no,
-    ogrenim_turu:   str(fd, 'ogrenim_turu'),
-    okul_adi:       str(fd, 'okul_adi'),
-    bolum:          str(fd, 'bolum'),
+    ogrenim_turu: str(fd, 'ogrenim_turu'),
+    okul_adi: str(fd, 'okul_adi'),
+    bolum: str(fd, 'bolum'),
+    meslegi: str(fd, 'meslegi'),
     mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
-    aktif:          true,
+    mezuniyet_tarihi: mezIso(str(fd, 'mezuniyet_tarihi')),
+    varsayilan,
+    aktif: varsayilan,
   })
   if (error) return { hata: error.message }
   await revalidatePersonelDetayPaths(sicil_no)
+  revalidatePath('/bildirim/ogrenim')
   return {}
 }
 
@@ -139,14 +162,25 @@ export async function ogrenimGuncelle(
   fd: FormData
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from('calisan_ogrenim').update({
-    ogrenim_turu:   str(fd, 'ogrenim_turu'),
-    okul_adi:       str(fd, 'okul_adi'),
-    bolum:          str(fd, 'bolum'),
-    mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
-  }).eq('id', id)
+  const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
+  if (varsayilan) await digerOgrenimVarsayilanKapat(supabase, sicil_no, id)
+
+  const { error } = await supabase
+    .from('calisan_ogrenim')
+    .update({
+      ogrenim_turu: str(fd, 'ogrenim_turu'),
+      okul_adi: str(fd, 'okul_adi'),
+      bolum: str(fd, 'bolum'),
+      meslegi: str(fd, 'meslegi'),
+      mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
+      mezuniyet_tarihi: mezIso(str(fd, 'mezuniyet_tarihi')),
+      varsayilan,
+      aktif: varsayilan,
+    })
+    .eq('id', id)
   if (error) return { hata: error.message }
   await revalidatePersonelDetayPaths(sicil_no)
+  revalidatePath('/bildirim/ogrenim')
   return {}
 }
 

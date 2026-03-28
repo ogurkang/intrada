@@ -164,7 +164,6 @@ export default function KadroFormModal({
             {sel('kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}
             {selUnvan('gorev_unvani', 'Görev Ünvanı', unvanlar)}
             {sel('gorev_mudurlugu', 'Görev Müdürlüğü', mudurluler)}
-            {input('meslegi', 'Mesleği')}
           </div>
         </div>
         <hr className="border-slate-100" />

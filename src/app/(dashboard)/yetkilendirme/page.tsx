@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
-import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { filterOutGodmodeCalisan, godmodeSicilSet } from '@/lib/godmode-calisan'
 import YetkilendirmeClient from './YetkilendirmeClient'
 
 export const dynamic = 'force-dynamic'
@@ -28,12 +28,20 @@ export default async function YetkilendirmePage() {
     )
   }
 
-  const [{ data: calisanlarRaw }, { data: kadroOzet }, { data: phRaw }, { data: profiller }] = await Promise.all([
-    supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
-    supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu').order('sicil_no'),
-    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
-    supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri'),
-  ])
+  const [{ data: calisanlarRaw }, { data: kadroOzet }, { data: phRaw }, { data: profiller }, { data: firmaRaw }] =
+    await Promise.all([
+      supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
+      supabase
+        .from('personel_kadro_ozet')
+        .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
+        .order('sicil_no'),
+      supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
+      supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri'),
+      supabase
+        .from('firma_calisanlar')
+        .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi')
+        .order('sicil_no'),
+    ])
 
   const calisanlar = filterOutGodmodeCalisan(calisanlarRaw ?? [])
 
@@ -68,9 +76,33 @@ export default async function YetkilendirmePage() {
       }
     })
 
+  const memurSicilSet = new Set(memurSiciller)
+  const god = godmodeSicilSet()
+
+  const firmaAktif = (firmaRaw ?? []).filter(
+    f => !f.ayrilis_tarihi && f.sicil_no?.trim() && calisanMap.has(f.sicil_no.trim()) && !memurSicilSet.has(f.sicil_no.trim()),
+  )
+
+  const firmaEk = firmaAktif
+    .filter(f => !god.has(f.sicil_no!.trim()))
+    .map(f => {
+      const s = f.sicil_no!.trim()
+      const c = calisanMap.get(s)
+      return {
+        sicil_no: s,
+        ad_soyad: c?.ad_soyad ?? f.ad_soyad,
+        gorev_unvani: f.gorevi ?? null,
+        gorev_mudurlugu: f.gorev_mudurlugu ?? null,
+      }
+    })
+
   const profilMap = new Map((profiller ?? []).map(p => [p.sicil_no, p]))
 
-  const satirlar = memurlar.map(m => ({
+  const birlesik = [...memurlar, ...firmaEk].sort(
+    (a, b) => (parseInt(a.sicil_no, 10) || 0) - (parseInt(b.sicil_no, 10) || 0),
+  )
+
+  const satirlar = birlesik.map(m => ({
     ...m,
     profil: profilMap.get(m.sicil_no) ?? null,
   }))
@@ -84,8 +116,9 @@ export default async function YetkilendirmePage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Terfi Hareketleri ile aynı personel sırası · Toplam <span className="font-semibold">{satirlar.length}</span>{' '}
-          satır
+          Aktif <strong>Memur</strong> kadrosu + <strong>Firma Personel</strong> çalışanlar sekmesindeki aktif kayıtlar (ana
+          personelde sicili olanlar), sicil sırasıyla · Toplam{' '}
+          <span className="font-semibold">{satirlar.length}</span> satır
         </p>
       </div>
 

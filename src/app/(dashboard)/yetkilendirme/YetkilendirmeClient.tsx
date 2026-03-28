@@ -251,10 +251,10 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-600">
-          Statüsü <strong>Memur</strong> olan aktif personel, <strong>Terfi Hareketleri</strong> listesiyle aynı
-          sırada (sicil no). <strong>Terfi</strong> erişimi bu tabloda yok; personel yönetimi üzerinden
-          yönetilir. Varsayılan: <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur
-          işaretler).
+          <strong>Memur</strong> statülü aktif personel ile <strong>Firma Personel</strong> ekranındaki çalışanlar
+          sekmesinde yer alan, ana personel kartında sicili bulunan aktif çalışanlar aynı tabloda listelenir (sicil
+          sırası). <strong>Terfi</strong> erişimi bu tabloda yok; Terfi personel yönetimi üzerinden yönetilir. Varsayılan:{' '}
+          <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur işaretler).
         </p>
         <button
           type="button"

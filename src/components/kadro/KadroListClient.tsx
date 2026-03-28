@@ -29,11 +29,6 @@ const DURUM_RENK: Record<string, string> = {
   Boş:   'bg-slate-100 text-slate-500',
 }
 
-function tarih(t: string | null) {
-  if (!t) return '—'
-  return new Date(t).toLocaleDateString('tr-TR')
-}
-
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export default function KadroListClient({ data, personeller, statuler, mudurluler, unvanlar, gelisNedenleri, ayrilisNedenleri, onEkle, onGuncelle }: Props) {
   const router = useRouter()
@@ -185,6 +180,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Kadro Sıra No</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Kadro Derecesi</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Kadro / Görev Ünvanı</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Müdürlük</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Statü</th>
@@ -208,6 +204,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                 >
                   <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.kadro_sira_no ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs tabular-nums">{k.kadro_derecesi ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span className="font-medium text-slate-800">{k.kadro_unvani ?? '—'}</span>
                     {k.gorev_unvani && k.gorev_unvani !== k.kadro_unvani && (
@@ -236,9 +233,6 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                         <span className="block text-xs text-slate-400 font-mono">{k.vekil}</span>
                       </>
                     ) : <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">
-                    {tarih(k.kuruma_giris_tarihi)}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${DURUM_RENK[k.durumu] ?? ''}`}>

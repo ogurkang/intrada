@@ -75,6 +75,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     accordion: true,
     items: [
       { href: '/tanimlar/ogrenim',    label: 'Öğrenim'       },
+      { href: '/tanimlar/kazanc-bilgi', label: 'Kazanç Bilgileri' },
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/statu',      label: 'Statü'         },

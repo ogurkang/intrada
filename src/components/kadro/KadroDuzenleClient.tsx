@@ -182,7 +182,6 @@ export default function KadroDuzenleClient({
               {sel(d, 'kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}
               {selUnvan(d, 'gorev_unvani', 'Görev Ünvanı', unvanlar)}
               {sel(d, 'gorev_mudurlugu', 'Görev Müdürlüğü', mudurluler)}
-              {input(d, 'meslegi', 'Mesleği')}
             </div>
           </div>
           <hr className="border-slate-100" />

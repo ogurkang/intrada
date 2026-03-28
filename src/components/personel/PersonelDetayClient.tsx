@@ -123,6 +123,15 @@ function KisiselTab({ calisan }: { calisan: Calisan }) {
 
 // ─── Öğrenim Bilgileri ────────────────────────────────────────────────────────
 
+function mezuniyetHucre(val: string | null | undefined) {
+  if (!val) return '—'
+  const d = val.includes('-') ? val : val.split('.').reverse().join('-')
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(d)
+  if (!m) return val
+  const [, y, a, g] = m
+  return `${g!.padStart(2, '0')}.${a!.padStart(2, '0')}.${y}`
+}
+
 function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -138,29 +147,37 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Öğrenim Durumu</th>
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Okul Adı</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Mesleği</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Mezuniyet Tarihi</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {ogrenimler.map(o => (
+              {ogrenimler.map(o => {
+                const def = o.varsayilan ?? o.aktif
+                return (
                 <tr key={o.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-700">{o.ogrenim_turu ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {o.okul_adi ?? '—'}
                     {o.bolum && <span className="text-slate-400 text-xs ml-1">/ {o.bolum}</span>}
                   </td>
-                  <td className="px-4 py-3 text-center text-slate-600">
-                    {o.mezuniyet_yili ? `01.01.${o.mezuniyet_yili}` : '—'}
+                  <td className="px-4 py-3 text-slate-600">{o.meslegi ?? '—'}</td>
+                  <td className="px-4 py-3 text-center text-slate-600 tabular-nums">
+                    {o.mezuniyet_tarihi
+                      ? mezuniyetHucre(o.mezuniyet_tarihi)
+                      : o.mezuniyet_yili
+                        ? `01.01.${o.mezuniyet_yili}`
+                        : '—'}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {o.aktif
+                    {def
                       ? <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Evet</span>
                       : <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Hayır</span>
                     }
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

@@ -90,7 +90,6 @@ export default function KadroDetayClient({
               <Alan etiket="Kadro Müdürlüğü" deger={row.kadro_mudurlugu} />
               <Alan etiket="Görev Ünvanı" deger={row.gorev_unvani} />
               <Alan etiket="Görev Müdürlüğü" deger={row.gorev_mudurlugu} />
-              <Alan etiket="Mesleği" deger={row.meslegi} />
             </div>
           </div>
           <div>
