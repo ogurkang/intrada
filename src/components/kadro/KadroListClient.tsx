@@ -186,7 +186,6 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Statü</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Asil Personel</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Vekil Personel</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Giriş Tarihi</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
               </tr>
             </thead>
