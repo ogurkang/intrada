@@ -26,7 +26,7 @@ export default async function KadroDuzenlePage({
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
     supabase.from('tanim_statu').select('statu_adi').eq('aktif', true).order('statu_adi'),
     supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
-    supabase.from('tanim_unvan').select('id, unvan_adi').eq('aktif', true).order('sira_no').order('unvan_adi'),
+    supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true).order('sira_no').order('unvan_adi'),
   ])
 
   if (error || !k) notFound()
@@ -59,7 +59,11 @@ export default async function KadroDuzenlePage({
         personeller={(calisanRaw ?? []) as { sicil_no: string; ad_soyad: string }[]}
         statuler={(statuRaw ?? []).map((s: { statu_adi: string }) => s.statu_adi)}
         mudurluler={(mudurRaw ?? []).map((m: { mudurluk_adi: string }) => m.mudurluk_adi)}
-        unvanlar={(unvanRaw ?? []).map((u: { id: number; unvan_adi: string }) => ({ id: u.id, unvan_adi: u.unvan_adi }))}
+        unvanlar={(unvanRaw ?? []).map((u: { id: number; unvan_adi: string; sinif_adi: string | null }) => ({
+          id: u.id,
+          unvan_adi: u.unvan_adi,
+          sinif_adi: u.sinif_adi ?? null,
+        }))}
         gelisNedenleri={gelisNedenleri}
         ayrilisNedenleri={ayrilisNedenleri}
         onGuncelle={kadroGuncelle}

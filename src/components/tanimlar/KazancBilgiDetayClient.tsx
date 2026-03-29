@@ -482,7 +482,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                   if (!s) return null
                   const ts = topluSekme[gkey] ?? 'lisans_onlisans'
                   const haric = new Set(s.eskiSatirIds)
-                  const liste = ogrenimler.filter((o) => kazancOgrenimSekmesi(o.isim) === ts)
+                  const liste = kazancOgrenimlerSekmeListesi(ogrenimler, ts)
                   return (
                     <tr key={gkey} className="border-b border-slate-100 align-top">
                       <td className="p-1">

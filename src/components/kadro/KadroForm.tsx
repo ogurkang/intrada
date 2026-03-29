@@ -8,6 +8,25 @@ import { kadroDurumuHesapla } from '@/lib/kadro-durum'
 type Kadro = Tables<'kadro_hareketleri'>
 interface Personel { sicil_no: string; ad_soyad: string }
 
+type UnvanSecenek = { id: number; unvan_adi: string; sinif_adi: string | null }
+
+function defaultUnvanSelectId(d: Kadro | null, unvanlar: UnvanSecenek[], alan: 'kadro' | 'gorev'): string {
+  if (!d) return ''
+  const idVal = alan === 'kadro' ? d.kadro_unvan_id : d.gorev_unvan_id
+  if (idVal != null) return String(idVal)
+  const textVal = alan === 'kadro' ? d.kadro_unvani : d.gorev_unvani
+  const ad = textVal?.trim()
+  if (!ad) return ''
+  const matches = unvanlar.filter((u) => u.unvan_adi.trim() === ad)
+  if (matches.length === 1) return String(matches[0].id)
+  return ''
+}
+
+function unvanSecenekLabel(u: UnvanSecenek): string {
+  const s = u.sinif_adi?.trim()
+  return s ? `${u.unvan_adi} (${s})` : u.unvan_adi
+}
+
 const KADRO_DURUM_BADGE: Record<string, string> = {
   Dolu:  'bg-green-100 text-green-700',
   Vekil: 'bg-amber-100 text-amber-700',
@@ -81,7 +100,7 @@ interface KadroFormProps {
   personeller: Personel[]
   statuler: string[]
   mudurluler: string[]
-  unvanlar: { id: number; unvan_adi: string }[]
+  unvanlar: UnvanSecenek[]
   gelisNedenleri?: string[]
   ayrilisNedenleri?: string[]
   secili: Kadro | null
@@ -130,15 +149,18 @@ export default function KadroFormModal({
       </div>
     )
   }
-  function selUnvan(name: string, label: string, unvanlar: { id: number; unvan_adi: string }[]) {
-    const val = d ? (d[name as keyof Kadro] as string | null) ?? '' : ''
+  function selUnvanId(label: string, liste: UnvanSecenek[], alan: 'kadro' | 'gorev') {
+    const nameId = alan === 'kadro' ? 'kadro_unvan_id' : 'gorev_unvan_id'
+    const val = defaultUnvanSelectId(d, liste, alan)
     return (
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
-        <select name={name} defaultValue={val}
+        <select name={nameId} defaultValue={val}
           className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
           <option value="">—</option>
-          {unvanlar.map(u => <option key={u.id} value={u.unvan_adi}>{u.unvan_adi}</option>)}
+          {liste.map(u => (
+            <option key={u.id} value={String(u.id)}>{unvanSecenekLabel(u)}</option>
+          ))}
         </select>
       </div>
     )
@@ -160,9 +182,9 @@ export default function KadroFormModal({
           <div className="grid grid-cols-2 gap-3">
             {sel('statu', 'Statü', statuler)}
             {input('kadro_derecesi', 'Kadro Derecesi', { placeholder: '1, 2 ...' })}
-            {selUnvan('kadro_unvani', 'Kadro Ünvanı', unvanlar)}
+            {selUnvanId('Kadro Ünvanı', unvanlar, 'kadro')}
             {sel('kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}
-            {selUnvan('gorev_unvani', 'Görev Ünvanı', unvanlar)}
+            {selUnvanId('Görev Ünvanı', unvanlar, 'gorev')}
             {sel('gorev_mudurlugu', 'Görev Müdürlüğü', mudurluler)}
           </div>
         </div>

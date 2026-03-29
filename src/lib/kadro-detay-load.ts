@@ -9,7 +9,7 @@ export type KadroDetayPageData = {
   personeller: { sicil_no: string; ad_soyad: string }[]
   statuler: string[]
   mudurluler: string[]
-  unvanlar: { id: number; unvan_adi: string }[]
+  unvanlar: { id: number; unvan_adi: string; sinif_adi: string | null }[]
   gelisNedenleri: string[]
   ayrilisNedenleri: string[]
 }
@@ -60,10 +60,10 @@ export async function loadKadroDetayPageData(
     personeller: (calisanRaw ?? []) as { sicil_no: string; ad_soyad: string }[],
     statuler: (statuRaw ?? []).map((s: { statu_adi: string }) => s.statu_adi),
     mudurluler: (mudurRaw ?? []).map((m: { mudurluk_adi: string }) => m.mudurluk_adi),
-    unvanlar: (unvanRaw ?? []).map((u: { id: number; unvan_adi: string }) => ({
-      id: u.id,
-      unvan_adi: u.unvan_adi,
-    })),
+    unvanlar: (unvanRaw ?? []).map((u) => {
+      const r = u as { id: number; unvan_adi: string; sinif_adi?: string | null }
+      return { id: r.id, unvan_adi: r.unvan_adi, sinif_adi: r.sinif_adi ?? null }
+    }),
     gelisNedenleri,
     ayrilisNedenleri,
   }

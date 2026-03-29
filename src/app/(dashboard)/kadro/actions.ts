@@ -4,9 +4,30 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { kadroDurumuHesapla } from '@/lib/kadro-durum'
 
+type SB = Awaited<ReturnType<typeof createClient>>
+
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
   return v || null
+}
+
+/** Formdan seçilen `tanim_unvan.id`; metin alanı geriye dönük uyumluluk için doldurulur. */
+async function unvanFormdan(
+  supabase: SB,
+  fd: FormData,
+  idKey: string,
+): Promise<{ id: number | null; unvan_adi: string | null }> {
+  const raw = String(fd.get(idKey) ?? '').trim()
+  if (!raw || !/^\d+$/.test(raw)) return { id: null, unvan_adi: null }
+  const id = Number.parseInt(raw, 10)
+  const { data } = await supabase
+    .from('tanim_unvan')
+    .select('unvan_adi')
+    .eq('id', id)
+    .eq('aktif', true)
+    .maybeSingle()
+  if (!data?.unvan_adi) return { id: null, unvan_adi: null }
+  return { id, unvan_adi: data.unvan_adi }
 }
 
 export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> {
@@ -23,15 +44,19 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   }
 
   const supabase = await createClient()
+  const kadroUn = await unvanFormdan(supabase, formData, 'kadro_unvan_id')
+  const gorevUn = await unvanFormdan(supabase, formData, 'gorev_unvan_id')
   const { data: inserted, error } = await supabase.from('kadro_hareketleri').insert({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    kadro_unvani:         str(formData, 'kadro_unvani'),
+    kadro_unvan_id:       kadroUn.id,
+    kadro_unvani:         kadroUn.unvan_adi,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
-    gorev_unvani:         str(formData, 'gorev_unvani'),
+    gorev_unvan_id:       gorevUn.id,
+    gorev_unvani:         gorevUn.unvan_adi,
     gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
     asil,
     vekil,
@@ -65,15 +90,19 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   }
 
   const supabase = await createClient()
+  const kadroUn = await unvanFormdan(supabase, formData, 'kadro_unvan_id')
+  const gorevUn = await unvanFormdan(supabase, formData, 'gorev_unvan_id')
   const { data: updated, error } = await supabase.from('kadro_hareketleri').update({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    kadro_unvani:         str(formData, 'kadro_unvani'),
+    kadro_unvan_id:       kadroUn.id,
+    kadro_unvani:         kadroUn.unvan_adi,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
-    gorev_unvani:         str(formData, 'gorev_unvani'),
+    gorev_unvan_id:       gorevUn.id,
+    gorev_unvani:         gorevUn.unvan_adi,
     gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
     asil,
     vekil,

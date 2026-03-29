@@ -33,7 +33,7 @@ interface Props {
   personeller?: { sicil_no: string; ad_soyad: string }[]
   statuler?: string[]
   mudurluler?: string[]
-  unvanlar?: { id: number; unvan_adi: string }[]
+  unvanlar?: { id: number; unvan_adi: string; sinif_adi: string | null }[]
   gelisNedenleri?: string[]
   ayrilisNedenleri?: string[]
   onGuncelle?: (id: number, fd: FormData) => Promise<{ hata?: string }>
