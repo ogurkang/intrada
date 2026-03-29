@@ -1,55 +1,36 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
-import KazancBilgiClient from '@/components/tanimlar/KazancBilgiClient'
-import { kazancBilgiGuncelle, kazancBilgiSil, kazancBilgiTopluGuncelle } from './actions'
-import type { Tables } from '@/types/database'
+import KazancBilgiOzetClient from '@/components/tanimlar/KazancBilgiOzetClient'
 
 export default async function KazancBilgiPage() {
   const supabase = await createClient()
 
-  const [{ data: rows }, kadroUnvanlar, { data: ogrenimler }] = await Promise.all([
-    supabase
-      .from('tanim_kazanc_bilgisi')
-      .select('*, tanim_unvan(unvan_adi), tanim_ogrenim(isim)')
-      .order('sira_no', { ascending: true, nullsFirst: false })
-      .order('id', { ascending: true }),
+  const [kadroUnvanlar, { data: kRows }] = await Promise.all([
     fetchUnvanlarKadrodaPersonelAtanmis(supabase),
-    supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true).order('isim'),
+    supabase.from('tanim_kazanc_bilgisi').select('unvan_id, tanim_ogrenim(isim)'),
   ])
 
-  type Joined = Tables<'tanim_kazanc_bilgisi'> & {
-    tanim_unvan: { unvan_adi: string } | null
-    tanim_ogrenim: { isim: string } | null
+  type J = { unvan_id: number; tanim_ogrenim: { isim: string } | null }
+  const ogrenimByUnvan = new Map<number, Set<string>>()
+  for (const raw of kRows ?? []) {
+    const r = raw as J
+    const isim = r.tanim_ogrenim?.isim?.trim()
+    if (!isim) continue
+    if (!ogrenimByUnvan.has(r.unvan_id)) ogrenimByUnvan.set(r.unvan_id, new Set())
+    ogrenimByUnvan.get(r.unvan_id)!.add(isim)
   }
 
-  const liste = (rows ?? []).map((r) => {
-    const j = r as Joined
+  const satirlar = kadroUnvanlar.map((u) => {
+    const set = ogrenimByUnvan.get(u.id)
+    const hasKayit = !!(set && set.size > 0)
     return {
-      ...j,
-      unvan_adi: j.tanim_unvan?.unvan_adi ?? '—',
-      ogrenim_adi: j.tanim_ogrenim?.isim ?? '—',
+      unvan_id: u.id,
+      sinif_adi: u.sinif_adi?.trim() || null,
+      unvan_adi: u.unvan_adi,
+      egitimEtiket: hasKayit && set ? [...set].sort((a, b) => a.localeCompare(b, 'tr')).join(', ') : null,
+      hasKayit,
     }
   })
 
-  const kadroIds = new Set(kadroUnvanlar.map((u) => u.id))
-  const orphanUnvanIds = [...new Set(liste.map((r) => r.unvan_id).filter((id) => !kadroIds.has(id)))]
-  let unvanlar = kadroUnvanlar
-  if (orphanUnvanIds.length) {
-    const { data: extra } = await supabase.from('tanim_unvan').select('id, unvan_adi').in('id', orphanUnvanIds)
-    const byId = new Map<number, { id: number; unvan_adi: string }>()
-    for (const u of kadroUnvanlar) byId.set(u.id, u)
-    for (const u of extra ?? []) byId.set(u.id, u as { id: number; unvan_adi: string })
-    unvanlar = [...byId.values()].sort((a, b) => a.unvan_adi.localeCompare(b.unvan_adi, 'tr'))
-  }
-
-  return (
-    <KazancBilgiClient
-      data={liste}
-      unvanlar={unvanlar}
-      ogrenimler={(ogrenimler ?? []) as { id: number; isim: string }[]}
-      onGuncelle={kazancBilgiGuncelle}
-      onSil={kazancBilgiSil}
-      onTopluGuncelle={kazancBilgiTopluGuncelle}
-    />
-  )
+  return <KazancBilgiOzetClient satirlar={satirlar} />
 }

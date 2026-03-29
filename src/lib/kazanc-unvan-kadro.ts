@@ -7,7 +7,7 @@ import type { Database } from '@/types/database'
  */
 export async function fetchUnvanlarKadrodaPersonelAtanmis(
   supabase: SupabaseClient<Database>
-): Promise<{ id: number; unvan_adi: string }[]> {
+): Promise<{ id: number; unvan_adi: string; sinif_adi: string | null }[]> {
   const { data: kh, error } = await supabase
     .from('kadro_hareketleri')
     .select('kadro_unvani, gorev_unvani, asil, vekil')
@@ -30,11 +30,11 @@ export async function fetchUnvanlarKadrodaPersonelAtanmis(
 
   const { data: unvanlar } = await supabase
     .from('tanim_unvan')
-    .select('id, unvan_adi')
+    .select('id, unvan_adi, sinif_adi')
     .eq('aktif', true)
     .in('unvan_adi', arr)
 
-  const list = (unvanlar ?? []) as { id: number; unvan_adi: string }[]
+  const list = (unvanlar ?? []) as { id: number; unvan_adi: string; sinif_adi: string | null }[]
   list.sort((a, b) => (a.unvan_adi ?? '').localeCompare(b.unvan_adi ?? '', 'tr'))
   return list
 }
