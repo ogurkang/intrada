@@ -132,6 +132,8 @@ export type TerfiKaynak = {
   sicil_no: string
   ad_soyad: string | null
   unvan_adi: string | null
+  /** `kadro_hareketleri.kadro_derecesi` (görev satırı) */
+  kadro_derecesi: string | null
   ogrenim_turu: string | null
   ogrenim_id: number | null
   unvan_id: number | null
@@ -153,6 +155,10 @@ export type TerfiEttirOnizlemeSatir = {
   sicil_no: string
   ad_soyad: string | null
   unvan_adi: string | null
+  kadro_derecesi: string | null
+  ogrenim_turu: string | null
+  kha_tarihi: string | null
+  ekea_tarihi: string | null
   dk_kha_eski: string
   dk_kha_yeni: string
   dk_ekea_eski: string
@@ -269,6 +275,10 @@ export function buildTerfiEttirOnizleme(
       sicil_no: r.sicil_no,
       ad_soyad: r.ad_soyad,
       unvan_adi: r.unvan_adi,
+      kadro_derecesi: r.kadro_derecesi,
+      ogrenim_turu: r.ogrenim_turu,
+      kha_tarihi: r.kha_tarihi,
+      ekea_tarihi: r.ekea_tarihi,
       dk_kha_eski: dkString(kd, kk),
       dk_kha_yeni: dkString(newKd, newKk),
       dk_ekea_eski: dkString(ed, ek),

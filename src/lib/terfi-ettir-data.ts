@@ -36,7 +36,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
       supabase
         .from('kadro_hareketleri')
-        .select('asil, vekil, gorev_unvan_id, kadro_unvan_id, gorev_unvani, kadro_unvani')
+        .select('asil, vekil, gorev_unvan_id, kadro_unvan_id, gorev_unvani, kadro_unvani, kadro_derecesi')
         .is('ayrilis_tarihi', null),
     ])
 
@@ -81,14 +81,14 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   }
 
   const unvanIdBySicil = new Map<string, number>()
+  const kadroDerecesiBySicil = new Map<string, string | null>()
   for (const sicil of memurSiciller) {
     for (const r of khUnvan ?? []) {
       if (r.asil !== sicil && r.vekil !== sicil) continue
+      kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
       const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
-      if (uid != null) {
-        unvanIdBySicil.set(sicil, uid)
-        break
-      }
+      if (uid != null) unvanIdBySicil.set(sicil, uid)
+      break
     }
   }
 
@@ -120,6 +120,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       sicil_no,
       ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
       unvan_adi: k?.gorev_unvani ?? null,
+      kadro_derecesi: kadroDerecesiBySicil.get(sicil_no) ?? null,
       ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
       ogrenim_id: ogId,
       unvan_id: unvanId,

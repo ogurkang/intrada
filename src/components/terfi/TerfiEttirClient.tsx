@@ -21,6 +21,12 @@ function fmt(iso: string) {
   }
 }
 
+function fmtTarih(iso: string | null | undefined) {
+  if (iso == null || !String(iso).trim()) return '—'
+  const d = String(iso).slice(0, 10)
+  return fmt(d)
+}
+
 function puanGoster(v: string | null | undefined) {
   return v ?? '—'
 }
@@ -71,9 +77,14 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
   function excelIndir() {
     const aoa: (string | number)[][] = [
       [
+        'Sıra',
         'Sicil',
         'Ad Soyad',
+        'Öğrenim',
         'Ünvan',
+        'Kadro derecesi',
+        'KHA tarihi',
+        'EKEA tarihi',
         'KHA D/K (eski→yeni)',
         'EKEA D/K (eski→yeni)',
         'Ek Gösterge (eski→yeni)',
@@ -84,11 +95,16 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         'Durum / Uyarı',
       ],
     ]
-    for (const r of satirlar) {
+    satirlar.forEach((r, idx) => {
       aoa.push([
+        idx + 1,
         r.sicil_no,
         r.ad_soyad ?? '',
+        r.ogrenim_turu ?? '',
         r.unvan_adi ?? '',
+        r.kadro_derecesi ?? '',
+        fmtTarih(r.kha_tarihi),
+        fmtTarih(r.ekea_tarihi),
         `${r.dk_kha_eski} → ${r.dk_kha_yeni}`,
         `${r.dk_ekea_eski} → ${r.dk_ekea_yeni}`,
         `${r.ek_gosterge_eski} → ${r.ek_gosterge_yeni}`,
@@ -98,7 +114,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         `${r.sds_eski} → ${r.sds_yeni}`,
         r.durum,
       ])
-    }
+    })
     const ws = XLSX.utils.aoa_to_sheet(aoa)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Terfi Ettir')
@@ -162,14 +178,17 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[1200px]">
+        <table className="w-full text-sm min-w-[1320px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
               <th className="px-2 py-3 w-10" title="Seç">
                 <input type="checkbox" checked={tumSecili} onChange={toggleHepsi} title="Tümünü seç" />
               </th>
-              <th className="px-2 py-3 font-semibold text-slate-600">Sicil — Ad Soyad</th>
-              <th className="px-2 py-3 font-semibold text-slate-600">Ünvan</th>
+              <th className="px-2 py-3 w-11 font-semibold text-slate-600 text-center">Sıra</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 min-w-[9rem]">Sicil — Ad Soyad</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 min-w-[7rem]">Ünvan</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">Kadro derecesi</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 min-w-[7.5rem]">Terfi tarihleri</th>
               <th className="px-2 py-3 font-semibold text-slate-600">KHA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">EKEA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Ek Gösterge</th>
@@ -183,12 +202,12 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
           <tbody className="divide-y divide-slate-100">
             {satirlar.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={14} className="px-4 py-12 text-center text-slate-400">
                   Bu dönem penceresinde terfi tarihi (KHA/EKEA) bulunan memur yok.
                 </td>
               </tr>
             )}
-            {satirlar.map((r) => (
+            {satirlar.map((r, idx) => (
               <tr key={r.sicil_no} className="hover:bg-slate-50/80">
                 <td className="px-2 py-2 align-top">
                   <input
@@ -198,12 +217,25 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                     disabled={r.terfi_id == null}
                   />
                 </td>
+                <td className="px-2 py-2 align-top text-center text-slate-600 tabular-nums">{idx + 1}</td>
                 <td className="px-2 py-2 align-top">
                   <span className="font-mono text-xs text-slate-500">{r.sicil_no}</span>
                   <br />
                   <span className="font-medium text-slate-800">{r.ad_soyad}</span>
+                  {r.ogrenim_turu ? (
+                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">Öğrenim: {r.ogrenim_turu}</p>
+                  ) : null}
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700">{r.unvan_adi ?? '—'}</td>
+                <td className="px-2 py-2 align-top text-slate-700 tabular-nums">{r.kadro_derecesi ?? '—'}</td>
+                <td className="px-2 py-2 align-top text-[11px] leading-snug text-slate-700">
+                  <div>
+                    <span className="text-slate-400">KHA:</span> {fmtTarih(r.kha_tarihi)}
+                  </div>
+                  <div className="mt-0.5">
+                    <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)}
+                  </div>
+                </td>
                 <td className="px-2 py-2 align-top">
                   <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
                     {r.dk_kha_eski} → {r.dk_kha_yeni}
