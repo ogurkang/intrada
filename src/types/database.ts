@@ -700,6 +700,13 @@ export interface Database {
         }
         Relationships: []
       }
+      // ─────────────────── TERFİ DÖNEM ─────────────────
+      terfi_donem: {
+        Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; created_at: string }
+        Insert: { id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'; created_at?: string }
+        Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; created_at?: string }
+        Relationships: []
+      }
       // ─────────────────── ARAZİ PUANTAJI ─────────────────
       arazi_donem: {
         Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; created_at: string }

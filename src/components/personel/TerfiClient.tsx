@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import type { Tables } from '@/types/database'
@@ -371,7 +372,10 @@ export default function TerfiClient({
       {!sabitSicil && (
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Terfi Hareketleri</h1>
+            <Link href="/terfi" className="text-sm text-slate-500 hover:text-slate-800 mb-1 inline-block">
+              ← Dönemler
+            </Link>
+            <h1 className="text-2xl font-bold text-slate-800">Terfi Bilgileri</h1>
             <p className="text-sm text-slate-500 mt-0.5">Toplam <span className="font-semibold">{kayitlar.length}</span> kayıt</p>
           </div>
           <div className="flex items-center gap-3">

@@ -30,5 +30,13 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "exceljs": {
+      "archiver": "^7.0.1",
+      "unzipper": "^0.12.3",
+      "fast-csv": "^5.0.5"
+    },
+    "glob": "^13.0.6"
   }
 }
