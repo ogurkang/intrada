@@ -6,6 +6,7 @@ export type TerfiEttirDurumEtiket =
   | 'Tavan Kademe (Lise)'
   | 'Tavan Kademe'
   | 'Eğitim Sınırında'
+  | 'Kıdem Yılı İlerledi'
   | '—'
 
 /** Lise → min 3; Ön Lisans / Lisans → min 1 */
@@ -143,6 +144,8 @@ export type TerfiKaynak = {
   ekea_derece: string | null
   ekea_kademe: string | null
   ekea_tarihi: string | null
+  kidem_yili: string | null
+  kidem_tarihi: string | null
   ek_gosterge: string | null
   ek_odeme: string | null
   oht: string | null
@@ -159,6 +162,10 @@ export type TerfiEttirOnizlemeSatir = {
   ogrenim_turu: string | null
   kha_tarihi: string | null
   ekea_tarihi: string | null
+  kidem_tarihi_eski: string
+  kidem_tarihi_yeni: string
+  kidem_yili_eski: string
+  kidem_yili_yeni: string
   dk_kha_eski: string
   dk_kha_yeni: string
   dk_ekea_eski: string
@@ -180,6 +187,10 @@ export type TerfiEttirOnizlemeSatir = {
     kha_kademe: string | null
     ekea_derece: string | null
     ekea_kademe: string | null
+    kha_tarihi: string | null
+    ekea_tarihi: string | null
+    kidem_tarihi: string | null
+    kidem_yili: string | null
     ek_gosterge: string | null
     ek_odeme: string | null
     oht: string | null
@@ -193,6 +204,16 @@ type KazancLookup = (unvanId: number, ogrenimId: number, derece: number) => Kaza
 function birlesDurum(a: TerfiEttirDurumEtiket, b: TerfiEttirDurumEtiket): TerfiEttirDurumEtiket {
   if (a !== '—') return a
   return b
+}
+
+function birYilIleri(t: string | null | undefined): string | null {
+  if (t == null || !String(t).trim()) return null
+  const iso = String(t).slice(0, 10)
+  const d = new Date(iso + 'T12:00:00')
+  if (Number.isNaN(d.getTime())) return iso
+  d.setFullYear(d.getFullYear() + 1)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 /**
@@ -210,13 +231,15 @@ export function buildTerfiEttirOnizleme(
     const minD = minDereceEgitim(r.ogrenim_turu)
     const khaIn = tarihDahilAralikta(r.kha_tarihi, terfiBas, terfiBit)
     const ekeaIn = tarihDahilAralikta(r.ekea_tarihi, terfiBas, terfiBit)
-    if (!khaIn && !ekeaIn) continue
+    const kidemIn = tarihDahilAralikta(r.kidem_tarihi, terfiBas, terfiBit)
+    if (!khaIn && !ekeaIn && !kidemIn) continue
 
     const kd = parseNum(r.kha_derece)
     const kk = parseNum(r.kha_kademe)
     const ed = parseNum(r.ekea_derece)
     const ek = parseNum(r.ekea_kademe)
     if (kd == null || kk == null || ed == null || ek == null) continue
+    const kidem = parseNum(r.kidem_yili)
 
     const gunKha = tarihGun(r.kha_tarihi)
     const gunEkea = tarihGun(r.ekea_tarihi)
@@ -237,6 +260,12 @@ export function buildTerfiEttirOnizleme(
     let newKk = kk
     let newEd = ed
     let newEk = ek
+    const newKhaTarih = khaIn ? birYilIleri(r.kha_tarihi) : (r.kha_tarihi ?? null)
+    const newEkeaTarih = ekeaIn ? birYilIleri(r.ekea_tarihi) : (r.ekea_tarihi ?? null)
+    const newKidemTarih = kidemIn ? birYilIleri(r.kidem_tarihi) : (r.kidem_tarihi ?? null)
+    const kidemYiliIlerledi = Boolean(kidemIn && kidem != null && kidem < 25)
+    const newKidemYili =
+      kidem == null ? (r.kidem_yili ?? null) : String(Math.min(25, kidemIn ? kidem + 1 : kidem))
     let durum: TerfiEttirDurumEtiket = '—'
     let puanSon: KazancPuan = { ...puanEski }
 
@@ -270,6 +299,9 @@ export function buildTerfiEttirOnizleme(
         }
       }
     }
+    if (kidemYiliIlerledi) {
+      durum = birlesDurum(durum, 'Kıdem Yılı İlerledi')
+    }
 
     out.push({
       sicil_no: r.sicil_no,
@@ -279,6 +311,10 @@ export function buildTerfiEttirOnizleme(
       ogrenim_turu: r.ogrenim_turu,
       kha_tarihi: r.kha_tarihi,
       ekea_tarihi: r.ekea_tarihi,
+      kidem_tarihi_eski: r.kidem_tarihi ?? '—',
+      kidem_tarihi_yeni: newKidemTarih ?? '—',
+      kidem_yili_eski: r.kidem_yili ?? '—',
+      kidem_yili_yeni: newKidemYili ?? '—',
       dk_kha_eski: dkString(kd, kk),
       dk_kha_yeni: dkString(newKd, newKk),
       dk_ekea_eski: dkString(ed, ek),
@@ -300,6 +336,10 @@ export function buildTerfiEttirOnizleme(
         kha_kademe: String(newKk),
         ekea_derece: String(newEd),
         ekea_kademe: String(newEk),
+        kha_tarihi: newKhaTarih,
+        ekea_tarihi: newEkeaTarih,
+        kidem_tarihi: newKidemTarih,
+        kidem_yili: newKidemYili,
         ek_gosterge: puanSon.ek_gosterge,
         ek_odeme: puanSon.ek_odeme,
         oht: puanSon.oht,

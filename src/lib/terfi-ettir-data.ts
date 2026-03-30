@@ -130,6 +130,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       ekea_derece: t.ekea_derece,
       ekea_kademe: t.ekea_kademe,
       ekea_tarihi: t.ekea_tarihi,
+        kidem_yili: t.kidem_yili,
+        kidem_tarihi: t.kidem_tarihi,
       ek_gosterge: t.ek_gosterge,
       ek_odeme: t.ek_odeme,
       oht: t.oht,

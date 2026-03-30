@@ -11,9 +11,17 @@ Bu belge ürün adı **Terfi Ettir** ile kayıtlı iş kurallarını özetler.
 ## Hangi tarihler filtreye girer?
 
 - **KHA terfi tarihi** (`kha_tarihi`) ve **EKEA terfi tarihi** (`ekea_tarihi`) bu pencerede mi bakılır.
-- **Kıdem tarihleri** bu filtreye **tabi değildir**.
+- **Kıdem tarihi** (`kidem_tarihi`) de aynı dönem penceresine dahildir.
 - KHA ve EKEA tarihleri **aynı gün** ise tek terfi hareketi gibi aynı D/K kuralı **ikisine birden** uygulanır.
 - **Farklı günlerde** ise KHA ve EKEA ilerlemeleri **birbirinden bağımsız** hesaplanır (aynı personelde iki ayrı mantık).
+
+## Kıdem yılı / kıdem tarihi kuralı
+
+- `kidem_tarihi` dönem penceresine giriyorsa **1 yıl ileri** alınır.
+- `kidem_yili` için kural: `min(25, kidem_yili + 1)`.
+- Örnekler: `5 → 6`, `10 → 11`, `24 → 25`, `25 → 25` (tavan).
+- `Durum / Uyarı` etiketi: kıdem yılı artışı olduğunda **`Kıdem Yılı İlerledi`** gösterilir.
+- Renk: **mavi** (`bg-blue-100 text-blue-700`).
 
 ## Eğitim tabanlı derece tabanı
 
@@ -38,6 +46,7 @@ Derece **değiştiyse**: `unvan_id`, öğrenim (`ogrenim_id`) ve **yeni derece**
 - **`/terfi`** — Dönem listesi + **Yeni Dönem** (Arazi Puantajı kalıbı); **Terfi Bilgileri** ile terfi tablosuna geçiş.
 - **`/terfi/bilgiler`** — Mevcut terfi kayıt / toplu güncelleme ekranı (`TerfiClient`).
 - **`/terfi/donem/[id]`** — Dönem özeti, terfi tarih penceresi açıklaması ve **aynı sayfada** Terfi Ettir önizleme tablosu; satır seçimi + **Terfi Ettir** ile `terfi_hareketleri` güncellenir; Excel indir.
+- Önizleme sütunlarında KHA/EKEA yanında **Kıdem Tarihi** ve **Kıdem Yılı (eski→yeni)** de gösterilir.
 - **`/terfi/donem/[id]/terfi-ettir`** — Eski bağlantılar için `/terfi/donem/[id]` adresine yönlendirilir.
 
 ## Veritabanı

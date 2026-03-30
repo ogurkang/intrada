@@ -75,6 +75,10 @@ export type TerfiEttirKayitSatir = {
   kha_kademe: string | null
   ekea_derece: string | null
   ekea_kademe: string | null
+  kha_tarihi: string | null
+  ekea_tarihi: string | null
+  kidem_tarihi: string | null
+  kidem_yili: string | null
   ek_gosterge: string | null
   ek_odeme: string | null
   oht: string | null
@@ -97,6 +101,10 @@ export async function terfiEttirKaydet(
         kha_kademe: s.kha_kademe,
         ekea_derece: s.ekea_derece,
         ekea_kademe: s.ekea_kademe,
+        kha_tarihi: s.kha_tarihi,
+        ekea_tarihi: s.ekea_tarihi,
+        kidem_tarihi: s.kidem_tarihi,
+        kidem_yili: s.kidem_yili,
         ek_gosterge: s.ek_gosterge,
         ek_odeme: s.ek_odeme,
         oht: s.oht,

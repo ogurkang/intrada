@@ -85,6 +85,8 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         'Kadro derecesi',
         'KHA tarihi',
         'EKEA tarihi',
+        'Kıdem tarihi',
+        'Kıdem yılı (eski→yeni)',
         'KHA D/K (eski→yeni)',
         'EKEA D/K (eski→yeni)',
         'Ek Gösterge (eski→yeni)',
@@ -105,6 +107,8 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         r.kadro_derecesi ?? '',
         fmtTarih(r.kha_tarihi),
         fmtTarih(r.ekea_tarihi),
+        `${r.kidem_tarihi_eski} → ${r.kidem_tarihi_yeni}`,
+        `${r.kidem_yili_eski} → ${r.kidem_yili_yeni}`,
         `${r.dk_kha_eski} → ${r.dk_kha_yeni}`,
         `${r.dk_ekea_eski} → ${r.dk_ekea_yeni}`,
         `${r.ek_gosterge_eski} → ${r.ek_gosterge_yeni}`,
@@ -178,7 +182,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[1320px]">
+        <table className="w-full text-sm min-w-[1480px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
               <th className="px-2 py-3 w-10" title="Seç">
@@ -188,7 +192,8 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
               <th className="px-2 py-3 font-semibold text-slate-600 min-w-[9rem]">Sicil — Ad Soyad</th>
               <th className="px-2 py-3 font-semibold text-slate-600 min-w-[7rem]">Ünvan</th>
               <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">Kadro derecesi</th>
-              <th className="px-2 py-3 font-semibold text-slate-600 min-w-[7.5rem]">Terfi tarihleri</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 min-w-[8rem]">Terfi tarihleri</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">Kıdem yılı</th>
               <th className="px-2 py-3 font-semibold text-slate-600">KHA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">EKEA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Ek Gösterge</th>
@@ -202,7 +207,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
           <tbody className="divide-y divide-slate-100">
             {satirlar.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={15} className="px-4 py-12 text-center text-slate-400">
                   Bu dönem penceresinde terfi tarihi (KHA/EKEA) bulunan memur yok.
                 </td>
               </tr>
@@ -235,6 +240,12 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                   <div className="mt-0.5">
                     <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)}
                   </div>
+                  <div className="mt-0.5">
+                    <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.kidem_tarihi_yeni)}
+                  </div>
+                </td>
+                <td className="px-2 py-2 align-top text-slate-700 tabular-nums whitespace-nowrap">
+                  {r.kidem_yili_eski} → {r.kidem_yili_yeni}
                 </td>
                 <td className="px-2 py-2 align-top">
                   <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
@@ -319,6 +330,8 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                         ? 'bg-green-100 text-green-800'
                         : r.durum === 'Sadece Kademe'
                           ? 'bg-slate-100 text-slate-700'
+                          : r.durum === 'Kıdem Yılı İlerledi'
+                            ? 'bg-blue-100 text-blue-700'
                           : r.durum.includes('Tavan')
                             ? 'bg-amber-100 text-amber-900'
                             : r.durum === 'Eğitim Sınırında'

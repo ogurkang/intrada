@@ -46,11 +46,11 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
             </span>
           </p>
           <p className="text-sm text-slate-500 mt-2 max-w-xl">
-            Terfi Ettir için kullanılan <strong>KHA / EKEA terfi tarihi</strong> penceresi (bir önceki ay):{' '}
+            Terfi Ettir için kullanılan <strong>KHA / EKEA / Kıdem tarihi</strong> penceresi (bir önceki ay):{' '}
             <span className="tabular-nums font-medium text-slate-700">
               {fmt(bas)} — {fmt(bit)}
             </span>{' '}
-            (dahil). Kıdem tarihleri bu filtreye dahil değildir.
+            (dahil).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
