@@ -78,7 +78,10 @@ export default async function AraziPuantajPage({ params }: Props) {
         ad_soyad: adMap[s] ?? s,
         mudurluk: mudMap[s] ?? null,
         oran: oranMap[s] ?? 0,
-      })).sort((a, b) => (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr'))
+      })).sort((a, b) => {
+        if (b.oran !== a.oran) return b.oran - a.oran
+        return (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr')
+      })
     }
   }
 

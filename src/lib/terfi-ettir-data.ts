@@ -81,11 +81,13 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   }
 
   const unvanIdBySicil = new Map<string, number>()
+  const kadroUnvaniBySicil = new Map<string, string | null>()
   const kadroDerecesiBySicil = new Map<string, string | null>()
   for (const sicil of memurSiciller) {
     for (const r of khUnvan ?? []) {
       if (r.asil !== sicil && r.vekil !== sicil) continue
       kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
+      kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
       const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
       if (uid != null) unvanIdBySicil.set(sicil, uid)
       break
@@ -119,7 +121,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kaynaklar.push({
       sicil_no,
       ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
-      unvan_adi: k?.gorev_unvani ?? null,
+      unvan_adi: kadroUnvaniBySicil.get(sicil_no) ?? k?.gorev_unvani ?? null,
       kadro_derecesi: kadroDerecesiBySicil.get(sicil_no) ?? null,
       ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
       ogrenim_id: ogId,

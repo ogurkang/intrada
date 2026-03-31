@@ -21,6 +21,7 @@ export interface IzinIstatistik {
 
 export interface BekleyenIzin {
   id:             number
+  sira_no?:       string | null
   sicil_no:       string
   public_id?:     string
   ad_soyad:       string | null
@@ -272,6 +273,8 @@ export default function DashboardClient({
                         )}
                       </div>
                       <p className="text-xs text-slate-500" title="Ayrılış / izin başlangıcı – işe başlama">
+                        {iz.sira_no ? <span className="font-medium">Sıra No: {iz.sira_no}</span> : null}
+                        {iz.sira_no ? <span className="mx-1.5 text-slate-300">•</span> : null}
                         {tarihFormatla(iz.baslangic)} – {tarihFormatla(iz.bitis)}
                         {iz.gun_sayisi && <span className="ml-1 font-medium">({iz.gun_sayisi} gün)</span>}
                         {iz.olusturma_tarihi && (
@@ -343,11 +346,11 @@ export default function DashboardClient({
             )}
           </div>
 
-          {/* Yıllık İzini Artacaklar / Eklenecekler */}
+          {/* Yıllık İzni Artacaklar / Eklenecekler */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-700">
-                Yıllık İzini Artacaklar / Eklenecekler
+                Yıllık İzni Artacaklar / Eklenecekler
                 {izinArtisAdaylari.length > 0 && (
                   <span className="ml-2 bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
                     {izinArtisAdaylari.length}

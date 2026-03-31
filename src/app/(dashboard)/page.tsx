@@ -53,7 +53,7 @@ export default async function DashboardPage() {
     // 4) Bekleyen (Taslak) izinler — en fazla 20
     supabase
       .from('izin_hareketleri')
-      .select('id, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi')
+      .select('id, sira_no, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi')
       .eq('durum', 'Taslak')
       .order('kayit_tarihi', { ascending: true })
       .limit(20),
@@ -125,6 +125,7 @@ export default async function DashboardPage() {
   // Bekleyen izinler
   const bekleyenIzinler: BekleyenIzin[] = (bekleyenRaw ?? []).map(iz => ({
     id:               iz.id,
+    sira_no:          iz.sira_no,
     sicil_no:         iz.sicil_no ?? '',
     public_id:        publicIdMap[iz.sicil_no ?? ''],
     ad_soyad:         adMap[iz.sicil_no ?? ''] ?? iz.sicil_no ?? '',
@@ -261,7 +262,7 @@ export default async function DashboardPage() {
         kidemTarihi.slice(0, 4) === String(buYil) &&
         kidemTarihi <= bugun
       const kapsamaGiriyor = isIsci
-        ? Boolean(kidemTarihBuYil || kidemYili >= 10)
+        ? Boolean(kidemTarihBuYil)
         : Boolean(kidemYili >= 10 || (kidemYili === 9 && kidemTarihBuYil))
       if (!kapsamaGiriyor) continue
 
