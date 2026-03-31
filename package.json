@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "bulk-auth-users": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs",
-    "bulk-auth-users:dry": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --dry"
+    "bulk-auth-users:dry": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --dry",
+    "bulk-auth-users:reset": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --reset-existing",
+    "bulk-auth-users:reset:dry": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --reset-existing --dry"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

@@ -121,6 +121,22 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
     const ws = wb.addWorksheet('Çalışanlar', {
       views: [{ showGridLines: true }],
     })
+    ws.pageSetup = {
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      paperSize: 9, // A4
+      horizontalCentered: true,
+      margins: {
+        left: 1,
+        right: 1,
+        top: 1,
+        bottom: 1,
+        header: 1,
+        footer: 1,
+      },
+    }
 
     const colCount = 18
     const titleStyle: Partial<ExcelJS.Style> = {
@@ -184,7 +200,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         },
       }
     })
-    headerRow.height = 28
+    headerRow.height = 60
 
     satirlar.forEach((r, idx) => {
       const row = ws.getRow(6 + idx)
@@ -216,11 +232,16 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         { v: r.durum, style: durumExcelStyle(r.durum) },
       ]
 
+      const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
       cells.forEach((cell, i) => {
         const c = row.getCell(i + 1)
         c.value = cell.v
         c.style = {
-          alignment: { vertical: 'middle', wrapText: true },
+          alignment: {
+            vertical: 'middle',
+            wrapText: true,
+            ...(centerCols.has(i + 1) ? { horizontal: 'center' as const } : {}),
+          },
           border: {
             top: { style: 'thin' },
             bottom: { style: 'thin' },
@@ -232,12 +253,34 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
       })
     })
 
-    ws.columns.forEach((col) => {
-      col.width = 14
-    })
-    ws.getColumn(3).width = 22
-    ws.getColumn(5).width = 18
-    ws.getColumn(18).width = 28
+    const excelWidth = (w: number) => Number((w + 0.71).toFixed(2))
+    const colWidths: Record<number, number> = {
+      1: excelWidth(5),   // A
+      2: excelWidth(5),   // B
+      3: 22,              // C
+      4: excelWidth(8),   // D
+      5: excelWidth(10),  // E
+      6: excelWidth(8),   // F
+      7: excelWidth(8),   // G
+      8: excelWidth(12),  // H
+      9: excelWidth(8),   // I
+      10: excelWidth(12), // J
+      11: excelWidth(8),  // K
+      12: excelWidth(12), // L
+      13: excelWidth(9),  // M
+      14: excelWidth(8),  // N
+      15: excelWidth(8),  // O
+      16: excelWidth(8),  // P
+      17: excelWidth(8),  // Q
+      18: excelWidth(15), // R
+    }
+    for (let i = 1; i <= 18; i++) {
+      ws.getColumn(i).width = colWidths[i] ?? 12
+    }
+    const centerCols = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    for (const colIdx of centerCols) {
+      ws.getColumn(colIdx).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    }
 
     const buf = await wb.xlsx.writeBuffer()
     const blob = new Blob([buf], {

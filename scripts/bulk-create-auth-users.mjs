@@ -1,9 +1,11 @@
 /**
- * calisan tablosundaki e-posta + TCKN + doğum tarihine göre toplu Supabase Auth kullanıcısı oluşturur.
+ * calisan + aktif firma_calisanlar kayıtlarındaki e-posta + TCKN + doğum tarihine göre
+ * toplu Supabase Auth kullanıcısı oluşturur.
  * Varsayılan şifre: TCKN ilk 3 rakam + nokta + doğum yılı (4 hane), örn. 252.1987
  *
  * Kullanım (proje kökünden):
  *   node --env-file=.env.local scripts/bulk-create-auth-users.mjs
+ *   node --env-file=.env.local scripts/bulk-create-auth-users.mjs --reset-existing
  *
  * Sadece ne yapılacağını görmek (Auth’a yazmaz):
  *   npm run bulk-auth-users:dry
@@ -88,6 +90,10 @@ const dryRun =
   process.env.DRY_RUN === '1' ||
   process.env.DRY_RUN === 'true' ||
   process.argv.includes('--dry')
+const resetExisting =
+  process.env.RESET_EXISTING === '1' ||
+  process.env.RESET_EXISTING === 'true' ||
+  process.argv.includes('--reset-existing')
 
 if (!url || !key) {
   console.error('Eksik: NEXT_PUBLIC_SUPABASE_URL veya SUPABASE_SERVICE_ROLE_KEY (.env.local)')
@@ -98,12 +104,48 @@ const admin = createClient(url, key, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
+async function authUserIdByEmail(email) {
+  const target = String(email ?? '').trim().toLowerCase()
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    if (error) return null
+    const u = (data?.users ?? []).find((x) => (x.email ?? '').trim().toLowerCase() === target)
+    if (u) return u.id
+    if (!(data?.users ?? []).length) break
+  }
+  return null
+}
+
 async function main() {
   const godSet = godmodeSicilSet()
-  const { data: rows, error } = await admin.from('calisan').select('sicil_no, ad_soyad, tckn, dogum_tarihi, e_posta')
-  if (error) {
-    console.error('calisan okunamadı:', error.message)
+  const [{ data: calisanRows, error: calErr }, { data: firmaRows, error: firmaErr }] = await Promise.all([
+    admin.from('calisan').select('sicil_no, ad_soyad, tckn, dogum_tarihi, e_posta'),
+    admin
+      .from('firma_calisanlar')
+      .select('sicil_no, ad_soyad, tckn, dogum_tarihi, e_posta, ayrilis_tarihi')
+      .is('ayrilis_tarihi', null),
+  ])
+  if (calErr) {
+    console.error('calisan okunamadı:', calErr.message)
     process.exit(1)
+  }
+  if (firmaErr) {
+    console.error('firma_calisanlar okunamadı:', firmaErr.message)
+    process.exit(1)
+  }
+
+  const rows = [...(calisanRows ?? [])]
+  const seenSicil = new Set(rows.map((r) => String(r.sicil_no ?? '').trim()).filter(Boolean))
+  for (const f of firmaRows ?? []) {
+    const sicil = String(f.sicil_no ?? '').trim()
+    if (!sicil || seenSicil.has(sicil)) continue
+    rows.push({
+      sicil_no: sicil,
+      ad_soyad: f.ad_soyad,
+      tckn: f.tckn,
+      dogum_tarihi: f.dogum_tarihi,
+      e_posta: f.e_posta,
+    })
   }
 
   let ok = 0
@@ -111,6 +153,8 @@ async function main() {
   let skipDup = 0
   let skipBad = 0
   let skipGod = 0
+  let resetOk = 0
+  let resetErr = 0
 
   for (const r of rows ?? []) {
     if (isGodmodeSicil(r.sicil_no, godSet)) {
@@ -139,7 +183,7 @@ async function main() {
       continue
     }
 
-    const { error: cErr } = await admin.auth.admin.createUser({
+    const { data: created, error: cErr } = await admin.auth.admin.createUser({
       email,
       password: pwd,
       email_confirm: true,
@@ -148,6 +192,26 @@ async function main() {
     if (cErr) {
       const msg = cErr.message ?? ''
       if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        if (resetExisting) {
+          const uid = await authUserIdByEmail(email)
+          if (!uid) {
+            skipDup++
+            console.log(`[zaten var] ${email} (id bulunamadı, reset atlandı)`)
+            continue
+          }
+          const { error: updErr } = await admin.auth.admin.updateUserById(uid, {
+            password: pwd,
+            email_confirm: true,
+          })
+          if (updErr) {
+            resetErr++
+            console.error(`[reset hata] ${email}:`, updErr.message ?? updErr)
+            continue
+          }
+          resetOk++
+          console.log(`[şifre güncellendi] ${email}`)
+          continue
+        }
         skipDup++
         console.log(`[zaten var] ${email}`)
         continue
@@ -158,13 +222,15 @@ async function main() {
     }
 
     ok++
-    console.log(`[oluşturuldu] ${email}`)
+    console.log(`[oluşturuldu] ${email}${created?.user?.id ? ` (${created.user.id})` : ''}`)
   }
 
   console.log('\n--- Özet ---')
   console.log(dryRun ? 'DRY RUN (hiçbir kullanıcı oluşturulmadı)' : 'Tamamlandı')
   console.log(`Başarılı / dry-run satırı: ${ok}`)
   console.log(`Zaten kayıtlı: ${skipDup}`)
+  console.log(`Şifresi güncellenen (reset-existing): ${resetOk}`)
+  console.log(`Şifre güncelleme hatası: ${resetErr}`)
   console.log(`Godmode (atlandı): ${skipGod}`)
   console.log(`Eksik veri / hata: ${skipBad + skip}`)
 }

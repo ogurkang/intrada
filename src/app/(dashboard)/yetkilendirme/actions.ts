@@ -138,6 +138,7 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
         .from('firma_calisanlar')
         .select('ad_soyad, e_posta, telefon, cinsiyet, dogum_tarihi, tckn, ayrilis_tarihi')
         .eq('sicil_no', sicil_no)
+        .is('ayrilis_tarihi', null)
         .order('kayit_zamani', { ascending: false })
         .limit(1)
         .maybeSingle(),
