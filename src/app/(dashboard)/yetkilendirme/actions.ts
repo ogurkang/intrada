@@ -114,21 +114,63 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
   if (rol !== 'admin' && rol !== 'kullanici') return { hata: 'Geçersiz rol.' }
 
   let authUserId: string | null = null
+  let calisanVarMi = false
+  let calisanTemel:
+    | {
+        ad_soyad: string
+        e_posta: string | null
+        telefon: string | null
+        cinsiyet: string | null
+        dogum_tarihi: string | null
+        tckn: string | null
+      }
+    | null = null
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuidElle)) {
     authUserId = uuidElle
   } else {
-    const { data: cal, error: calErr } = await r.supabase
-      .from('calisan')
-      .select('e_posta')
-      .eq('sicil_no', sicil_no)
-      .maybeSingle()
+    const [{ data: cal, error: calErr }, { data: firma, error: firmaErr }] = await Promise.all([
+      r.supabase
+        .from('calisan')
+        .select('ad_soyad, e_posta, telefon, cinsiyet, dogum_tarihi, tckn')
+        .eq('sicil_no', sicil_no)
+        .maybeSingle(),
+      r.supabase
+        .from('firma_calisanlar')
+        .select('ad_soyad, e_posta, telefon, cinsiyet, dogum_tarihi, tckn, ayrilis_tarihi')
+        .eq('sicil_no', sicil_no)
+        .order('kayit_zamani', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
 
     if (calErr) return { hata: calErr.message }
-    const email = (cal?.e_posta ?? '').trim().toLowerCase()
+    if (firmaErr) return { hata: firmaErr.message }
+    calisanVarMi = Boolean(cal)
+    calisanTemel = cal
+      ? {
+          ad_soyad: cal.ad_soyad,
+          e_posta: cal.e_posta,
+          telefon: cal.telefon,
+          cinsiyet: cal.cinsiyet,
+          dogum_tarihi: cal.dogum_tarihi,
+          tckn: cal.tckn,
+        }
+      : firma
+        ? {
+            ad_soyad: firma.ad_soyad ?? sicil_no,
+            e_posta: firma.e_posta,
+            telefon: firma.telefon,
+            cinsiyet: firma.cinsiyet,
+            dogum_tarihi: firma.dogum_tarihi,
+            tckn: firma.tckn,
+          }
+        : null
+
+    const email = ((calisanTemel?.e_posta ?? null) ?? '').trim().toLowerCase()
     if (!email) {
       return {
         hata:
-          'Bu sicil için personel kaydında e-posta yok. Önce personel kartında e-posta girin veya Auth’ta hesap açıldıktan sonra kişi ilk girişte profil otomatik oluşur.',
+          'Bu sicil için personel/firma personel kaydında e-posta yok. Önce ilgili kartta e-posta girin veya Auth’ta hesap açıldıktan sonra kişi ilk girişte profil otomatik oluşur.',
       }
     }
 
@@ -151,6 +193,22 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
   }
 
   const menu_izinleri = rol === 'admin' ? {} : menuFormdanOku(formData)
+
+  if (!calisanVarMi) {
+    if (!calisanTemel?.ad_soyad?.trim()) {
+      return { hata: 'Bu sicil için ana personel kaydı oluşturulamadı: ad soyad bilgisi eksik.' }
+    }
+    const { error: calInsertErr } = await r.supabase.from('calisan').insert({
+      sicil_no,
+      ad_soyad: calisanTemel.ad_soyad.trim(),
+      e_posta: calisanTemel.e_posta ?? null,
+      telefon: calisanTemel.telefon ?? null,
+      cinsiyet: calisanTemel.cinsiyet ?? null,
+      dogum_tarihi: calisanTemel.dogum_tarihi ?? null,
+      tckn: calisanTemel.tckn ?? null,
+    })
+    if (calInsertErr) return { hata: `Ana personel kaydı açılamadı: ${calInsertErr.message}` }
+  }
 
   const { error } = await r.supabase.from('app_profiles').insert({
     id: authUserId!,

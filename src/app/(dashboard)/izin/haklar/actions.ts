@@ -17,6 +17,19 @@ export async function izinHakiKaydet(
   if (!yil || yil < 2000 || yil > 2100)  return { hata: 'Geçerli bir yıl giriniz.' }
 
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum bulunamadı.' }
+  const { data: profil } = await supabase
+    .from('app_profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profil?.rol !== 'admin') {
+    return { hata: 'Bu işlem için admin yetkisi gerekir.' }
+  }
+
   const { error } = await supabase.from('izin_haklari').upsert(
     { yil, sicil_no, devreden_gun, hak_edilen_gun },
     { onConflict: 'yil,sicil_no' }
@@ -24,6 +37,8 @@ export async function izinHakiKaydet(
 
   if (error) return { hata: error.message }
   revalidatePath('/izin/haklar')
+  revalidatePath('/izin/haklar/duzenle')
+  revalidatePath('/')
   return {}
 }
 

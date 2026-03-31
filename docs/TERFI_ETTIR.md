@@ -15,6 +15,11 @@ Bu belge ürün adı **Terfi Ettir** ile kayıtlı iş kurallarını özetler.
 - KHA ve EKEA tarihleri **aynı gün** ise tek terfi hareketi gibi aynı D/K kuralı **ikisine birden** uygulanır.
 - **Farklı günlerde** ise KHA ve EKEA ilerlemeleri **birbirinden bağımsız** hesaplanır (aynı personelde iki ayrı mantık).
 
+## KHA ve EKEA terfi tarihleri (Terfi Ettir kaydı)
+
+- **`kha_tarihi`** ve **`ekea_tarihi`** için de, ilgili tarih dönem penceresine **giriyorsa** Terfi Ettir ile kayıt sırasında **+1 yıl** (aynı gün/ay) uygulanır.
+- Örnek: KHA terfi tarihi **20.03.2026** ise kayıtta **20.03.2027** olur.
+
 ## Kıdem yılı / kıdem tarihi kuralı
 
 - `kidem_tarihi` dönem penceresine giriyorsa **1 yıl ileri** alınır.
@@ -46,7 +51,8 @@ Derece **değiştiyse**: `unvan_id`, öğrenim (`ogrenim_id`) ve **yeni derece**
 - **`/terfi`** — Dönem listesi + **Yeni Dönem** (Arazi Puantajı kalıbı); **Terfi Bilgileri** ile terfi tablosuna geçiş.
 - **`/terfi/bilgiler`** — Mevcut terfi kayıt / toplu güncelleme ekranı (`TerfiClient`).
 - **`/terfi/donem/[id]`** — Dönem özeti, terfi tarih penceresi açıklaması ve **aynı sayfada** Terfi Ettir önizleme tablosu; satır seçimi + **Terfi Ettir** ile `terfi_hareketleri` güncellenir; Excel indir.
-- Önizleme sütunlarında KHA/EKEA yanında **Kıdem Tarihi** ve **Kıdem Yılı (eski→yeni)** de gösterilir.
+- Önizleme tablosu: **Terfi tarihleri** sütununda KHA/EKEA tek tarih, kıdem **eski → yeni** (locale tarih).
+- **Excel indir**: Şablondaki sütun sırası; KHA/EKEA/kıdem tarihleri **eski → yeni**, **gg.aa.yyyy**, **yeni** kısım kalın; **Durum / Uyarı** hücresi listedeki renklerle.
 - **`/terfi/donem/[id]/terfi-ettir`** — Eski bağlantılar için `/terfi/donem/[id]` adresine yönlendirilir.
 
 ## Veritabanı

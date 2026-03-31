@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import type { Tables } from '@/types/database'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
+import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 
 type FC = Tables<'firma_calisanlar'>
 
@@ -36,14 +37,14 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
   const [sayfa, setSayfa]             = useState(0)
 
   const calisanlarList = useMemo(() =>
-    kayitlar.filter(k => !k.ayrilis_tarihi).sort((a, b) => {
+    kayitlar.filter(k => isFirmaCalisanAktif(k.ayrilis_tarihi)).sort((a, b) => {
       const na = parseInt(a.sicil_no ?? '0', 10) || 0
       const nb = parseInt(b.sicil_no ?? '0', 10) || 0
       return nb - na
     }),
   [kayitlar])
   const ayrilanlarList = useMemo(() =>
-    kayitlar.filter(k => !!k.ayrilis_tarihi).sort((a, b) => {
+    kayitlar.filter(k => !isFirmaCalisanAktif(k.ayrilis_tarihi)).sort((a, b) => {
       const na = parseInt(a.sicil_no ?? '0', 10) || 0
       const nb = parseInt(b.sicil_no ?? '0', 10) || 0
       return nb - na
@@ -180,7 +181,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
                   {tarihFmt(k.kuruma_giris_tarihi)}
                 </td>
                 <td className="px-4 py-3 text-center">
-                  {k.ayrilis_tarihi ? (
+                  {!isFirmaCalisanAktif(k.ayrilis_tarihi) ? (
                     <span className="inline-flex flex-col items-center gap-0.5">
                       <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs font-medium">Ayrıldı</span>
                       <span className="text-[10px] text-slate-400">{tarihFmt(k.ayrilis_tarihi)}</span>
@@ -264,6 +265,11 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Telefon</label>
               <input name="telefon" defaultValue={k?.telefon ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">E-posta</label>
+              <input name="e_posta" type="email" defaultValue={k?.e_posta ?? ''} placeholder="ornek@adapazari.bel.tr"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>

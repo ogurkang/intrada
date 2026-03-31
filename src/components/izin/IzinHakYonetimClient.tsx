@@ -23,6 +23,9 @@ interface Props {
   onTopluOlustur: (yil: number) => Promise<{ hata?: string; olusturulan: number; guncellenen?: number }>
   onKullanilanGuncelle?: () => Promise<{ hata?: string; guncellenen?: number; toplam?: number }>
   onDevamAyrilisGuncelle?: () => Promise<{ hata?: string; guncellenen: number }>
+  odakSicilNo?: string | null
+  returnTo?: string | null
+  canEdit?: boolean
 }
 
 function renkBg(kalan: number) {
@@ -33,7 +36,8 @@ function renkBg(kalan: number) {
 }
 
 export default function IzinHakYonetimClient({
-  yil, satirlar, tumYillar,   onKaydet, onTopluOlustur, onKullanilanGuncelle, onDevamAyrilisGuncelle,
+  yil, satirlar, tumYillar, onKaydet, onTopluOlustur, onKullanilanGuncelle, onDevamAyrilisGuncelle,
+  odakSicilNo, returnTo, canEdit = true,
 }: Props) {
   const router                              = useRouter()
   const [aramaQ, setAramaQ]                = useState('')
@@ -94,6 +98,7 @@ export default function IzinHakYonetimClient({
     startTransition(async () => {
       const res = await onKaydet(fd)
       if (res.hata) setSunuciHata(res.hata)
+      else if (returnTo) router.push(returnTo)
       else kapat()
     })
   }
@@ -143,7 +148,7 @@ export default function IzinHakYonetimClient({
           </div>
 
           {/* Kullanılan günleri hareketlerden güncelle */}
-          {onKullanilanGuncelle && (
+          {canEdit && onKullanilanGuncelle && (
             <button
               onClick={() => {
                 setTopluMesaj(null)
@@ -172,7 +177,7 @@ export default function IzinHakYonetimClient({
               Kullanılan Günleri Güncelle
             </button>
           )}
-          {onDevamAyrilisGuncelle && (
+          {canEdit && onDevamAyrilisGuncelle && (
             <button
               onClick={() => {
                 setTopluMesaj(null)
@@ -191,24 +196,29 @@ export default function IzinHakYonetimClient({
             </button>
           )}
           {/* Toplu oluştur */}
-          <button onClick={handleToplu} disabled={isPending}
+          {canEdit && <button onClick={handleToplu} disabled={isPending}
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium whitespace-nowrap disabled:opacity-50">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15" />
             </svg>
             {yil} Yılı Toplu Oluştur
-          </button>
+          </button>}
 
           {/* Tekli ekle */}
-          <button onClick={yeniEkleAc}
+          {canEdit && <button onClick={yeniEkleAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium whitespace-nowrap">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Tekil Ekle
-          </button>
+          </button>}
         </div>
       </div>
+      {!canEdit && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-amber-50 border-amber-200 text-amber-700">
+          Bu sayfada düzenleme yapmak için admin yetkisi gerekir.
+        </div>
+      )}
 
       {/* Toplu işlem mesajı */}
       {topluMesaj && (
@@ -283,7 +293,7 @@ export default function IzinHakYonetimClient({
                 const kalan        = s.hak ? (s.hak.kalan_gun ?? ((devreden ?? 0) + (hakEdilen ?? 0) - (kullanilan ?? 0))) : null
 
                 return (
-                  <tr key={`${s.sicil_no}-${idx}`} className={`hover:bg-slate-50 transition-colors ${!s.hak ? 'bg-amber-50/30' : ''}`}>
+                  <tr key={`${s.sicil_no}-${idx}`} className={`hover:bg-slate-50 transition-colors ${!s.hak ? 'bg-amber-50/30' : ''} ${odakSicilNo && s.sicil_no === odakSicilNo ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200' : ''}`}>
                     <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{s.sicil_no}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{s.ad_soyad ?? '—'}</td>
@@ -308,6 +318,7 @@ export default function IzinHakYonetimClient({
 
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => duzenleAc(s)}
+                        disabled={!canEdit}
                         className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
                         {s.hak ? 'Düzenle' : 'Tanımla'}
                       </button>
@@ -384,7 +395,7 @@ export default function IzinHakYonetimClient({
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={kapat}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
-            <button type="submit" disabled={isPending}
+            <button type="submit" disabled={isPending || !canEdit}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : h ? 'Güncelle' : 'Kaydet'}
             </button>

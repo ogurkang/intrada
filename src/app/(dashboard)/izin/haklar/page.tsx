@@ -2,18 +2,22 @@ import { createClient } from '@/lib/supabase/server'
 import IzinHakYonetimClient from '@/components/izin/IzinHakYonetimClient'
 import { izinHakiKaydet, topluHakOlustur } from './actions'
 import { izinHaklariKullanilanTopluGuncelle, izinDevamAyrilisTopluGuncelle } from '../actions'
+import { getAppAccess } from '@/lib/app-access'
 import type { Tables, Views } from '@/types/database'
 
 interface Props {
-  searchParams: Promise<{ yil?: string }>
+  searchParams: Promise<{ yil?: string; sicil_no?: string; return_to?: string }>
 }
 
 export default async function IzinHaklarPage({ searchParams }: Props) {
-  const { yil: yilStr } = await searchParams
+  const { yil: yilStr, sicil_no, return_to } = await searchParams
   const buYil = new Date().getFullYear()
   const yil   = parseInt(yilStr ?? String(buYil), 10) || buYil
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const canEdit = access.mode === 'admin'
 
   const [{ data: personelRaw }, { data: hakRaw }] = await Promise.all([
     supabase
@@ -54,6 +58,9 @@ export default async function IzinHaklarPage({ searchParams }: Props) {
       onTopluOlustur={topluHakOlustur}
       onKullanilanGuncelle={izinHaklariKullanilanTopluGuncelle}
       onDevamAyrilisGuncelle={izinDevamAyrilisTopluGuncelle}
+      odakSicilNo={sicil_no ?? null}
+      returnTo={return_to ?? null}
+      canEdit={canEdit}
     />
   )
 }

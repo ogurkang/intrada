@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { filterOutGodmodeCalisan, godmodeSicilSet } from '@/lib/godmode-calisan'
+import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import YetkilendirmeClient from './YetkilendirmeClient'
 
 export const dynamic = 'force-dynamic'
@@ -79,9 +80,13 @@ export default async function YetkilendirmePage() {
   const memurSicilSet = new Set(memurSiciller)
   const god = godmodeSicilSet()
 
-  const firmaAktif = (firmaRaw ?? []).filter(
-    f => !f.ayrilis_tarihi && f.sicil_no?.trim() && calisanMap.has(f.sicil_no.trim()) && !memurSicilSet.has(f.sicil_no.trim()),
-  )
+  const firmaAktif = (firmaRaw ?? []).filter(f => {
+    const sicil = f.sicil_no?.trim()
+    if (!sicil) return false
+    if (!isFirmaCalisanAktif(f.ayrilis_tarihi)) return false
+    if (memurSicilSet.has(sicil)) return false
+    return true
+  })
 
   const firmaEk = firmaAktif
     .filter(f => !god.has(f.sicil_no!.trim()))
@@ -116,8 +121,8 @@ export default async function YetkilendirmePage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Aktif <strong>Memur</strong> kadrosu + <strong>Firma Personel</strong> çalışanlar sekmesindeki aktif kayıtlar (ana
-          personelde sicili olanlar), sicil sırasıyla · Toplam{' '}
+          Aktif <strong>Memur</strong> kadrosu + <strong>Firma Personel</strong> çalışanlar sekmesindeki aktif kayıtlar,
+          sicil sırasıyla · Toplam{' '}
           <span className="font-semibold">{satirlar.length}</span> satır
         </p>
       </div>

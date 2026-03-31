@@ -680,21 +680,21 @@ export interface Database {
         Row: {
           id: number; public_id: string; sira_no: string | null; sicil_no: string | null; tckn: string | null
           ad_soyad: string; cinsiyet: string | null; dogum_tarihi: string | null
-          ogrenim: string | null; telefon: string | null; kuruma_giris_tarihi: string | null
+          ogrenim: string | null; telefon: string | null; e_posta: string | null; kuruma_giris_tarihi: string | null
           gorev_mudurlugu: string | null; gorevi: string | null; meslegi: string | null
           ayrilis_tarihi: string | null; ayrilis_nedeni: string | null; kayit_zamani: string
         }
         Insert: {
           id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
           ad_soyad: string; cinsiyet?: string | null; dogum_tarihi?: string | null
-          ogrenim?: string | null; telefon?: string | null; kuruma_giris_tarihi?: string | null
+          ogrenim?: string | null; telefon?: string | null; e_posta?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null
           ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null; kayit_zamani?: string
         }
         Update: {
           id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
           ad_soyad?: string; cinsiyet?: string | null; dogum_tarihi?: string | null
-          ogrenim?: string | null; telefon?: string | null; kuruma_giris_tarihi?: string | null
+          ogrenim?: string | null; telefon?: string | null; e_posta?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null
           ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null; kayit_zamani?: string
         }

@@ -92,6 +92,11 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">E-posta</label>
+              <input name="e_posta" type="email" defaultValue={k.e_posta ?? ''} placeholder="ornek@adapazari.bel.tr"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Kuruma Giriş Tarihi</label>
               <input name="kuruma_giris_tarihi" type="date" defaultValue={k.kuruma_giris_tarihi ?? ''}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />

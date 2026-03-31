@@ -52,6 +52,7 @@ export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_cali
               <Alan etiket="Doğum Tarihi" deger={tarihFmt(row.dogum_tarihi)} />
               <Alan etiket="Öğrenim" deger={row.ogrenim} />
               <Alan etiket="Telefon" deger={row.telefon} />
+              <Alan etiket="E-posta" deger={row.e_posta} />
             </div>
           </div>
           <div>

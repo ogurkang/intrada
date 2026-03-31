@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type { TerfiEttirOnizlemeSatir } from '@/lib/terfi-ettir-hesap'
 import { terfiEttirKaydet, type TerfiEttirKayitSatir } from '@/app/(dashboard)/terfi/donem/actions'
 
@@ -21,14 +21,56 @@ function fmt(iso: string) {
   }
 }
 
+/** Liste önizlemesi (locale) */
 function fmtTarih(iso: string | null | undefined) {
   if (iso == null || !String(iso).trim()) return '—'
   const d = String(iso).slice(0, 10)
   return fmt(d)
 }
 
+/** Excel: gg.aa.yyyy */
+function fmtTarihGGAA(iso: string | null | undefined): string {
+  if (iso == null || !String(iso).trim() || String(iso).trim() === '—') return '—'
+  const s = String(iso).slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '—'
+  const [y, m, d] = s.split('-')
+  return `${d}.${m}.${y}`
+}
+
 function puanGoster(v: string | null | undefined) {
   return v ?? '—'
+}
+
+function durumHucreClass(durum: string): string {
+  if (durum === 'Derece İlerledi') return 'bg-green-100 text-green-800'
+  if (durum === 'Sadece Kademe') return 'bg-slate-100 text-slate-700'
+  if (durum === 'Kıdem Yılı İlerledi') return 'bg-blue-100 text-blue-700'
+  if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
+  if (durum === 'Eğitim Sınırında') return 'bg-red-100 text-red-800'
+  return 'bg-slate-50 text-slate-600'
+}
+
+function durumExcelStyle(durum: string): Partial<ExcelJS.Style> {
+  if (durum === 'Derece İlerledi')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }, font: { color: { argb: 'FF166534' } } }
+  if (durum === 'Sadece Kademe')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, font: { color: { argb: 'FF334155' } } }
+  if (durum === 'Kıdem Yılı İlerledi')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }, font: { color: { argb: 'FF1D4ED8' } } }
+  if (durum.includes('Tavan'))
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }, font: { color: { argb: 'FF78350F' } } }
+  if (durum === 'Eğitim Sınırında')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE2E2' } }, font: { color: { argb: 'FF991B1B' } } }
+  return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF475569' } } }
+}
+
+function richOk(eski: string, yeni: string): ExcelJS.CellRichTextValue {
+  return {
+    richText: [
+      { text: `${eski} → ` },
+      { font: { bold: true }, text: yeni },
+    ],
+  }
 }
 
 export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit, initialRows }: Props) {
@@ -74,55 +116,139 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
     )
   }
 
-  function excelIndir() {
-    const aoa: (string | number)[][] = [
-      [
-        'Sıra',
-        'Sicil',
-        'Ad Soyad',
-        'Öğrenim',
-        'Ünvan',
-        'Kadro derecesi',
-        'KHA tarihi',
-        'EKEA tarihi',
-        'Kıdem tarihi',
-        'Kıdem yılı (eski→yeni)',
-        'KHA D/K (eski→yeni)',
-        'EKEA D/K (eski→yeni)',
-        'Ek Gösterge (eski→yeni)',
-        'Ek Ödeme (eski→yeni)',
-        'ÖHT (eski→yeni)',
-        'Yan Ödeme (eski→yeni)',
-        'SDS (eski→yeni)',
-        'Durum / Uyarı',
-      ],
-    ]
-    satirlar.forEach((r, idx) => {
-      aoa.push([
-        idx + 1,
-        r.sicil_no,
-        r.ad_soyad ?? '',
-        r.ogrenim_turu ?? '',
-        r.unvan_adi ?? '',
-        r.kadro_derecesi ?? '',
-        fmtTarih(r.kha_tarihi),
-        fmtTarih(r.ekea_tarihi),
-        `${r.kidem_tarihi_eski} → ${r.kidem_tarihi_yeni}`,
-        `${r.kidem_yili_eski} → ${r.kidem_yili_yeni}`,
-        `${r.dk_kha_eski} → ${r.dk_kha_yeni}`,
-        `${r.dk_ekea_eski} → ${r.dk_ekea_yeni}`,
-        `${r.ek_gosterge_eski} → ${r.ek_gosterge_yeni}`,
-        `${r.ek_odeme_eski} → ${r.ek_odeme_yeni}`,
-        `${r.oht_eski} → ${r.oht_yeni}`,
-        `${r.yan_odeme_eski} → ${r.yan_odeme_yeni}`,
-        `${r.sds_eski} → ${r.sds_yeni}`,
-        r.durum,
-      ])
+  async function excelIndir() {
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Çalışanlar', {
+      views: [{ showGridLines: true }],
     })
-    const ws = XLSX.utils.aoa_to_sheet(aoa)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Terfi Ettir')
-    XLSX.writeFile(wb, `terfi-ettir-donem-${donemId}.xlsx`)
+
+    const colCount = 18
+    const titleStyle: Partial<ExcelJS.Style> = {
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      font: { bold: true, size: 12 },
+    }
+
+    ws.mergeCells(1, 1, 1, colCount)
+    ws.getCell(1, 1).value = 'T.C. ADAPAZARI BELEDİYESİ'
+    ws.getCell(1, 1).style = titleStyle
+
+    ws.mergeCells(2, 1, 2, colCount)
+    ws.getCell(2, 1).value = 'İnsan Kaynakları ve Eğitim Müdürlüğü'
+    ws.getCell(2, 1).style = titleStyle
+
+    ws.mergeCells(3, 1, 3, colCount)
+    ws.getCell(3, 1).value = `${donemAdi} — Terfi Durumu`
+    ws.getCell(3, 1).style = titleStyle
+
+    ws.mergeCells(4, 1, 4, colCount)
+    ws.getCell(4, 1).value = `Terfi dönemi: ${fmt(terfiBas)} — ${fmt(terfiBit)}  ·  Maaş dönemi: ${fmt(terfiBas)} — ${fmt(terfiBit)}`
+    ws.getCell(4, 1).style = {
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+      font: { size: 11 },
+    }
+
+    const headers = [
+      'Sıra No',
+      'Sicil',
+      'Ad Soyad',
+      'Öğrenim',
+      'Ünvan',
+      'Kadro derecesi',
+      'KHA D/K (eski → yeni)',
+      'KHA tarihi (eski → yeni)',
+      'EKEA D/K (eski → yeni)',
+      'EKEA tarihi (eski → yeni)',
+      'Kıdem yılı (eski → yeni)',
+      'Kıdem tarihi (eski → yeni)',
+      'Ek Gösterge (eski → yeni)',
+      'Ek Ödeme (eski → yeni)',
+      'ÖHT (eski → yeni)',
+      'Yan Ödeme (eski → yeni)',
+      'SDS (eski → yeni)',
+      'Durum / Uyarı',
+    ]
+
+    const headerRow = ws.getRow(5)
+    headers.forEach((h, i) => {
+      const c = headerRow.getCell(i + 1)
+      c.value = h
+      c.style = {
+        font: { bold: true },
+        alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } },
+        border: {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' },
+        },
+      }
+    })
+    headerRow.height = 28
+
+    satirlar.forEach((r, idx) => {
+      const row = ws.getRow(6 + idx)
+      const khaEski = fmtTarihGGAA(r.kha_tarihi)
+      const khaYeni = fmtTarihGGAA(r.payload.kha_tarihi)
+      const ekeaEski = fmtTarihGGAA(r.ekea_tarihi)
+      const ekeaYeni = fmtTarihGGAA(r.payload.ekea_tarihi)
+      const kidemEski = fmtTarihGGAA(r.kidem_tarihi_eski === '—' ? null : r.kidem_tarihi_eski)
+      const kidemYeni = fmtTarihGGAA(r.kidem_tarihi_yeni === '—' ? null : r.kidem_tarihi_yeni)
+
+      const cells: { v: number | string | ExcelJS.CellRichTextValue; style?: Partial<ExcelJS.Style> }[] = [
+        { v: idx + 1 },
+        { v: r.sicil_no },
+        { v: r.ad_soyad ?? '' },
+        { v: r.ogrenim_turu ?? '' },
+        { v: r.unvan_adi ?? '' },
+        { v: r.kadro_derecesi ?? '' },
+        { v: richOk(r.dk_kha_eski, r.dk_kha_yeni) },
+        { v: richOk(khaEski, khaYeni) },
+        { v: richOk(r.dk_ekea_eski, r.dk_ekea_yeni) },
+        { v: richOk(ekeaEski, ekeaYeni) },
+        { v: richOk(String(r.kidem_yili_eski), String(r.kidem_yili_yeni)) },
+        { v: richOk(kidemEski, kidemYeni) },
+        { v: richOk(r.ek_gosterge_eski, r.ek_gosterge_yeni) },
+        { v: richOk(r.ek_odeme_eski, r.ek_odeme_yeni) },
+        { v: richOk(r.oht_eski, r.oht_yeni) },
+        { v: richOk(r.yan_odeme_eski, r.yan_odeme_yeni) },
+        { v: richOk(r.sds_eski, r.sds_yeni) },
+        { v: r.durum, style: durumExcelStyle(r.durum) },
+      ]
+
+      cells.forEach((cell, i) => {
+        const c = row.getCell(i + 1)
+        c.value = cell.v
+        c.style = {
+          alignment: { vertical: 'middle', wrapText: true },
+          border: {
+            top: { style: 'thin' },
+            bottom: { style: 'thin' },
+            left: { style: 'thin' },
+            right: { style: 'thin' },
+          },
+          ...cell.style,
+        }
+      })
+    })
+
+    ws.columns.forEach((col) => {
+      col.width = 14
+    })
+    ws.getColumn(3).width = 22
+    ws.getColumn(5).width = 18
+    ws.getColumn(18).width = 28
+
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `terfi-ettir-donem-${donemId}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function terfiEttirUygula() {
@@ -157,7 +283,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={excelIndir}
+            onClick={() => void excelIndir()}
             className="text-sm font-medium border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 shadow-sm">
             Excel indir
           </button>
@@ -235,10 +361,10 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums">{r.kadro_derecesi ?? '—'}</td>
                 <td className="px-2 py-2 align-top text-[11px] leading-snug text-slate-700">
                   <div>
-                    <span className="text-slate-400">KHA:</span> {fmtTarih(r.kha_tarihi)}
+                    <span className="text-slate-400">KHA:</span> {fmtTarih(r.kha_tarihi)} → {fmtTarih(r.payload.kha_tarihi)}
                   </div>
                   <div className="mt-0.5">
-                    <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)}
+                    <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)} → {fmtTarih(r.payload.ekea_tarihi)}
                   </div>
                   <div className="mt-0.5">
                     <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.kidem_tarihi_yeni)}
@@ -325,19 +451,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                 </td>
                 <td className="px-2 py-2 align-top text-xs max-w-[10rem]">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${
-                      r.durum === 'Derece İlerledi'
-                        ? 'bg-green-100 text-green-800'
-                        : r.durum === 'Sadece Kademe'
-                          ? 'bg-slate-100 text-slate-700'
-                          : r.durum === 'Kıdem Yılı İlerledi'
-                            ? 'bg-blue-100 text-blue-700'
-                          : r.durum.includes('Tavan')
-                            ? 'bg-amber-100 text-amber-900'
-                            : r.durum === 'Eğitim Sınırında'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-slate-50 text-slate-600'
-                    }`}>
+                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${durumHucreClass(r.durum)}`}>
                     <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-current opacity-60" />
                     {r.durum}
                   </span>

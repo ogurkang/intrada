@@ -48,6 +48,16 @@ export interface IzindekiPersonel {
   bitis:      string | null
 }
 
+export interface IzinArtisAdayi {
+  sicil_no: string
+  public_id?: string
+  ad_soyad: string | null
+  kidem_tarihi: string | null
+  kidem_yili: number
+  mevcut_hak: number
+  onerilen_hak: number
+}
+
 interface Props {
   aktifPersonelSayisi: number
   kadroDoluluk:        KadroDoluluk
@@ -55,7 +65,9 @@ interface Props {
   bekleyenIzinler:     BekleyenIzin[]
   yaklaşanTatiller:    YaklaşanTatil[]
   izindekiler:         IzindekiPersonel[]
+  izinArtisAdaylari:   IzinArtisAdayi[]
   buYil:               number
+  canEditIzinHak:      boolean
   onDurumDegistir:     (id: number, yeniDurum: 'Onaylandı' | 'İptal Edildi') => Promise<{ hata?: string }>
 }
 
@@ -95,8 +107,8 @@ function KpiKart({ baslik, deger, alt, renk, href }: {
 
 export default function DashboardClient({
   aktifPersonelSayisi, kadroDoluluk, izinIstatistik,
-  bekleyenIzinler, yaklaşanTatiller, izindekiler,
-  buYil, onDurumDegistir,
+  bekleyenIzinler, yaklaşanTatiller, izindekiler, izinArtisAdaylari,
+  buYil, canEditIzinHak, onDurumDegistir,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [islemIdler, setIslemIdler]  = useState<Set<number>>(new Set())
@@ -331,34 +343,45 @@ export default function DashboardClient({
             )}
           </div>
 
-          {/* Bugün İzinde */}
+          {/* Yıllık İzini Artacaklar / Eklenecekler */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-700">
-                Bugün İzinde
-                {izindekiler.length > 0 && (
+                Yıllık İzini Artacaklar / Eklenecekler
+                {izinArtisAdaylari.length > 0 && (
                   <span className="ml-2 bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                    {izindekiler.length}
+                    {izinArtisAdaylari.length}
                   </span>
                 )}
               </h2>
             </div>
-            {izindekiler.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">Bugün izinde personel yok</p>
+            {izinArtisAdaylari.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">Güncelleme bekleyen izin artışı yok</p>
             ) : (
               <div className="divide-y divide-slate-100">
-                {izindekiler.map(p => (
-                  <div key={p.id} className="px-5 py-2.5 flex items-center justify-between">
+                {izinArtisAdaylari.map(p => (
+                  <div key={p.sicil_no} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div>
                       <Link href={personelDetayHref({ sicil_no: p.sicil_no, public_id: p.public_id })}
                         className="text-sm font-medium text-slate-800 hover:text-slate-600">
                         {p.ad_soyad ?? p.sicil_no}
                       </Link>
-                      {p.izin_turu && (
-                        <p className="text-xs text-slate-400">{p.izin_turu}</p>
-                      )}
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Kıdem: {p.kidem_yili} · {p.mevcut_hak} → {p.onerilen_hak} gün
+                        {p.kidem_tarihi ? ` · Terfi: ${tarihFormatla(p.kidem_tarihi)}` : ''}
+                      </p>
                     </div>
-                    <span className="text-xs text-slate-400">→ {tarihFormatla(p.bitis)}</span>
+                    {canEditIzinHak ? (
+                      <Link
+                        href={`/izin/haklar/duzenle?yil=${buYil}&sicil_no=${encodeURIComponent(p.sicil_no)}&return_to=${encodeURIComponent('/')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors whitespace-nowrap">
+                        İzin Hakkını Düzenle
+                      </Link>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 whitespace-nowrap">Sadece admin düzenleyebilir</span>
+                    )}
                   </div>
                 ))}
               </div>
