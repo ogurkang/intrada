@@ -23,7 +23,12 @@ export async function getAppAccess(
       ? (data.menu_izinleri as Record<string, boolean>)
       : {}
 
-  if (data.rol === 'admin') return { mode: 'admin' }
+  const rolNorm = String(data.rol ?? '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+  if (rolNorm === 'admin' || rolNorm === 'yönetici' || rolNorm === 'yonetici' || rolNorm === 'ik_admin') {
+    return { mode: 'admin' }
+  }
 
   return {
     mode: 'kullanici',

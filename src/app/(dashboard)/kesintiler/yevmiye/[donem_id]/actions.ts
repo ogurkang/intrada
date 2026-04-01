@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getKullaniciGorevMudurlukleri, assertKullaniciMudurlukErisimi } from '@/lib/kullanici-mudurluk'
 import { getAppAccess } from '@/lib/app-access'
+import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
+import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
 
 const GUNLER_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
 
@@ -96,6 +98,11 @@ export async function yevmiyePuantajYukle(
   opts?: { sicilNo?: string },
 ): Promise<{ data?: YevmiyePuantajYukleResult; hata?: string }> {
   const supabase = await createClient()
+  const normMud = (v: string | null | undefined) =>
+    String(v ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLocaleLowerCase('tr-TR')
 
   let kullaniciMudFiltre: Set<string> | null = null
   let kullaniciMudSalt = false
@@ -124,8 +131,11 @@ export async function yevmiyePuantajYukle(
     .order('mudurluk_adi')
   let mudurlukler = (mudRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean)
   if (kullaniciMudFiltre) {
-    mudurlukler = mudurlukler.filter(m => kullaniciMudFiltre!.has(m))
+    const izinNorm = new Set([...kullaniciMudFiltre].map(normMud))
+    mudurlukler = mudurlukler.filter(m => izinNorm.has(normMud(m)))
   }
+  const mudurlukByNorm = new Map<string, string>()
+  for (const m of mudurlukler) mudurlukByNorm.set(normMud(m), m)
 
   // Tatil aralıkları (B=Bayram, RT=Resmi Tatil)
   const { data: tatilRaw } = await supabase
@@ -147,41 +157,26 @@ export async function yevmiyePuantajYukle(
     tatilRanges.push({ baslangic: b, bitis: e, kod })
   })
 
-  // İzin türü -> kod eşlemesi
+  // İzin türü -> kod eşlemesi (Arazi ile aynı kural)
   const { data: izinTurRaw } = await supabase
     .from('tanim_izin_tur')
     .select('tur_adi, kod')
     .eq('durum', true)
-  const turAdiToKod: Record<string, string> = {}
-  ;(izinTurRaw ?? []).forEach(t => {
-    const ad = String(t.tur_adi ?? '').trim()
-    const kod = String(t.kod ?? '').trim()
-    if (ad) turAdiToKod[ad] = kod || (ad.includes('Yıllık') ? 'S' : ad.includes('Rapor') ? 'R' : ad.includes('Ücretsiz') ? 'Ü' : ad.includes('Ücretli') ? 'Üİ' : ad.includes('Ölüm') ? 'Öİ' : 'S')
-  })
+  const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
 
-  // İzin hareketleri (Taslak hariç)
+  // İzin hareketleri (Arazi kuralı: iptal hariç, Taslak dahil)
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
-    .select('sicil_no, tur, ayrilis, baslama')
-    .neq('durum', 'Taslak')
+    .select('sicil_no, tur, ayrilis, baslama, durum')
     .neq('durum', 'İptal Edildi')
     .lte('ayrilis', bitis)
     .gt('baslama', baslangic)
-
-  const izinHareketleri: { sicil: string; ayrilis: number; baslama: number; kod: string }[] = []
-  ;(izinRaw ?? []).forEach(i => {
-    const a = tarihParse(i.ayrilis ?? '')
-    const b = tarihParse(i.baslama ?? '')
-    if (!a || !b) return
-    const tur = String(i.tur ?? '').trim()
-    const kod = turAdiToKod[tur] ?? (tur.includes('Yıllık') ? 'S' : tur.includes('Rapor') ? 'R' : tur.includes('Ücretsiz') ? 'Ü' : tur.includes('Ücretli') ? 'Üİ' : tur.includes('Ölüm') ? 'Öİ' : 'S')
-    izinHareketleri.push({
-      sicil: String(i.sicil_no ?? '').trim(),
-      ayrilis: a.getTime(),
-      baslama: b.getTime(),
-      kod,
-    })
-  })
+  const izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
+    izinRaw ?? [],
+    String(baslangic).slice(0, 10),
+    String(bitis).slice(0, 10),
+    turAdiToKod,
+  )
 
   // Kadro: Sözleşmeli ve İşçi, ayrılış boş
   const { data: kadroRaw } = await supabase
@@ -204,7 +199,8 @@ export async function yevmiyePuantajYukle(
   ;(kadroRaw ?? []).forEach(k => {
     const statu = String(k.statu ?? '').trim()
     if (!statu || (statu !== 'Sözleşmeli' && statu !== 'İşçi')) return
-    const gorevMud = String(k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '').trim()
+    const gorevMudRaw = String(k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '').trim()
+    const gorevMud = mudurlukByNorm.get(normMud(gorevMudRaw)) ?? gorevMudRaw
     if (!personelByMudurluk[gorevMud]) personelByMudurluk[gorevMud] = []
     if (!seenByMud[gorevMud]) seenByMud[gorevMud] = {}
     for (const sicil of [k.asil, k.vekil].filter(Boolean) as string[]) {
@@ -265,9 +261,6 @@ export async function yevmiyePuantajYukle(
     }
   })
 
-  const baslangicTime = tarihParse(baslangic)!.getTime()
-  const bitisTime = tarihParse(bitis)!.getTime()
-
   const mudurlukDataList: YevmiyeMudurlukData[] = []
 
   for (const mudAdi of mudurlukler) {
@@ -295,16 +288,7 @@ export async function yevmiyePuantajYukle(
           deger = 'X'
           if (g.isHaftaTatil) deger = 'HT'
           else if (g.isResmiTatil && g.tatilKod) deger = g.tatilKod
-          else {
-            const tarihT = tarihParse(tarihStr)!.getTime()
-            for (const ih of izinHareketleri) {
-              if (ih.sicil !== sicilP) continue
-              if (tarihT >= ih.ayrilis && tarihT < ih.baslama) {
-                deger = ih.kod || 'S'
-                break
-              }
-            }
-          }
+          else if (izinKodlariBySicilGun[sicilP]?.[tarihStr]) deger = izinKodlariBySicilGun[sicilP]![tarihStr]!
         }
         grid[sicilP][tarihStr] = deger
         if (savedFmForSicil[tarihStr] != null) {
@@ -362,22 +346,32 @@ export async function yevmiyePuantajYukle(
 
   // Müdürlük bazında tüm personel (Puantör/Birim Amiri/Müdür dropdown için - asil/vekil, her statu)
   const mudurlukPersonelMap: Record<string, YevmiyeMudurlukPersonel[]> = {}
+  const { data: ozetTumRaw } = await supabase
+    .from('personel_kadro_ozet')
+    .select('sicil_no, ad_soyad, gorev_mudurlugu')
   const { data: kadroTumRaw } = await supabase
     .from('kadro_hareketleri')
     .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu')
     .is('ayrilis_tarihi', null)
   for (const m of mudurlukler) {
+    const hedefMud = normMud(m)
     const siciller = new Set<string>()
+    const adMap: Record<string, string> = {}
     for (const k of kadroTumRaw ?? []) {
-      const gorevMud = (k.gorev_mudurlugu ?? '').trim()
-      const kadroMud = (k.kadro_mudurlugu ?? '').trim()
-      if (gorevMud === m || kadroMud === m) {
+      const gorevMud = normMud(k.gorev_mudurlugu)
+      const kadroMud = normMud(k.kadro_mudurlugu)
+      if (gorevMud === hedefMud || kadroMud === hedefMud) {
         if (k.asil) siciller.add(k.asil)
         if (k.vekil) siciller.add(k.vekil)
       }
     }
+    for (const o of ozetTumRaw ?? []) {
+      if (!o.sicil_no) continue
+      if (normMud(o.gorev_mudurlugu) !== hedefMud) continue
+      siciller.add(o.sicil_no)
+      adMap[o.sicil_no] = o.ad_soyad ?? o.sicil_no
+    }
     const sicilList = [...siciller]
-    let adMap: Record<string, string> = {}
     if (sicilList.length > 0) {
       const { data: cal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', sicilList)
       ;(cal ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
@@ -429,7 +423,8 @@ export async function yevmiyePuantajYukle(
 export async function yevmiyePuantajKaydet(
   donem_id: number,
   mudurluk: string,
-  statu: string,
+  _statu: string,
+  sicilNolar: string[],
   fazlaMesai: Array<{ sicil_no: string; tarih: string; deger: string; saat: number }>
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
@@ -442,7 +437,19 @@ export async function yevmiyePuantajKaydet(
   const mudOk = await assertKullaniciMudurlukErisimi(supabase, access, mudurluk)
   if (!mudOk.ok) return { hata: mudOk.mesaj }
 
-  // Sadece fazla mesai > 0 olanları kaydet
+  // Önce müdürlükteki seçili personellerin mevcut FM kayıtlarını temizle
+  const temizlenecekSiciller = [...new Set(sicilNolar.filter(Boolean))]
+  if (temizlenecekSiciller.length > 0) {
+    const { error: delErr } = await supabase
+      .from('yevmiye_puantaj_kayit')
+      .delete()
+      .eq('donem_id', donem_id)
+      .eq('mudurluk', mudurluk)
+      .in('sicil_no', temizlenecekSiciller)
+    if (delErr) return { hata: delErr.message }
+  }
+
+  // Sonra sadece fazla mesai > 0 olanları yeniden yaz
   const toInsert = fazlaMesai
     .filter(f => f.saat > 0)
     .map(f => ({
@@ -458,17 +465,6 @@ export async function yevmiyePuantajKaydet(
     revalidatePath(`/kesintiler/yevmiye/${donem_id}`)
     return {}
   }
-
-  // Mevcut FM kayıtlarını sil (bu müdürlük + bu siciller)
-  const siciller = [...new Set(toInsert.map(t => t.sicil_no))]
-  const { error: delErr } = await supabase
-    .from('yevmiye_puantaj_kayit')
-    .delete()
-    .eq('donem_id', donem_id)
-    .eq('mudurluk', mudurluk)
-    .in('sicil_no', siciller)
-
-  if (delErr) return { hata: delErr.message }
 
   const { error } = await supabase.from('yevmiye_puantaj_kayit').insert(toInsert)
   if (error) return { hata: error.message }

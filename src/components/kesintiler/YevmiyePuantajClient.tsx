@@ -76,7 +76,14 @@ export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink =
         }
       }
     }
-    const res = await yevmiyePuantajKaydet(donemId, mudData?.mudurlukAdi ?? seciliMudurluk, seciliStatu, toSave)
+    const seciliSiciller = personeller.map(p => p.sicil_no)
+    const res = await yevmiyePuantajKaydet(
+      donemId,
+      mudData?.mudurlukAdi ?? seciliMudurluk,
+      seciliStatu,
+      seciliSiciller,
+      toSave,
+    )
     setKaydetYukleniyor(false)
     if (res.hata) setHata(res.hata)
     else setFazlaMesaiLocal({})

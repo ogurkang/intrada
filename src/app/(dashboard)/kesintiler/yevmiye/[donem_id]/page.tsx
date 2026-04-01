@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess } from '@/lib/app-access'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { yevmiyePuantajYukle } from './actions'
 import YevmiyePuantajClient from '@/components/kesintiler/YevmiyePuantajClient'
 
@@ -18,7 +18,8 @@ export default async function YevmiyePuantajPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
-  const sicilNo = access.mode === 'kullanici' ? access.sicilNo : undefined
+  const kisitliKullanici = access.mode === 'kullanici' && !isAdminLike(access)
+  const sicilNo = kisitliKullanici ? access.sicilNo : undefined
   const { data, hata } = await yevmiyePuantajYukle(donem_id, sicilNo ? { sicilNo } : undefined)
   if (hata || !data) notFound()
 
@@ -27,7 +28,7 @@ export default async function YevmiyePuantajPage({ params }: Props) {
       <YevmiyePuantajClient
         data={data}
         donemId={donem_id}
-        showAnaSayfaLink={access.mode === 'kullanici'}
+        showAnaSayfaLink={kisitliKullanici}
       />
     </div>
   )

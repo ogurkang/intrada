@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess } from '@/lib/app-access'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import AraziPuantajClient, { type AraziPersonel, type AraziDonemBilgi } from '@/components/kesintiler/AraziPuantajClient'
 import { araziKayitTopluKaydet } from './actions'
@@ -87,9 +87,10 @@ export default async function AraziPuantajPage({ params }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const kisitliKullanici = access.mode === 'kullanici' && !isAdminLike(access)
   let mudurlukSecenekleri: string[] | undefined
   let mudurlukSaltOkunur = false
-  if (access.mode === 'kullanici') {
+  if (kisitliKullanici) {
     const km = await getKullaniciGorevMudurlukleri(supabase, access.sicilNo)
     mudurlukSecenekleri = km.mudurlukler
     mudurlukSaltOkunur = km.tekSecimSaltOkunur
@@ -165,7 +166,7 @@ export default async function AraziPuantajPage({ params }: Props) {
       .replace(/\s+/g, ' ')
       .toLocaleLowerCase('tr-TR')
   const mudurluklerList =
-    access.mode === 'kullanici' && mudurlukSecenekleri?.length
+    kisitliKullanici && mudurlukSecenekleri?.length
       ? mudurlukSecenekleri
       : [...new Set(personeller.map(p => p.mudurluk ?? ''))]
   const mudurlukPersonelMap: Record<string, { sicil_no: string; ad_soyad: string }[]> = {}
@@ -221,9 +222,9 @@ export default async function AraziPuantajPage({ params }: Props) {
       tatilGunler={tatilGunler}
       markedSet={markedSet}
       mudurlukPersonelMap={mudurlukPersonelMap}
-      mudurlukSecenekleri={access.mode === 'kullanici' ? mudurlukSecenekleri : undefined}
-      mudurlukSaltOkunur={access.mode === 'kullanici' ? mudurlukSaltOkunur : undefined}
-      showAnaSayfaLink={access.mode === 'kullanici'}
+      mudurlukSecenekleri={kisitliKullanici ? mudurlukSecenekleri : undefined}
+      mudurlukSaltOkunur={kisitliKullanici ? mudurlukSaltOkunur : undefined}
+      showAnaSayfaLink={kisitliKullanici}
       izinKodlariBySicilGun={izinKodlariBySicilGun}
       onKaydetToplu={araziKayitTopluKaydet}
     />
