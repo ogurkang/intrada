@@ -159,6 +159,11 @@ export default async function AraziPuantajPage({ params }: Props) {
   }
 
   // Müdürlük bazında tüm personel (Puantör/Birim Amiri/Müdür - asil+vekil, görev veya kadro müdürlüğü)
+  const normMud = (v: string | null | undefined) =>
+    String(v ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLocaleLowerCase('tr-TR')
   const mudurluklerList =
     access.mode === 'kullanici' && mudurlukSecenekleri?.length
       ? mudurlukSecenekleri
@@ -168,18 +173,28 @@ export default async function AraziPuantajPage({ params }: Props) {
     .from('kadro_hareketleri')
     .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu')
     .is('ayrilis_tarihi', null)
+  const { data: ozetTumRaw } = await supabase
+    .from('personel_kadro_ozet')
+    .select('sicil_no, ad_soyad, gorev_mudurlugu')
   for (const m of mudurluklerList) {
+    const hedefMud = normMud(m)
     const siciller = new Set<string>()
+    const adMap: Record<string, string> = {}
     for (const k of kadroTumRaw ?? []) {
-      const gorevMud = (k.gorev_mudurlugu ?? '').trim()
-      const kadroMud = (k.kadro_mudurlugu ?? '').trim()
-      if (gorevMud === m || kadroMud === m) {
+      const gorevMud = normMud(k.gorev_mudurlugu)
+      const kadroMud = normMud(k.kadro_mudurlugu)
+      if (gorevMud === hedefMud || kadroMud === hedefMud) {
         if (k.asil) siciller.add(k.asil)
         if (k.vekil) siciller.add(k.vekil)
       }
     }
+    for (const o of ozetTumRaw ?? []) {
+      if (!o.sicil_no) continue
+      if (normMud(o.gorev_mudurlugu) !== hedefMud) continue
+      siciller.add(o.sicil_no)
+      adMap[o.sicil_no] = o.ad_soyad ?? o.sicil_no
+    }
     const sicilList = [...siciller]
-    let adMap: Record<string, string> = {}
     if (sicilList.length > 0) {
       const { data: cal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', sicilList)
       ;(cal ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
