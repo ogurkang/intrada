@@ -7,7 +7,7 @@ import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { sortBildirimOgrenimList } from '@/lib/ogrenim-sira'
 import type { Tables } from '@/types/database'
 
-type Ogrenim = Tables<'calisan_ogrenim'> & { ad_soyad?: string | null }
+type Ogrenim = Tables<'calisan_ogrenim'> & { ad_soyad?: string | null; tckn?: string | null }
 
 function formatGGAAYYYY(val: string | null | undefined): string {
   if (!val) return '—'
@@ -55,6 +55,7 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
       (k) =>
         !q ||
         (k.ad_soyad ?? '').toLowerCase().includes(q) ||
+        (k.tckn ?? '').toLowerCase().includes(q) ||
         k.sicil_no.toLowerCase().includes(q) ||
         (k.ogrenim_turu ?? '').toLowerCase().includes(q) ||
         (k.okul_adi ?? '').toLowerCase().includes(q) ||
@@ -122,18 +123,19 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
         <input
           value={arama}
           onChange={(e) => setArama(e.target.value)}
-          placeholder="Ad, sicil, öğrenim türü, okul veya meslek ara…"
+          placeholder="Ad, TC, sicil, öğrenim türü, okul veya meslek ara…"
           className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
         />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm min-w-[980px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Sicil No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-40">TC Kimlik No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">Öğrenim Türü</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[8rem]">Okul / Bölüm</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Mesleği</th>
@@ -145,7 +147,7 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center py-14 text-slate-400">
+                <td colSpan={10} className="text-center py-14 text-slate-400">
                   Kayıt bulunamadı.
                 </td>
               </tr>
@@ -157,6 +159,7 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
                   <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.sicil_no}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{row.ad_soyad ?? '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.tckn ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
                       {row.ogrenim_turu ?? '—'}

@@ -7,7 +7,7 @@ export default async function OgrenimPage() {
   const supabase = await createClient()
 
   const [{ data: raw }, { data: ogrenimTurleriRaw }] = await Promise.all([
-    supabase.from('calisan_ogrenim').select('*, calisan(ad_soyad)').order('sicil_no', { ascending: true }),
+    supabase.from('calisan_ogrenim').select('*, calisan(ad_soyad, tckn)').order('sicil_no', { ascending: true }),
     supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
   ])
 
@@ -24,7 +24,8 @@ export default async function OgrenimPage() {
       varsayilan: r.varsayilan ?? false,
       aktif: r.aktif,
       kayit_zamani: r.kayit_zamani,
-      ad_soyad: (r.calisan as { ad_soyad: string | null } | null)?.ad_soyad ?? null,
+      ad_soyad: (r.calisan as { ad_soyad: string | null; tckn: string | null } | null)?.ad_soyad ?? null,
+      tckn: (r.calisan as { ad_soyad: string | null; tckn: string | null } | null)?.tckn ?? null,
     }))
   )
 
