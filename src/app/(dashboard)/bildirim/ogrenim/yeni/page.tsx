@@ -1,22 +1,34 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import OgrenimYeniClient from '@/components/bildirim/OgrenimYeniClient'
+import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 
 export default async function OgrenimYeniPage() {
   const supabase = await createClient()
 
-  const [{ data: aktifPersonel }, { data: ayrilanPh }, { data: ogrenimTurleri }] = await Promise.all([
-    supabase.from('aktif_personel').select('sicil_no, ad_soyad, ayrilis_tarihi').is('ayrilis_tarihi', null),
-    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').not('ayrilis_tarihi', 'is', null),
+  const [{ data: calisanRaw }, { data: phRaw }, { data: ogrenimTurleri }] = await Promise.all([
+    supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
+    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
   ])
-  /** Ayrılanlar ekranıyla aynı kaynak: personel_hareketleri.ayrilis_tarihi dolu olanlar listelenmez */
-  const ayrilanSet = new Set((ayrilanPh ?? []).map(r => r.sicil_no))
 
-  const personeller = (aktifPersonel ?? [])
-    .filter(r => !ayrilanSet.has(r.sicil_no))
-    .map((r) => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? r.sicil_no }))
-    .sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'))
+  // Çalışanlar menüsü ile aynı aktiflik kuralı: personel_hareketleri'nde en son kaydın ayrılış tarihi boş olmalı
+  const sonAyrilisPerSicil = new Map<string, string | null>()
+  for (const r of phRaw ?? []) {
+    if (!sonAyrilisPerSicil.has(r.sicil_no)) {
+      sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
+    }
+  }
+  const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
+  const aktifSiciller = new Set<string>()
+  calisanFiltreli.forEach(c => {
+    const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
+    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+  })
+  const personeller = calisanFiltreli
+    .filter(c => aktifSiciller.has(c.sicil_no))
+    .map(c => ({ sicil_no: c.sicil_no, ad_soyad: c.ad_soyad ?? c.sicil_no }))
+    .sort((a, b) => (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr'))
 
   return (
     <div>
