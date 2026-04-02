@@ -22,6 +22,16 @@ async function digerVarsayilanlariKapat(supabase: SupabaseServer, sicil_no: stri
   await q
 }
 
+async function personelAyrilmisMi(supabase: SupabaseServer, sicil_no: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('personel_hareketleri')
+    .select('id')
+    .eq('sicil_no', sicil_no)
+    .not('ayrilis_tarihi', 'is', null)
+    .limit(1)
+  return (data?.length ?? 0) > 0
+}
+
 export async function ogrenimEkle(fd: FormData): Promise<{ hata?: string }> {
   const sicil_no = str(fd, 'sicil_no')
   if (!sicil_no) return { hata: 'Sicil no zorunludur.' }
@@ -53,6 +63,9 @@ export async function ogrenimGuncelle(id: number, fd: FormData): Promise<{ hata?
   const { data: row } = await supabase.from('calisan_ogrenim').select('sicil_no').eq('id', id).single()
   const sicil_no = row?.sicil_no
   if (!sicil_no) return { hata: 'Kayıt bulunamadı.' }
+  if (await personelAyrilmisMi(supabase, sicil_no)) {
+    return { hata: 'Personel kurumdan ayrıldığı için öğrenim kaydı düzenlenemez.' }
+  }
 
   const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
   if (varsayilan) await digerVarsayilanlariKapat(supabase, sicil_no, id)
@@ -79,6 +92,9 @@ export async function ogrenimGuncelle(id: number, fd: FormData): Promise<{ hata?
 export async function ogrenimSil(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const { data: row } = await supabase.from('calisan_ogrenim').select('sicil_no').eq('id', id).single()
+  if (row?.sicil_no && (await personelAyrilmisMi(supabase, row.sicil_no))) {
+    return { hata: 'Personel kurumdan ayrıldığı için öğrenim kaydı silinemez.' }
+  }
   const { error } = await supabase.from('calisan_ogrenim').delete().eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath('/bildirim/ogrenim')

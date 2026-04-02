@@ -6,13 +6,18 @@ import { ogrenimGuncelle, ogrenimSil } from './actions'
 export default async function OgrenimPage() {
   const supabase = await createClient()
 
-  const [{ data: raw }, { data: ogrenimTurleriRaw }] = await Promise.all([
+  const [{ data: raw }, { data: ogrenimTurleriRaw }, { data: ayrilanPh }] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*, calisan(ad_soyad, tckn)').order('sicil_no', { ascending: true }),
     supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
+    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').not('ayrilis_tarihi', 'is', null),
   ])
 
+  const ayrilanSet = new Set((ayrilanPh ?? []).map(r => r.sicil_no))
+
   const kayitlar = sortBildirimOgrenimList(
-    (raw ?? []).map((r) => ({
+    (raw ?? [])
+      .filter(r => !ayrilanSet.has(r.sicil_no))
+      .map((r) => ({
       id: r.id,
       sicil_no: r.sicil_no,
       ogrenim_turu: r.ogrenim_turu,

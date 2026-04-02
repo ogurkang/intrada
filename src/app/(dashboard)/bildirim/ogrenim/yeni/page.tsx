@@ -5,10 +5,18 @@ import OgrenimYeniClient from '@/components/bildirim/OgrenimYeniClient'
 export default async function OgrenimYeniPage() {
   const supabase = await createClient()
 
-  const [{ data: personeller }, { data: ogrenimTurleri }] = await Promise.all([
-    supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
+  const [{ data: aktifPersonel }, { data: ayrilanPh }, { data: ogrenimTurleri }] = await Promise.all([
+    supabase.from('aktif_personel').select('sicil_no, ad_soyad, ayrilis_tarihi').is('ayrilis_tarihi', null),
+    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').not('ayrilis_tarihi', 'is', null),
     supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
   ])
+  /** Ayrılanlar ekranıyla aynı kaynak: personel_hareketleri.ayrilis_tarihi dolu olanlar listelenmez */
+  const ayrilanSet = new Set((ayrilanPh ?? []).map(r => r.sicil_no))
+
+  const personeller = (aktifPersonel ?? [])
+    .filter(r => !ayrilanSet.has(r.sicil_no))
+    .map((r) => ({ sicil_no: r.sicil_no, ad_soyad: r.ad_soyad ?? r.sicil_no }))
+    .sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'))
 
   return (
     <div>
@@ -23,7 +31,7 @@ export default async function OgrenimYeniPage() {
       </div>
 
       <OgrenimYeniClient
-        personeller={(personeller ?? []) as { sicil_no: string; ad_soyad: string }[]}
+        personeller={personeller as { sicil_no: string; ad_soyad: string }[]}
         ogrenimTurleri={(ogrenimTurleri ?? []) as { id: number; isim: string }[]}
       />
     </div>

@@ -26,6 +26,7 @@ interface Props {
 export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props) {
   const [sicilArama, setSicilArama] = useState('')
   const [secilenSicil, setSecilenSicil] = useState('')
+  const [aramaAcik, setAramaAcik] = useState(false)
   const [satirlar, setSatirlar] = useState<Satir[]>(() =>
     ogrenimTurleri.length ? [bosSatir(ogrenimTurleri)] : []
   )
@@ -39,7 +40,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
         p.sicil_no.includes(sicilArama) ||
         p.ad_soyad.toLowerCase().includes(sicilArama.toLowerCase())
     )
-    .slice(0, 20)
+    .slice(0, 8)
 
   const secilen = personeller.find((p) => p.sicil_no === secilenSicil)
 
@@ -109,25 +110,38 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
           </div>
         ) : (
           <div>
-            <input
-              placeholder="İsim veya sicil ara…"
-              value={sicilArama}
-              onChange={(e) => setSicilArama(e.target.value)}
-              className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            />
-            <ul className="mt-2 border border-slate-200 rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
-              {filtreliPersonel.map((p) => (
-                <li key={p.sicil_no}>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
-                    onClick={() => setSecilenSicil(p.sicil_no)}
-                  >
-                    {p.ad_soyad} <span className="text-slate-400 font-mono text-xs ml-1">{p.sicil_no}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="relative max-w-md">
+              <input
+                placeholder="İsim veya sicil ara…"
+                value={sicilArama}
+                onChange={(e) => {
+                  setSicilArama(e.target.value)
+                  setAramaAcik(true)
+                }}
+                onFocus={() => setAramaAcik(true)}
+                onBlur={() => setTimeout(() => setAramaAcik(false), 200)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              />
+              {aramaAcik && filtreliPersonel.length > 0 && (
+                <ul className="absolute z-10 left-0 right-0 mt-1 border border-slate-200 rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-100 bg-white shadow-lg">
+                  {filtreliPersonel.map((p) => (
+                    <li key={p.sicil_no}>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                        onMouseDown={() => {
+                          setSecilenSicil(p.sicil_no)
+                          setSicilArama('')
+                          setAramaAcik(false)
+                        }}
+                      >
+                        {p.ad_soyad} <span className="text-slate-400 font-mono text-xs ml-1">{p.sicil_no}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -168,7 +182,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
               <input
                 className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
                 value={row.okul_adi ?? ''}
-                onChange={(e) => satirDegistir(idx, { okul_adi: e.target.value.trim() || null })}
+                onChange={(e) => satirDegistir(idx, { okul_adi: e.target.value || null })}
               />
             </label>
             <label className="text-xs text-slate-600">
@@ -176,7 +190,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
               <input
                 className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
                 value={row.bolum ?? ''}
-                onChange={(e) => satirDegistir(idx, { bolum: e.target.value.trim() || null })}
+                onChange={(e) => satirDegistir(idx, { bolum: e.target.value || null })}
               />
             </label>
             <label className="text-xs text-slate-600">
@@ -184,7 +198,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
               <input
                 className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
                 value={row.meslegi ?? ''}
-                onChange={(e) => satirDegistir(idx, { meslegi: e.target.value.trim() || null })}
+                onChange={(e) => satirDegistir(idx, { meslegi: e.target.value || null })}
               />
             </label>
             <label className="text-xs text-slate-600">
