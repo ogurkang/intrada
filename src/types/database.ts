@@ -122,9 +122,9 @@ export interface Database {
         Relationships: []
       }
       tanim_mudurluk: {
-        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; aktif: boolean; created_at: string }
-        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; aktif?: boolean; created_at?: string }
-        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; aktif?: boolean; created_at?: string }
+        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; konum: string; aktif: boolean; created_at: string }
+        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; konum?: string; aktif?: boolean; created_at?: string }
+        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; konum?: string; aktif?: boolean; created_at?: string }
         Relationships: []
       }
       tanim_statu: {

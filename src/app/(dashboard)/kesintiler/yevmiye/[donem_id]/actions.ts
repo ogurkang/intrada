@@ -6,6 +6,7 @@ import { getKullaniciGorevMudurlukleri, assertKullaniciMudurlukErisimi } from '@
 import { getAppAccess } from '@/lib/app-access'
 import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
 import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
+import { haftaSonuIzinHucreKodu } from '@/lib/puantaj-hafta-sonu-izin'
 
 const GUNLER_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
 
@@ -285,10 +286,26 @@ export async function yevmiyePuantajYukle(
         if (savedForSicil[tarihStr] !== undefined && savedForSicil[tarihStr] !== '') {
           deger = savedForSicil[tarihStr]
         } else {
-          deger = 'X'
-          if (g.isHaftaTatil) deger = 'HT'
-          else if (g.isResmiTatil && g.tatilKod) deger = g.tatilKod
-          else if (izinKodlariBySicilGun[sicilP]?.[tarihStr]) deger = izinKodlariBySicilGun[sicilP]![tarihStr]!
+          const dow = new Date(`${tarihStr}T12:00:00`).getDay()
+          const izinKodRaw = izinKodlariBySicilGun[sicilP]?.[tarihStr]
+          if (g.isResmiTatil && g.tatilKod) {
+            deger = g.tatilKod
+          } else if (izinKodRaw) {
+            if (g.isHaftaTatil) {
+              const goster = haftaSonuIzinHucreKodu({
+                statu: p.statu,
+                izinKodu: izinKodRaw,
+                haftaGunu: dow,
+              })
+              deger = goster ?? 'HT'
+            } else {
+              deger = izinKodRaw
+            }
+          } else if (g.isHaftaTatil) {
+            deger = 'HT'
+          } else {
+            deger = 'X'
+          }
         }
         grid[sicilP][tarihStr] = deger
         if (savedFmForSicil[tarihStr] != null) {

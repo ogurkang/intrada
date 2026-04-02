@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import { useRouter } from 'next/navigation'
 import { PUANTAJ_KOD_ACIKLAMA } from '@/lib/puantaj-kod-aciklama'
+import { haftaSonuIzinHucreKodu } from '@/lib/puantaj-hafta-sonu-izin'
 
 export const MAX_ARAZI_GUN = 20
 
@@ -21,6 +22,8 @@ export interface AraziPersonel {
   ad_soyad: string | null
   mudurluk: string | null
   oran: number
+  /** Kadro statüsü — hafta sonu yıllık izin (S) gösterimi için */
+  statu?: string | null
 }
 
 export interface AraziDonemBilgi {
@@ -44,6 +47,8 @@ interface Props {
   tatilGunler:  string[]           // ISO tarih stringleri
   markedSet:    Set<string>        // "sicil_no:YYYY-MM-DD"
   mudurlukPersonelMap: Record<string, MudurlukPersonel[]>
+  /** İşçi veya sözleşmeli arazi personeli olan müdürlükler + mevcut personel müdürlükleri (dropdown) */
+  mudurlukDropdown?: string[]
   /** Kullanıcı rolü: kadrodan gelen görev müdürlükleri; verilmezse personellerden türetilir */
   mudurlukSecenekleri?: string[]
   /** Tek görev müdürlüğü → müdürlük seçimi salt okunur */
@@ -91,12 +96,20 @@ function donemIcerisinde(dateStr: string, baslangic: string, bitis: string): boo
   return dateStr >= baslangic && dateStr <= bitis
 }
 
+function normMud(v: string | null | undefined) {
+  return String(v ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr-TR')
+}
+
 export default function AraziPuantajClient({
   donem,
   personeller,
   tatilGunler,
   markedSet: initialMarked,
   mudurlukPersonelMap = {},
+  mudurlukDropdown,
   mudurlukSecenekleri,
   mudurlukSaltOkunur,
   showAnaSayfaLink = false,
@@ -113,15 +126,46 @@ export default function AraziPuantajClient({
   const [birimAmiri, setBirimAmiri] = useState<string>('')
   const [mudur, setMudur] = useState<string>('')
 
-  const mudurlukler = (mudurlukSecenekleri && mudurlukSecenekleri.length > 0)
-    ? [...mudurlukSecenekleri].sort((a, b) => (a || 'zzz').localeCompare(b || 'zzz'))
-    : [...new Set(personeller.map(p => p.mudurluk ?? ''))].sort((a, b) => (a || 'zzz').localeCompare(b || 'zzz'))
-  const ilkMud = mudurlukler[0] ?? ''
-  const aktifMud = seciliMudurluk || ilkMud
-  const imzaPersonel = mudurlukPersonelMap[aktifMud] ?? []
-  const imzaSicilSet = new Set(imzaPersonel.map(p => p.sicil_no))
+  const mudurlukListesiBirlesik = useMemo(() => {
+    const s = new Set<string>()
+    for (const m of mudurlukDropdown ?? []) {
+      if (m) s.add(m)
+    }
+    for (const p of personeller) {
+      if (p.mudurluk) s.add(p.mudurluk)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [mudurlukDropdown, personeller])
+
+  const filteredForRole = useMemo(() => {
+    if (!mudurlukSecenekleri?.length) return mudurlukListesiBirlesik
+    return mudurlukListesiBirlesik.filter(m =>
+      mudurlukSecenekleri.some(u => normMud(u) === normMud(m)),
+    )
+  }, [mudurlukListesiBirlesik, mudurlukSecenekleri])
+
+  useEffect(() => {
+    setSeciliMudurluk(prev => {
+      if (prev && filteredForRole.some(m => normMud(m) === normMud(prev))) return prev
+      return filteredForRole[0] ?? ''
+    })
+  }, [filteredForRole])
+
+  const mudurlukSecenekleriGoster = useMemo(() => {
+    if (!seciliMudurluk || filteredForRole.some(m => normMud(m) === normMud(seciliMudurluk))) {
+      return filteredForRole
+    }
+    return [seciliMudurluk, ...filteredForRole]
+  }, [filteredForRole, seciliMudurluk])
+
+  const aktifMud = seciliMudurluk || (filteredForRole[0] ?? '')
+  const aktifMudNorm = normMud(aktifMud)
+  const imzaPersonel =
+    mudurlukPersonelMap[aktifMud] ??
+    Object.entries(mudurlukPersonelMap).find(([k]) => normMud(k) === aktifMudNorm)?.[1] ??
+    []
   const filtrelenmisPersonel = aktifMud
-    ? personeller.filter(p => (p.mudurluk ?? '') === aktifMud)
+    ? personeller.filter(p => normMud(p.mudurluk) === aktifMudNorm)
     : personeller
 
   const aylar = donemAylari(donem.baslangic_tarihi, donem.bitis_tarihi)
@@ -152,6 +196,12 @@ export default function AraziPuantajClient({
     return say
   }
 
+  const statuBySicil = useMemo(() => {
+    const m: Record<string, string | null> = {}
+    for (const p of personeller) m[p.sicil_no] = p.statu ?? null
+    return m
+  }, [personeller])
+
   function gunKoduGetir(sicil_no: string, yil: number, ay: number, gun: number): string {
     const d = new Date(yil, ay, gun)
     if (d.getDate() !== gun || d.getMonth() !== ay) return ''
@@ -159,10 +209,22 @@ export default function AraziPuantajClient({
     if (!donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi)) return ''
     const hGunu = d.getDay()
     const hafSonu = hGunu === 0 || hGunu === 6
-    if (hafSonu) return 'HT'
+    const izinKodRaw = izinKodlariBySicilGun[sicil_no]?.[iso]
+    const statu = statuBySicil[sicil_no]
+
     if (tatilSet.has(iso)) return 'B'
-    const izinKod = izinKodlariBySicilGun[sicil_no]?.[iso]
-    if (izinKod) return izinKod
+    if (izinKodRaw) {
+      if (hafSonu) {
+        const goster = haftaSonuIzinHucreKodu({
+          statu,
+          izinKodu: izinKodRaw,
+          haftaGunu: hGunu,
+        })
+        return goster ?? 'HT'
+      }
+      return izinKodRaw
+    }
+    if (hafSonu) return 'HT'
     return marked.has(`${sicil_no}:${iso}`) ? 'X' : ''
   }
 
@@ -291,7 +353,7 @@ export default function AraziPuantajClient({
             </button>
           </div>
         </div>
-        {mudurlukler.length >= 1 && (
+        {mudurlukSecenekleriGoster.length >= 1 && (
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Müdürlük</label>
             <select value={aktifMud} onChange={e => setSeciliMudurluk(e.target.value)}
@@ -300,7 +362,7 @@ export default function AraziPuantajClient({
               className={`w-full max-w-md px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 ${
                 mudurlukSaltOkunur ? 'border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed' : 'border-slate-300 bg-white'
               }`}>
-              {mudurlukler.map(m => <option key={m || 'bos'} value={m}>{m || 'Belirtilmemiş'}</option>)}
+              {mudurlukSecenekleriGoster.map(m => <option key={m || 'bos'} value={m}>{m || 'Belirtilmemiş'}</option>)}
             </select>
             {mudurlukSaltOkunur && (
               <p className="mt-1 text-xs text-slate-500">Kadro görev müdürlüğünüz tek olduğu için seçim salt okunur.</p>

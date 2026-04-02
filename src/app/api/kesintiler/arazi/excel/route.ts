@@ -5,6 +5,7 @@ import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, applyGridBordersRange, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
 import { buildTurAdiToKodMap, PUANTAJ_KOD_ACIKLAMA } from '@/lib/izin-puantaj-kodu'
 import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
+import { haftaSonuIzinHucreKodu } from '@/lib/puantaj-hafta-sonu-izin'
 
 function tarih(t: string | null) {
   if (!t) return '—'
@@ -105,11 +106,11 @@ export async function GET(request: NextRequest) {
     })
     const araziUnvanlar = Object.keys(unvanOranMap)
 
-    let personeller: { sicil_no: string; ad_soyad: string; mudurluk: string; oran: number }[] = []
+    let personeller: { sicil_no: string; ad_soyad: string; mudurluk: string; oran: number; statu: string | null }[] = []
     if (araziUnvanlar.length > 0) {
       const { data: kadroRaw } = await supabase
         .from('kadro_hareketleri')
-        .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
+        .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu')
         .is('ayrilis_tarihi', null)
         .in('kadro_unvani', araziUnvanlar)
         .not('asil', 'is', null)
@@ -135,10 +136,12 @@ export async function GET(request: NextRequest) {
 
         const mudMap: Record<string, string> = {}
         const oranMap: Record<string, number> = {}
+        const statuMap: Record<string, string> = {}
         kadroFiltre.forEach(k => {
           if (k.asil) {
             mudMap[k.asil] = k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? ''
             oranMap[k.asil] = unvanOranMap[k.kadro_unvani ?? ''] ?? 0
+            if (k.statu) statuMap[k.asil] = String(k.statu).trim()
           }
         })
 
@@ -148,6 +151,7 @@ export async function GET(request: NextRequest) {
             ad_soyad: adMap[s] ?? s,
             mudurluk: mudMap[s] ?? '',
             oran: oranMap[s] ?? 0,
+            statu: statuMap[s] ?? null,
           }))
           .sort((a, b) => (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr'))
       }
@@ -259,6 +263,9 @@ export async function GET(request: NextRequest) {
       alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true },
     }
 
+    const statuBySicil: Record<string, string | null> = {}
+    for (const p of personeller) statuBySicil[p.sicil_no] = p.statu
+
     function gunKoduGetir(sicil_no: string, yil: number, ay: number, gun: number): string {
       const d = new Date(yil, ay, gun)
       if (d.getDate() !== gun || d.getMonth() !== ay) return ''
@@ -266,10 +273,22 @@ export async function GET(request: NextRequest) {
       if (!donemIcerisinde(iso, donem.baslangic_tarihi, donem.bitis_tarihi)) return ''
       const hGunu = d.getDay()
       const hafSonu = hGunu === 0 || hGunu === 6
-      if (hafSonu) return 'HT'
+      const izinKodRaw = izinKodlariBySicilGun[sicil_no]?.[iso]
+      const statu = statuBySicil[sicil_no]
+
       if (tatilSet.has(iso)) return 'B'
-      const izinKod = izinKodlariBySicilGun[sicil_no]?.[iso]
-      if (izinKod) return izinKod
+      if (izinKodRaw) {
+        if (hafSonu) {
+          const goster = haftaSonuIzinHucreKodu({
+            statu,
+            izinKodu: izinKodRaw,
+            haftaGunu: hGunu,
+          })
+          return goster ?? 'HT'
+        }
+        return izinKodRaw
+      }
+      if (hafSonu) return 'HT'
       return markedSet.has(`${sicil_no}:${iso}`) ? 'X' : ''
     }
 

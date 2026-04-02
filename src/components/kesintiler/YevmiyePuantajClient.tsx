@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import type {
@@ -21,8 +21,19 @@ interface Props {
 
 export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink = false }: Props) {
   const { donem, mudurlukler, statuSekmeleri, kayitOzeti, mudurlukPersonelMap, mudurlukSaltOkunur } = data
-  const ilkMud = statuSekmeleri.find(s => s.statu === 'Sözleşmeli')?.mudurlukler[0]?.mudurlukAdi ?? mudurlukler[0] ?? ''
-  const [seciliMudurluk, setSeciliMudurluk] = useState<string>(ilkMud)
+  /** Sözleşmeli veya işçi personeli olan tüm müdürlükler (sekme seçiminden bağımsız) */
+  const mudurlukListesiBirlesik = useMemo(() => {
+    const s = new Set<string>()
+    for (const sek of statuSekmeleri) {
+      for (const m of sek.mudurlukler) {
+        if (m.mudurlukAdi) s.add(m.mudurlukAdi)
+      }
+    }
+    if (s.size === 0) return [...mudurlukler]
+    return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [statuSekmeleri, mudurlukler])
+
+  const [seciliMudurluk, setSeciliMudurluk] = useState<string>('')
   const [seciliStatu, setSeciliStatu] = useState<string>('Sözleşmeli')
   const [gunleriIsaretleModu, setGunleriIsaretleModu] = useState(false)
   const [fazlaMesaiLocal, setFazlaMesaiLocal] = useState<Record<string, Record<string, number>>>({})
@@ -33,11 +44,16 @@ export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink =
   const [mudur, setMudur] = useState('')
 
   const statuSekme = statuSekmeleri.find(s => s.statu === seciliStatu)
-  // Sadece seçili statüde personeli olan müdürlükler dropdown'da
-  const mudurlukListesi = statuSekme?.mudurlukler.map(m => m.mudurlukAdi) ?? []
-  const mudurlukSecenekleri = mudurlukListesi.includes(seciliMudurluk)
-    ? mudurlukListesi
-    : [seciliMudurluk, ...mudurlukListesi]
+  const mudurlukSecenekleri = mudurlukListesiBirlesik.includes(seciliMudurluk)
+    ? mudurlukListesiBirlesik
+    : [seciliMudurluk, ...mudurlukListesiBirlesik]
+
+  useEffect(() => {
+    setSeciliMudurluk(prev => {
+      if (prev && mudurlukListesiBirlesik.includes(prev)) return prev
+      return mudurlukListesiBirlesik[0] ?? ''
+    })
+  }, [mudurlukListesiBirlesik])
   // Seçili müdürlük için bu statüdeki veriyi al; müdürlük değişmez (personel yok mesajı gösterilir)
   const mudData = statuSekme?.mudurlukler.find(m => m.mudurlukAdi === seciliMudurluk)
   const personeller = mudData?.personeller ?? []

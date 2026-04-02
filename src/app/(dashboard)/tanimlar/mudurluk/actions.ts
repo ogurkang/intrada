@@ -13,11 +13,13 @@ export async function mudurlukEkle(
   if (!g.ok) return { hata: g.hata }
   const mudurluk_adi = String(formData.get('mudurluk_adi') ?? '').trim()
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
+  const konum = String(formData.get('konum') ?? 'İç').trim()
+  if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_mudurluk')
-    .insert({ mudurluk_adi, aktif: true })
+    .insert({ mudurluk_adi, konum, aktif: true })
 
   if (error) return { hata: error.message }
   revalidatePath(SAYFA)
@@ -32,11 +34,13 @@ export async function mudurlukGuncelle(
   if (!g.ok) return { hata: g.hata }
   const mudurluk_adi = String(formData.get('mudurluk_adi') ?? '').trim()
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
+  const konum = String(formData.get('konum') ?? 'İç').trim()
+  if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_mudurluk')
-    .update({ mudurluk_adi })
+    .update({ mudurluk_adi, konum })
     .eq('id', id)
 
   if (error) return { hata: error.message }

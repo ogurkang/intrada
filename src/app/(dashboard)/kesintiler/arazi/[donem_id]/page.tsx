@@ -12,6 +12,13 @@ interface Props {
   params: Promise<{ donem_id: string }>
 }
 
+function normMudStr(v: string | null | undefined) {
+  return String(v ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr-TR')
+}
+
 export default async function AraziPuantajPage({ params }: Props) {
   const { donem_id: donemIdStr } = await params
   const donem_id = parseInt(donemIdStr, 10)
@@ -48,7 +55,7 @@ export default async function AraziPuantajPage({ params }: Props) {
   if (araziUnvanlar.length > 0) {
     const { data: kadroRaw } = await supabase
       .from('kadro_hareketleri')
-      .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
+      .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu')
       .is('ayrilis_tarihi', null)
       .in('kadro_unvani', araziUnvanlar)
       .not('asil', 'is', null)
@@ -66,10 +73,12 @@ export default async function AraziPuantajPage({ params }: Props) {
 
       const mudMap: Record<string, string> = {}
       const oranMap: Record<string, number> = {}
+      const statuMap: Record<string, string> = {}
       ;(kadroRaw ?? []).forEach(k => {
         if (k.asil) {
           mudMap[k.asil] = k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? ''
           oranMap[k.asil] = unvanOranMap[k.kadro_unvani ?? ''] ?? 0
+          if (k.statu) statuMap[k.asil] = String(k.statu).trim()
         }
       })
 
@@ -78,11 +87,39 @@ export default async function AraziPuantajPage({ params }: Props) {
         ad_soyad: adMap[s] ?? s,
         mudurluk: mudMap[s] ?? null,
         oran: oranMap[s] ?? 0,
+        statu: statuMap[s] ?? null,
       })).sort((a, b) => {
         if (b.oran !== a.oran) return b.oran - a.oran
         return (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr')
       })
     }
+  }
+
+  /** Sözleşmeli veya işçi arazi personeli olan müdürlükler (dropdown birleşik liste) */
+  let mudurlukDropdown: string[] = []
+  if (araziUnvanlar.length > 0) {
+    const [{ data: mudKadro }, { data: mudTanimRaw }] = await Promise.all([
+      supabase
+        .from('kadro_hareketleri')
+        .select('gorev_mudurlugu, kadro_mudurlugu')
+        .is('ayrilis_tarihi', null)
+        .in('kadro_unvani', araziUnvanlar)
+        .in('statu', ['Sözleşmeli', 'İşçi'])
+        .not('asil', 'is', null),
+      supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true),
+    ])
+    const byNorm = new Map<string, string>()
+    for (const m of mudTanimRaw ?? []) {
+      if (m.mudurluk_adi) byNorm.set(normMudStr(m.mudurluk_adi), m.mudurluk_adi)
+    }
+    const mudSet = new Set<string>()
+    for (const k of mudKadro ?? []) {
+      const raw = String(k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '').trim()
+      if (!raw) continue
+      const canon = byNorm.get(normMudStr(raw)) ?? raw
+      mudSet.add(canon)
+    }
+    mudurlukDropdown = [...mudSet].sort((a, b) => a.localeCompare(b, 'tr'))
   }
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -96,6 +133,12 @@ export default async function AraziPuantajPage({ params }: Props) {
     mudurlukSaltOkunur = km.tekSecimSaltOkunur
     const izin = new Set(km.mudurlukler)
     personeller = personeller.filter(p => izin.has((p.mudurluk ?? '').trim()))
+  }
+
+  let mudurlukDropdownFiltered = mudurlukDropdown
+  if (kisitliKullanici && mudurlukSecenekleri?.length) {
+    const izinMud = new Set(mudurlukSecenekleri.map(normMudStr))
+    mudurlukDropdownFiltered = mudurlukDropdown.filter(m => izinMud.has(normMudStr(m)))
   }
 
   // 4) Dönem içindeki resmi tatiller
@@ -160,15 +203,16 @@ export default async function AraziPuantajPage({ params }: Props) {
   }
 
   // Müdürlük bazında tüm personel (Puantör/Birim Amiri/Müdür - asil+vekil, görev veya kadro müdürlüğü)
-  const normMud = (v: string | null | undefined) =>
-    String(v ?? '')
-      .trim()
-      .replace(/\s+/g, ' ')
-      .toLocaleLowerCase('tr-TR')
+  const normMud = normMudStr
+  const mudImzaKaynak = [
+    ...mudurlukDropdownFiltered,
+    ...personeller.map(p => (p.mudurluk ?? '').trim()).filter(Boolean),
+  ]
+  const mudurluklerListRaw = [...new Set(mudImzaKaynak)].sort((a, b) => a.localeCompare(b, 'tr'))
   const mudurluklerList =
     kisitliKullanici && mudurlukSecenekleri?.length
-      ? mudurlukSecenekleri
-      : [...new Set(personeller.map(p => p.mudurluk ?? ''))]
+      ? mudurluklerListRaw.filter(m => mudurlukSecenekleri.some(u => normMudStr(u) === normMudStr(m)))
+      : mudurluklerListRaw
   const mudurlukPersonelMap: Record<string, { sicil_no: string; ad_soyad: string }[]> = {}
   const { data: kadroTumRaw } = await supabase
     .from('kadro_hareketleri')
@@ -222,6 +266,7 @@ export default async function AraziPuantajPage({ params }: Props) {
       tatilGunler={tatilGunler}
       markedSet={markedSet}
       mudurlukPersonelMap={mudurlukPersonelMap}
+      mudurlukDropdown={mudurlukDropdownFiltered.length > 0 ? mudurlukDropdownFiltered : undefined}
       mudurlukSecenekleri={kisitliKullanici ? mudurlukSecenekleri : undefined}
       mudurlukSaltOkunur={kisitliKullanici ? mudurlukSaltOkunur : undefined}
       showAnaSayfaLink={kisitliKullanici}

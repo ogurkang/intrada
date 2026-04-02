@@ -26,6 +26,17 @@ export default async function MudurlukPage() {
         data={kayitlar}
         nameField="mudurluk_adi"
         nameLabel="Müdürlük Adı"
+        extraSelectFields={[
+          {
+            key: 'konum',
+            label: 'Konum',
+            required: true,
+            options: [
+              { value: 'İç', label: 'İç' },
+              { value: 'Dış', label: 'Dış' },
+            ],
+          },
+        ]}
         onAdd={mudurlukEkle}
         onUpdate={mudurlukGuncelle}
         onToggle={mudurlukToggleAktif}

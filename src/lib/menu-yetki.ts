@@ -8,6 +8,7 @@
 
 export type MenuModulKey =
   | 'personel'
+  | 'rapor'
   | 'terfi'
   | 'izin'
   | 'bildirim'
@@ -26,6 +27,7 @@ export const MENU_MODUL_TANIMLARI: {
   terfiOzel?: true
 }[] = [
   { key: 'personel', labelKisa: 'Personel', label: 'Personel', pathPrefixes: ['/personel', '/firma-calisanlar', '/kadro', '/personel-hareketleri'] },
+  { key: 'rapor', labelKisa: 'Rapor', label: 'Rapor Yönetimi', pathPrefixes: ['/rapor'] },
   { key: 'terfi', labelKisa: 'Terfi', label: 'Terfi', pathPrefixes: [], terfiOzel: true },
   { key: 'izin', labelKisa: 'İzin', label: 'İzin Yönetimi', pathPrefixes: ['/izin'] },
   { key: 'bildirim', labelKisa: 'Bildirim', label: 'Bildirim', pathPrefixes: ['/bildirim'] },
@@ -165,6 +167,7 @@ export function sidebarGrupGoster(
 
   const map: Record<string, MenuModulKey> = {
     'Personel Yönetimi': 'personel',
+    'Rapor Yönetimi': 'rapor',
     'İzin Yönetimi': 'izin',
     'Bildirim Yönetimi': 'bildirim',
     'Kesintiler Yönetimi': 'kesintiler',

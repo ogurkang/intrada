@@ -26,6 +26,16 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'Rapor Yönetimi',
+    icon: '📊',
+    accordion: true,
+    items: [
+      { href: '/rapor', label: 'Genel Bakış' },
+      { href: '/rapor/statuye-gore-cinsiyet', label: 'Statüye Göre Cinsiyet Raporu' },
+      { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
+    ],
+  },
+  {
     grup: 'İzin Yönetimi',
     icon: '📅',
     accordion: true,
