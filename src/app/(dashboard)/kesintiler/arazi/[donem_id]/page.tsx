@@ -89,8 +89,8 @@ export default async function AraziPuantajPage({ params }: Props) {
         oran: oranMap[s] ?? 0,
         statu: statuMap[s] ?? null,
       })).sort((a, b) => {
-        if (b.oran !== a.oran) return b.oran - a.oran
-        return (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr')
+        if (a.oran !== b.oran) return a.oran - b.oran
+        return String(a.sicil_no).localeCompare(String(b.sicil_no), 'tr')
       })
     }
   }

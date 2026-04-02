@@ -153,7 +153,10 @@ export async function GET(request: NextRequest) {
             oran: oranMap[s] ?? 0,
             statu: statuMap[s] ?? null,
           }))
-          .sort((a, b) => (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr'))
+          .sort((a, b) => {
+            if (a.oran !== b.oran) return a.oran - b.oran
+            return String(a.sicil_no).localeCompare(String(b.sicil_no), 'tr')
+          })
       }
     }
 
