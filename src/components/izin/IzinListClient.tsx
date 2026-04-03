@@ -49,9 +49,24 @@ export default function IzinListClient({
     return m
   }, [personeller])
 
+  const siraliHareketler = useMemo(() => {
+    /** Sayısal sıra: büyük üstte. Geçersiz/boş sıra en altta (-1). */
+    const siraDegeri = (siraNo: string | null): number => {
+      const trimmed = (siraNo ?? '').trim()
+      if (!/^\d+$/.test(trimmed)) return -1
+      return Number.parseInt(trimmed, 10)
+    }
+    return [...hareketler].sort((a, b) => {
+      const sa = siraDegeri(a.sira_no)
+      const sb = siraDegeri(b.sira_no)
+      if (sa !== sb) return sb - sa
+      return b.id - a.id
+    })
+  }, [hareketler])
+
   const filtreli = useMemo(() => {
     setSayfa(0)
-    let list = hareketler
+    let list = siraliHareketler
     if (durumFiltre !== 'Tümü') list = list.filter(h => h.durum === durumFiltre)
     if (aramaQ.trim()) {
       const q = aramaQ.toLowerCase()
@@ -63,7 +78,7 @@ export default function IzinListClient({
       )
     }
     return list
-  }, [hareketler, durumFiltre, aramaQ, adMap])
+  }, [siraliHareketler, durumFiltre, aramaQ, adMap])
 
   const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOYUTU))
   const sayfadaki   = filtreli.slice(sayfa * SAYFA_BOYUTU, (sayfa + 1) * SAYFA_BOYUTU)
