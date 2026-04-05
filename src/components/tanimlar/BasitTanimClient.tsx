@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useState, useTransition, useRef } from 'react'
 import Modal from '@/components/ui/Modal'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
@@ -30,6 +31,8 @@ interface Props<T extends BasitTanimItem> {
   onUpdate: (id: number, formData: FormData) => Promise<{ hata?: string }>
   /** Aktif/Pasif değiştir (Server Action) */
   onToggle: (id: number, aktif: boolean) => Promise<{ hata?: string }>
+  /** Başlık satırında «Yeni Ekle» yanında (ör. çoklu ekleme bağlantısı) */
+  ustBaglantilar?: ReactNode
 }
 
 export default function BasitTanimClient<T extends BasitTanimItem>({
@@ -41,6 +44,7 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
   onAdd,
   onUpdate,
   onToggle,
+  ustBaglantilar,
 }: Props<T>) {
   const saltOkunur = useTanimlarSaltOkunur()
   const [modalAcik, setModalAcik]   = useState(false)
@@ -93,20 +97,24 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
   return (
     <div>
       {/* Sayfa başlığı */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
-        {!saltOkunur && (
-        <button
-          onClick={yeniEkle}
-          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2
-                     rounded-lg hover:bg-slate-700 transition-colors font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Yeni Ekle
-        </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {ustBaglantilar}
+          {!saltOkunur && (
+            <button
+              type="button"
+              onClick={yeniEkle}
+              className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2
+                         rounded-lg hover:bg-slate-700 transition-colors font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Yeni Ekle
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tablo */}

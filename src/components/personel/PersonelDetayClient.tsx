@@ -4,6 +4,9 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Tables } from '@/types/database'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
+import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
+import { GOREV_TURU_OPTIONS } from '@/lib/gorev-bilgileri'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 
 type Calisan   = Tables<'calisan'>
@@ -84,7 +87,21 @@ const DURUM_RENK: Record<string, string> = {
 
 // ─── Kişisel Bilgiler ─────────────────────────────────────────────────────────
 
-function KisiselTab({ calisan }: { calisan: Calisan }) {
+function KisiselTab({
+  calisan,
+  kadrolar,
+}: {
+  calisan: Calisan
+  kadrolar: KH[]
+}) {
+  const sicil = (calisan.sicil_no ?? '').trim()
+  const anaK = anaKadroSec(kadrolar, sicil)
+  const memuriyetGoster = anaK?.memuriyet_tarihi ?? calisan.memuriyet_tarihi
+  const kurumaGoster = anaK?.kuruma_giris_tarihi ?? calisan.kuruma_giris_tarihi
+  const hy = calisan.hizmet_suresi_yil ?? 0
+  const ha = calisan.hizmet_suresi_ay ?? 0
+  const hg = calisan.hizmet_suresi_gun ?? 0
+
   return (
     <div className="space-y-6">
       <div>
@@ -98,6 +115,8 @@ function KisiselTab({ calisan }: { calisan: Calisan }) {
           <Alan etiket="Cinsiyet"        deger={calisan.cinsiyet} />
           <Alan etiket="Kan Grubu"       deger={calisan.kan_grubu} />
           <Alan etiket="Askerlik"        deger={calisan.askerlik_durumu} />
+          <Alan etiket="Anne Adı"        deger={calisan.anne_adi} />
+          <Alan etiket="Baba Adı"        deger={calisan.baba_adi} />
         </div>
       </div>
       <div>
@@ -111,10 +130,29 @@ function KisiselTab({ calisan }: { calisan: Calisan }) {
         </div>
       </div>
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Veli Bilgileri</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Alan etiket="Baba Adı"        deger={calisan.baba_adi} />
-          <Alan etiket="Anne Adı"        deger={calisan.anne_adi} />
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Görev Bilgileri</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Alan etiket="Görev yeri" deger={calisan.gorev_yeri} />
+          <Alan etiket="Görev türü" deger={calisan.gorev_turu ?? GOREV_TURU_OPTIONS[0]} />
+          <Alan etiket="Görev türü tarihi" deger={
+            (calisan.gorev_turu ?? 'Çalışan') === 'Çalışan'
+              ? '—'
+              : tarihFormatla(calisan.gorev_turu_tarihi)
+          } />
+          <Alan etiket="Görev durumu" deger={calisan.gorev_durumu ?? 'Diğer'} />
+        </div>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Hizmet Bilgileri</p>
+        {(calisan.gorev_turu ?? 'Çalışan') === 'Aylıksız İzin' && (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
+            Aylıksız izin: hizmet süresi bu kayıt değiştirilene kadar güncellenmez (ilerleme durur).
+          </p>
+        )}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Alan etiket="Memuriyete giriş" deger={tarihFormatla(memuriyetGoster)} />
+          <Alan etiket="Kuruma giriş" deger={tarihFormatla(kurumaGoster)} />
+          <Alan etiket="Hizmet süresi (360 gün esası)" deger={hizmetSuresiEtiket360(hy, ha, hg)} />
         </div>
       </div>
     </div>
@@ -331,7 +369,7 @@ function KadroTab({ kadrolar, sicilNo }: { kadrolar: KH[]; sicilNo: string }) {
   const vekilKadrolar = kadrolar
     .filter(k => (k.vekil ?? '').trim() === sicil)
     .sort((a, b) => (parseInt(a.kadro_derecesi ?? '999999', 10) - parseInt(b.kadro_derecesi ?? '999999', 10)))
-  const anaKadro = asilKadro ?? (vekilKadrolar.length > 0 ? vekilKadrolar[0] : null)
+  const anaKadro = anaKadroSec(kadrolar, sicil)
   const digerVekiller = asilKadro ? vekilKadrolar : vekilKadrolar.slice(1)
 
   if (!anaKadro) {
@@ -358,8 +396,6 @@ function KadroTab({ kadrolar, sicilNo }: { kadrolar: KH[]; sicilNo: string }) {
           <Alan etiket="Görev Müdürlüğü"  deger={anaKadro.gorev_mudurlugu} />
           <Alan etiket="Statü"            deger={anaKadro.statu} />
           <Alan etiket="Kadro Derecesi"   deger={anaKadro.kadro_derecesi} />
-          <Alan etiket="Memuriyete Giriş" deger={tarihFormatla(anaKadro.memuriyet_tarihi)} />
-          <Alan etiket="Kuruma Giriş"     deger={tarihFormatla(anaKadro.kuruma_giris_tarihi)} />
         </div>
       </div>
 
@@ -789,7 +825,7 @@ export default function PersonelDetayClient({
 
         {/* Sekme İçeriği */}
         <div className="p-6">
-          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} />}
+          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} kadrolar={kadrolar} />}
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
           {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}

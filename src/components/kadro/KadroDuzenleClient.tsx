@@ -227,9 +227,7 @@ export default function KadroDuzenleClient({
                 onSeciliChange={setVekilSicil}
               />
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              {input(d, 'memuriyet_tarihi', 'Memuriyet Tarihi', { type: 'date' })}
-              {input(d, 'kuruma_giris_tarihi', 'Kuruma Giriş', { type: 'date' })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               {sel(d, 'gelis_nedeni', 'Geliş Nedeni', gelisNedenleri ?? [])}
             </div>
             {input(d, 'geldigi_yer', 'Geldiği Yer')}

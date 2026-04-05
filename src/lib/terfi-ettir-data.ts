@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables } from '@/types/database'
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 
 function eslestirOgrenimId(
   ogrenimTuru: string | null | undefined,
@@ -109,7 +110,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
     kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
 
-  const tanimOgList = (tanimOg ?? []).map((o) => ({ id: o.id, isim: o.isim }))
+  const tanimOgList = sortTanimOgrenimByIsim((tanimOg ?? []).map((o) => ({ id: o.id, isim: o.isim })))
   const kaynaklar: TerfiKaynak[] = []
 
   for (const sicil_no of memurSiciller.sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))) {

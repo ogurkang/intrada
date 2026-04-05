@@ -133,6 +133,36 @@ export interface Database {
         Update: { id?: number; sira_no?: number | null; statu_adi?: string; aktif?: boolean; created_at?: string }
         Relationships: []
       }
+      tanim_hareket_tanim: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tur: string
+          tip: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tur: string
+          tip: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tur?: string
+          tip?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_izin_tur: {
         Row: {
           id: number; sira_no: number | null; tur_adi: string; kod: string | null
@@ -207,6 +237,9 @@ export interface Database {
           e_posta: string | null; dogum_yeri: string | null; anne_adi: string | null
           baba_adi: string | null; adresi: string | null; yakini: string | null
           yakini_telefonu: string | null; askerlik_durumu: string | null
+          memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
+          hizmet_suresi_yil: number; hizmet_suresi_ay: number; hizmet_suresi_gun: number
+          gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_durumu: string | null
           created_at: string; updated_at: string
         }
         Insert: {
@@ -215,6 +248,9 @@ export interface Database {
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
+          memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
+          hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
+          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_durumu?: string | null
           created_at?: string; updated_at?: string
         }
         Update: {
@@ -223,6 +259,9 @@ export interface Database {
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
+          memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
+          hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
+          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_durumu?: string | null
           created_at?: string; updated_at?: string
         }
         Relationships: []

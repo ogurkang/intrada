@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
 import { personelDetayHref } from '@/lib/personel-link'
+import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS } from '@/lib/gorev-bilgileri'
 
 const CINSIYET = ['Erkek', 'Kadın']
 const KAN_GRUBU = ['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-']
@@ -14,6 +15,9 @@ export default function PersonelYeniClient() {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [gorevTuru, setGorevTuru] = useState('Çalışan')
+  const gorevTarihGoster = gorevTuru === 'Aylıksız İzin' || gorevTuru === 'Geçici Görevlendirme'
+  const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -164,6 +168,89 @@ export default function PersonelYeniClient() {
               <input name="yakini_telefonu" type="tel"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                 placeholder="05xx xxx xx xx" />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Görev Bilgileri</p>
+            <p className="text-xs text-slate-500 mb-3">Kadro normundan bağımsızdır; sicil ile saklanır.</p>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev yeri</label>
+                <input name="gorev_yeri" type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  placeholder="Örn. şube, servis" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü</label>
+                <select name="gorev_turu" value={gorevTuru} onChange={e => setGorevTuru(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+                  {GOREV_TURU_OPTIONS.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü tarihi</label>
+                {!gorevTarihGoster && <input type="hidden" name="gorev_turu_tarihi" value="" />}
+                {gorevTarihGoster ? (
+                  <input name="gorev_turu_tarihi" type="date"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                ) : (
+                  <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">—</p>
+                )}
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev durumu</label>
+                <select name="gorev_durumu" defaultValue="Diğer"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+                  {GOREV_DURUMU_OPTIONS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Hizmet Bilgileri</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Hizmet süresi 360 günlük yıl esasına göre girilir (1 ay = 30 gün). Kadro ataması sonrası tarihler kadro ile de eşlenebilir.
+            </p>
+            {hizmetKilitli && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
+                Aylıksız izin: hizmet süresi bu kayıt değiştirilene kadar sıfırdan başlar ve güncellenmez.
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Memuriyete giriş</label>
+                <input name="memuriyet_tarihi" type="date"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Kuruma giriş</label>
+                <input name="kuruma_giris_tarihi" type="date"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+              </div>
+            </div>
+            <p className="text-xs font-medium text-slate-600 mb-2">Hizmet süresi</p>
+            <div className="grid grid-cols-3 gap-3 max-w-lg">
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">Yıl</label>
+                <input name="hizmet_suresi_yil" type="number" min={0} step={1} defaultValue={0} disabled={hizmetKilitli}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">Ay</label>
+                <input name="hizmet_suresi_ay" type="number" min={0} step={1} defaultValue={0} disabled={hizmetKilitli}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 mb-1">Gün</label>
+                <input name="hizmet_suresi_gun" type="number" min={0} step={1} defaultValue={0} disabled={hizmetKilitli}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100" />
+              </div>
             </div>
           </div>
 

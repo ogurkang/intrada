@@ -156,6 +156,13 @@ export default function PersonelListClient({ data }: Props) {
           </div>
         )}
       </div>
+
+      <p className="mt-6 text-sm text-slate-500">
+        <Link href="/personel/gorev-bilgileri" className="text-slate-700 font-medium hover:underline">
+          Görev bilgileri listesi
+        </Link>{' '}
+        için ayrı sayfayı kullanın.
+      </p>
     </div>
   )
 }

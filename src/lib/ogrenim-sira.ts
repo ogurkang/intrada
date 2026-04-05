@@ -1,17 +1,17 @@
 /**
  * Öğrenim türü görüntüleme sırası (yukarıdan aşağıya).
+ * Tanımlar modülü listesi, formlar ve raporlar bu sırayı kullanır.
  * Tanımda olup burada olmayan türler sonda, metin sırasına göre.
  */
 export const OGRENIM_TURU_SIRA: readonly string[] = [
   'Okuma-Yazma Yok',
   'Okur-Yazar',
   'İlkokul',
-  'İlköğretim',
   'Ortaokul',
+  'İlköğretim',
   'Lise',
   'Meslek Lisesi',
   'Önlisans',
-  'Ön Lisans',
   'Lisans',
   'Yüksek Lisans',
   'Doktora',
@@ -62,5 +62,25 @@ export function sortBildirimOgrenimList<T extends { sicil_no: string; ogrenim_tu
     const ib = ogrenimTuruSiraIndex(b.ogrenim_turu)
     if (ia !== ib) return ia - ib
     return String(a.ogrenim_turu ?? '').localeCompare(String(b.ogrenim_turu ?? ''), 'tr')
+  })
+}
+
+/** Tanımlar > Öğrenim kayıtları ve aynı şekilde `isim` alanlı satırlar için liste sırası. */
+export function sortTanimOgrenimByIsim<T extends { isim: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const ia = ogrenimTuruSiraIndex(a.isim)
+    const ib = ogrenimTuruSiraIndex(b.isim)
+    if (ia !== ib) return ia - ib
+    return a.isim.localeCompare(b.isim, 'tr')
+  })
+}
+
+/** Rapor sütunları vb. yalnızca isim dizisi için. */
+export function sortOgrenimIsimListesi(isimler: string[]): string[] {
+  return [...isimler].sort((a, b) => {
+    const ia = ogrenimTuruSiraIndex(a)
+    const ib = ogrenimTuruSiraIndex(b)
+    if (ia !== ib) return ia - ib
+    return a.localeCompare(b, 'tr')
   })
 }

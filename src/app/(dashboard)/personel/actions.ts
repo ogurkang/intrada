@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
+import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
 
 export async function calisanEkle(
   formData: FormData
@@ -23,6 +25,14 @@ export async function calisanEkle(
   if (mevcut) return { hata: `"${sicil_no}" sicil numarası zaten kayıtlı.` }
 
   const str = (k: string) => String(formData.get(k) ?? '').trim() || null
+  const hs = formdanHizmetSureBilesenleri(formData)
+  const gorev_turu = String(formData.get('gorev_turu') ?? '').trim() || 'Çalışan'
+  const gorev_turu_tarihi =
+    gorev_turu === 'Çalışan' ? null : str('gorev_turu_tarihi')
+  if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
+    return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
+  }
+  const hizmetDondur = gorev_turu === 'Aylıksız İzin'
 
   const { data: inserted, error } = await supabase
     .from('calisan')
@@ -42,6 +52,15 @@ export async function calisanEkle(
       yakini:          str('yakini'),
       yakini_telefonu: str('yakini_telefonu'),
       askerlik_durumu: str('askerlik_durumu'),
+      memuriyet_tarihi: str('memuriyet_tarihi'),
+      kuruma_giris_tarihi: str('kuruma_giris_tarihi'),
+      hizmet_suresi_yil: hizmetDondur ? 0 : hs.yil,
+      hizmet_suresi_ay: hizmetDondur ? 0 : hs.ay,
+      hizmet_suresi_gun: hizmetDondur ? 0 : hs.gun,
+      gorev_yeri: str('gorev_yeri'),
+      gorev_turu,
+      gorev_turu_tarihi,
+      gorev_durumu: String(formData.get('gorev_durumu') ?? '').trim() || 'Diğer',
     })
     .select('sicil_no, public_id')
     .single()

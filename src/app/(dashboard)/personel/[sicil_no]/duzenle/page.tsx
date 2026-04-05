@@ -6,6 +6,7 @@ import PersonelKisiselDuzenleClient from '@/components/personel/PersonelKisiselD
 import { calisanGuncelle } from '../actions'
 import { resolvePersonelSegmentToSicil } from '@/lib/personel-detay-load'
 import { personelDetayHref } from '@/lib/personel-link'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -41,6 +42,19 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
   const c = calisan as Tables<'calisan'>
   const detayHref = personelDetayHref(c, kaynak ? { kaynak } : undefined)
 
+  const { data: kadroRows } = await supabase
+    .from('kadro_hareketleri')
+    .select('*')
+    .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`)
+  const anaKadro = anaKadroSec((kadroRows ?? []) as Tables<'kadro_hareketleri'>[], sicil_no)
+  const hizmetKaynagi = {
+    memuriyet_tarihi: anaKadro?.memuriyet_tarihi ?? c.memuriyet_tarihi ?? null,
+    kuruma_giris_tarihi: anaKadro?.kuruma_giris_tarihi ?? c.kuruma_giris_tarihi ?? null,
+    hizmet_suresi_yil: c.hizmet_suresi_yil ?? 0,
+    hizmet_suresi_ay: c.hizmet_suresi_ay ?? 0,
+    hizmet_suresi_gun: c.hizmet_suresi_gun ?? 0,
+  }
+
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -61,6 +75,7 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
       <PersonelKisiselDuzenleClient
         calisan={c}
         kaynak={kaynak || undefined}
+        hizmetKaynagi={hizmetKaynagi}
         onGuncelle={calisanGuncelle}
       />
     </div>

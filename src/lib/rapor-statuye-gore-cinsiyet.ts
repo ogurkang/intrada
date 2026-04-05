@@ -26,16 +26,25 @@ export interface CalisanRaporRow {
   sicil_no: string
   ad_soyad: string
   cinsiyet: string | null
+  /** Yaş raporu — `calisan.dogum_tarihi` */
+  dogum_tarihi?: string | null
 }
 
 export interface FirmaRaporRow {
   id: number
+  /** Firma personelde isteğe bağlı; rapor listelerinde gösterim için */
+  sicil_no?: string | null
   ad_soyad: string
   cinsiyet: string | null
   kuruma_giris_tarihi: string | null
   ayrilis_tarihi: string | null
   /** Konum raporu — görev müdürlüğü (tanim_mudurluk ile eşleştirme) */
   gorev_mudurlugu?: string | null
+  /** Öğrenim / meslek raporları — firma kartındaki öğrenim ve meslek alanları */
+  ogrenim?: string | null
+  meslegi?: string | null
+  /** Yaş raporu — `firma_calisanlar.dogum_tarihi` */
+  dogum_tarihi?: string | null
 }
 
 /** Ayrılan / işe başlama — «Ayrılanlar» ekranı ile uyumlu kaynak: personel_hareketleri */
@@ -115,7 +124,8 @@ function normStatu(s: string | null | undefined): string {
     .replace(/\s+/g, ' ')
 }
 
-function statuKey(etiketler: Set<string>, raw: string | null | undefined): string {
+/** Tanım kümesindeki etiketle (statü, öğrenim türü vb.) eşleşen anahtar; yoksa ''. */
+export function etiketAnahtari(etiketler: Set<string>, raw: string | null | undefined): string {
   const n = normStatu(raw)
   if (!n) return ''
   const nLower = n.toLocaleLowerCase('tr-TR')
@@ -123,6 +133,10 @@ function statuKey(etiketler: Set<string>, raw: string | null | undefined): strin
     if (e.toLocaleLowerCase('tr-TR') === nLower) return e
   }
   return ''
+}
+
+function statuKey(etiketler: Set<string>, raw: string | null | undefined): string {
+  return etiketAnahtari(etiketler, raw)
 }
 
 export interface SnapshotInput {

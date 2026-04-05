@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import BasitTanimClient from '@/components/tanimlar/BasitTanimClient'
+import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import { ogrenimEkle, ogrenimGuncelle, ogrenimToggleAktif } from './actions'
 import type { Tables } from '@/types/database'
 
@@ -7,12 +8,9 @@ type Ogrenim = Tables<'tanim_ogrenim'>
 
 export default async function OgrenimPage() {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('tanim_ogrenim')
-    .select('*')
-    .order('isim')
+  const { data, error } = await supabase.from('tanim_ogrenim').select('*')
 
-  const kayitlar: Ogrenim[] = data ?? []
+  const kayitlar: Ogrenim[] = sortTanimOgrenimByIsim(data ?? [])
 
   return (
     <>

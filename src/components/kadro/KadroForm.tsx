@@ -209,9 +209,7 @@ export default function KadroFormModal({
               onSeciliChange={setVekilSicil}
             />
           </div>
-          <div className="grid grid-cols-3 gap-3 mt-3">
-            {input('memuriyet_tarihi', 'Memuriyet Tarihi', { type: 'date' })}
-            {input('kuruma_giris_tarihi', 'Kuruma Giriş', { type: 'date' })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {sel('gelis_nedeni', 'Geliş Nedeni', gelisNedenleri ?? [])}
           </div>
           {input('geldigi_yer', 'Geldiği Yer')}

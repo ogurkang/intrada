@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
+import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
+import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -19,28 +22,68 @@ export async function calisanGuncelle(
   const ad_soyad = String(formData.get('ad_soyad') ?? '').trim()
   if (!ad_soyad) return { hata: 'Ad Soyad zorunludur.' }
 
+  const gorev_turu = str(formData, 'gorev_turu') ?? 'Çalışan'
+  const gorev_turu_tarihi =
+    gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_tarihi')
+  if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
+    return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
+  }
+
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('calisan')
-    .update({
-      ad_soyad,
-      tckn:             str(formData, 'tckn'),
-      dogum_tarihi:     str(formData, 'dogum_tarihi'),
-      cinsiyet:         str(formData, 'cinsiyet'),
-      kan_grubu:        str(formData, 'kan_grubu'),
-      dogum_yeri:       str(formData, 'dogum_yeri'),
-      anne_adi:         str(formData, 'anne_adi'),
-      baba_adi:         str(formData, 'baba_adi'),
-      askerlik_durumu:  str(formData, 'askerlik_durumu'),
-      telefon:          str(formData, 'telefon'),
-      e_posta:          str(formData, 'e_posta'),
-      adresi:           str(formData, 'adresi'),
-      yakini:           str(formData, 'yakini'),
-      yakini_telefonu:  str(formData, 'yakini_telefonu'),
-    })
-    .eq('sicil_no', sicil_no)
+  const hs = formdanHizmetSureBilesenleri(formData)
+  const hizmetDondur = gorev_turu === 'Aylıksız İzin'
+
+  const temel: Record<string, unknown> = {
+    ad_soyad,
+    tckn:             str(formData, 'tckn'),
+    dogum_tarihi:     str(formData, 'dogum_tarihi'),
+    cinsiyet:         str(formData, 'cinsiyet'),
+    kan_grubu:        str(formData, 'kan_grubu'),
+    dogum_yeri:       str(formData, 'dogum_yeri'),
+    anne_adi:         str(formData, 'anne_adi'),
+    baba_adi:         str(formData, 'baba_adi'),
+    askerlik_durumu:  str(formData, 'askerlik_durumu'),
+    telefon:          str(formData, 'telefon'),
+    e_posta:          str(formData, 'e_posta'),
+    adresi:           str(formData, 'adresi'),
+    yakini:           str(formData, 'yakini'),
+    yakini_telefonu:  str(formData, 'yakini_telefonu'),
+    memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
+    kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
+    gorev_yeri:       str(formData, 'gorev_yeri'),
+    gorev_turu,
+    gorev_turu_tarihi,
+    gorev_durumu:     str(formData, 'gorev_durumu') ?? 'Diğer',
+  }
+  if (!hizmetDondur) {
+    temel.hizmet_suresi_yil = hs.yil
+    temel.hizmet_suresi_ay = hs.ay
+    temel.hizmet_suresi_gun = hs.gun
+  }
+
+  const { error } = await supabase.from('calisan').update(temel).eq('sicil_no', sicil_no)
 
   if (error) return { hata: error.message }
+
+  const { data: khRows, error: khErr } = await supabase
+    .from('kadro_hareketleri')
+    .select('*')
+    .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`)
+  if (khErr) return { hata: khErr.message }
+  const ana = anaKadroSec(khRows ?? [], sicil_no)
+  if (ana?.id != null) {
+    const { error: ktErr } = await supabase
+      .from('kadro_hareketleri')
+      .update({
+        memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
+        kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
+      })
+      .eq('id', ana.id)
+    if (ktErr) return { hata: ktErr.message }
+    revalidatePath(`/kadro/${ana.id}`)
+    revalidatePath('/kadro')
+  }
+
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/personel')
   return {}

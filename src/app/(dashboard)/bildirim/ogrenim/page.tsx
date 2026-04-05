@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import OgrenimClient from '@/components/bildirim/OgrenimClient'
-import { sortBildirimOgrenimList } from '@/lib/ogrenim-sira'
+import { sortBildirimOgrenimList, sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import { ogrenimGuncelle, ogrenimSil } from './actions'
 
 export default async function OgrenimPage() {
@@ -8,7 +8,7 @@ export default async function OgrenimPage() {
 
   const [{ data: raw }, { data: ogrenimTurleriRaw }, { data: ayrilanPh }] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*, calisan(ad_soyad, tckn)').order('sicil_no', { ascending: true }),
-    supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
+    supabase.from('tanim_ogrenim').select('id, isim'),
     supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').not('ayrilis_tarihi', 'is', null),
   ])
 
@@ -37,7 +37,9 @@ export default async function OgrenimPage() {
   return (
     <OgrenimClient
       kayitlar={kayitlar}
-      ogrenimTurleri={(ogrenimTurleriRaw ?? []) as { id: number; isim: string }[]}
+      ogrenimTurleri={sortTanimOgrenimByIsim(
+        (ogrenimTurleriRaw ?? []) as { id: number; isim: string }[],
+      )}
       onGuncelle={ogrenimGuncelle}
       onSil={ogrenimSil}
     />

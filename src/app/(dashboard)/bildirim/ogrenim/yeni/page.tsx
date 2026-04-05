@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import OgrenimYeniClient from '@/components/bildirim/OgrenimYeniClient'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 
 export default async function OgrenimYeniPage() {
   const supabase = await createClient()
@@ -9,7 +10,7 @@ export default async function OgrenimYeniPage() {
   const [{ data: calisanRaw }, { data: phRaw }, { data: ogrenimTurleri }] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
     supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
-    supabase.from('tanim_ogrenim').select('id, isim').order('isim'),
+    supabase.from('tanim_ogrenim').select('id, isim'),
   ])
 
   // Çalışanlar menüsü ile aynı aktiflik kuralı: personel_hareketleri'nde en son kaydın ayrılış tarihi boş olmalı
@@ -44,7 +45,9 @@ export default async function OgrenimYeniPage() {
 
       <OgrenimYeniClient
         personeller={personeller as { sicil_no: string; ad_soyad: string }[]}
-        ogrenimTurleri={(ogrenimTurleri ?? []) as { id: number; isim: string }[]}
+        ogrenimTurleri={sortTanimOgrenimByIsim(
+          (ogrenimTurleri ?? []) as { id: number; isim: string }[],
+        )}
       />
     </div>
   )

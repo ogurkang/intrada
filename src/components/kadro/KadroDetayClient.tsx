@@ -97,8 +97,6 @@ export default function KadroDetayClient({
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="Asil" deger={row.asil ? (adMap[row.asil] ?? row.asil) : null} />
               <Alan etiket="Vekil" deger={row.vekil ? (adMap[row.vekil] ?? row.vekil) : null} />
-              <Alan etiket="Memuriyet Tarihi" deger={tarih(row.memuriyet_tarihi)} />
-              <Alan etiket="Kuruma Giriş" deger={tarih(row.kuruma_giris_tarihi)} />
               <Alan etiket="Geliş Nedeni" deger={row.gelis_nedeni} />
               <Alan etiket="Geldiği Yer" deger={row.geldigi_yer} />
             </div>

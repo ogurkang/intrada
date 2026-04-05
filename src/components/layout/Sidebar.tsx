@@ -7,17 +7,48 @@ import type { AppAccess } from '@/lib/app-access'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 
-type MenuItem  = { href: string; label: string; newTab?: boolean }
+type MenuItem = {
+  href: string
+  label: string
+  newTab?: boolean
+  children?: { href: string; label: string }[]
+}
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
+function childPathActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
+/** Alt rota eşleşiyorsa üst (Çalışanlar) vurgusu kapalı; örn. /personel/gorev-bilgileri */
+function itemPathActive(pathname: string, item: MenuItem): boolean {
+  if (item.children?.length) {
+    if (item.children.some(c => childPathActive(pathname, c.href))) return false
+  }
+  return pathname === item.href || pathname.startsWith(item.href + '/')
+}
+
+function itemOrSubtreeActive(pathname: string, item: MenuItem): boolean {
+  if (item.children?.length && item.children.some(c => childPathActive(pathname, c.href))) return true
+  return pathname === item.href || pathname.startsWith(item.href + '/')
+}
+
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
+  const calisanlarItem: MenuItem =
+    calisanlarHref === '/personel'
+      ? {
+          href: '/personel',
+          label: 'Çalışanlar',
+          children: [{ href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' }],
+        }
+      : { href: calisanlarHref, label: 'Personel Kartım' }
+
   return [
   {
     grup: 'Personel Yönetimi',
     icon: '👤',
     accordion: true,
     items: [
-      { href: calisanlarHref,         label: 'Çalışanlar'          },
+      calisanlarItem,
       { href: '/personel/ayrilanlar', label: 'Ayrılanlar'          },
       { href: '/firma-calisanlar',    label: 'Firma Personel'      },
       { href: '/kadro',               label: 'Kadro Hareketleri'   },
@@ -32,7 +63,12 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       { href: '/rapor', label: 'Genel Bakış' },
       { href: '/rapor/statuye-gore-cinsiyet', label: 'Statüye Göre Cinsiyet Raporu' },
+      { href: '/rapor/statuye-gore-sayi', label: 'Statüye Göre Sayı Durumu Raporu' },
+      { href: '/rapor/statuye-gore-yas', label: 'Statüye Göre Yaş Raporu' },
       { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
+      { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
+      { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
+      { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },
     ],
   },
   {
@@ -89,6 +125,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/statu',      label: 'Statü'         },
+      { href: '/tanimlar/hareket-tanimlari', label: 'Hareket Tanımları' },
       { href: '/tanimlar/izin-turu',  label: 'İzin Türleri'  },
       { href: '/tanimlar/izin-hak',   label: 'İzin Tanımları' },
       { href: '/tanimlar/tatil',      label: 'Tatiller'      },
@@ -103,10 +140,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [{ href: '/yetkilendirme', label: 'Genel Bakış' }],
   },
   ]
-}
-
-function grupAktifPrefixleri(grup: MenuGroup) {
-  return grup.items.map(i => i.href)
 }
 
 interface SidebarProps {
@@ -162,7 +195,7 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     const ilk: Record<string, boolean> = {}
     for (const g of menuGroups) {
       if (g.accordion) {
-        ilk[g.grup] = g.items.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))
+        ilk[g.grup] = g.items.some(i => itemOrSubtreeActive(pathname, i))
       }
     }
     return ilk
@@ -188,9 +221,7 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
       {/* Navigasyon */}
       <nav className="flex-1 overflow-y-auto py-4">
         {grupList.map((grup) => {
-          const grupAktif = grup.items.some(
-            (item) => pathname === item.href || pathname.startsWith(item.href + '/')
-          )
+          const grupAktif = grup.items.some((item) => itemOrSubtreeActive(pathname, item))
 
           if (grup.accordion) {
             const acik = !!aciklar[grup.grup]
@@ -220,7 +251,45 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
                 {acik && (
                   <div className="mt-1">
                     {grup.items.map((item) => {
-                      const aktif = pathname === item.href || pathname.startsWith(item.href + '/')
+                      const aktif = itemPathActive(pathname, item)
+                      if (item.children?.length) {
+                        return (
+                          <div key={item.href}>
+                            <Link
+                              href={item.href}
+                              target={item.newTab ? '_blank' : undefined}
+                              rel={item.newTab ? 'noopener noreferrer' : undefined}
+                              onClick={onNavigate}
+                              className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
+                                aktif
+                                  ? 'bg-slate-700 text-white font-medium'
+                                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                              }`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                              {item.label}
+                            </Link>
+                            {item.children.map((ch) => {
+                              const chAktif = childPathActive(pathname, ch.href)
+                              return (
+                                <Link
+                                  key={ch.href}
+                                  href={ch.href}
+                                  onClick={onNavigate}
+                                  className={`flex items-center gap-2 pl-16 pr-4 py-1.5 text-sm transition-colors ${
+                                    chAktif
+                                      ? 'bg-slate-700/80 text-white font-medium'
+                                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
+                                  }`}
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-current opacity-50" />
+                                  {ch.label}
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        )
+                      }
                       return (
                         <Link
                           key={item.href}

@@ -5,6 +5,7 @@ import FirmaPersonelDuzenleClient from '@/components/personel/FirmaPersonelDuzen
 import { firmaGuncelle } from '../../actions'
 import { resolveFirmaCalisanSegmentToId } from '@/lib/firma-calisan-load'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
+import { sortOgrenimIsimListesi } from '@/lib/ogrenim-sira'
 import type { Tables } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export default async function FirmaPersonelDuzenlePage({
   ] = await Promise.all([
     supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
     supabase.from('tanim_mudurluk').select('mudurluk_adi').order('mudurluk_adi'),
-    supabase.from('tanim_ogrenim').select('isim').eq('aktif', true).order('isim'),
+    supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
     supabase.from('firma_calisanlar').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
     supabase.from('kadro_hareketleri').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
   ])
@@ -43,7 +44,7 @@ export default async function FirmaPersonelDuzenlePage({
   const mevcutMud = (row as { gorev_mudurlugu?: string | null }).gorev_mudurlugu ?? ''
   const mudurluler = [...new Set([...tanimMudList, ...fcMudList, mevcutMud].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 
-  const ogrenimler = (tanimOgr ?? []).map(o => o.isim)
+  const ogrenimler = sortOgrenimIsimListesi((tanimOgr ?? []).map(o => o.isim))
 
   const ayrilisNedenleri = [...new Set([
     ...(fcAyrilis ?? []).map(r => r.ayrilis_nedeni).filter(Boolean),

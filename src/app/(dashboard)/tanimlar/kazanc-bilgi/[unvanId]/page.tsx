@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
 import KazancBilgiDetayClient from '@/components/tanimlar/KazancBilgiDetayClient'
+import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import type { Tables } from '@/types/database'
 
 export default async function KazancBilgiUnvanDetayPage({ params }: { params: Promise<{ unvanId: string }> }) {
@@ -21,7 +22,7 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
       .eq('unvan_id', unvanId)
       .order('sira_no', { ascending: true, nullsFirst: false })
       .order('id', { ascending: true }),
-    supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true).order('isim'),
+    supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
   ])
 
   type Joined = Tables<'tanim_kazanc_bilgisi'> & {
@@ -43,7 +44,7 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
       unvanId={unvanId}
       unvanAdi={unvanRow.unvan_adi}
       data={liste}
-      ogrenimler={(ogrenimler ?? []) as { id: number; isim: string }[]}
+      ogrenimler={sortTanimOgrenimByIsim((ogrenimler ?? []) as { id: number; isim: string }[])}
     />
   )
 }
