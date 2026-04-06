@@ -38,7 +38,10 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       ? {
           href: '/personel',
           label: 'Çalışanlar',
-          children: [{ href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' }],
+          children: [
+            { href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' },
+            { href: '/personel/hizmet-sureleri-giris', label: 'Hizmet Süreleri' },
+          ],
         }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
