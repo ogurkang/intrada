@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'intrada.login.duyuru.dismissed'
-const IMAGE_SRC = '/branding/intrada-lansman-duyuru.png'
+const IMAGE_SRC = '/branding/lansman-duyuru.png'
 
 export function LoginDuyuruModal() {
   const [open, setOpen] = useState(false)
