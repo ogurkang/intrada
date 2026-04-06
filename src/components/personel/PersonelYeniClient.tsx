@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
 import { personelDetayHref } from '@/lib/personel-link'
-import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS } from '@/lib/gorev-bilgileri'
+import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster } from '@/lib/gorev-bilgileri'
 
 const CINSIYET = ['Erkek', 'Kadın']
 const KAN_GRUBU = ['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-']
@@ -17,6 +17,7 @@ export default function PersonelYeniClient() {
   const [isPending, setIsPending] = useState(false)
   const [gorevTuru, setGorevTuru] = useState('Çalışan')
   const gorevTarihGoster = gorevTuru === 'Aylıksız İzin' || gorevTuru === 'Geçici Görevlendirme'
+  const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -196,6 +197,17 @@ export default function PersonelYeniClient() {
                 {gorevTarihGoster ? (
                   <input name="gorev_turu_tarihi" type="date"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                ) : (
+                  <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">—</p>
+                )}
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Geçici görevlendirme açıklaması</label>
+                {!gorevAciklamaGoster && <input type="hidden" name="gorev_turu_aciklama" value="" />}
+                {gorevAciklamaGoster ? (
+                  <input name="gorev_turu_aciklama" type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    placeholder="Görevlendirilen birim / not" />
                 ) : (
                   <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">—</p>
                 )}

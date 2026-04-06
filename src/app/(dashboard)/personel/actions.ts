@@ -29,6 +29,8 @@ export async function calisanEkle(
   const gorev_turu = String(formData.get('gorev_turu') ?? '').trim() || 'Çalışan'
   const gorev_turu_tarihi =
     gorev_turu === 'Çalışan' ? null : str('gorev_turu_tarihi')
+  const gorev_turu_aciklama =
+    gorev_turu === 'Geçici Görevlendirme' ? str('gorev_turu_aciklama') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
   }
@@ -60,6 +62,7 @@ export async function calisanEkle(
       gorev_yeri: str('gorev_yeri'),
       gorev_turu,
       gorev_turu_tarihi,
+      gorev_turu_aciklama,
       gorev_durumu: String(formData.get('gorev_durumu') ?? '').trim() || 'Diğer',
     })
     .select('sicil_no, public_id')

@@ -10,3 +10,7 @@ export function gorevTuruTarihZorunlu(tur: string | null | undefined): boolean {
   const t = (tur ?? '').trim()
   return t === 'Aylıksız İzin' || t === 'Geçici Görevlendirme'
 }
+
+export function gorevTuruAciklamaGoster(tur: string | null | undefined): boolean {
+  return (tur ?? '').trim() === 'Geçici Görevlendirme'
+}

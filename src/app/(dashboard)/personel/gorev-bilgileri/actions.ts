@@ -15,6 +15,7 @@ export interface GorevBilgiSatir {
   gorev_yeri: string | null
   gorev_turu: string
   gorev_turu_tarihi: string | null
+  gorev_turu_aciklama: string | null
   gorev_durumu: string | null
 }
 
@@ -23,6 +24,8 @@ function payloadFromForm(fd: FormData): { ok: true; payload: GorevBilgiSatir } |
   if (!sicil_no) return { ok: false, hata: 'Sicil no eksik.' }
   const gorev_turu = str(fd, 'gorev_turu') ?? 'Çalışan'
   const gorev_turu_tarihi = gorev_turu === 'Çalışan' ? null : str(fd, 'gorev_turu_tarihi')
+  const gorev_turu_aciklama =
+    gorev_turu === 'Geçici Görevlendirme' ? str(fd, 'gorev_turu_aciklama') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { ok: false, hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
   }
@@ -33,6 +36,7 @@ function payloadFromForm(fd: FormData): { ok: true; payload: GorevBilgiSatir } |
       gorev_yeri: str(fd, 'gorev_yeri'),
       gorev_turu,
       gorev_turu_tarihi,
+      gorev_turu_aciklama,
       gorev_durumu: str(fd, 'gorev_durumu') ?? 'Diğer',
     },
   }
@@ -41,11 +45,14 @@ function payloadFromForm(fd: FormData): { ok: true; payload: GorevBilgiSatir } |
 function normalizeSatir(s: GorevBilgiSatir): GorevBilgiSatir {
   const gorev_turu = (s.gorev_turu ?? '').trim() || 'Çalışan'
   const gorev_turu_tarihi = gorev_turu === 'Çalışan' ? null : (s.gorev_turu_tarihi?.trim() || null)
+  const gorev_turu_aciklama =
+    gorev_turu === 'Geçici Görevlendirme' ? (s.gorev_turu_aciklama?.trim() || null) : null
   return {
     sicil_no: s.sicil_no,
     gorev_yeri: s.gorev_yeri?.trim() || null,
     gorev_turu,
     gorev_turu_tarihi,
+    gorev_turu_aciklama,
     gorev_durumu: (s.gorev_durumu ?? '').trim() || 'Diğer',
   }
 }
@@ -76,6 +83,7 @@ export async function gorevBilgileriSatirKaydet(
       gorev_yeri: p.gorev_yeri,
       gorev_turu: p.gorev_turu,
       gorev_turu_tarihi: p.gorev_turu_tarihi,
+      gorev_turu_aciklama: p.gorev_turu_aciklama,
       gorev_durumu: p.gorev_durumu,
     })
     .eq('sicil_no', sicil_no)
@@ -103,6 +111,7 @@ export async function gorevBilgileriTopluKaydet(
         gorev_yeri: s.gorev_yeri,
         gorev_turu: s.gorev_turu,
         gorev_turu_tarihi: s.gorev_turu_tarihi,
+        gorev_turu_aciklama: s.gorev_turu_aciklama,
         gorev_durumu: s.gorev_durumu,
       })
       .eq('sicil_no', s.sicil_no)

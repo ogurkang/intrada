@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
-import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS } from '@/lib/gorev-bilgileri'
+import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster } from '@/lib/gorev-bilgileri'
 
 type Calisan = Tables<'calisan'>
 
@@ -32,6 +32,7 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
   const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
   const gorevTarihGoster = gorevTuru === 'Aylıksız İzin' || gorevTuru === 'Geçici Görevlendirme'
+  const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -185,6 +186,23 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                 )}
                 {!gorevTarihGoster && (
                   <p className="text-[11px] text-slate-400 mt-1">Çalışan seçiliyken tarih girilmez.</p>
+                )}
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Geçici görevlendirme açıklaması</label>
+                {!gorevAciklamaGoster && <input type="hidden" name="gorev_turu_aciklama" value="" />}
+                {gorevAciklamaGoster ? (
+                  <input
+                    name="gorev_turu_aciklama"
+                    type="text"
+                    defaultValue={calisan.gorev_turu_aciklama ?? ''}
+                    placeholder="Görevlendirilen birim / not"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">
+                    —
+                  </p>
                 )}
               </div>
               <div className="col-span-2 sm:col-span-1">

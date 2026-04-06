@@ -25,6 +25,8 @@ export async function calisanGuncelle(
   const gorev_turu = str(formData, 'gorev_turu') ?? 'Çalışan'
   const gorev_turu_tarihi =
     gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_tarihi')
+  const gorev_turu_aciklama =
+    gorev_turu === 'Geçici Görevlendirme' ? str(formData, 'gorev_turu_aciklama') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
   }
@@ -53,6 +55,7 @@ export async function calisanGuncelle(
     gorev_yeri:       str(formData, 'gorev_yeri'),
     gorev_turu,
     gorev_turu_tarihi,
+    gorev_turu_aciklama,
     gorev_durumu:     str(formData, 'gorev_durumu') ?? 'Diğer',
   }
   if (!hizmetDondur) {

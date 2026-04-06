@@ -12,7 +12,7 @@ export default async function GorevBilgileriPage() {
     supabase
       .from('calisan')
       .select(
-        'sicil_no, public_id, ad_soyad, gorev_yeri, gorev_turu, gorev_turu_tarihi, gorev_durumu',
+        'sicil_no, public_id, ad_soyad, gorev_yeri, gorev_turu, gorev_turu_tarihi, gorev_turu_aciklama, gorev_durumu',
       )
       .order('ad_soyad'),
     supabase
@@ -61,6 +61,7 @@ export default async function GorevBilgileriPage() {
             | 'gorev_yeri'
             | 'gorev_turu'
             | 'gorev_turu_tarihi'
+            | 'gorev_turu_aciklama'
             | 'gorev_durumu'
           >[]
         }

@@ -339,7 +339,7 @@ export async function izinGunHesapla(
     .from('izin_hareketleri')
     .select('baslama')
     .eq('sicil_no', sicil_no)
-    .in('durum', HAKTAN_DUSEN_DURUMLAR)
+    .in('durum', ['Taslak', ...HAKTAN_DUSEN_DURUMLAR])
     .or('tur.ilike.%Yıllık%')
     .order('baslama', { ascending: false })
   if (haricId != null) oncekiSorgu = oncekiSorgu.neq('id', haricId)

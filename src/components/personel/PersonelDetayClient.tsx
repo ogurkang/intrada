@@ -139,6 +139,11 @@ function KisiselTab({
               ? '—'
               : tarihFormatla(calisan.gorev_turu_tarihi)
           } />
+          <Alan etiket="Geçici görevlendirme açıklaması" deger={
+            (calisan.gorev_turu ?? '') === 'Geçici Görevlendirme'
+              ? (calisan.gorev_turu_aciklama ?? '—')
+              : '—'
+          } />
           <Alan etiket="Görev durumu" deger={calisan.gorev_durumu ?? 'Diğer'} />
         </div>
       </div>
