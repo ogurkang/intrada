@@ -16,6 +16,31 @@ function tarihStr(fd: FormData, key: string): string | null {
   return ggAayyyyToIso(v) ?? v
 }
 
+async function kadroMudurlukleriniEsitle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string | null | undefined,
+  kadro_sira_no: string | null | undefined,
+  yeni_gorev_yeri: string | null | undefined,
+): Promise<{ hata?: string }> {
+  if (!sicil_no || !kadro_sira_no || !yeni_gorev_yeri) return {}
+  const sicil = sicil_no.trim()
+  const kadroNo = kadro_sira_no.trim()
+  const mudurluk = yeni_gorev_yeri.trim()
+  if (!sicil || !kadroNo || !mudurluk) return {}
+
+  const { error } = await supabase
+    .from('kadro_hareketleri')
+    .update({
+      kadro_mudurlugu: mudurluk,
+      gorev_mudurlugu: mudurluk,
+    })
+    .eq('kadro_sira_no', kadroNo)
+    .or(`asil.eq.${sicil},vekil.eq.${sicil}`)
+    .is('ayrilis_tarihi', null)
+  if (error) return { hata: error.message }
+  return {}
+}
+
 export async function personelHareketiGuncelle(
   id: number,
   formData: FormData
@@ -27,6 +52,8 @@ export async function personelHareketiGuncelle(
     .eq('id', id)
     .single()
   const sicil_no = row?.sicil_no
+  const kadro_sira_no = str(formData, 'kadro_sira_no')
+  const yeni_gorev_yeri = str(formData, 'yeni_gorev_yeri')
 
   const { data: updated, error } = await supabase.from('personel_hareketleri').update({
     hareket_tipi:          str(formData, 'hareket_tipi'),
@@ -48,7 +75,11 @@ export async function personelHareketiGuncelle(
   }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+  const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
+  if (kadroSync.hata) return { hata: kadroSync.hata }
+
   revalidatePath('/personel-hareketleri')
+  revalidatePath('/kadro')
   if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
   if (sicil_no) await revalidatePersonelDetayPaths(sicil_no)
   return {}
@@ -68,10 +99,12 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   const yeni_oht = str(formData, 'yeni_oht')
   const yeni_ek_odeme = str(formData, 'yeni_ek_odeme')
   const yeni_ek_gosterge = str(formData, 'yeni_ek_gosterge')
+  const kadro_sira_no = str(formData, 'kadro_sira_no')
+  const yeni_gorev_yeri = str(formData, 'yeni_gorev_yeri')
   const { data: inserted, error } = await supabase.from('personel_hareketleri').insert({
     sicil_no,
     hareket_tipi:                    str(formData, 'hareket_tipi') ?? 'Yukselme',
-    kadro_sira_no:                  str(formData, 'kadro_sira_no'),
+    kadro_sira_no,
     yururluk_tarihi:                tarihStr(formData, 'yururluk_tarihi'),
     adaylik_suresi:                 str(formData, 'adaylik_suresi'),
     asli_memuriyete_atanma_tarihi:  tarihStr(formData, 'asli_memuriyete_atanma_tarihi'),
@@ -88,7 +121,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     eski_igz:                       str(formData, 'eski_igz'),
     eski_ek_odeme:                  str(formData, 'eski_ek_odeme'),
     eski_ek_gosterge:               str(formData, 'eski_ek_gosterge'),
-    yeni_gorev_yeri:                str(formData, 'yeni_gorev_yeri'),
+    yeni_gorev_yeri,
     yeni_unvan:                     str(formData, 'yeni_unvan'),
     yeni_sinif:                     str(formData, 'yeni_sinif'),
     yeni_kadro_derecesi:            str(formData, 'yeni_kadro_derecesi'),
@@ -114,6 +147,8 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+  const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
+  if (kadroSync.hata) return { hata: kadroSync.hata }
 
   const { data: sonTerfi } = await supabase
     .from('terfi_hareketleri')
@@ -140,6 +175,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }
 
   revalidatePath('/personel-hareketleri')
+  revalidatePath('/kadro')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
