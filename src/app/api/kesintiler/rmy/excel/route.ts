@@ -173,11 +173,13 @@ export async function GET(request: NextRequest) {
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
 
   const safeName = (`Raporlu_Memurlar_${donem.donem_adi ?? 'Donem'}`).replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Raporlu_Memurlar_Donem'
+  const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
+  const encodedFilename = encodeURIComponent(`${safeName}.xlsx`)
 
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${safeName}.xlsx"`,
+      'Content-Disposition': `attachment; filename="${fallbackName}.xlsx"; filename*=UTF-8''${encodedFilename}`,
     },
   })
 }
