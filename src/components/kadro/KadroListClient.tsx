@@ -10,6 +10,23 @@ import type { Tables } from '@/types/database'
 type Kadro   = Tables<'kadro_hareketleri'>
 type Durumu  = Kadro['durumu']
 interface Personel { sicil_no: string; ad_soyad: string }
+const trNumericCollator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' })
+
+function kadroSiraNoSirala(a: string | null, b: string | null): number {
+  const aa = (a ?? '').trim()
+  const bb = (b ?? '').trim()
+  if (!aa && !bb) return 0
+  if (!aa) return 1
+  if (!bb) return -1
+
+  const aNum = Number.parseInt(aa, 10)
+  const bNum = Number.parseInt(bb, 10)
+  const aNumOk = Number.isFinite(aNum)
+  const bNumOk = Number.isFinite(bNum)
+  if (aNumOk && bNumOk && aNum !== bNum) return aNum - bNum
+
+  return trNumericCollator.compare(aa, bb)
+}
 
 interface Props {
   data: Kadro[]
@@ -53,7 +70,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
   }, [personeller])
 
   const filtreli = useMemo(() => {
-    let list = data
+    let list = [...data]
     if (statuSekme !== 'Tümü') list = list.filter(k => k.statu === statuSekme)
     if (sadece_aktif) list = list.filter(k => !k.ayrilis_tarihi)
     if (durumFiltre !== 'Tümü') list = list.filter(k => k.durumu === durumFiltre)
@@ -69,6 +86,11 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
         (k.statu ?? '').toLowerCase().includes(q)
       )
     }
+    list.sort((a, b) => {
+      const byKadroNo = kadroSiraNoSirala(a.kadro_sira_no, b.kadro_sira_no)
+      if (byKadroNo !== 0) return byKadroNo
+      return (a.kadro_unvani ?? '').localeCompare(b.kadro_unvani ?? '', 'tr')
+    })
     return list
   }, [data, statuSekme, sadece_aktif, durumFiltre, aramaQ, adMap])
 

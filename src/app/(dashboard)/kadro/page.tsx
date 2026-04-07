@@ -3,12 +3,37 @@ import KadroListClient from '@/components/kadro/KadroListClient'
 import { kadroEkle, kadroGuncelle } from './actions'
 import type { Tables } from '@/types/database'
 
+async function tumKadroHareketleriYukle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ data: Tables<'kadro_hareketleri'>[]; error: string | null }> {
+  const batchSize = 1000
+  let from = 0
+  const out: Tables<'kadro_hareketleri'>[] = []
+
+  while (true) {
+    const to = from + batchSize - 1
+    const { data, error } = await supabase
+      .from('kadro_hareketleri')
+      .select('*')
+      .order('kadro_sira_no')
+      .range(from, to)
+    if (error) return { data: out, error: error.message }
+
+    const rows = (data ?? []) as Tables<'kadro_hareketleri'>[]
+    out.push(...rows)
+    if (rows.length < batchSize) break
+    from += batchSize
+  }
+
+  return { data: out, error: null }
+}
+
 export default async function KadroPage() {
   const supabase = await createClient()
 
   const [{ data: kadroRaw, error }, { data: calisanRaw }, { data: statuRaw }, { data: mudurRaw }, { data: unvanRaw }] =
     await Promise.all([
-      supabase.from('kadro_hareketleri').select('*').order('kadro_sira_no'),
+      tumKadroHareketleriYukle(supabase),
       supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
       supabase.from('tanim_statu').select('statu_adi').eq('aktif', true).order('statu_adi'),
       supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
@@ -28,7 +53,7 @@ export default async function KadroPage() {
     <>
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm">
-          Veri yüklenirken hata: {error.message}
+          Veri yüklenirken hata: {error}
         </div>
       )}
       <KadroListClient
