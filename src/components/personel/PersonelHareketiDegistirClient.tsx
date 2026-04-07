@@ -8,6 +8,7 @@ import type { Tables } from '@/types/database'
 type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
 type PH = Tables<'personel_hareketleri'>
+type TH = Tables<'terfi_hareketleri'>
 
 const SINIFLAR = ['GİH', 'TH', 'SHS', 'AH', 'EH', 'DH', 'YH', 'ZB']
 
@@ -20,6 +21,7 @@ interface Props {
   unvanlar: { id: number; ad: string; sinif: string | null }[]
   onaylayan: string
   yardimcilar: { sicil: string; ad: string }[]
+  terfiSon: TH | null
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
 
@@ -32,6 +34,7 @@ export default function PersonelHareketiDegistirClient({
   unvanlar,
   onaylayan,
   yardimcilar,
+  terfiSon,
   onKaydet,
 }: Props) {
   const router = useRouter()
@@ -52,50 +55,51 @@ export default function PersonelHareketiDegistirClient({
       return y < 0 ? '' : String(y)
     })() : ''
 
-    if (sk && k && (sk.kadro_sira_no ?? '').trim() === (k.kadro_sira_no ?? '').trim()) {
+    const mud = k?.gorev_mudurlugu ?? k?.kadro_mudurlugu ?? ''
+    const unvan = k?.gorev_unvani ?? k?.kadro_unvani ?? ''
+    const sinif = unvanlar.find(u => u.ad === (k?.kadro_unvani ?? k?.gorev_unvani ?? ''))?.sinif ?? ''
+    const derece = k?.kadro_derecesi ?? ''
+
+    if (terfiSon) {
       return {
         eski: {
-          gorev_yeri: sk.yeni_gorev_yeri ?? '',
-          unvan: sk.yeni_unvan ?? '',
-          sinif: sk.yeni_sinif ?? '',
-          kadro_derecesi: sk.yeni_kadro_derecesi ?? '',
-          kha_derece: sk.yeni_kha_derece ?? '',
-          kha_kademe: sk.yeni_kha_kademe ?? '',
-          ekea_derece: sk.yeni_ekea_derece ?? '',
-          ekea_kademe: sk.yeni_ekea_kademe ?? '',
-          kidem_yili: sk.yeni_kidem_yili ?? '',
-          oht: sk.yeni_oht ?? '',
-          igz: sk.yeni_igz ?? '',
-          ek_odeme: sk.yeni_ek_odeme ?? '',
-          ek_gosterge: sk.yeni_ek_gosterge ?? '',
+          gorev_yeri: mud,
+          unvan,
+          sinif,
+          kadro_derecesi: derece,
+          kha_derece: terfiSon.kha_derece ?? '',
+          kha_kademe: terfiSon.kha_kademe ?? '',
+          ekea_derece: terfiSon.ekea_derece ?? '',
+          ekea_kademe: terfiSon.ekea_kademe ?? '',
+          kidem_yili: terfiSon.kidem_yili ?? '',
+          oht: terfiSon.oht ?? '',
+          igz: sk?.yeni_igz ?? '',
+          ek_odeme: terfiSon.ek_odeme ?? '',
+          ek_gosterge: terfiSon.ek_gosterge ?? '',
         },
         yeni: {
-          gorev_yeri: sk.yeni_gorev_yeri ?? '',
-          unvan: sk.yeni_unvan ?? '',
-          sinif: sk.yeni_sinif ?? '',
-          kadro_derecesi: sk.yeni_kadro_derecesi ?? '',
-          kha_derece: sk.yeni_kha_derece ?? '',
-          kha_kademe: sk.yeni_kha_kademe ?? '',
-          ekea_derece: sk.yeni_ekea_derece ?? '',
-          ekea_kademe: sk.yeni_ekea_kademe ?? '',
-          kidem_yili: sk.yeni_kidem_yili ?? '',
-          oht: sk.yeni_oht ?? '',
-          igz: sk.yeni_igz ?? '',
-          ek_odeme: sk.yeni_ek_odeme ?? '',
-          ek_gosterge: sk.yeni_ek_gosterge ?? '',
+          gorev_yeri: mud,
+          unvan,
+          sinif,
+          kadro_derecesi: derece,
+          kha_derece: terfiSon.kha_derece ?? '',
+          kha_kademe: terfiSon.kha_kademe ?? '',
+          ekea_derece: terfiSon.ekea_derece ?? '',
+          ekea_kademe: terfiSon.ekea_kademe ?? '',
+          kidem_yili: terfiSon.kidem_yili ?? '',
+          oht: terfiSon.oht ?? '',
+          igz: sk?.yeni_igz ?? '',
+          ek_odeme: terfiSon.ek_odeme ?? '',
+          ek_gosterge: terfiSon.ek_gosterge ?? '',
         },
       }
     }
-
-    const mud = k?.kadro_mudurlugu ?? k?.gorev_mudurlugu ?? ''
-    const unvan = k?.kadro_unvani ?? k?.gorev_unvani ?? ''
-    const derece = k?.kadro_derecesi ?? ''
 
     return {
       eski: {
         gorev_yeri: mud,
         unvan,
-        sinif: unvanlar.find(u => u.ad === unvan)?.sinif ?? '',
+        sinif,
         kadro_derecesi: derece,
         kha_derece: '',
         kha_kademe: '',
@@ -110,7 +114,7 @@ export default function PersonelHareketiDegistirClient({
       yeni: {
         gorev_yeri: mud,
         unvan,
-        sinif: unvanlar.find(u => u.ad === unvan)?.sinif ?? '',
+        sinif,
         kadro_derecesi: derece,
         kha_derece: '',
         kha_kademe: '',
@@ -123,9 +127,10 @@ export default function PersonelHareketiDegistirClient({
         ek_gosterge: '',
       },
     }
-  }, [seciliKadro, sonKayit, unvanlar])
+  }, [seciliKadro, sonKayit, unvanlar, terfiSon])
 
-  const dogumYeriTarihi = [personel.dogum_yeri, personel.dogum_tarihi].filter(Boolean).join(' ')
+  const dogumTarihiFmt = personel.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : ''
+  const dogumYeriTarihi = [personel.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ')
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -188,12 +193,6 @@ export default function PersonelHareketiDegistirClient({
               <label className="block text-xs font-medium text-slate-500 mb-1">3. Doğum Yeri ve Tarihi</label>
               <input type="text" value={dogumYeriTarihi} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">4. Yürürlük Tarihi</label>
-              <input name="yururluk_tarihi" type="date"
-                defaultValue={(seciliKadro?.memuriyet_tarihi ?? seciliKadro?.kuruma_giris_tarihi ?? '').toString().slice(0, 10)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">5. Adaylık Süresi</label>
@@ -427,6 +426,12 @@ export default function PersonelHareketiDegistirClient({
               <label className="block text-xs font-medium text-slate-500 mb-1">Kayıt No</label>
               <input name="kayit_no" type="text"
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Yürürlük Tarihi</label>
+              <input name="yururluk_tarihi" type="date"
+                defaultValue={(seciliKadro?.memuriyet_tarihi ?? seciliKadro?.kuruma_giris_tarihi ?? '').toString().slice(0, 10)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
           </div>
           <div className="mt-3">

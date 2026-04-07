@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
+import { trNormalize } from '@/lib/turkce-search'
 
 type Satir = Pick<Tables<'calisan'>, 'sicil_no' | 'public_id' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'>
 
@@ -37,11 +38,11 @@ export default function PersonelListClient({ data }: Props) {
 
   const filtreli = useMemo(() => {
     setSayfa(0)
-    const q = arama.toLowerCase().trim()
+    const q = trNormalize(arama)
     if (!q) return sirali
     return sirali.filter(p =>
-      p.sicil_no?.toLowerCase().includes(q) ||
-      p.ad_soyad?.toLowerCase().includes(q) ||
+      trNormalize(p.sicil_no).includes(q) ||
+      trNormalize(p.ad_soyad).includes(q) ||
       p.tckn?.includes(q)
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps

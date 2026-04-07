@@ -226,13 +226,20 @@ export function buildTerfiEttirOnizleme(
   kazancLookup: KazancLookup,
 ): TerfiEttirOnizlemeSatir[] {
   const out: TerfiEttirOnizlemeSatir[] = []
+  const sonrakiYilBas = birYilIleri(terfiBas)
+  const sonrakiYilBit = birYilIleri(terfiBit)
 
   for (const r of kaynaklar) {
     const minD = minDereceEgitim(r.ogrenim_turu)
     const khaIn = tarihDahilAralikta(r.kha_tarihi, terfiBas, terfiBit)
     const ekeaIn = tarihDahilAralikta(r.ekea_tarihi, terfiBas, terfiBit)
     const kidemIn = tarihDahilAralikta(r.kidem_tarihi, terfiBas, terfiBit)
-    if (!khaIn && !ekeaIn && !kidemIn) continue
+    const khaInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.kha_tarihi, sonrakiYilBas, sonrakiYilBit)
+    const ekeaInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.ekea_tarihi, sonrakiYilBas, sonrakiYilBit)
+    const kidemInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.kidem_tarihi, sonrakiYilBas, sonrakiYilBit)
+    const donemKapsaminda =
+      khaIn || ekeaIn || kidemIn || khaInSonrakiYil || ekeaInSonrakiYil || kidemInSonrakiYil
+    if (!donemKapsaminda) continue
 
     const kd = parseNum(r.kha_derece)
     const kk = parseNum(r.kha_kademe)

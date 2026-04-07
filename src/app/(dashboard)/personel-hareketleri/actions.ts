@@ -60,6 +60,14 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   if (!sicil_no) return { hata: 'Sicil No gerekli.' }
 
   const supabase = await createClient()
+  const yeni_kha_derece = str(formData, 'yeni_kha_derece')
+  const yeni_kha_kademe = str(formData, 'yeni_kha_kademe')
+  const yeni_ekea_derece = str(formData, 'yeni_ekea_derece')
+  const yeni_ekea_kademe = str(formData, 'yeni_ekea_kademe')
+  const yeni_kidem_yili = str(formData, 'yeni_kidem_yili')
+  const yeni_oht = str(formData, 'yeni_oht')
+  const yeni_ek_odeme = str(formData, 'yeni_ek_odeme')
+  const yeni_ek_gosterge = str(formData, 'yeni_ek_gosterge')
   const { data: inserted, error } = await supabase.from('personel_hareketleri').insert({
     sicil_no,
     hareket_tipi:                    str(formData, 'hareket_tipi') ?? 'Yukselme',
@@ -84,15 +92,15 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     yeni_unvan:                     str(formData, 'yeni_unvan'),
     yeni_sinif:                     str(formData, 'yeni_sinif'),
     yeni_kadro_derecesi:            str(formData, 'yeni_kadro_derecesi'),
-    yeni_kha_derece:                str(formData, 'yeni_kha_derece'),
-    yeni_kha_kademe:                str(formData, 'yeni_kha_kademe'),
-    yeni_ekea_derece:               str(formData, 'yeni_ekea_derece'),
-    yeni_ekea_kademe:               str(formData, 'yeni_ekea_kademe'),
-    yeni_kidem_yili:                str(formData, 'yeni_kidem_yili'),
-    yeni_oht:                       str(formData, 'yeni_oht'),
+    yeni_kha_derece,
+    yeni_kha_kademe,
+    yeni_ekea_derece,
+    yeni_ekea_kademe,
+    yeni_kidem_yili,
+    yeni_oht,
     yeni_igz:                       str(formData, 'yeni_igz'),
-    yeni_ek_odeme:                  str(formData, 'yeni_ek_odeme'),
-    yeni_ek_gosterge:               str(formData, 'yeni_ek_gosterge'),
+    yeni_ek_odeme,
+    yeni_ek_gosterge,
     dayanak:                        str(formData, 'dayanak'),
     aciklama:                       str(formData, 'aciklama'),
     teklif_eden:                    str(formData, 'teklif_eden'),
@@ -106,6 +114,31 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+
+  const { data: sonTerfi } = await supabase
+    .from('terfi_hareketleri')
+    .select('id')
+    .eq('sicil_no', sicil_no)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (sonTerfi?.id) {
+    const { error: terfiErr } = await supabase
+      .from('terfi_hareketleri')
+      .update({
+        kha_derece: yeni_kha_derece,
+        kha_kademe: yeni_kha_kademe,
+        ekea_derece: yeni_ekea_derece,
+        ekea_kademe: yeni_ekea_kademe,
+        kidem_yili: yeni_kidem_yili,
+        oht: yeni_oht,
+        ek_odeme: yeni_ek_odeme,
+        ek_gosterge: yeni_ek_gosterge,
+      })
+      .eq('id', sonTerfi.id)
+    if (terfiErr) return { hata: terfiErr.message }
+  }
+
   revalidatePath('/personel-hareketleri')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)

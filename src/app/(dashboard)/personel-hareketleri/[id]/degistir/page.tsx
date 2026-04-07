@@ -6,6 +6,7 @@ import type { Tables } from '@/types/database'
 
 type KH = Tables<'kadro_hareketleri'>
 type PH = Tables<'personel_hareketleri'>
+type TH = Tables<'terfi_hareketleri'>
 
 export default async function PersonelHareketiDegistirPage({
   params,
@@ -26,6 +27,7 @@ export default async function PersonelHareketiDegistirPage({
     supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
     supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true).order('sira_no'),
     supabase.from('calisan_ogrenim').select('ogrenim_turu').eq('sicil_no', sicil_no).eq('aktif', true).limit(1),
+    supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil_no).order('kayit_zamani', { ascending: false }).limit(1),
   ])
 
   const personel = results[0]?.data ?? null
@@ -33,6 +35,7 @@ export default async function PersonelHareketiDegistirPage({
   const mudurlukRaw = results[2]?.data ?? null
   const unvanRaw = results[3]?.data ?? null
   const ogrenimRaw = results[4]?.data ?? null
+  const terfiSon = ((results[5]?.data ?? [])[0] ?? null) as TH | null
 
   if (!personel) notFound()
 
@@ -110,6 +113,7 @@ export default async function PersonelHareketiDegistirPage({
       unvanlar={unvanlar}
       onaylayan={onaylayan}
       yardimcilar={yardimcilar}
+      terfiSon={terfiSon}
       onKaydet={personelHareketiEkle}
     />
   )

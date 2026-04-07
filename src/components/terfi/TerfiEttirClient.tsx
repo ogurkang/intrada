@@ -11,6 +11,9 @@ interface Props {
   terfiBas: string
   terfiBit: string
   initialRows: TerfiEttirOnizlemeSatir[]
+  islemLoglari: { id: number; sicil_no: string; islem_tarihi: string; geri_alindi: boolean }[]
+  onGeriAlTek: (donemId: number, logId: number) => Promise<{ hata?: string }>
+  onGeriAlToplu: (donemId: number, logIds: number[]) => Promise<{ hata?: string; geriAlinan?: number }>
 }
 
 function fmt(iso: string) {
@@ -73,9 +76,19 @@ function richOk(eski: string, yeni: string): ExcelJS.CellRichTextValue {
   }
 }
 
-export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit, initialRows }: Props) {
+export default function TerfiEttirClient({
+  donemId,
+  donemAdi,
+  terfiBas,
+  terfiBit,
+  initialRows,
+  islemLoglari,
+  onGeriAlTek,
+  onGeriAlToplu,
+}: Props) {
   const [satirlar, setSatirlar] = useState<TerfiEttirOnizlemeSatir[]>(initialRows)
   const [secili, setSecili] = useState<Record<string, boolean>>({})
+  const [seciliGeriAl, setSeciliGeriAl] = useState<Record<number, boolean>>({})
   const [hata, setHata] = useState<string | null>(null)
   const [basari, setBasari] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -95,6 +108,14 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
   function toggleOne(sicil: string) {
     setSecili((prev) => ({ ...prev, [sicil]: !prev[sicil] }))
   }
+
+  const aktifLogBySicil = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const l of islemLoglari) {
+      if (!l.geri_alindi && m[l.sicil_no] == null) m[l.sicil_no] = l.id
+    }
+    return m
+  }, [islemLoglari])
 
   function guncelle(sicil: string, alan: keyof TerfiEttirOnizlemeSatir['payload'], deger: string) {
     setSatirlar((prev) =>
@@ -314,6 +335,39 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
     })
   }
 
+  function handleGeriAlTek(logId: number) {
+    if (!confirm('Bu terfi işlemi geri alınacak. Onaylıyor musunuz?')) return
+    setHata(null)
+    setBasari(null)
+    startTransition(async () => {
+      const res = await onGeriAlTek(donemId, logId)
+      if (res.hata) setHata(res.hata)
+      else setBasari('Terfi kaydı geri alındı.')
+    })
+  }
+
+  function handleGeriAlToplu() {
+    const logIds = Object.entries(seciliGeriAl)
+      .filter(([, v]) => v)
+      .map(([k]) => Number(k))
+      .filter((x) => Number.isFinite(x))
+    if (!logIds.length) {
+      setHata('Önce tarihçe listesinden geri alınacak kayıtları seçin.')
+      return
+    }
+    if (!confirm(`${logIds.length} terfi kaydı geri alınacak. Onaylıyor musunuz?`)) return
+    setHata(null)
+    setBasari(null)
+    startTransition(async () => {
+      const res = await onGeriAlToplu(donemId, logIds)
+      if (res.hata) setHata(res.hata)
+      else {
+        setBasari(`${res.geriAlinan ?? logIds.length} kayıt geri alındı.`)
+        setSeciliGeriAl({})
+      }
+    })
+  }
+
   return (
     <div className="mt-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -371,6 +425,7 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
               <th className="px-2 py-3 font-semibold text-slate-600">Yan Ödeme</th>
               <th className="px-2 py-3 font-semibold text-slate-600">SDS</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Durum / Uyarı</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 text-center">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -499,8 +554,77 @@ export default function TerfiEttirClient({ donemId, donemAdi, terfiBas, terfiBit
                     {r.durum}
                   </span>
                 </td>
+                <td className="px-2 py-2 align-top text-center">
+                  {aktifLogBySicil[r.sicil_no] ? (
+                    <button
+                      type="button"
+                      onClick={() => handleGeriAlTek(aktifLogBySicil[r.sicil_no])}
+                      disabled={isPending}
+                      className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded hover:bg-red-100 disabled:opacity-50"
+                    >
+                      Terfiyi Geri Al
+                    </button>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">Terfi Ettirilenler - Tarihçe</h3>
+          <button
+            type="button"
+            onClick={handleGeriAlToplu}
+            disabled={isPending}
+            className="text-xs font-medium text-red-700 border border-red-200 bg-red-50 px-3 py-1.5 rounded hover:bg-red-100 disabled:opacity-50"
+          >
+            Seçili Terfileri Geri Al
+          </button>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="px-4 py-2.5 text-left">Seç</th>
+              <th className="px-4 py-2.5 text-left">Sicil</th>
+              <th className="px-4 py-2.5 text-left">İşlem Tarihi</th>
+              <th className="px-4 py-2.5 text-left">Durum</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {islemLoglari.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                  Bu dönem için terfi işlem geçmişi yok.
+                </td>
+              </tr>
+            ) : (
+              islemLoglari.map((l) => (
+                <tr key={l.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      disabled={l.geri_alindi}
+                      checked={!!seciliGeriAl[l.id]}
+                      onChange={() => setSeciliGeriAl((p) => ({ ...p, [l.id]: !p[l.id] }))}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-slate-600">{l.sicil_no}</td>
+                  <td className="px-4 py-2.5 text-slate-700">{new Date(l.islem_tarihi).toLocaleString('tr-TR')}</td>
+                  <td className="px-4 py-2.5">
+                    {l.geri_alindi ? (
+                      <span className="inline-flex px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">Geri Alındı</span>
+                    ) : (
+                      <span className="inline-flex px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">Aktif</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

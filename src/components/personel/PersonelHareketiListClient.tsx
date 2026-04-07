@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { trNormalize } from '@/lib/turkce-search'
 
 interface HareketSatir {
   id:                number
@@ -52,12 +53,12 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
   }, [hareketler])
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = trNormalize(arama)
     return hareketler.filter(h => {
       if (q && !(
-        h.ad_soyad.toLowerCase().includes(q) ||
-        h.sicil_no.toLowerCase().includes(q) ||
-        (h.yeni_gorev_yeri ?? '').toLowerCase().includes(q)
+        trNormalize(h.ad_soyad).includes(q) ||
+        trNormalize(h.sicil_no).includes(q) ||
+        trNormalize(h.yeni_gorev_yeri).includes(q)
       )) return false
       if (tipFiltre && (h.hareket_tipi ?? '') !== tipFiltre) return false
       if (yilFiltre && !h.yururluk_tarihi?.startsWith(yilFiltre)) return false

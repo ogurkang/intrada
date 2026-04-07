@@ -59,6 +59,8 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         malKayitlari={rest.malKayitlari}
         egitimKatilimlari={rest.egitimKatilimlari}
         yevmiyeFazlaMesaiAylik={rest.yevmiyeFazlaMesaiAylik}
+        tanimGostergeKha={rest.tanimGostergeKha}
+        terfiOncesiTarihce={rest.terfiOncesiTarihce}
         onKisiselGuncelle={saltOkunur ? undefined : calisanGuncelle}
         saltOkunur={saltOkunur}
       />

@@ -234,6 +234,7 @@ export default function RmyDetayClient({ donemId }: Props) {
         .from('izin_hareketleri')
         .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
         .in('sira_no', siraNoList)
+        .in('tur', ['Rapor', 'Refakatçi Raporu'])
         .neq('durum', 'İptal Edildi')
       const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
       const adMap: Record<string, string> = {}

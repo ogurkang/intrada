@@ -746,6 +746,28 @@ export interface Database {
         Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; created_at?: string }
         Relationships: []
       }
+      terfi_donem_islem_log: {
+        Row: {
+          id: number; donem_id: number; sicil_no: string; terfi_id: number
+          onceki: Json; sonraki: Json; islem_tarihi: string
+          geri_alindi: boolean; geri_alma_tarihi: string | null
+        }
+        Insert: {
+          id?: number; donem_id: number; sicil_no: string; terfi_id: number
+          onceki: Json; sonraki: Json; islem_tarihi?: string
+          geri_alindi?: boolean; geri_alma_tarihi?: string | null
+        }
+        Update: {
+          id?: number; donem_id?: number; sicil_no?: string; terfi_id?: number
+          onceki?: Json; sonraki?: Json; islem_tarihi?: string
+          geri_alindi?: boolean; geri_alma_tarihi?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "terfi_donem_islem_log_donem_id_fkey"; columns: ["donem_id"]; isOneToOne: false; referencedRelation: "terfi_donem"; referencedColumns: ["id"] },
+          { foreignKeyName: "terfi_donem_islem_log_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] },
+          { foreignKeyName: "terfi_donem_islem_log_terfi_id_fkey"; columns: ["terfi_id"]; isOneToOne: false; referencedRelation: "terfi_hareketleri"; referencedColumns: ["id"] }
+        ]
+      }
       // ─────────────────── ARAZİ PUANTAJI ─────────────────
       arazi_donem: {
         Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; created_at: string }

@@ -64,6 +64,8 @@ export default async function Page({ params }: Props) {
           malKayitlari={rest.malKayitlari}
           egitimKatilimlari={rest.egitimKatilimlari}
           yevmiyeFazlaMesaiAylik={rest.yevmiyeFazlaMesaiAylik}
+          tanimGostergeKha={rest.tanimGostergeKha}
+          terfiOncesiTarihce={rest.terfiOncesiTarihce}
           onKisiselGuncelle={calisanGuncelle}
         />
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import { ggAayyyyToIso } from '@/lib/tarih'
+import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
 
@@ -150,12 +151,12 @@ export default function TerfiClient({
   }
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = trNormalize(arama)
     if (sabitSicil) return kayitlar.filter(r => r.sicil_no === sabitSicil)
     if (!q) return kayitlar
     return kayitlar.filter(r =>
-      (r.ad_soyad ?? '').toLowerCase().includes(q) ||
-      r.sicil_no.toLowerCase().includes(q)
+      trNormalize(r.ad_soyad).includes(q) ||
+      trNormalize(r.sicil_no).includes(q)
     )
   }, [kayitlar, arama, sabitSicil])
 
@@ -178,9 +179,9 @@ export default function TerfiClient({
       }))
     }
     if (memurlar?.length) {
-      const q = arama.toLowerCase()
+      const q = trNormalize(arama)
       const arr = !q ? memurlar : memurlar.filter(m =>
-        (m.ad_soyad ?? '').toLowerCase().includes(q) || m.sicil_no.toLowerCase().includes(q)
+        trNormalize(m.ad_soyad).includes(q) || trNormalize(m.sicil_no).includes(q)
       )
       return arr.map(m => ({
         liste_satir_id: m.liste_satir_id,

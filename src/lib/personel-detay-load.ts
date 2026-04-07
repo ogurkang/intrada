@@ -28,6 +28,13 @@ export type PersonelDetayLoadResult = {
   malKayitlari: PersonelDetayMalRow[]
   egitimKatilimlari: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
   yevmiyeFazlaMesaiAylik: { ay: string; saat: number }[]
+  tanimGostergeKha: string | null
+  terfiOncesiTarihce: {
+    islem_tarihi: string
+    kha_dk: string
+    ekea_dk: string
+    kidem_yili: string
+  }[]
 }
 
 /**
@@ -84,6 +91,8 @@ export async function fetchPersonelDetayPageData(
     { data: malKayitlariRaw },
     { data: katilimRaw },
     { data: yevmiyeFmRaw },
+    { data: gostergeRaw },
+    { data: terfiLogRaw },
   ] = await Promise.all([
     supabase.from('calisan').select('*').eq('sicil_no', sicil_no).single(),
     supabase
@@ -129,6 +138,13 @@ export async function fetchPersonelDetayPageData(
       .select('tarih, fazla_mesai_saat')
       .eq('sicil_no', sicil_no)
       .gt('fazla_mesai_saat', 0),
+    supabase.from('tanim_gosterge').select('derece, kademe, gosterge').eq('aktif', true),
+    supabase
+      .from('terfi_donem_islem_log')
+      .select('islem_tarihi, onceki')
+      .eq('sicil_no', sicil_no)
+      .order('islem_tarihi', { ascending: false })
+      .limit(100),
   ])
 
   if (error || !calisan) return null
@@ -205,6 +221,25 @@ export async function fetchPersonelDetayPageData(
     })
   })
 
+  const sonTerfi = terfiKayitlari[0]
+  let tanimGostergeKha: string | null = null
+  if (sonTerfi?.kha_derece && sonTerfi?.kha_kademe) {
+    const d = parseInt(sonTerfi.kha_derece, 10)
+    const k = parseInt(sonTerfi.kha_kademe, 10)
+    const hit = (gostergeRaw ?? []).find(g => g.derece === d && g.kademe === k)
+    if (hit?.gosterge != null) tanimGostergeKha = String(hit.gosterge)
+  }
+
+  const terfiOncesiTarihce = (terfiLogRaw ?? []).map((r: { islem_tarihi: string; onceki: Record<string, string | null> }) => {
+    const o = r.onceki ?? {}
+    return {
+      islem_tarihi: r.islem_tarihi,
+      kha_dk: `${o.kha_derece ?? '—'}/${o.kha_kademe ?? '—'}`,
+      ekea_dk: `${o.ekea_derece ?? '—'}/${o.ekea_kademe ?? '—'}`,
+      kidem_yili: o.kidem_yili ?? '—',
+    }
+  })
+
   return {
     calisan: calisan as Tables<'calisan'>,
     kaynak,
@@ -218,6 +253,8 @@ export async function fetchPersonelDetayPageData(
     malKayitlari,
     egitimKatilimlari,
     yevmiyeFazlaMesaiAylik,
+    tanimGostergeKha,
+    terfiOncesiTarihce,
   }
 }
 

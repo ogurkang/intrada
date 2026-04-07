@@ -57,6 +57,8 @@ interface Props {
   malKayitlari?: PersonelMalBildirimOzet[]
   egitimKatilimlari?: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
+  tanimGostergeKha?: string | null
+  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
   onKisiselGuncelle?: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
   saltOkunur?: boolean
@@ -436,10 +438,14 @@ function KatsayiTab({
   terfiKayitlari,
   kadrolar,
   yevmiyeFazlaMesaiAylik,
+  tanimGostergeKha,
+  terfiOncesiTarihce,
 }: {
   terfiKayitlari: TH[]
   kadrolar: KH[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
+  tanimGostergeKha?: string | null
+  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
 }) {
   const isIscı = kadrolar.some(k => (k.statu ?? '').trim() === 'İşçi')
   const fmAylik = yevmiyeFazlaMesaiAylik ?? []
@@ -499,19 +505,53 @@ function KatsayiTab({
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Güncel Katsayı Bilgileri</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Alan etiket="Görev Aylığı D/K"     deger={dk(son.gorev_ayligi_derece, son.gorev_ayligi_kademe)} />
-          <Alan etiket="KHA D/K"              deger={dk(son.kha_derece, son.kha_kademe)} />
-          <Alan etiket="KHA Tarihi"           deger={tarihFormatla(son.kha_tarihi)} />
-          <Alan etiket="EKEA D/K"             deger={dk(son.ekea_derece, son.ekea_kademe)} />
-          <Alan etiket="EKEA Tarihi"          deger={tarihFormatla(son.ekea_tarihi)} />
-          <Alan etiket="Kıdem Yılı"           deger={son.kidem_yili} />
-          <Alan etiket="Kıdem Tarihi"         deger={tarihFormatla(son.kidem_tarihi)} />
-          <Alan etiket="İyi Hal Terfi Tarihi" deger={tarihFormatla(son.iyi_hal_terfi_tarihi)} />
-          <Alan etiket="Ek Gösterge"          deger={son.ek_gosterge} />
-          <Alan etiket="Ek Ödeme"             deger={son.ek_odeme} />
-          <Alan etiket="ÖHT"                  deger={son.oht} />
-          <Alan etiket="Yan Ödeme"            deger={son.yan_odeme} />
-          <Alan etiket="SDS Oranı"            deger={son.sds_orani} />
+            <Alan etiket="Görev Aylığı D/K" deger={dk(son.gorev_ayligi_derece, son.gorev_ayligi_kademe)} />
+            <Alan etiket="KHA D/K" deger={dk(son.kha_derece, son.kha_kademe)} />
+            <Alan etiket="KHA Tarihi" deger={tarihFormatla(son.kha_tarihi)} />
+            <Alan etiket="Tanım Gösterge (KHA D/K eşleşme)" deger={tanimGostergeKha ?? '—'} />
+            <Alan etiket="EKEA D/K" deger={dk(son.ekea_derece, son.ekea_kademe)} />
+            <Alan etiket="EKEA Tarihi" deger={tarihFormatla(son.ekea_tarihi)} />
+            <Alan etiket="Kıdem Yılı" deger={son.kidem_yili} />
+            <Alan etiket="Kıdem Tarihi" deger={tarihFormatla(son.kidem_tarihi)} />
+            <Alan etiket="İyi Hal Terfi Tarihi" deger={tarihFormatla(son.iyi_hal_terfi_tarihi)} />
+            <Alan etiket="Ek Gösterge" deger={son.ek_gosterge} />
+            <Alan etiket="Ek Ödeme" deger={son.ek_odeme} />
+            <Alan etiket="ÖHT" deger={son.oht} />
+            <Alan etiket="Yan Ödeme" deger={son.yan_odeme} />
+            <Alan etiket="SDS Oranı" deger={son.sds_orani} />
+          </div>
+          <div className="mt-5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tarihçe (Terfi Ettir Öncesi)</p>
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-3 py-2">Terfi İşlem Tarihi</th>
+                    <th className="text-left px-3 py-2">Önceki KHA D/K</th>
+                    <th className="text-left px-3 py-2">Önceki EKEA D/K</th>
+                    <th className="text-left px-3 py-2">Önceki Kıdem Yılı</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(terfiOncesiTarihce ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-4 text-slate-400">
+                        Terfi öncesi tarihçe kaydı bulunamadı.
+                      </td>
+                    </tr>
+                  ) : (
+                    (terfiOncesiTarihce ?? []).map((t, i) => (
+                      <tr key={`onceki-${i}`}>
+                        <td className="px-3 py-2 text-slate-600">{tarihFormatla(t.islem_tarihi)}</td>
+                        <td className="px-3 py-2 text-slate-700">{t.kha_dk}</td>
+                        <td className="px-3 py-2 text-slate-700">{t.ekea_dk}</td>
+                        <td className="px-3 py-2 text-slate-700">{t.kidem_yili}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -752,6 +792,8 @@ function GecmisTab({ hareketler }: { hareketler: PH[] }) {
 export default function PersonelDetayClient({
   kaynak, calisan, kadrolar, hareketler, izinHaklari, izinHareketleri,
   terfiKayitlari, ogrenimler, aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
+  tanimGostergeKha = null,
+  terfiOncesiTarihce = [],
   saltOkunur = false,
 }: Props) {
   const searchParams = useSearchParams()
@@ -835,7 +877,15 @@ export default function PersonelDetayClient({
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
           {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}
           {aktif === 'Kadro Bilgileri'      && <KadroTab kadrolar={kadrolar} sicilNo={calisan.sicil_no} />}
-          {aktif === 'Katsayı Bilgileri'    && <KatsayiTab terfiKayitlari={terfiKayitlari} kadrolar={kadrolar} yevmiyeFazlaMesaiAylik={yevmiyeFazlaMesaiAylik} />}
+          {aktif === 'Katsayı Bilgileri'    && (
+            <KatsayiTab
+              terfiKayitlari={terfiKayitlari}
+              kadrolar={kadrolar}
+              yevmiyeFazlaMesaiAylik={yevmiyeFazlaMesaiAylik}
+              tanimGostergeKha={tanimGostergeKha}
+              terfiOncesiTarihce={terfiOncesiTarihce}
+            />
+          )}
           {aktif === 'İzin Bilgileri'       && (
             <IzinBilgileriTab
               izinHaklari={izinHaklari}

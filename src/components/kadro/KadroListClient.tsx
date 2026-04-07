@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import KadroFormModal from './KadroForm'
 import { kadroDetayHref } from '@/lib/kadro-link'
+import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 
 type Kadro   = Tables<'kadro_hareketleri'>
@@ -75,15 +76,15 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     if (sadece_aktif) list = list.filter(k => !k.ayrilis_tarihi)
     if (durumFiltre !== 'Tümü') list = list.filter(k => k.durumu === durumFiltre)
     if (aramaQ.trim()) {
-      const q = aramaQ.toLowerCase()
+      const q = trNormalize(aramaQ)
       list = list.filter(k =>
-        (k.kadro_sira_no ?? '').toLowerCase().includes(q) ||
-        (k.kadro_unvani ?? '').toLowerCase().includes(q) ||
-        (k.gorev_unvani ?? '').toLowerCase().includes(q) ||
-        (k.kadro_mudurlugu ?? '').toLowerCase().includes(q) ||
-        (k.asil ? (adMap[k.asil] ?? k.asil).toLowerCase().includes(q) : false) ||
-        (k.vekil ? (adMap[k.vekil] ?? k.vekil).toLowerCase().includes(q) : false) ||
-        (k.statu ?? '').toLowerCase().includes(q)
+        trNormalize(k.kadro_sira_no).includes(q) ||
+        trNormalize(k.kadro_unvani).includes(q) ||
+        trNormalize(k.gorev_unvani).includes(q) ||
+        trNormalize(k.kadro_mudurlugu).includes(q) ||
+        (k.asil ? trNormalize(adMap[k.asil] ?? k.asil).includes(q) : false) ||
+        (k.vekil ? trNormalize(adMap[k.vekil] ?? k.vekil).includes(q) : false) ||
+        trNormalize(k.statu).includes(q)
       )
     }
     list.sort((a, b) => {
