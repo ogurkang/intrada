@@ -28,7 +28,7 @@ async function kadroMudurlukleriniEsitle(
   const mudurluk = yeni_gorev_yeri.trim()
   if (!sicil || !kadroNo || !mudurluk) return {}
 
-  const { error } = await supabase
+  const { data: byKadroNo, error: byKadroNoErr } = await supabase
     .from('kadro_hareketleri')
     .update({
       kadro_mudurlugu: mudurluk,
@@ -37,7 +37,40 @@ async function kadroMudurlukleriniEsitle(
     .eq('kadro_sira_no', kadroNo)
     .or(`asil.eq.${sicil},vekil.eq.${sicil}`)
     .is('ayrilis_tarihi', null)
-  if (error) return { hata: error.message }
+    .select('id')
+  if (byKadroNoErr) return { hata: byKadroNoErr.message }
+  if ((byKadroNo ?? []).length > 0) return {}
+
+  // Kadro sıra no birebir eşleşmezse (eski/boş/format farkı), personelin aktif kadrolarını güncelle.
+  const { data: byAktif, error: byAktifErr } = await supabase
+    .from('kadro_hareketleri')
+    .update({
+      kadro_mudurlugu: mudurluk,
+      gorev_mudurlugu: mudurluk,
+    })
+    .or(`asil.eq.${sicil},vekil.eq.${sicil}`)
+    .is('ayrilis_tarihi', null)
+    .select('id')
+  if (byAktifErr) return { hata: byAktifErr.message }
+  if ((byAktif ?? []).length > 0) return {}
+
+  // Son çare: ayrılışlı eski satırlar dahil personelin tüm kadrolarında aynı sıra no varsa güncelle.
+  const { data: byAll, error: byAllErr } = await supabase
+    .from('kadro_hareketleri')
+    .update({
+      kadro_mudurlugu: mudurluk,
+      gorev_mudurlugu: mudurluk,
+    })
+    .eq('kadro_sira_no', kadroNo)
+    .or(`asil.eq.${sicil},vekil.eq.${sicil}`)
+    .select('id')
+  if (byAllErr) return { hata: byAllErr.message }
+  if ((byAll ?? []).length > 0) return {}
+
+  return {
+    hata:
+      'Kadro müdürlüğü güncellenemedi: personel için eşleşen kadro satırı bulunamadı. (Sicil/Kadro Sıra No kontrol edin.)',
+  }
   return {}
 }
 

@@ -370,7 +370,15 @@ function MalBildirimTab({ malKayitlari }: { malKayitlari: PersonelMalBildirimOze
 // ─── Kadro Bilgileri ──────────────────────────────────────────────────────────
 // GAS calisanlar.html personelKadroBilgileriYukle mantığı: Asil (Dolu) + Vekil olduğu kadrolar
 
-function KadroTab({ kadrolar, sicilNo }: { kadrolar: KH[]; sicilNo: string }) {
+function KadroTab({
+  kadrolar,
+  sicilNo,
+  hareketler,
+}: {
+  kadrolar: KH[]
+  sicilNo: string
+  hareketler: PH[]
+}) {
   const sicil = String(sicilNo).trim()
   const asilKadro = kadrolar.find(k => (k.asil ?? '').trim() === sicil && (k.durumu ?? '') === 'Dolu')
   const vekilKadrolar = kadrolar
@@ -423,6 +431,50 @@ function KadroTab({ kadrolar, sicilNo }: { kadrolar: KH[]; sicilNo: string }) {
           </div>
         </div>
       )}
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-700">Tarihçe (Eski Kadro Bilgileri)</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-16">Sıra No</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-36">Hareket Tipi</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-36">Kadro Derecesi</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Unvanı</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Müdürlüğü</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-32">Kayıt Tarihi</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-32">Yürürlük Tarihi</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-40">İşlem Tarihi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {hareketler.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                    Tarihçe kaydı yok.
+                  </td>
+                </tr>
+              ) : (
+                hareketler.map((h, i) => (
+                  <tr key={h.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="px-4 py-3 text-slate-700">{h.hareket_tipi ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-700">{h.eski_kadro_derecesi ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-700">{h.eski_unvan ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-700">{h.eski_gorev_yeri ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 tabular-nums">{tarihFormatla(h.kayit_tarihi)}</td>
+                    <td className="px-4 py-3 text-slate-600 tabular-nums">{tarihFormatla(h.yururluk_tarihi)}</td>
+                    <td className="px-4 py-3 text-slate-600 tabular-nums">{tarihFormatla(h.kayit_zamani)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
@@ -876,7 +928,9 @@ export default function PersonelDetayClient({
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
           {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}
-          {aktif === 'Kadro Bilgileri'      && <KadroTab kadrolar={kadrolar} sicilNo={calisan.sicil_no} />}
+          {aktif === 'Kadro Bilgileri'      && (
+            <KadroTab kadrolar={kadrolar} sicilNo={calisan.sicil_no} hareketler={hareketler} />
+          )}
           {aktif === 'Katsayı Bilgileri'    && (
             <KatsayiTab
               terfiKayitlari={terfiKayitlari}
