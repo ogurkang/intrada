@@ -63,17 +63,14 @@ export async function GET(request: NextRequest) {
     if (sicil) memurSozlesmeliSiciller.add(sicil)
   }
 
-  const genisBaslangic = new Date(donem.baslangic_tarihi)
-  genisBaslangic.setFullYear(genisBaslangic.getFullYear() - 2)
-  const genisBitis = new Date(donem.bitis_tarihi)
-  genisBitis.setFullYear(genisBitis.getFullYear() + 1)
-
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .neq('durum', 'İptal Edildi')
-    .lte('ayrilis', genisBitis.toISOString().substring(0, 10))
-    .gte('baslama', genisBaslangic.toISOString().substring(0, 10))
+    // İzin aralığı [ayrilis, baslama-1] dönemle kesişsin:
+    // ayrilis <= donem.bitis ve baslama > donem.baslangic
+    .lte('ayrilis', donem.bitis_tarihi)
+    .gt('baslama', donem.baslangic_tarihi)
     .in('sicil_no', Array.from(memurSozlesmeliSiciller))
     .order('ayrilis')
     .limit(2000)
@@ -123,17 +120,12 @@ export async function GET(request: NextRequest) {
       .eq('donem_id', prev.id)
     const prevHaricSet = new Set((prevSecimRaw ?? []).filter(s => s.dahil === false).map(s => s.izin_sira_no))
 
-    const prevGenisBaslangic = new Date(prev.baslangic_tarihi)
-    prevGenisBaslangic.setFullYear(prevGenisBaslangic.getFullYear() - 2)
-    const prevGenisBitis = new Date(prev.bitis_tarihi)
-    prevGenisBitis.setFullYear(prevGenisBitis.getFullYear() + 1)
-
     const { data: prevIzinRaw } = await supabase
       .from('izin_hareketleri')
       .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
       .neq('durum', 'İptal Edildi')
-      .lte('ayrilis', prevGenisBitis.toISOString().substring(0, 10))
-      .gte('baslama', prevGenisBaslangic.toISOString().substring(0, 10))
+      .lte('ayrilis', prev.bitis_tarihi)
+      .gt('baslama', prev.baslangic_tarihi)
       .order('ayrilis')
 
     const filtreliPrevIzin = (prevIzinRaw ?? []).filter(iz => {
