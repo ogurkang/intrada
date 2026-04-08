@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
+import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 import { trNormalize } from '@/lib/turkce-search'
 import {
   GOREV_DURUMU_OPTIONS,
@@ -13,8 +14,12 @@ import {
   gorevTuruTarihZorunlu,
 } from '@/lib/gorev-bilgileri'
 import type { GorevBilgiSatir } from '@/app/(dashboard)/personel/gorev-bilgileri/actions'
+import { karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
 
-export type GorevListeSatir = Pick<
+export type GorevListeKadroSatir = {
+  kind: 'kadro'
+  statuEtiket: string
+} & Pick<
   Tables<'calisan'>,
   | 'sicil_no'
   | 'public_id'
@@ -25,6 +30,22 @@ export type GorevListeSatir = Pick<
   | 'gorev_turu_aciklama'
   | 'gorev_durumu'
 >
+
+export type GorevListeFirmaSatir = {
+  kind: 'firma'
+  statuEtiket: string
+  id: number
+  public_id: string
+  sicil_no: string | null
+  ad_soyad: string
+  gorev_yeri: string | null
+}
+
+export type GorevListeSatir = GorevListeKadroSatir | GorevListeFirmaSatir
+
+function isKadro(p: GorevListeSatir): p is GorevListeKadroSatir {
+  return p.kind === 'kadro'
+}
 
 type GorevAlanlari =
   | 'gorev_yeri'
@@ -40,11 +61,17 @@ function tarihFormatla(t: string | null) {
 
 interface Props {
   data: GorevListeSatir[]
+  statuSirali: string[]
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: GorevBilgiSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
 }
 
-export default function GorevBilgileriListeClient({ data, onSatirKaydet, onTopluKaydet }: Props) {
+export default function GorevBilgileriListeClient({
+  data,
+  statuSirali,
+  onSatirKaydet,
+  onTopluKaydet,
+}: Props) {
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama] = useState('')
@@ -56,23 +83,43 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
   const [topluBasari, setTopluBasari] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const sirali = useMemo(
-    () => [...data].sort((a, b) => parseInt(a.sicil_no, 10) - parseInt(b.sicil_no, 10)),
-    [data],
-  )
+  const sirali = useMemo(() => {
+    return [...data].sort((a, b) =>
+      karsilastirStatuSonraSicilAd(
+        {
+          statuEtiket: a.statuEtiket,
+          sicil_no: isKadro(a) ? a.sicil_no : a.sicil_no,
+          ad_soyad: a.ad_soyad,
+        },
+        {
+          statuEtiket: b.statuEtiket,
+          sicil_no: isKadro(b) ? b.sicil_no : b.sicil_no,
+          ad_soyad: b.ad_soyad,
+        },
+        statuSirali,
+      ),
+    )
+  }, [data, statuSirali])
+
+  const kadroSirali = useMemo(() => sirali.filter(isKadro), [sirali])
 
   const filtreli = useMemo(() => {
     const q = trNormalize(arama)
     if (!q) return sirali
-    return sirali.filter(
-      p =>
+    return sirali.filter(p => {
+      if (
         trNormalize(p.ad_soyad).includes(q) ||
-        trNormalize(p.sicil_no).includes(q) ||
-        trNormalize(p.gorev_yeri).includes(q),
-    )
+        trNormalize(p.statuEtiket).includes(q) ||
+        trNormalize(p.gorev_yeri ?? '').includes(q)
+      ) {
+        return true
+      }
+      const sicStr = isKadro(p) ? p.sicil_no : p.sicil_no ?? ''
+      return trNormalize(sicStr).includes(q)
+    })
   }, [sirali, arama])
 
-  function duzenleAc(p: GorevListeSatir) {
+  function duzenleAc(p: GorevListeKadroSatir) {
     setHata(null)
     setDuzenlenenSicil(p.sicil_no)
     setInlineVeri({
@@ -86,7 +133,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
     })
   }
 
-  function inlineDeger(p: GorevListeSatir, key: string): string {
+  function inlineDeger(p: GorevListeKadroSatir, key: string): string {
     const v = inlineVeri[p.sicil_no]
     if (v && key in v) return v[key] ?? ''
     if (key === 'gorev_yeri') return p.gorev_yeri ?? ''
@@ -97,7 +144,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
     return ''
   }
 
-  function inlineGuncelle(p: GorevListeSatir, key: string, deger: string) {
+  function inlineGuncelle(p: GorevListeKadroSatir, key: string, deger: string) {
     setInlineVeri(prev => {
       const cur = { ...(prev[p.sicil_no] ?? {}) }
       cur[key] = deger
@@ -109,16 +156,16 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
     })
   }
 
-  function inlineTarihGoster(p: GorevListeSatir): boolean {
+  function inlineTarihGoster(p: GorevListeKadroSatir): boolean {
     const t = inlineDeger(p, 'gorev_turu')
     return gorevTuruTarihZorunlu(t)
   }
 
-  function inlineAciklamaGoster(p: GorevListeSatir): boolean {
+  function inlineAciklamaGoster(p: GorevListeKadroSatir): boolean {
     return gorevTuruAciklamaGoster(inlineDeger(p, 'gorev_turu'))
   }
 
-  async function handleInlineKaydet(p: GorevListeSatir) {
+  async function handleInlineKaydet(p: GorevListeKadroSatir) {
     const v = inlineVeri[p.sicil_no]
     if (!v) return
     setHata(null)
@@ -150,7 +197,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
     })
   }
 
-  function topluDegerAl(p: GorevListeSatir, key: GorevAlanlari): string {
+  function topluDegerAl(p: GorevListeKadroSatir, key: GorevAlanlari): string {
     const l = topluVeri[p.sicil_no]
     if (l && key in l && l[key] !== undefined) return l[key] ?? ''
     if (key === 'gorev_yeri') return p.gorev_yeri ?? ''
@@ -161,18 +208,18 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
     return ''
   }
 
-  function topluTarihGoster(p: GorevListeSatir): boolean {
+  function topluTarihGoster(p: GorevListeKadroSatir): boolean {
     return gorevTuruTarihZorunlu(topluDegerAl(p, 'gorev_turu'))
   }
 
-  function topluAciklamaGoster(p: GorevListeSatir): boolean {
+  function topluAciklamaGoster(p: GorevListeKadroSatir): boolean {
     return gorevTuruAciklamaGoster(topluDegerAl(p, 'gorev_turu'))
   }
 
   function handleTopluKaydet() {
     setTopluHata(null)
     setTopluBasari(null)
-    const degistirilmis = sirali.filter(
+    const degistirilmis = kadroSirali.filter(
       x => topluVeri[x.sicil_no] && Object.keys(topluVeri[x.sicil_no]!).length > 0,
     )
     if (!degistirilmis.length) {
@@ -236,6 +283,9 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
             Görev türü <strong>Aylıksız İzin</strong> olduğu sürece hizmet süresi ilerlemesi durur; tekrar
             <strong> Çalışan</strong> olarak kaydedildiğinde ilerleme devam eder.
           </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Sıra: Tanımlar → Statü sırası; ardından firma personel (yalnızca ayrılış tarihi boş). Firma satırları bu ekrandan düzenlenmez.
+          </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
           <button
@@ -272,7 +322,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
             <input
               value={arama}
               onChange={e => setArama(e.target.value)}
-              placeholder="Ad, sicil veya görev yeri ara…"
+              placeholder="Ad, sicil, statü veya görev yeri ara…"
               className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             />
           </div>
@@ -284,7 +334,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
         <div className="mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <p className="text-sm text-slate-600">
-              Tüm aktif personel listelenir. Değiştirdiğiniz satırlar mavi ile işaretlenir;{' '}
+              Yalnızca kadro personeli listelenir. Değiştirdiğiniz satırlar mavi ile işaretlenir;{' '}
               <strong>Toplu Kaydet</strong> yalnızca değişen sicilleri yazar.
             </p>
             <button
@@ -311,6 +361,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[140px]">Adı Soyadı</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[120px]">Statü</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[120px]">Görev yeri</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-44">Görev türü</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">Tarih</th>
@@ -322,18 +373,41 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
               <tbody className="divide-y divide-slate-100">
                 {filtreli.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-slate-400">
+                    <td colSpan={9} className="text-center py-16 text-slate-400">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
                 ) : (
                   filtreli.map(p => {
+                    if (!isKadro(p)) {
+                      return (
+                        <tr key={`firma-${p.id}`} className="bg-slate-50/80 hover:bg-slate-50">
+                          <td className="px-4 py-2.5 font-mono text-xs text-slate-500">
+                            {p.sicil_no?.trim() || '—'}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <Link
+                              href={firmaCalisanDetayHref(p)}
+                              className="font-medium text-slate-800 hover:text-blue-700 hover:underline"
+                            >
+                              {p.ad_soyad}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-700">{p.statuEtiket}</td>
+                          <td className="px-4 py-2.5 text-slate-600 max-w-[220px] truncate" title={p.gorev_yeri ?? ''}>
+                            {p.gorev_yeri?.trim() || '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-center text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-right text-xs text-slate-500">Firma</td>
+                        </tr>
+                      )
+                    }
                     const duz = duzenlenenSicil === p.sicil_no
                     return (
-                      <tr
-                        key={p.sicil_no}
-                        className={duz ? 'bg-blue-50' : 'hover:bg-slate-50'}
-                      >
+                      <tr key={p.sicil_no} className={duz ? 'bg-blue-50' : 'hover:bg-slate-50'}>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{p.sicil_no}</td>
                         <td className="px-4 py-2.5">
                           <Link
@@ -344,6 +418,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
                             {p.ad_soyad}
                           </Link>
                         </td>
+                        <td className="px-4 py-2.5 text-slate-700">{p.statuEtiket}</td>
                         <td className="px-4 py-2.5">
                           {duz ? (
                             <input
@@ -462,12 +537,13 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
 
       {sekme === 'toplu' && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full">
-          <table className="w-full text-xs sm:text-sm min-w-[920px]">
+          <table className="w-full text-xs sm:text-sm min-w-[980px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-10">#</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-24">Sicil</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[7rem]">Adı Soyadı</th>
+                <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[6rem]">Statü</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[8rem]">Görev yeri</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-40">Görev türü</th>
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-36">Tarih</th>
@@ -476,14 +552,14 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sirali.length === 0 ? (
+              {kadroSirali.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={9} className="text-center py-12 text-slate-400">
                     Kayıt yok.
                   </td>
                 </tr>
               ) : (
-                sirali.map((p, i) => {
+                kadroSirali.map((p, i) => {
                   const degisti =
                     !!topluVeri[p.sicil_no] && Object.keys(topluVeri[p.sicil_no]!).length > 0
                   return (
@@ -491,6 +567,7 @@ export default function GorevBilgileriListeClient({ data, onSatirKaydet, onToplu
                       <td className="px-2 py-1.5 text-center text-slate-400 tabular-nums">{i + 1}</td>
                       <td className="px-2 py-1.5 font-mono text-slate-500">{p.sicil_no}</td>
                       <td className="px-2 py-1.5 font-medium text-slate-800">{p.ad_soyad}</td>
+                      <td className="px-2 py-1.5 text-slate-600">{p.statuEtiket}</td>
                       <td className="px-2 py-1.5">
                         <input
                           type="text"

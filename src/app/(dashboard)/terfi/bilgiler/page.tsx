@@ -5,6 +5,12 @@ import type { Tables } from '@/types/database'
 
 export default async function TerfiBilgilerPage() {
   const supabase = await createClient()
+  const D = new Date().toISOString().slice(0, 10)
+  const aktifMi = (ayrilis: string | null | undefined) => {
+    const t = String(ayrilis ?? '').trim().slice(0, 10)
+    if (!t) return true
+    return t > D
+  }
 
   const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }] = await Promise.all([
     supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
@@ -42,7 +48,7 @@ export default async function TerfiBilgilerPage() {
   })
 
   const ogrenimTuruBySicil = new Map<string, string>()
-  const khRows: { id: number; asil: string | null; vekil: string | null; kadro_derecesi: string | null }[] = []
+  const khRows: { id: number; asil: string | null; vekil: string | null; kadro_derecesi: string | null; ayrilis_tarihi: string | null }[] = []
 
   if (memurSiciller.length > 0) {
     const [ogRes, khRes] = await Promise.all([
@@ -52,7 +58,12 @@ export default async function TerfiBilgilerPage() {
         .in('sicil_no', memurSiciller)
         .eq('aktif', true)
         .order('kayit_zamani', { ascending: false }),
-      supabase.from('kadro_hareketleri').select('id, asil, vekil, kadro_derecesi').is('ayrilis_tarihi', null),
+      supabase
+        .from('kadro_hareketleri')
+        .select('id, asil, vekil, kadro_derecesi, ayrilis_tarihi')
+        .or(
+          memurSiciller.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','),
+        ),
     ])
 
     const seenOg = new Set<string>()
@@ -69,6 +80,7 @@ export default async function TerfiBilgilerPage() {
         asil: r.asil,
         vekil: r.vekil,
         kadro_derecesi: r.kadro_derecesi,
+        ayrilis_tarihi: r.ayrilis_tarihi ?? null,
       })
     }
   }
@@ -100,17 +112,31 @@ export default async function TerfiBilgilerPage() {
 
     const hits: { khId: number; rol: KadroRol; kadro_derecesi: string | null }[] = []
     for (const r of khRows) {
+      if (!aktifMi(r.ayrilis_tarihi)) continue
       if (r.asil === sicil_no) hits.push({ khId: r.id, rol: 'Asil', kadro_derecesi: r.kadro_derecesi })
       if (r.vekil === sicil_no) hits.push({ khId: r.id, rol: 'Vekil', kadro_derecesi: r.kadro_derecesi })
     }
 
     if (hits.length === 0) {
-      memurlar.push({
-        ...base,
-        liste_satir_id: `${sicil_no}-yok`,
-        kadro_rolu: null,
-        kadro_derecesi: null,
-      })
+      // Aktif eşleşme yoksa (geçmiş/format farkı vb.), son kadro kaydından role/dereceyi dene.
+      const fallback = [...khRows]
+        .filter(r => r.asil === sicil_no || r.vekil === sicil_no)
+        .sort((a, b) => b.id - a.id)[0]
+      if (fallback) {
+        memurlar.push({
+          ...base,
+          liste_satir_id: `${sicil_no}-kh${fallback.id}-fallback`,
+          kadro_rolu: fallback.asil === sicil_no ? 'Asil' : 'Vekil',
+          kadro_derecesi: fallback.kadro_derecesi,
+        })
+      } else {
+        memurlar.push({
+          ...base,
+          liste_satir_id: `${sicil_no}-yok`,
+          kadro_rolu: null,
+          kadro_derecesi: null,
+        })
+      }
     } else {
       for (const h of hits) {
         memurlar.push({

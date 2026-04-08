@@ -2,13 +2,34 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import GorevBilgileriListeClient from '@/components/personel/GorevBilgileriListeClient'
 import type { Tables } from '@/types/database'
-import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
 import { gorevBilgileriSatirKaydet, gorevBilgileriTopluKaydet } from './actions'
+import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
+import {
+  FIRMA_STATU_ETIKET,
+  TANIMSIZ_STATU_ETIKET,
+  hazirlaStatuSirali,
+  karsilastirStatuSonraSicilAd,
+} from '@/lib/statu-liste-siralama'
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
 
 export default async function GorevBilgileriPage() {
   const supabase = await createClient()
+  const D = new Date().toISOString().slice(0, 10)
 
-  const [{ data: calisanRaw, error }, { data: phRaw }] = await Promise.all([
+  const [
+    { data: calisanRaw, error },
+    { data: phRaw },
+    { data: tanimStatuRaw },
+  ] = await Promise.all([
     supabase
       .from('calisan')
       .select(
@@ -19,6 +40,7 @@ export default async function GorevBilgileriPage() {
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
+    supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
   ])
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
@@ -33,7 +55,87 @@ export default async function GorevBilgileriPage() {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
     if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
   })
-  const data = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
+  const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
+
+  const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
+
+  const sicilList = [...aktifSiciller]
+  const kadroByAsil = new Map<string, KadroRaporRow[]>()
+  for (const part of chunk(sicilList, 120)) {
+    const { data: kRows } = await supabase
+      .from('kadro_hareketleri')
+      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+      .in('asil', part)
+    for (const r of kRows ?? []) {
+      if (!r.asil) continue
+      const list = kadroByAsil.get(r.asil) ?? []
+      list.push(r as KadroRaporRow)
+      kadroByAsil.set(r.asil, list)
+    }
+  }
+
+  const kadroSatirlar = kadroCalisan.map(c => {
+    const rows = kadroByAsil.get(c.sicil_no) ?? []
+    const sec = secilenKadroSatirAsil(rows, D)
+    const raw = sec?.statu
+    const statuEtiket = etiketAnahtari(etiketler, raw) || TANIMSIZ_STATU_ETIKET
+    return {
+      kind: 'kadro' as const,
+      statuEtiket,
+      ...c,
+    }
+  })
+
+  const { data: firmaRaw } = await supabase
+    .from('firma_calisanlar')
+    .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, ayrilis_tarihi, e_posta')
+    .order('ad_soyad')
+
+  const firmaAktif = filterOutHiddenSystemByEmail(firmaRaw ?? []).filter(f =>
+    isFirmaCalisanAktif(f.ayrilis_tarihi, D),
+  )
+  const kadroBySicil = new Map(kadroSatirlar.map(k => [k.sicil_no.trim(), k] as const))
+  const cikacakKadroSicil = new Set<string>()
+  const firmaSatirlar = firmaAktif
+    .filter(f => {
+      const sicil = String(f.sicil_no ?? '').trim()
+      if (!sicil) return true
+      const kadro = kadroBySicil.get(sicil)
+      if (!kadro) return true
+      // Kadro statüsü tanımsızsa firma kaydı tercih edilir; tanımlı statü varsa kadro satırı korunur.
+      if (kadro.statuEtiket === TANIMSIZ_STATU_ETIKET) {
+        cikacakKadroSicil.add(sicil)
+        return true
+      }
+      return false
+    })
+    .map(f => ({
+    kind: 'firma' as const,
+    statuEtiket: FIRMA_STATU_ETIKET,
+    id: f.id,
+    public_id: f.public_id,
+    sicil_no: f.sicil_no,
+    ad_soyad: f.ad_soyad,
+    gorev_yeri: f.gorev_mudurlugu,
+    }))
+
+  const kadroSatirlarFiltered = kadroSatirlar.filter(k => !cikacakKadroSicil.has(k.sicil_no.trim()))
+
+  const data = [...kadroSatirlarFiltered, ...firmaSatirlar].sort((a, b) =>
+    karsilastirStatuSonraSicilAd(
+      {
+        statuEtiket: a.statuEtiket,
+        sicil_no: a.kind === 'kadro' ? a.sicil_no : a.sicil_no,
+        ad_soyad: a.ad_soyad,
+      },
+      {
+        statuEtiket: b.statuEtiket,
+        sicil_no: b.kind === 'kadro' ? b.sicil_no : b.sicil_no,
+        ad_soyad: b.ad_soyad,
+      },
+      statuSirali,
+    ),
+  )
 
   return (
     <div>
@@ -52,19 +154,8 @@ export default async function GorevBilgileriPage() {
       )}
 
       <GorevBilgileriListeClient
-        data={
-          data as Pick<
-            Tables<'calisan'>,
-            | 'sicil_no'
-            | 'public_id'
-            | 'ad_soyad'
-            | 'gorev_yeri'
-            | 'gorev_turu'
-            | 'gorev_turu_tarihi'
-            | 'gorev_turu_aciklama'
-            | 'gorev_durumu'
-          >[]
-        }
+        data={data}
+        statuSirali={statuSirali}
         onSatirKaydet={gorevBilgileriSatirKaydet}
         onTopluKaydet={gorevBilgileriTopluKaydet}
       />

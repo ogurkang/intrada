@@ -85,6 +85,19 @@ export async function personelHareketiGuncelle(
     .eq('id', id)
     .single()
   const sicil_no = row?.sicil_no
+  const yeni_kha_derece = str(formData, 'yeni_kha_derece')
+  const yeni_kha_kademe = str(formData, 'yeni_kha_kademe')
+  const yeni_ekea_derece = str(formData, 'yeni_ekea_derece')
+  const yeni_ekea_kademe = str(formData, 'yeni_ekea_kademe')
+  const yeni_kidem_yili = str(formData, 'yeni_kidem_yili')
+  const yeni_kha_tarihi = tarihStr(formData, 'yeni_kha_tarihi')
+  const yeni_ekea_tarihi = tarihStr(formData, 'yeni_ekea_tarihi')
+  const yeni_kidem_tarihi = tarihStr(formData, 'yeni_kidem_tarihi')
+  const yeni_iyi_hal_terfi_tarihi = tarihStr(formData, 'yeni_iyi_hal_terfi_tarihi')
+  const yeni_oht = str(formData, 'yeni_oht')
+  const yeni_yan_odeme = str(formData, 'yeni_igz')
+  const yeni_ek_odeme = str(formData, 'yeni_ek_odeme')
+  const yeni_ek_gosterge = str(formData, 'yeni_ek_gosterge')
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const yeni_gorev_yeri = str(formData, 'yeni_gorev_yeri')
 
@@ -96,10 +109,15 @@ export async function personelHareketiGuncelle(
     yeni_unvan:            str(formData, 'yeni_unvan'),
     yeni_sinif:            str(formData, 'yeni_sinif'),
     yeni_kadro_derecesi:   str(formData, 'yeni_kadro_derecesi'),
-    yeni_kha_derece:       str(formData, 'yeni_kha_derece'),
-    yeni_kha_kademe:       str(formData, 'yeni_kha_kademe'),
-    yeni_ekea_derece:      str(formData, 'yeni_ekea_derece'),
-    yeni_ekea_kademe:      str(formData, 'yeni_ekea_kademe'),
+    yeni_kha_derece,
+    yeni_kha_kademe,
+    yeni_ekea_derece,
+    yeni_ekea_kademe,
+    yeni_kidem_yili,
+    yeni_oht,
+    yeni_igz:              yeni_yan_odeme,
+    yeni_ek_odeme,
+    yeni_ek_gosterge,
     ise_baslama_tarihi:    tarihStr(formData, 'ise_baslama_tarihi'),
     ayrilis_tarihi:        tarihStr(formData, 'ayrilis_tarihi'),
     dayanak:               str(formData, 'dayanak'),
@@ -110,6 +128,37 @@ export async function personelHareketiGuncelle(
   if (error) return { hata: error.message }
   const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
   if (kadroSync.hata) return { hata: kadroSync.hata }
+
+  if (sicil_no) {
+    const { data: sonTerfi } = await supabase
+      .from('terfi_hareketleri')
+      .select('id')
+      .eq('sicil_no', sicil_no)
+      .order('kayit_zamani', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (sonTerfi?.id) {
+      const { error: terfiErr } = await supabase
+        .from('terfi_hareketleri')
+        .update({
+          kha_derece: yeni_kha_derece,
+          kha_kademe: yeni_kha_kademe,
+          ekea_derece: yeni_ekea_derece,
+          ekea_kademe: yeni_ekea_kademe,
+          kha_tarihi: yeni_kha_tarihi,
+          ekea_tarihi: yeni_ekea_tarihi,
+          kidem_yili: yeni_kidem_yili,
+          kidem_tarihi: yeni_kidem_tarihi,
+          iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
+          oht: yeni_oht,
+          yan_odeme: yeni_yan_odeme,
+          ek_odeme: yeni_ek_odeme,
+          ek_gosterge: yeni_ek_gosterge,
+        })
+        .eq('id', sonTerfi.id)
+      if (terfiErr) return { hata: terfiErr.message }
+    }
+  }
 
   revalidatePath('/personel-hareketleri')
   revalidatePath('/kadro')
@@ -129,7 +178,12 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   const yeni_ekea_derece = str(formData, 'yeni_ekea_derece')
   const yeni_ekea_kademe = str(formData, 'yeni_ekea_kademe')
   const yeni_kidem_yili = str(formData, 'yeni_kidem_yili')
+  const yeni_kha_tarihi = tarihStr(formData, 'yeni_kha_tarihi')
+  const yeni_ekea_tarihi = tarihStr(formData, 'yeni_ekea_tarihi')
+  const yeni_kidem_tarihi = tarihStr(formData, 'yeni_kidem_tarihi')
+  const yeni_iyi_hal_terfi_tarihi = tarihStr(formData, 'yeni_iyi_hal_terfi_tarihi')
   const yeni_oht = str(formData, 'yeni_oht')
+  const yeni_yan_odeme = str(formData, 'yeni_igz')
   const yeni_ek_odeme = str(formData, 'yeni_ek_odeme')
   const yeni_ek_gosterge = str(formData, 'yeni_ek_gosterge')
   const kadro_sira_no = str(formData, 'kadro_sira_no')
@@ -164,7 +218,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     yeni_ekea_kademe,
     yeni_kidem_yili,
     yeni_oht,
-    yeni_igz:                       str(formData, 'yeni_igz'),
+    yeni_igz:                       yeni_yan_odeme,
     yeni_ek_odeme,
     yeni_ek_gosterge,
     dayanak:                        str(formData, 'dayanak'),
@@ -198,8 +252,13 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
         kha_kademe: yeni_kha_kademe,
         ekea_derece: yeni_ekea_derece,
         ekea_kademe: yeni_ekea_kademe,
+        kha_tarihi: yeni_kha_tarihi,
+        ekea_tarihi: yeni_ekea_tarihi,
         kidem_yili: yeni_kidem_yili,
+        kidem_tarihi: yeni_kidem_tarihi,
+        iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
         oht: yeni_oht,
+        yan_odeme: yeni_yan_odeme,
         ek_odeme: yeni_ek_odeme,
         ek_gosterge: yeni_ek_gosterge,
       })

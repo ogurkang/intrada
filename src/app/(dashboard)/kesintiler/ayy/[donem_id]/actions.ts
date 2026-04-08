@@ -48,20 +48,16 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
     }
   }
 
-  // Geniş tarih aralığı (Takipteki + Askıdaki için)
-  const genisBaslangic = new Date(donem.baslangic_tarihi)
-  genisBaslangic.setFullYear(genisBaslangic.getFullYear() - 2)
-  const genisBitis = new Date(donem.bitis_tarihi)
-  genisBitis.setFullYear(genisBitis.getFullYear() + 1)
-
-  // Memur+Sözleşmeli personelin TÜM izinleri — İptal hariç, tüm türler
-  // limit: Dönem aralığı (baslangic-2y ~ bitis+1y) içinde 500+ izin olabilir; eksik listeleme olmaması için 2000
+  // AYY detay listesi yalnızca dönemle ilişkili izinleri göstermeli.
+  // İzin aralığı [ayrilis, baslama-1] olduğundan, dönemle kesişim koşulu:
+  //   ayrilis <= donem.bitis  VE  baslama > donem.baslangic
+  // Böylece eski dönemde tamamen bitmiş (SD=0) kayıtlar yeni döneme taşınmaz.
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .neq('durum', 'İptal Edildi')
-    .lte('ayrilis', genisBitis.toISOString().substring(0, 10))
-    .gte('baslama', genisBaslangic.toISOString().substring(0, 10))
+    .lte('ayrilis', donem.bitis_tarihi)
+    .gt('baslama', donem.baslangic_tarihi)
     .in('sicil_no', Array.from(memurSozlesmeliSiciller))
     .order('baslama')
     .limit(2000)

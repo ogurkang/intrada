@@ -106,7 +106,7 @@ export default function PersonelHareketiGoruntuleClient({
                   { l: 'EKEA Kademe', v: hareket.eski_ekea_kademe },
                   { l: 'Kıdem Yılı', v: hareket.eski_kidem_yili },
                   { l: 'ÖHT', v: hareket.eski_oht },
-                  { l: 'İGZ', v: hareket.eski_igz },
+                  { l: 'Yan Ödeme', v: hareket.eski_igz },
                   { l: 'Ek Ödeme', v: hareket.eski_ek_odeme },
                   { l: 'Ek Gösterge', v: hareket.eski_ek_gosterge },
                 ].map(({ l, v }) => (
@@ -128,7 +128,7 @@ export default function PersonelHareketiGoruntuleClient({
                   { l: 'EKEA Kademe', v: hareket.yeni_ekea_kademe },
                   { l: 'Kıdem Yılı', v: hareket.yeni_kidem_yili },
                   { l: 'ÖHT', v: hareket.yeni_oht },
-                  { l: 'İGZ', v: hareket.yeni_igz },
+                  { l: 'Yan Ödeme', v: hareket.yeni_igz },
                   { l: 'Ek Ödeme', v: hareket.yeni_ek_odeme },
                   { l: 'Ek Gösterge', v: hareket.yeni_ek_gosterge },
                 ].map(({ l, v }) => (

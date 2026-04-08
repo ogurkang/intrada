@@ -7,6 +7,7 @@ import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
 import type { HizmetSureGirisSatir } from '@/app/(dashboard)/personel/hizmet-sureleri-giris/actions'
 import { trNormalize } from '@/lib/turkce-search'
+import { karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
 
 export type HizmetSureListeSatir = Pick<
   Tables<'calisan'>,
@@ -18,7 +19,7 @@ export type HizmetSureListeSatir = Pick<
   | 'hizmet_suresi_yil'
   | 'hizmet_suresi_ay'
   | 'hizmet_suresi_gun'
->
+> & { statuEtiket: string }
 
 function hizmetStr(n: number | null | undefined): string {
   return String(n ?? 0)
@@ -36,6 +37,7 @@ function ayliksizIz(p: HizmetSureListeSatir): boolean {
 
 interface Props {
   data: HizmetSureListeSatir[]
+  statuSirali: string[]
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: HizmetSureGirisSatir[]) => Promise<{
     hata?: string
@@ -44,7 +46,12 @@ interface Props {
   }>
 }
 
-export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onTopluKaydet }: Props) {
+export default function HizmetSureleriGirisClient({
+  data,
+  statuSirali,
+  onSatirKaydet,
+  onTopluKaydet,
+}: Props) {
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama] = useState('')
@@ -60,10 +67,15 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
   const [topluBasari, setTopluBasari] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const sirali = useMemo(
-    () => [...data].sort((a, b) => parseInt(a.sicil_no, 10) - parseInt(b.sicil_no, 10)),
-    [data],
-  )
+  const sirali = useMemo(() => {
+    return [...data].sort((a, b) =>
+      karsilastirStatuSonraSicilAd(
+        { statuEtiket: a.statuEtiket, sicil_no: a.sicil_no, ad_soyad: a.ad_soyad },
+        { statuEtiket: b.statuEtiket, sicil_no: b.sicil_no, ad_soyad: b.ad_soyad },
+        statuSirali,
+      ),
+    )
+  }, [data, statuSirali])
 
   const filtreli = useMemo(() => {
     const q = trNormalize(arama)
@@ -72,6 +84,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
       p =>
         trNormalize(p.ad_soyad).includes(q) ||
         trNormalize(p.sicil_no).includes(q) ||
+        trNormalize(p.statuEtiket).includes(q) ||
         String(p.tckn ?? '').includes(q),
     )
   }, [sirali, arama])
@@ -203,6 +216,10 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
             Geçici veri girişi ekranıdır. Görev türü <strong>Aylıksız İzin</strong> olanlarda hizmet
             süresi güncellenmez (kişisel bilgiler ile aynı kural).
           </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Firma personel kaydıyla aynı sicile sahip çalışanlar bu listede yer almaz. Sıralama Tanımlar →
+            Statü ile uyumludur.
+          </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
           <button
@@ -239,7 +256,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
             <input
               value={arama}
               onChange={e => setArama(e.target.value)}
-              placeholder="Ad, sicil veya T.C. kimlik no ara…"
+              placeholder="Ad, sicil, statü veya T.C. kimlik no ara…"
               className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             />
           </div>
@@ -278,6 +295,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-center px-3 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[160px]">Adı Soyadı</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[100px]">Statü</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">T.C. Kimlik No</th>
                   <th className="text-center px-2 py-3 font-semibold text-slate-600 w-20">Yıl</th>
                   <th className="text-center px-2 py-3 font-semibold text-slate-600 w-20">Ay</th>
@@ -288,7 +306,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
               <tbody className="divide-y divide-slate-100">
                 {filtreli.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-slate-400">
+                    <td colSpan={8} className="text-center py-16 text-slate-400">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -314,6 +332,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
                             <span className="block text-xs text-amber-800 mt-0.5">Aylıksız İzin — güncellenmez</span>
                           )}
                         </td>
+                        <td className="px-4 py-2.5 text-slate-700">{p.statuEtiket}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-600 tabular-nums">
                           {p.tckn != null && p.tckn !== '' ? String(p.tckn) : '—'}
                         </td>
@@ -390,11 +409,12 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
 
       {sekme === 'toplu' && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto max-w-full">
-          <table className="w-full text-xs sm:text-sm min-w-[720px]">
+          <table className="w-full text-xs sm:text-sm min-w-[820px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-10">Sıra No</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[9rem]">Adı Soyadı</th>
+                <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[6rem]">Statü</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-32">T.C. Kimlik No</th>
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-24">Yıl</th>
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-20">Ay</th>
@@ -404,7 +424,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
             <tbody className="divide-y divide-slate-100">
               {sirali.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                  <td colSpan={7} className="text-center py-12 text-slate-400">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -421,6 +441,7 @@ export default function HizmetSureleriGirisClient({ data, onSatirKaydet, onToplu
                           <span className="block text-[10px] text-amber-800 font-normal">Aylıksız İzin — atlanır</span>
                         )}
                       </td>
+                      <td className="px-2 py-1.5 text-slate-600">{p.statuEtiket}</td>
                       <td className="px-2 py-1.5 font-mono text-slate-600 tabular-nums">
                         {p.tckn != null && p.tckn !== '' ? String(p.tckn) : '—'}
                       </td>

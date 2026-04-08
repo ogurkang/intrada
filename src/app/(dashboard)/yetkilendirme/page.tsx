@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
-import { filterOutGodmodeCalisan, godmodeSicilSet } from '@/lib/godmode-calisan'
+import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail, godmodeSicilSet } from '@/lib/godmode-calisan'
 import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import YetkilendirmeClient from './YetkilendirmeClient'
 
@@ -40,7 +40,7 @@ export default async function YetkilendirmePage() {
       supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri'),
       supabase
         .from('firma_calisanlar')
-        .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi')
+        .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi, e_posta')
         .order('sicil_no'),
     ])
 
@@ -80,7 +80,7 @@ export default async function YetkilendirmePage() {
   const memurSicilSet = new Set(memurSiciller)
   const god = godmodeSicilSet()
 
-  const firmaAktif = (firmaRaw ?? []).filter(f => {
+  const firmaAktif = filterOutHiddenSystemByEmail(firmaRaw ?? []).filter(f => {
     const sicil = f.sicil_no?.trim()
     if (!sicil) return false
     if (!isFirmaCalisanAktif(f.ayrilis_tarihi)) return false

@@ -72,6 +72,10 @@ export default function PersonelHareketiDegistirClient({
           ekea_derece: terfiSon.ekea_derece ?? '',
           ekea_kademe: terfiSon.ekea_kademe ?? '',
           kidem_yili: terfiSon.kidem_yili ?? '',
+          kha_tarihi: terfiSon.kha_tarihi ?? '',
+          ekea_tarihi: terfiSon.ekea_tarihi ?? '',
+          kidem_tarihi: terfiSon.kidem_tarihi ?? '',
+          iyi_hal_terfi_tarihi: terfiSon.iyi_hal_terfi_tarihi ?? '',
           oht: terfiSon.oht ?? '',
           igz: sk?.yeni_igz ?? '',
           ek_odeme: terfiSon.ek_odeme ?? '',
@@ -87,6 +91,10 @@ export default function PersonelHareketiDegistirClient({
           ekea_derece: terfiSon.ekea_derece ?? '',
           ekea_kademe: terfiSon.ekea_kademe ?? '',
           kidem_yili: terfiSon.kidem_yili ?? '',
+          kha_tarihi: terfiSon.kha_tarihi ?? '',
+          ekea_tarihi: terfiSon.ekea_tarihi ?? '',
+          kidem_tarihi: terfiSon.kidem_tarihi ?? '',
+          iyi_hal_terfi_tarihi: terfiSon.iyi_hal_terfi_tarihi ?? '',
           oht: terfiSon.oht ?? '',
           igz: sk?.yeni_igz ?? '',
           ek_odeme: terfiSon.ek_odeme ?? '',
@@ -106,6 +114,10 @@ export default function PersonelHareketiDegistirClient({
         ekea_derece: '',
         ekea_kademe: '',
         kidem_yili: kidemYili,
+        kha_tarihi: '',
+        ekea_tarihi: '',
+        kidem_tarihi: '',
+        iyi_hal_terfi_tarihi: '',
         oht: '',
         igz: '',
         ek_odeme: '',
@@ -121,6 +133,10 @@ export default function PersonelHareketiDegistirClient({
         ekea_derece: '',
         ekea_kademe: '',
         kidem_yili: kidemYili,
+        kha_tarihi: '',
+        ekea_tarihi: '',
+        kidem_tarihi: '',
+        iyi_hal_terfi_tarihi: '',
         oht: '',
         igz: '',
         ek_odeme: '',
@@ -252,11 +268,15 @@ export default function PersonelHareketiDegistirClient({
                   { l: 'Kadro derecesi', v: eski.kadro_derecesi },
                   { l: 'KHA Derece', v: eski.kha_derece },
                   { l: 'KHA Kademe', v: eski.kha_kademe },
+                  { l: 'KHA Tarihi', v: eski.kha_tarihi ? new Date(eski.kha_tarihi).toLocaleDateString('tr-TR') : '' },
                   { l: 'EKEA Derece', v: eski.ekea_derece },
                   { l: 'EKEA Kademe', v: eski.ekea_kademe },
+                  { l: 'EKEA Tarihi', v: eski.ekea_tarihi ? new Date(eski.ekea_tarihi).toLocaleDateString('tr-TR') : '' },
                   { l: 'Kıdem Yılı', v: eski.kidem_yili },
+                  { l: 'Kıdem Tarihi', v: eski.kidem_tarihi ? new Date(eski.kidem_tarihi).toLocaleDateString('tr-TR') : '' },
+                  { l: 'İyi Hal Tarihi', v: eski.iyi_hal_terfi_tarihi ? new Date(eski.iyi_hal_terfi_tarihi).toLocaleDateString('tr-TR') : '' },
                   { l: 'ÖHT', v: eski.oht },
-                  { l: 'İGZ', v: eski.igz },
+                  { l: 'Yan Ödeme', v: eski.igz },
                   { l: 'Ek Ödeme', v: eski.ek_odeme },
                   { l: 'Ek Gösterge', v: eski.ek_gosterge },
                 ].map(({ l, v }) => (
@@ -310,6 +330,11 @@ export default function PersonelHareketiDegistirClient({
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                 </div>
                 <div>
+                  <label className="block text-xs text-slate-500 mb-0.5">KHA Tarihi</label>
+                  <input name="yeni_kha_tarihi" type="date" defaultValue={(yeni.kha_tarihi ?? '').toString().slice(0, 10)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                </div>
+                <div>
                   <label className="block text-xs text-slate-500 mb-0.5">EKEA Derece</label>
                   <input name="yeni_ekea_derece" type="text" defaultValue={yeni.ekea_derece}
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
@@ -320,9 +345,24 @@ export default function PersonelHareketiDegistirClient({
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                 </div>
                 <div>
+                  <label className="block text-xs text-slate-500 mb-0.5">EKEA Tarihi</label>
+                  <input name="yeni_ekea_tarihi" type="date" defaultValue={(yeni.ekea_tarihi ?? '').toString().slice(0, 10)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                </div>
+                <div>
                   <label className="block text-xs text-slate-500 mb-0.5">Kıdem Yılı</label>
-                  <input name="yeni_kidem_yili" type="text" defaultValue={yeni.kidem_yili} readOnly
-                    className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                  <input name="yeni_kidem_yili" type="text" defaultValue={yeni.kidem_yili}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-0.5">Kıdem Tarihi</label>
+                  <input name="yeni_kidem_tarihi" type="date" defaultValue={(yeni.kidem_tarihi ?? '').toString().slice(0, 10)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-0.5">İyi Hal Tarihi</label>
+                  <input name="yeni_iyi_hal_terfi_tarihi" type="date" defaultValue={(yeni.iyi_hal_terfi_tarihi ?? '').toString().slice(0, 10)}
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-0.5">ÖHT</label>
@@ -330,7 +370,7 @@ export default function PersonelHareketiDegistirClient({
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">İGZ</label>
+                  <label className="block text-xs text-slate-500 mb-0.5">Yan Ödeme</label>
                   <input name="yeni_igz" type="text" defaultValue={yeni.igz} placeholder="Örn: 500"
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                 </div>
