@@ -10,6 +10,7 @@ import {
   type KadroRaporRow,
   type PersonelHareketRaporRow,
   type RaporPeriyot,
+  type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { yerelBilgiYasDagilimiSnapshot } from '@/lib/rapor-yerel-bilgi-yas-dagilimi'
 
@@ -52,12 +53,14 @@ export default async function YerelBilgiYasDagilimiPage({
   const supabase = await createClient()
 
   const [
+    { data: statuRaw },
     { data: kadroRaw },
     { data: calisanRaw },
     { data: firmaRaw },
     { data: phAyrRaw },
     { data: phIseRaw },
   ] = await Promise.all([
+    supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
     supabase
       .from('kadro_hareketleri')
       .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
@@ -95,6 +98,10 @@ export default async function YerelBilgiYasDagilimiPage({
 
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
   const firma: FirmaRaporRow[] = (firmaRaw ?? []) as FirmaRaporRow[]
+  const tanimStatuler: TanimStatuRow[] = (statuRaw ?? []).map(r => ({
+    statu_adi: r.statu_adi,
+    sira_no: r.sira_no,
+  }))
 
   const calisanBySicil = new Map<string, CalisanRaporRow>()
   for (const c of calisanRaw ?? []) {
@@ -111,6 +118,7 @@ export default async function YerelBilgiYasDagilimiPage({
     const D = periyotSonGunu(yil, p)
     const snap = yerelBilgiYasDagilimiSnapshot({
       D,
+      tanimStatuler,
       kadro,
       firma,
       calisanBySicil,
@@ -144,7 +152,7 @@ export default async function YerelBilgiYasDagilimiPage({
       raporBasePath="/rapor/yerel-bilgi-yas-dagilimi"
       baslik="Yerel Bilgi İçin Yaş Raporu"
       aciklama={ACIKLAMA}
-      tabloSatirBaslik="Grup"
+      tabloSatirBaslik="Statü"
       variant="yas"
     />
   )

@@ -1,11 +1,14 @@
 import {
+  etiketAnahtari,
   kadroBaslangic,
   kadroSatirAktifMi,
   type CalisanRaporRow,
   type FirmaRaporRow,
   type KadroRaporRow,
+  type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
+import { statuEtiketSirasi } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 import { yasCariYildan } from '@/lib/rapor-statuye-gore-yas'
 
 function sliceD(s: string | null | undefined): string | null {
@@ -36,14 +39,21 @@ function yasEtiketi(yas: number | null): (typeof YEREL_YAS_KOLONLARI)[number] | 
 
 export function yerelBilgiYasDagilimiSnapshot(input: {
   D: string
+  tanimStatuler: TanimStatuRow[]
   kadro: KadroRaporRow[]
   firma: FirmaRaporRow[]
   calisanBySicil: Map<string, CalisanRaporRow>
 }): { kolonlar: string[]; satirlar: StatuMatrisSatir[] } {
-  const { D, kadro, firma, calisanBySicil } = input
+  const { D, tanimStatuler, kadro, firma, calisanBySicil } = input
   const kolonlar = [...YEREL_YAS_KOLONLARI]
-  const sayilar = new Array(kolonlar.length).fill(0)
-  const colIx = (label: string) => kolonlar.indexOf(label)
+  const colIx = (label: (typeof YEREL_YAS_KOLONLARI)[number]) => kolonlar.indexOf(label)
+  const statuSirali = statuEtiketSirasi(tanimStatuler)
+  const etiketler = new Set(statuSirali)
+  const bosSatir = (): number[] => new Array(kolonlar.length).fill(0)
+  const say: Record<string, number[]> = {}
+  for (const e of etiketler) say[e] = bosSatir()
+  const diger = bosSatir()
+  const firmaSatir = bosSatir()
 
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadro) {
@@ -58,11 +68,14 @@ export function yerelBilgiYasDagilimiSnapshot(input: {
     if (aktifRows.length === 0) continue
     const secilen = aktifRows.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
     if (!secilen) continue
+    const stKey = etiketAnahtari(etiketler, secilen.statu)
     const dogum = calisanBySicil.get(sicil)?.dogum_tarihi ?? null
     const etik = yasEtiketi(yasCariYildan(D, dogum))
     if (!etik) continue
     const i = colIx(etik)
-    if (i >= 0) sayilar[i] += 1
+    if (i < 0) continue
+    const hedef = stKey ? say[stKey] : diger
+    hedef[i] += 1
   }
 
   for (const f of firma) {
@@ -70,11 +83,21 @@ export function yerelBilgiYasDagilimiSnapshot(input: {
     const etik = yasEtiketi(yasCariYildan(D, f.dogum_tarihi ?? null))
     if (!etik) continue
     const i = colIx(etik)
-    if (i >= 0) sayilar[i] += 1
+    if (i >= 0) firmaSatir[i] += 1
   }
+
+  const satirlar: StatuMatrisSatir[] = statuSirali.map(et => ({
+    statuEtiket: et,
+    sayilar: [...say[et]],
+  }))
+
+  if (diger.some(n => n > 0)) {
+    satirlar.push({ statuEtiket: 'Tanımda olmayan statü', sayilar: diger })
+  }
+  satirlar.push({ statuEtiket: 'Firma Personel', sayilar: firmaSatir })
 
   return {
     kolonlar,
-    satirlar: [{ statuEtiket: 'Toplam', sayilar }],
+    satirlar,
   }
 }
