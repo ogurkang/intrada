@@ -65,12 +65,10 @@ export async function GET(request: NextRequest) {
 
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
-    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
     .neq('durum', 'İptal Edildi')
-    // İzin aralığı [ayrilis, baslama-1] dönemle kesişsin:
-    // ayrilis <= donem.bitis ve baslama > donem.baslangic
-    .lte('ayrilis', donem.bitis_tarihi)
-    .gt('baslama', donem.baslangic_tarihi)
+    .gte('kayit_tarihi', donem.baslangic_tarihi)
+    .lte('kayit_tarihi', donem.bitis_tarihi)
     .in('sicil_no', Array.from(memurSozlesmeliSiciller))
     .order('ayrilis')
     .limit(2000)
@@ -122,10 +120,10 @@ export async function GET(request: NextRequest) {
 
     const { data: prevIzinRaw } = await supabase
       .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
       .neq('durum', 'İptal Edildi')
-      .lte('ayrilis', prev.bitis_tarihi)
-      .gt('baslama', prev.baslangic_tarihi)
+      .gte('kayit_tarihi', prev.baslangic_tarihi)
+      .lte('kayit_tarihi', prev.bitis_tarihi)
       .order('ayrilis')
 
     const filtreliPrevIzin = (prevIzinRaw ?? []).filter(iz => {

@@ -54,10 +54,10 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
   // Böylece eski dönemde tamamen bitmiş (SD=0) kayıtlar yeni döneme taşınmaz.
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
-    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
     .neq('durum', 'İptal Edildi')
-    .lte('ayrilis', donem.bitis_tarihi)
-    .gt('baslama', donem.baslangic_tarihi)
+    .gte('kayit_tarihi', donem.baslangic_tarihi)
+    .lte('kayit_tarihi', donem.bitis_tarihi)
     .in('sicil_no', Array.from(memurSozlesmeliSiciller))
     .order('baslama')
     .limit(2000)
