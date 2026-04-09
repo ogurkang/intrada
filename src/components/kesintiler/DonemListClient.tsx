@@ -335,7 +335,7 @@ export default function DonemListClient({
               : 'Açık dönem yok'}
           </p>
           {kuralMetni && (
-            <p className="text-xs text-slate-500 mt-2 max-w-2xl">{kuralMetni}</p>
+            <p className="text-sm leading-6 text-slate-600 mt-2 max-w-4xl">{kuralMetni}</p>
           )}
         </div>
         <button onClick={yeniEkleAc}

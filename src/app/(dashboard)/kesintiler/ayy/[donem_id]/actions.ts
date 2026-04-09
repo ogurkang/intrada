@@ -2,6 +2,16 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import {
+  ayyBuildIzinHavuzu,
+  ayyGetOncekiDonem,
+  ayyIzinDbToAyyIzinRow,
+  ayyLoadDonem,
+  ayyLoadTatiller,
+  ayySdSonrakiDonemIcin,
+  createAyyHavuzMemo,
+} from '@/lib/ayy-donem-havuz'
+import { ayyHesapla } from '@/lib/ayy-hesap'
 
 export interface AyyDetayIzin {
   sira_no:  string
@@ -22,47 +32,13 @@ export interface AyyDetayData {
 export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { hata: string }> {
   const supabase = await createClient()
 
-  const { data: donem } = await supabase
-    .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, sira_no, baslangic_tarihi, bitis_tarihi, durum')
-    .eq('id', donem_id)
-    .single()
+  const donem = await ayyLoadDonem(supabase, donem_id)
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
-  // Memur ve Sözleşmeli siciller
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, statu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-    .in('statu', ['Memur', 'Sözleşmeli'])
-  const memurSozlesmeliSiciller = new Set<string>()
-  for (const k of kadroRaw ?? []) {
-    const sicil = (k.asil ?? k.vekil ?? '').trim()
-    if (sicil) memurSozlesmeliSiciller.add(sicil)
-  }
-  if (memurSozlesmeliSiciller.size === 0) {
-    return {
-      donem: { id: donem.id, donem_adi: donem.donem_adi ?? donem.sira_no, baslangic_tarihi: donem.baslangic_tarihi, bitis_tarihi: donem.bitis_tarihi, durum: donem.durum },
-      aday: [],
-      islenecek: [],
-    }
-  }
+  const memo = createAyyHavuzMemo()
+  const poolRaw = await ayyBuildIzinHavuzu(supabase, donem_id, donem, memo)
 
-  // AYY detay listesi yalnızca dönemle ilişkili izinleri göstermeli.
-  // İzin aralığı [ayrilis, baslama-1] olduğundan, dönemle kesişim koşulu:
-  //   ayrilis <= donem.bitis  VE  baslama > donem.baslangic
-  // Böylece eski dönemde tamamen bitmiş (SD=0) kayıtlar yeni döneme taşınmaz.
-  const { data: izinRaw } = await supabase
-    .from('izin_hareketleri')
-    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
-    .neq('durum', 'İptal Edildi')
-    .gte('kayit_tarihi', donem.baslangic_tarihi)
-    .lte('kayit_tarihi', donem.bitis_tarihi)
-    .in('sicil_no', Array.from(memurSozlesmeliSiciller))
-    .order('baslama')
-    .limit(2000)
-
-  const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+  const siciller = [...new Set(poolRaw.map(i => i.sicil_no).filter(Boolean))] as string[]
   const adMap: Record<string, string> = {}
   if (siciller.length > 0) {
     const { data: calisanlar } = await supabase
@@ -72,19 +48,16 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
     ;(calisanlar ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
   }
 
-  const tumIzinler: AyyDetayIzin[] = (izinRaw ?? [])
-    .filter(i => i.sira_no && i.ayrilis && i.baslama)
-    .map(i => ({
-      sira_no:  i.sira_no!,
-      sicil_no: i.sicil_no ?? '',
-      ad_soyad: adMap[i.sicil_no] ?? i.sicil_no ?? '',
-      tur:      i.tur ?? '',
-      ayrilis:  i.ayrilis ?? '',
-      baslama:  i.baslama ?? '',
-      gun:      i.gun ?? 0,
-    }))
+  const tumIzinler: AyyDetayIzin[] = poolRaw.map(i => ({
+    sira_no:  i.sira_no!,
+    sicil_no: i.sicil_no ?? '',
+    ad_soyad: adMap[i.sicil_no ?? ''] ?? i.sicil_no ?? '',
+    tur:      i.tur ?? '',
+    ayrilis:  i.ayrilis ?? '',
+    baslama:  i.baslama ?? '',
+    gun:      i.gun ?? 0,
+  }))
 
-  // AYY: Varsayılan olarak TÜM izinler dahil. Sadece dahil=false (hariç) kayıtlı olanlar çıkarılır.
   const { data: secimRaw } = await supabase
     .from('aylik_yemek_yeni_secim')
     .select('izin_sira_no, dahil')
@@ -96,9 +69,67 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
   const aday: AyyDetayIzin[] = tumIzinler.filter(iz => haricSet.has(iz.sira_no))
 
   return {
-    donem: { id: donem.id, donem_adi: donem.donem_adi ?? donem.sira_no, baslangic_tarihi: donem.baslangic_tarihi, bitis_tarihi: donem.bitis_tarihi, durum: donem.durum },
+    donem: {
+      id: donem.id,
+      donem_adi: donem.donem_adi,
+      baslangic_tarihi: donem.baslangic_tarihi,
+      bitis_tarihi: donem.bitis_tarihi,
+      durum: donem.durum as 'Açık' | 'Kapalı' | undefined,
+    },
     aday,
     islenecek,
+  }
+}
+
+/** Özet önizleme: havuz + OD ile tek hesap (istemci ile aynı kaynak). */
+export async function ayyOzetHesapla(donem_id: number): Promise<
+  | { hata: string }
+  | { donem: AyyDetayData['donem']; sonuc: ReturnType<typeof ayyHesapla>; tatilSayisi: number }
+> {
+  const supabase = await createClient()
+  const donem = await ayyLoadDonem(supabase, donem_id)
+  if (!donem) return { hata: 'Dönem bulunamadı.' }
+
+  const memo = createAyyHavuzMemo()
+  const poolRaw = await ayyBuildIzinHavuzu(supabase, donem_id, donem, memo)
+  const { data: secimRaw } = await supabase
+    .from('aylik_yemek_yeni_secim')
+    .select('izin_sira_no, dahil')
+    .eq('donem_id', donem_id)
+  const haricSet = new Set<string>()
+  ;(secimRaw ?? []).forEach(s => { if (s.dahil === false && s.izin_sira_no) haricSet.add(s.izin_sira_no) })
+  const dahilRaw = poolRaw.filter(r => !haricSet.has(String(r.sira_no)))
+
+  const tatiller = await ayyLoadTatiller(supabase)
+  const izinler = await ayyIzinDbToAyyIzinRow(supabase, dahilRaw)
+  const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donem_id, donem, tatiller, memo)
+  const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+
+  const sonuc = ayyHesapla({
+    donemBas: donem.baslangic_tarihi,
+    donemBit: donem.bitis_tarihi,
+    izinler,
+    tatiller,
+    odBySiraNo,
+    oncekiDonem: onceki
+      ? {
+          baslangic_tarihi: onceki.baslangic_tarihi,
+          bitis_tarihi:     onceki.bitis_tarihi,
+          kapatildi_at:     onceki.kapatildi_at ?? null,
+        }
+      : undefined,
+  })
+
+  return {
+    donem: {
+      id: donem.id,
+      donem_adi: donem.donem_adi,
+      baslangic_tarihi: donem.baslangic_tarihi,
+      bitis_tarihi: donem.bitis_tarihi,
+      durum: donem.durum as 'Açık' | 'Kapalı' | undefined,
+    },
+    sonuc,
+    tatilSayisi: tatiller.length,
   }
 }
 

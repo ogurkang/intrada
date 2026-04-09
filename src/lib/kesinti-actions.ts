@@ -12,6 +12,45 @@ function str(fd: FormData, key: string): string | null {
 
 const ZABITA_MUDURLUGU = 'Zabıta Müdürlüğü'
 
+async function ayyDonemAcilisKontrolu(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  donemId: number,
+): Promise<string | null> {
+  const { data: donem, error: donemErr } = await supabase
+    .from('aylik_yemek_yeni_donem')
+    .select('id, donem_adi, baslangic_tarihi, bitis_tarihi')
+    .eq('id', donemId)
+    .maybeSingle()
+  if (donemErr) return donemErr.message
+  if (!donem) return 'Dönem bulunamadı.'
+
+  const { data: acikDonem } = await supabase
+    .from('aylik_yemek_yeni_donem')
+    .select('id, donem_adi')
+    .eq('durum', 'Açık')
+    .neq('id', donemId)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (acikDonem) {
+    return `Önce ${acikDonem.donem_adi ?? `#${acikDonem.id}`} açık dönemini kapatın.`
+  }
+
+  const { data: oncekiDonem } = await supabase
+    .from('aylik_yemek_yeni_donem')
+    .select('id, donem_adi, bitis_tarihi, kapatildi_at')
+    .lt('bitis_tarihi', donem.baslangic_tarihi)
+    .order('bitis_tarihi', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (oncekiDonem && !oncekiDonem.kapatildi_at) {
+    return `Önceki dönem (${oncekiDonem.donem_adi ?? `#${oncekiDonem.id}`}) için kapatılma zamanı (kapatildi_at) boş. AYY kuralı için önce bunu doldurun.`
+  }
+
+  return null
+}
+
 export function makeDonemActions(
   donemTablo: DonemTablo,
   secimTablo: SecimTablo,
@@ -57,7 +96,11 @@ export function makeDonemActions(
 
   async function donemKapat(id: number): Promise<{ hata?: string }> {
     const supabase = await createClient()
-    const { error } = await supabase.from(donemTablo).update({ durum: 'Kapalı' } as never).eq('id', id)
+    const patch: Record<string, unknown> = { durum: 'Kapalı' }
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      patch.kapatildi_at = new Date().toISOString()
+    }
+    const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
     if (error) return { hata: error.message }
     revalidatePath(path)
     return {}
@@ -65,7 +108,15 @@ export function makeDonemActions(
 
   async function donemAc(id: number): Promise<{ hata?: string }> {
     const supabase = await createClient()
-    const { error } = await supabase.from(donemTablo).update({ durum: 'Açık' } as never).eq('id', id)
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      const kontrolHata = await ayyDonemAcilisKontrolu(supabase, id)
+      if (kontrolHata) return { hata: kontrolHata }
+    }
+    const patch: Record<string, unknown> = { durum: 'Açık' }
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      patch.kapatildi_at = null
+    }
+    const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
     if (error) return { hata: error.message }
     revalidatePath(path)
     return {}

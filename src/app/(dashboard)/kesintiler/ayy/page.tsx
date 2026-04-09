@@ -23,7 +23,9 @@ export default async function AyyPage() {
     <DonemListClient
       baslik="Aylık Yemek Yeni (AYY)"
       kod="AYY"
-      kuralMetni={'Bu ekranda statüsü memur ve sözleşmeli olan personelin durumu "iptal edildi" hariç olan tüm türdeki izinlerinin çalışma gününe denk gelen günlerinin yemekli günden çıkarıldığı, kesinti işleminin uygulandığı ekrandır.'}
+      kuralMetni={
+        'AYY havuzu A ∪ B ∪ C mantığıyla çalışır: A) Önceki dönem kapatıldıktan sonra kaydedilen uygun izinler, B) Önceki dönemden SD devreden izinler, C) Önceki dönemde hariç tutulup yeni dönemde tekrar görünen izinler. Arada kalan ve dönem öncesi başlayan izinlerde kapatildi_at eşiği dikkate alınır. Zabıta/normal kuralı ve mehil özel hesapları uygulanır. Detay kural dokümanı: proje kökündeki "aylık yemek.md".'
+      }
       hideSecimColumn
       donemler={donemler}
       onEkle={donemEkle}

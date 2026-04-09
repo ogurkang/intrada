@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import KesintilerListeTabSync from '@/components/kesintiler/KesintilerListeTabSync'
+import { ayyZabitaHavuzSatirlari } from '@/lib/ayy-zabita-havuz'
 import { getCariYilAraligi } from '@/lib/tarih'
 
 const TANIMLAR = [
@@ -23,6 +24,8 @@ export default async function KesintilerPage() {
   const supabase = await createClient()
   const buYil = new Date().getFullYear()
   const cariYil = getCariYilAraligi(buYil)
+
+  const zabitaHavuzSatirlari = await ayyZabitaHavuzSatirlari(supabase)
 
   const sonuclar = await Promise.all(
     TANIMLAR.map(async (t) => {
@@ -47,6 +50,35 @@ export default async function KesintilerPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Kesinti Yönetimi</h1>
         <p className="text-sm text-slate-500 mt-0.5">Dönem bazlı kesinti ve puantaj yönetimi</p>
+      </div>
+
+      <div className="mb-8">
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-slate-800">Zabıta Havuzu (AYY)</h2>
+              <p className="text-xs text-slate-600 mt-1">
+                Zabıta/normal kesinti kuralına alınacak personel listesini bu ekrandan yönetebilirsiniz.
+              </p>
+            </div>
+            <Link
+              href="/kesintiler/zabita-havuz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-900 text-sm font-medium hover:bg-amber-100"
+            >
+              İncele
+            </Link>
+          </div>
+          <div className="mt-4 text-xs text-slate-700 flex flex-wrap gap-3">
+            <span>
+              Toplam zabıta havuzu: <strong>{zabitaHavuzSatirlari.length}</strong>
+            </span>
+            <span>
+              Normal kesintiye alınan: <strong>{zabitaHavuzSatirlari.filter(s => !s.zabitaKesintiAktif).length}</strong>
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

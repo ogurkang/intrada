@@ -1,3 +1,5 @@
+import { kayitKapatEsigiSonrasiMi, type AyyOncekiDonemEsik } from '@/lib/ayy-kayit-esik'
+
 /**
  * AYY (Aylık Yemek Yeni) Hesap Motoru
  *
@@ -6,8 +8,8 @@
  *  OD  – Önceki dönemden devreden
  *  IZ  – Bu dönemde düşülen izin günü
  *  YG  – Yemekli gün sayısı (dönemin çalışma günü; zabıta için 30)
- *  K   – Kesinti = YG - IZ  (alacağı yemek sayısı)
- *  SD  – Sonraki döneme devreden
+ *  K   – Alacağı yemek: zabıta dışı YG−IZ; zabıta 30−IZ’den türetilir (kalan ≥24 → K=24, 0<kalan<24 → K=kalan)
+ *  SD  – Sonraki döneme devreden (takvim taşması + zabıtada IZ>30 ise YG aşımı)
  */
 
 export type Kategori = 'Takipteki İzinler' | 'Dönemdeki İzinler' | 'Askıdaki İzinler'
@@ -24,7 +26,12 @@ export interface AyyIzinRow {
   gun:       number
   isZabita:  boolean
   unvan:     string
+  /** `izin_hareketleri.kayit_tarihi` — arada kalan / kapatma eşiği için */
+  kayit_tarihi?: string | null
 }
+
+/** Hesaplanan dönemin bir önceki AYY dönemi (arada kalan izin kuralı). */
+export type AyyOncekiDonemKosulu = AyyOncekiDonemEsik
 
 export interface AyyHesapSatir {
   sira_no:  string
@@ -139,8 +146,18 @@ function takvimGunSayisi(start: Date, end: Date): number {
   return Math.floor((eMs - sMs) / 86_400_000) + 1
 }
 
+function isMehilIzin(tur: string | null | undefined): boolean {
+  return String(tur ?? '').toLowerCase().includes('mehil')
+}
+
+/** Kesinti günü: zabıta ve mehil izinlerde takvim; diğerlerinde çalışma günü. */
+function izinKesintiGunSayisi(iv: AyyIzinRow, start: Date, end: Date, tatiller: TatilRange[]): number {
+  if (iv.isZabita || isMehilIzin(iv.tur)) return takvimGunSayisi(start, end)
+  return calismaGunSayisi(start, end, tatiller, false)
+}
+
 /** İzin için dönem aralığıyla örtüşen gün sayısı.
- * Zabıta: takvim günü. Diğer: hafta sonu + tatil (mehil dahil) hariç çalışma günü. */
+ * Zabıta + mehil izin: takvim günü. Diğer: hafta sonu + tatil (mehil dahil) hariç çalışma günü. */
 function izinAralikGunSayisi(iv: AyyIzinRow, aralikBas: Date, aralikBit: Date, tatiller: TatilRange[]): number {
   const ayrilis = parseDate(iv.ayrilis)
   const sonGun  = izinSonGun(iv.baslama)
@@ -152,7 +169,15 @@ function izinAralikGunSayisi(iv: AyyIzinRow, aralikBas: Date, aralikBit: Date, t
 
   const s = new Date(sBas)
   const e = new Date(sBit)
-  return iv.isZabita ? takvimGunSayisi(s, e) : calismaGunSayisi(s, e, tatiller, false)
+  return izinKesintiGunSayisi(iv, s, e, tatiller)
+}
+
+/** Zabıta yemek alacağı: her zaman 30’dan IZ çıkarılır; kalan ≥24 ise K=24; 0<kalan<24 ise K=kalan; kalan ≤0 ise K=0. */
+function zabitaYemekAlacagi(iz: number): number {
+  const net = 30 - iz
+  if (net >= 24) return 24
+  if (net > 0) return net
+  return 0
 }
 
 // ─── Personel Özet Birleştirme ────────────────────────────────────────────────
@@ -160,7 +185,7 @@ function izinAralikGunSayisi(iv: AyyIzinRow, aralikBas: Date, aralikBit: Date, t
 function satirlariPersoneldeTopla(
   satirlar: AyyHesapSatir[],
 ): AyyPersonelOzet[] {
-  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number }>()
+  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number; toplamK: number; mehilVar: boolean }>()
 
   for (const s of satirlar) {
     const mevcut = map.get(s.sicil_no)
@@ -177,12 +202,16 @@ function satirlariPersoneldeTopla(
         K:        0,
         SD:       0,
         gelecekSD: s.SD,
+        toplamK: s.K,
+        mehilVar: isMehilIzin(s.tur),
       })
     } else {
       mevcut.OD += s.OD
       mevcut.IZ += s.IZ
       mevcut.hamIzin += s.hamIzin ?? 0
       mevcut.gelecekSD += s.SD
+      mevcut.toplamK += s.K
+      mevcut.mehilVar = mevcut.mehilVar || isMehilIzin(s.tur)
     }
   }
 
@@ -190,9 +219,10 @@ function satirlariPersoneldeTopla(
   let seq = 1
   for (const p of map.values()) {
     const ham = Math.max(0, (p.YG || 0) - (p.IZ || 0))
-    const K = p.isZabita
-      ? ((p.IZ || 0) <= 5 ? 24 : Math.max(0, 24 - (p.IZ || 0)))
-      : ham
+    // Zabıta: 24 tabanı korunur; kesinti tabanı personelin toplam izinine göre belirlenir.
+    // Bu sayede dönem öncesi başlayıp döneme dahil olan izinlerde (örn. 14 gün) eksik kesinti oluşmaz.
+    const zabitaBazIzin = Math.max(p.IZ || 0, p.hamIzin || 0)
+    const K = p.mehilVar ? Math.max(0, p.toplamK || 0) : (p.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : ham)
     const SD = (p.gelecekSD || 0) + Math.max(0, (p.IZ || 0) - (p.YG || 0))
     arr.push({ sira_no_seq: seq++, sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, unvan: p.unvan, isZabita: p.isZabita, OD: p.OD, IZ: p.IZ, hamIzin: p.hamIzin ?? 0, YG: p.YG, K, SD })
   }
@@ -217,10 +247,12 @@ export interface AyyHesapParams {
   tatiller:    { tatil_adi: string; tatil_turu: string | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[]
   /** Önceki dönem sonucundan gelen sira_no → SD map */
   odBySiraNo?: Record<string, number>
+  /** Bu dönemin takvimsel önceki AYY dönemi; gecikmiş kayıt + takvimde önceki dönemde kalan izinler için */
+  oncekiDonem?: AyyOncekiDonemKosulu
 }
 
 export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
-  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {} } = params
+  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {}, oncekiDonem } = params
 
   const bas = parseDate(donemBas)!
   const bit = parseDate(donemBit)!
@@ -259,9 +291,7 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     if (sonGunMs !== null && sonGunMs > bitMs) {
       const sonrakiBas = new Date(bitMs + 86_400_000)
       const sonrakiBit = new Date(sonGunMs)
-      sonrakiDonemGun = iv.isZabita
-        ? takvimGunSayisi(sonrakiBas, sonrakiBit)
-        : calismaGunSayisi(sonrakiBas, sonrakiBit, tatilRanges, false)
+      sonrakiDonemGun = izinKesintiGunSayisi(iv, sonrakiBas, sonrakiBit, tatilRanges)
     }
 
     const od = odYazildi.has(iv.sira_no) ? 0 : (odBySiraNo[iv.sira_no] ?? 0)
@@ -277,8 +307,24 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     if (dIhtimali) {
       const tBas = new Date(startMs)
       const tBit = new Date(sonGunMs)
-      iz = iv.isZabita ? takvimGunSayisi(tBas, tBit) : calismaGunSayisi(tBas, tBit, tatilRanges, false)
+      iz = izinKesintiGunSayisi(iv, tBas, tBit, tatilRanges)
       sd = 0
+    }
+
+    // Arada kalan: önceki dönem kapatıldıktan sonra kaydedilmiş; izin takvim olarak aktif dönemin
+    // başlangıcından önce başlayıp bitiyor (yeni dönemle örtüşmüz) → IZ tam süre; kesinti zabıta/normal
+    // (isZabita) izin süresine göre takvim veya çalışma günü ile hesaplanır (d ile aynı türetim).
+    if (!dIhtimali && od <= 0 && oncekiDonem && iv.kayit_tarihi && sonGunMs !== null) {
+      if (
+        kayitKapatEsigiSonrasiMi(iv.kayit_tarihi, oncekiDonem) &&
+        startMs < basMs &&
+        sonGunMs < basMs
+      ) {
+        const tBas = new Date(startMs)
+        const tBit = new Date(sonGunMs)
+        iz = izinKesintiGunSayisi(iv, tBas, tBit, tatilRanges)
+        sd = 0
+      }
     }
 
     // Sıfır yüklü satırlar: askıdaki → atla; diğerleri → izin gün sayısını fallback olarak kullan
@@ -287,16 +333,35 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     if (sifirYuklu && kategori === 'Askıdaki İzinler') continue
     if (sifirYuklu && (kategori === 'Takipteki İzinler' || kategori === 'Dönemdeki İzinler')) {
       const hesaplananIzin = sonGun
-        ? (iv.isZabita ? takvimGunSayisi(ayrilis, sonGun) : calismaGunSayisi(ayrilis, sonGun, tatilRanges, false))
+        ? izinKesintiGunSayisi(iv, ayrilis, sonGun, tatilRanges)
         : Math.max(0, iv.gun)
       iz = Math.min(hesaplananIzin, yemekliGun)
     }
 
     let K: number
-    if (iv.isZabita) {
-      K = iz <= 5 ? 24 : Math.max(0, 24 - iz)
+    if (isMehilIzin(iv.tur)) {
+      const donus = parseDate(iv.baslama)
+      if (!donus) {
+        K = 0
+      } else {
+        const calisBasMs = Math.max(startOfDay(donus), basMs)
+        if (calisBasMs > bitMs) {
+          K = 0
+        } else {
+          const calisBas = new Date(calisBasMs)
+          K = iv.isZabita
+            ? takvimGunSayisi(calisBas, bit)
+            : calismaGunSayisi(calisBas, bit, tatilRanges, true)
+        }
+      }
+      // Mehil izininde kesinti dönem kalan gün üzerinden kurulur.
+      iz = Math.max(0, yemekliGun - K)
+      if (sonGunMs !== null && sonGunMs > bitMs) {
+        sd = takvimGunSayisi(new Date(bitMs + 86_400_000), new Date(sonGunMs))
+      }
     } else {
-      K = Math.max(0, yemekliGun - iz)
+      const zabitaBazIzin = Math.max(iz, iv.gun || 0)
+      K = iv.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : Math.max(0, yemekliGun - iz)
     }
 
     satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori })

@@ -4,13 +4,13 @@ import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import {
   ayyDetayYukle,
+  ayyOzetHesapla,
   ayySecimleriKaydet,
   type AyyDetayData,
   type AyyDetayIzin,
 } from '@/app/(dashboard)/kesintiler/ayy/[donem_id]/actions'
-import { ayyHesapla, type AyyIzinRow } from '@/lib/ayy-hesap'
+import { ayyHesapla } from '@/lib/ayy-hesap'
 import AyyOzetDisplay from '@/components/kesintiler/AyyOzetDisplay'
-import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   donemId: number
@@ -124,12 +124,28 @@ export default function AyyDetayClient({ donemId }: Props) {
   useEffect(() => { yukle() }, [donemId])
 
   useEffect(() => {
-    if (data && data.islenecek.length > 0 && !izinDuzenleAcik) {
-      ozetOnizle()
-    } else if (data && data.islenecek.length === 0) {
+    if (!data || izinDuzenleAcik) return
+    if (data.islenecek.length === 0) {
       setOzetData(null)
+      return
     }
-  }, [data?.islenecek.length, data?.aday.length, izinDuzenleAcik])
+    let iptal = false
+    ;(async () => {
+      const res = await ayyOzetHesapla(donemId)
+      if (iptal) return
+      if ('hata' in res) {
+        setHata(res.hata)
+        setOzetData(null)
+        return
+      }
+      setOzetData({
+        donem: res.donem,
+        sonuc: res.sonuc,
+        tatilSayisi: res.tatilSayisi,
+      })
+    })()
+    return () => { iptal = true }
+  }, [data?.islenecek.length, data?.aday.length, donemId, izinDuzenleAcik])
 
   useEffect(() => {
     if (data?.donem.durum === 'Kapalı' && izinDuzenleAcik) {
@@ -199,168 +215,6 @@ export default function AyyDetayClient({ donemId }: Props) {
     }
   }
 
-  async function ozetOnizle() {
-    if (!data || data.islenecek.length === 0) return
-    const supabase = createClient()
-
-    const { data: kadroMs } = await supabase
-      .from('kadro_hareketleri')
-      .select('asil, vekil')
-      .is('ayrilis_tarihi', null)
-      .in('statu', ['Memur', 'Sözleşmeli'])
-    const memurSozlesmeliSiciller = new Set<string>()
-    for (const k of kadroMs ?? []) {
-      const s = (k.asil ?? k.vekil ?? '').trim()
-      if (s) memurSozlesmeliSiciller.add(s)
-    }
-
-    const { data: tatilRaw } = await supabase
-      .from('tanim_izin_tatil')
-      .select('tatil_adi, tatil_turu, tatil_baslangici, tatil_bitisi, durum')
-      .eq('durum', true)
-    const tatiller = (tatilRaw ?? []).map(t => ({
-      tatil_adi:        t.tatil_adi,
-      tatil_turu:       t.tatil_turu,
-      tatil_baslangici: t.tatil_baslangici,
-      tatil_bitisi:     t.tatil_bitisi,
-      durum:            t.durum ?? true,
-    }))
-
-    const siciller = [...new Set(data.islenecek.map(i => i.sicil_no).filter(Boolean))]
-    const zabitaSet = new Set<string>()
-    const unvanMap: Record<string, string> = {}
-    if (siciller.length > 0) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
-        .in('asil', siciller)
-        .is('ayrilis_tarihi', null)
-      for (const k of kadroRaw ?? []) {
-        const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
-        const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
-        const isZabita = unvan.includes('zabıta') || unvan.includes('zabita') ||
-                        mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')
-        if (isZabita && k.asil) zabitaSet.add(k.asil)
-      }
-      const { data: kadroOzet } = await supabase
-        .from('personel_kadro_ozet')
-        .select('sicil_no, kadro_unvani')
-        .in('sicil_no', siciller)
-      ;(kadroOzet ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
-    }
-
-    const izinler: AyyIzinRow[] = data.islenecek.map(iz => ({
-      sira_no:  iz.sira_no,
-      sicil_no: iz.sicil_no,
-      ad_soyad: iz.ad_soyad,
-      tur:      iz.tur,
-      ayrilis:  iz.ayrilis,
-      baslama:  iz.baslama,
-      gun:      iz.gun,
-      isZabita: zabitaSet.has(iz.sicil_no),
-      unvan:    unvanMap[iz.sicil_no] ?? '',
-    }))
-
-    let odBySiraNo: Record<string, number> = {}
-    const { data: prevDonemRaw } = await supabase
-      .from('aylik_yemek_yeni_donem')
-      .select('*')
-      .lt('bitis_tarihi', data.donem.baslangic_tarihi)
-      .order('bitis_tarihi', { ascending: false })
-      .limit(1)
-
-    if (prevDonemRaw && prevDonemRaw.length > 0) {
-      const prev = prevDonemRaw[0]
-      const { data: prevSecimRaw } = await supabase
-        .from('aylik_yemek_yeni_secim')
-        .select('izin_sira_no, dahil')
-        .eq('donem_id', prev.id)
-      const prevHaricSet = new Set((prevSecimRaw ?? []).filter(s => s.dahil === false).map(s => s.izin_sira_no))
-
-      const prevGenisBaslangic = new Date(prev.baslangic_tarihi)
-      prevGenisBaslangic.setFullYear(prevGenisBaslangic.getFullYear() - 2)
-      const prevGenisBitis = new Date(prev.bitis_tarihi)
-      prevGenisBitis.setFullYear(prevGenisBitis.getFullYear() + 1)
-
-      const { data: prevIzinRaw } = await supabase
-        .from('izin_hareketleri')
-        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-        .neq('durum', 'İptal Edildi')
-        .lte('ayrilis', prevGenisBitis.toISOString().substring(0, 10))
-        .gte('baslama', prevGenisBaslangic.toISOString().substring(0, 10))
-        .order('ayrilis')
-
-      const filtreliPrevIzin = (prevIzinRaw ?? []).filter(iz => {
-        if (!iz.sira_no) return false
-        if (prevHaricSet.has(iz.sira_no)) return false
-        return memurSozlesmeliSiciller.has(iz.sicil_no ?? '')
-      })
-
-      const prevSiciller = [...new Set(filtreliPrevIzin.map(i => i.sicil_no).filter(Boolean))]
-      const prevZabitaSet = new Set<string>()
-      const prevUnvanMap: Record<string, string> = {}
-      if (prevSiciller.length > 0) {
-        const { data: pk } = await supabase
-          .from('kadro_hareketleri')
-          .select('asil, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
-          .in('asil', prevSiciller)
-          .is('ayrilis_tarihi', null)
-        for (const k of pk ?? []) {
-          const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
-          const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
-          const isZabita = unvan.includes('zabıta') || unvan.includes('zabita') ||
-                          mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')
-          if (isZabita && k.asil) prevZabitaSet.add(k.asil)
-        }
-        const { data: po } = await supabase
-          .from('personel_kadro_ozet')
-          .select('sicil_no, kadro_unvani')
-          .in('sicil_no', prevSiciller)
-        ;(po ?? []).forEach(k => { if (k.sicil_no) prevUnvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
-      }
-
-      const adMap: Record<string, string> = {}
-      const { data: calisanlar } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', prevSiciller)
-      ;(calisanlar ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
-
-      const prevIzinlerFull: AyyIzinRow[] = filtreliPrevIzin.map(iz => ({
-        sira_no:  iz.sira_no!,
-        sicil_no: iz.sicil_no ?? '',
-        ad_soyad: adMap[iz.sicil_no ?? ''] ?? iz.sicil_no ?? '',
-        tur:      iz.tur ?? '',
-        ayrilis:  iz.ayrilis,
-        baslama:  iz.baslama,
-        gun:      iz.gun ?? 0,
-        isZabita: prevZabitaSet.has(iz.sicil_no ?? ''),
-        unvan:    prevUnvanMap[iz.sicil_no ?? ''] ?? '',
-      }))
-
-      const prevSonuc = ayyHesapla({
-        donemBas: prev.baslangic_tarihi,
-        donemBit: prev.bitis_tarihi,
-        izinler:  prevIzinlerFull,
-        tatiller,
-      })
-      for (const s of prevSonuc.satirlar) {
-        if (s.SD > 0) odBySiraNo[s.sira_no] = s.SD
-      }
-    }
-
-    const sonuc = ayyHesapla({
-      donemBas: data.donem.baslangic_tarihi,
-      donemBit: data.donem.bitis_tarihi,
-      izinler,
-      tatiller,
-      odBySiraNo,
-    })
-
-    setOzetData({
-      donem: data.donem,
-      sonuc,
-      tatilSayisi: tatiller.length,
-    })
-  }
-
   if (yukleniyor) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -376,10 +230,6 @@ export default function AyyDetayClient({ donemId }: Props) {
       </div>
     )
   }
-
-  const takvimGun = Math.floor(
-    (new Date(data.donem.bitis_tarihi).setHours(0, 0, 0, 0) - new Date(data.donem.baslangic_tarihi).setHours(0, 0, 0, 0)) / 86_400_000
-  ) + 1
 
   const readonly = data.donem.durum === 'Kapalı'
 

@@ -561,17 +561,17 @@ export interface Database {
         Row: {
           id: number; yil: number; sira_no: string | null; donem_adi: string | null
           baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'
-          ihb_az_row: number | null; created_at: string
+          ihb_az_row: number | null; created_at: string; kapatildi_at: string | null
         }
         Insert: {
           id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null
           baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'
-          ihb_az_row?: number | null; created_at?: string
+          ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null
         }
         Update: {
           id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null
           baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'
-          ihb_az_row?: number | null; created_at?: string
+          ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null
         }
         Relationships: []
       }
@@ -580,6 +580,12 @@ export interface Database {
         Insert: { id?: number; donem_id: number; izin_sira_no: string; dahil?: boolean }
         Update: { id?: number; donem_id?: number; izin_sira_no?: string; dahil?: boolean }
         Relationships: [{ foreignKeyName: "ayy_secim_donem_fkey"; columns: ["donem_id"]; isOneToOne: false; referencedRelation: "aylik_yemek_yeni_donem"; referencedColumns: ["id"] }]
+      }
+      ayy_zabita_normal_kesinti_sicil: {
+        Row:    { sicil_no: string; created_at: string }
+        Insert: { sicil_no: string; created_at?: string }
+        Update: { sicil_no?: string; created_at?: string }
+        Relationships: []
       }
       raporlu_memurlar_yeni_donem: {
         Row: {
@@ -811,9 +817,9 @@ export interface Database {
     // ─────────────────── KESİNTİLER ─────────────────────
 
       aylik_yemek_yeni_donem: {
-        Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; ihb_az_row: number | null; created_at: string }
-        Insert: { id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string }
-        Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string }
+        Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; ihb_az_row: number | null; created_at: string; kapatildi_at: string | null }
+        Insert: { id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
+        Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
         Relationships: []
       }
       aylik_yemek_yeni_secim: {
@@ -821,6 +827,12 @@ export interface Database {
         Insert: { id?: number; donem_id: number; izin_sira_no: string; dahil?: boolean }
         Update: { id?: number; donem_id?: number; izin_sira_no?: string; dahil?: boolean }
         Relationships: [{ foreignKeyName: "aylik_yemek_yeni_secim_donem_id_fkey"; columns: ["donem_id"]; isOneToOne: false; referencedRelation: "aylik_yemek_yeni_donem"; referencedColumns: ["id"] }]
+      }
+      ayy_zabita_normal_kesinti_sicil: {
+        Row:    { sicil_no: string; created_at: string }
+        Insert: { sicil_no: string; created_at?: string }
+        Update: { sicil_no?: string; created_at?: string }
+        Relationships: []
       }
       raporlu_memurlar_yeni_donem: {
         Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; created_at: string }
