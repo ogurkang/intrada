@@ -219,10 +219,9 @@ function satirlariPersoneldeTopla(
   let seq = 1
   for (const p of map.values()) {
     const ham = Math.max(0, (p.YG || 0) - (p.IZ || 0))
-    // Zabıta: 24 tabanı korunur; kesinti tabanı personelin toplam izinine göre belirlenir.
-    // Bu sayede dönem öncesi başlayıp döneme dahil olan izinlerde (örn. 14 gün) eksik kesinti oluşmaz.
-    const zabitaBazIzin = Math.max(p.IZ || 0, p.hamIzin || 0)
-    const K = p.mehilVar ? Math.max(0, p.toplamK || 0) : (p.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : ham)
+    // Özette K: mehil için satır toplamı; zabıta için 30−IZ (yalnızca bu dönemdeki kesilen gün);
+    // normal için YG−IZ. hamIzin SD kısmını içerdiğinden baz olarak kullanılmaz.
+    const K = p.mehilVar ? Math.max(0, p.toplamK || 0) : (p.isZabita ? zabitaYemekAlacagi(p.IZ || 0) : ham)
     const SD = (p.gelecekSD || 0) + Math.max(0, (p.IZ || 0) - (p.YG || 0))
     arr.push({ sira_no_seq: seq++, sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, unvan: p.unvan, isZabita: p.isZabita, OD: p.OD, IZ: p.IZ, hamIzin: p.hamIzin ?? 0, YG: p.YG, K, SD })
   }
@@ -360,8 +359,9 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
         sd = takvimGunSayisi(new Date(bitMs + 86_400_000), new Date(sonGunMs))
       }
     } else {
-      const zabitaBazIzin = Math.max(iz, iv.gun || 0)
-      K = iv.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : Math.max(0, yemekliGun - iz)
+      // Zabıta K: sadece bu dönemdeki kesilen gün (iz) baz alınır.
+      // iv.gun sonraki döneme taşan (SD) kısmı da içerdiğinden baz olarak kullanılmaz.
+      K = iv.isZabita ? zabitaYemekAlacagi(iz) : Math.max(0, yemekliGun - iz)
     }
 
     satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori })
