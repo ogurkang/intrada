@@ -1,0 +1,84 @@
+---
+description: AYY (Aylık Yemek Yeni) hesap motorunun kritik dosyaları için değişiklik yasağı ve kural kılavuzu. Bu dosyalara dokunmadan önce bu kuralı oku.
+globs:
+  - src/lib/ayy-hesap.ts
+  - src/lib/ayy-donem-havuz.ts
+  - src/lib/ayy-kayit-esik.ts
+  - src/lib/kesinti-actions.ts
+alwaysApply: false
+---
+
+# AYY Hesap Motoru — Değişiklik Yasağı ve Kural Kılavuzu
+
+Bu kural, AYY (Aylık Yemek Yeni) sisteminin hesap mantığını koruyan dosyalar için geçerlidir.
+Aşağıdaki dosyalara **kullanıcının açık onayı olmadan değişiklik yapma.**
+
+## Korunan dosyalar
+
+| Dosya | Rol |
+|-------|-----|
+| `src/lib/ayy-hesap.ts` | Ana hesap motoru |
+| `src/lib/ayy-donem-havuz.ts` | Havuz yükleme + `kayit_tarihi` filtreleri |
+| `src/lib/ayy-kayit-esik.ts` | Kayıt/kapanış eşik karşılaştırması |
+| `src/lib/kesinti-actions.ts` | Dönem aç/kapat + açılış kontrolleri |
+
+---
+
+## Asla bozulmaması gereken kurallar
+
+### 1. Havuz A üst sınırı (`ayy-donem-havuz.ts`)
+```ts
+q = q.lte('kayit_tarihi', donem.kapatildi_at ?? donem.bitis_tarihi)
+```
+- Kapalı dönemlerde üst sınır **`kapatildi_at`'tir**, `bitis_tarihi` değil.
+- Bunu `bitis_tarihi`'ne çevirmek, kapanış sonrası kayıtların eski döneme girmesine yol açar
+  ve `SD → OD` zinciri üzerinden sonraki dönemin `IZ` değerini şişirir.
+
+### 2. Alt sınır (önceki dönem eşiği)
+```ts
+q = prev.kapatildi_at
+  ? q.gt('kayit_tarihi', prev.kapatildi_at)
+  : q.gt('kayit_tarihi', prev.bitis_tarihi)
+```
+- Önceki dönemde `kapatildi_at` varsa o eşik kullanılır; yoksa `bitis_tarihi`.
+- Bu iki satır birlikte değiştirilmeden biri değiştirilmez.
+
+### 3. Zabıta K hesabı (`ayy-hesap.ts`)
+```ts
+K = iv.isZabita ? zabitaYemekAlacagi(iz) : Math.max(0, yemekliGun - iz)
+```
+- Baz değer `iz`'dir (bu dönemde kesilen gün), **`iv.gun`** veya **`hamIzin`** değildir.
+- `iv.gun` ve `hamIzin` sonraki döneme taşan günleri içerebilir; bunları baz almak `K > YG` hatasına yol açar.
+
+### 4. `zabitaYemekAlacagi` fonksiyonu
+```ts
+function zabitaYemekAlacagi(iz: number): number {
+  const net = 30 - iz
+  if (net >= 24) return 24
+  if (net > 0) return net
+  return 0
+}
+```
+- 30 günlük taban ve 24 günlük tavan değiştirilemez.
+
+### 5. Mehil izni `K` ve `IZ` mantığı
+- `K`, "mehil dönüşünden dönem sonuna kalan gün" ile hesaplanır; klasik `YG - IZ` değil.
+- `IZ = YG - K` olarak türetilir.
+- Mehil tespiti: `tur` alanında "mehil" geçiyorsa (büyük/küçük harf bağımsız).
+
+### 6. Arada kalan izin kuralı
+- `OD = 0`, önceki dönem sonrası kayıt, aktif dönem öncesi başlayıp biten izin → tam süre bu dönemde kesilir.
+
+### 7. Dönem açılış kontrolleri (`kesinti-actions.ts`)
+- Başka açık dönem olmamalı.
+- Önceki dönemin `kapatildi_at` boş olmamalı.
+
+---
+
+## Değişiklik yapmadan önce sor
+
+Herhangi bir değişiklik isteği gelirse önce şunu sor:
+> "Bu değişiklik `aylık yemek.md` dokümanındaki kurallardan hangisini etkiliyor?
+> Kullanıcı bu etkinin farkında mı?"
+
+Tam kural seti için `aylık yemek.md` dosyasını oku.
