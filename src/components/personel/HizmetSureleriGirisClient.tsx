@@ -414,6 +414,7 @@ export default function HizmetSureleriGirisClient({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-2 py-2 font-semibold text-slate-600 w-10">Sıra No</th>
+                <th className="text-left px-2 py-2 font-semibold text-slate-600 w-24">Sicil No</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[9rem]">Adı Soyadı</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[6rem]">Statü</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-32">T.C. Kimlik No</th>
