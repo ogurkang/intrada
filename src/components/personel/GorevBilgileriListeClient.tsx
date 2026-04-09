@@ -359,6 +359,7 @@ export default function GorevBilgileriListeClient({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-center px-3 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[140px]">Adı Soyadı</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[120px]">Statü</th>
@@ -373,15 +374,16 @@ export default function GorevBilgileriListeClient({
               <tbody className="divide-y divide-slate-100">
                 {filtreli.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-16 text-slate-400">
+                    <td colSpan={10} className="text-center py-16 text-slate-400">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
                 ) : (
-                  filtreli.map(p => {
+                  filtreli.map((p, idx) => {
                     if (!isKadro(p)) {
                       return (
                         <tr key={`firma-${p.id}`} className="bg-slate-50/80 hover:bg-slate-50">
+                          <td className="px-3 py-2.5 text-center text-slate-500 tabular-nums">{idx + 1}</td>
                           <td className="px-4 py-2.5 font-mono text-xs text-slate-500">
                             {p.sicil_no?.trim() || '—'}
                           </td>
@@ -408,6 +410,9 @@ export default function GorevBilgileriListeClient({
                     const duz = duzenlenenSicil === p.sicil_no
                     return (
                       <tr key={p.sicil_no} className={duz ? 'bg-blue-50' : 'hover:bg-slate-50'}>
+                        <td className="px-3 py-2.5 text-center text-slate-600 tabular-nums font-medium">
+                          {idx + 1}
+                        </td>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{p.sicil_no}</td>
                         <td className="px-4 py-2.5">
                           <Link
@@ -540,7 +545,7 @@ export default function GorevBilgileriListeClient({
           <table className="w-full text-xs sm:text-sm min-w-[980px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-10">#</th>
+                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-14">Sıra No</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-24">Sicil</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[7rem]">Adı Soyadı</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[6rem]">Statü</th>

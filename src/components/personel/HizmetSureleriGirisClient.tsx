@@ -293,6 +293,7 @@ export default function HizmetSureleriGirisClient({
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-center px-3 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[160px]">Adı Soyadı</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[100px]">Statü</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">T.C. Kimlik No</th>
@@ -305,7 +306,7 @@ export default function HizmetSureleriGirisClient({
               <tbody className="divide-y divide-slate-100">
                 {filtreli.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-slate-400">
+                    <td colSpan={9} className="text-center py-16 text-slate-400">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -319,6 +320,7 @@ export default function HizmetSureleriGirisClient({
                         className={duz ? 'bg-blue-50' : blok ? 'bg-amber-50/50' : 'hover:bg-slate-50'}
                       >
                         <td className="px-3 py-2.5 text-center text-slate-500 tabular-nums">{idx + 1}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-600 tabular-nums">{p.sicil_no}</td>
                         <td className="px-4 py-2.5">
                           <Link
                             href={personelDetayHref(p)}
@@ -423,7 +425,7 @@ export default function HizmetSureleriGirisClient({
             <tbody className="divide-y divide-slate-100">
               {sirali.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -434,6 +436,7 @@ export default function HizmetSureleriGirisClient({
                   return (
                     <tr key={p.sicil_no} className={degisti ? 'bg-blue-50' : blok ? 'bg-amber-50/50' : 'hover:bg-slate-50'}>
                       <td className="px-2 py-1.5 text-center text-slate-500 tabular-nums">{i + 1}</td>
+                      <td className="px-2 py-1.5 font-mono text-slate-600 tabular-nums text-xs">{p.sicil_no}</td>
                       <td className="px-2 py-1.5 font-medium text-slate-800">
                         {p.ad_soyad}
                         {blok && (
