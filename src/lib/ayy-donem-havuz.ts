@@ -111,9 +111,11 @@ async function queryIzinA(
       q = prev.kapatildi_at
         ? q.gt('kayit_tarihi', prev.kapatildi_at)
         : q.gt('kayit_tarihi', prev.bitis_tarihi)
-      q = q.lte('kayit_tarihi', donem.bitis_tarihi)
+      // Kapalı dönemlerde üst sınır kapatildi_at; açık dönemlerde bitis_tarihi.
+      // Böylece kapanıştan sonra kaydedilen izinler o döneme girmez.
+      q = q.lte('kayit_tarihi', donem.kapatildi_at ?? donem.bitis_tarihi)
     } else {
-      q = q.gte('kayit_tarihi', donem.baslangic_tarihi).lte('kayit_tarihi', donem.bitis_tarihi)
+      q = q.gte('kayit_tarihi', donem.baslangic_tarihi).lte('kayit_tarihi', donem.kapatildi_at ?? donem.bitis_tarihi)
     }
     const { data, error } = await q
     if (error) throw new Error(error.message)
