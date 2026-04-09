@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import HizmetSureleriGirisClient from '@/components/personel/HizmetSureleriGirisClient'
 import type { Tables } from '@/types/database'
-import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
+import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import { hizmetSureleriSatirKaydet, hizmetSureleriTopluKaydet } from './actions'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -23,7 +23,6 @@ export default async function HizmetSureleriGirisPage() {
     { data: calisanRaw, error },
     { data: phRaw },
     { data: tanimStatuRaw },
-    { data: firmaSicilRaw },
   ] = await Promise.all([
     supabase
       .from('calisan')
@@ -36,14 +35,7 @@ export default async function HizmetSureleriGirisPage() {
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    supabase.from('firma_calisanlar').select('sicil_no, e_posta').not('sicil_no', 'is', null),
   ])
-
-  const firmaSicilSet = new Set(
-    filterOutHiddenSystemByEmail(firmaSicilRaw ?? [])
-      .map(r => String(r.sicil_no ?? '').trim())
-      .filter(Boolean),
-  )
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
   for (const r of phRaw ?? []) {
@@ -60,9 +52,7 @@ export default async function HizmetSureleriGirisPage() {
 
   const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
 
-  const kadroAday = calisanFiltreli.filter(
-    c => aktifSiciller.has(c.sicil_no) && !firmaSicilSet.has(c.sicil_no.trim()),
-  )
+  const kadroAday = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
 
   const sicilList = kadroAday.map(c => c.sicil_no)
   const kadroByAsil = new Map<string, KadroRaporRow[]>()

@@ -217,8 +217,7 @@ export default function HizmetSureleriGirisClient({
             süresi güncellenmez (kişisel bilgiler ile aynı kural).
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Firma personel kaydıyla aynı sicile sahip çalışanlar bu listede yer almaz. Sıralama Tanımlar →
-            Statü ile uyumludur.
+            Sıralama Tanımlar → Statü ile uyumludur.
           </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
