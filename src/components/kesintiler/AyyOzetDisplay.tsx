@@ -59,7 +59,7 @@ function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; et
               <th className="text-left px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Unvan</th>
               <th className="text-center px-3 py-3 font-semibold text-slate-600 w-28 bg-blue-50 text-blue-700">Önceki Dönemden</th>
               <th className="text-center px-3 py-3 font-semibold text-slate-600 w-20">Ham İzin</th>
-              <th className="text-center px-3 py-3 font-semibold text-slate-600 w-24 bg-orange-50 text-orange-700">Kesintilen İzin</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 w-24 bg-orange-50 text-orange-700">Kesilen İzin</th>
               <th className="text-center px-3 py-3 font-semibold text-slate-600 w-24">Yemekli Gün</th>
               <th className="text-center px-3 py-3 font-semibold text-slate-600 w-28 bg-red-50 text-red-700">Yemek Alacağı Gün</th>
               <th className="text-center px-3 py-3 font-semibold text-slate-600 w-24 bg-amber-50 text-amber-700">Sonraki Döneme</th>
@@ -169,7 +169,7 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi }: Props) {
         {[
           { ad: 'Önceki Dönemden (OD)', renk: 'bg-blue-100 text-blue-700' },
           { ad: 'Ham İzin', renk: 'bg-slate-100 text-slate-600' },
-          { ad: 'Kesintilen İzin (İZ)', renk: 'bg-orange-100 text-orange-700' },
+          { ad: 'Kesilen İzin (İZ)', renk: 'bg-orange-100 text-orange-700' },
           { ad: 'Yemekli Gün (YG)', renk: 'bg-slate-100 text-slate-600' },
           { ad: 'Yemek Alacağı Gün', renk: 'bg-red-100 text-red-700' },
           { ad: 'Sonraki Döneme (SD)', renk: 'bg-amber-100 text-amber-700' },

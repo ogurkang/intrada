@@ -185,7 +185,7 @@ function zabitaYemekAlacagi(iz: number): number {
 function satirlariPersoneldeTopla(
   satirlar: AyyHesapSatir[],
 ): AyyPersonelOzet[] {
-  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number; toplamK: number; mehilVar: boolean }>()
+  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number; toplamK: number }>()
 
   for (const s of satirlar) {
     const mevcut = map.get(s.sicil_no)
@@ -203,7 +203,6 @@ function satirlariPersoneldeTopla(
         SD:       0,
         gelecekSD: s.SD,
         toplamK: s.K,
-        mehilVar: isMehilIzin(s.tur),
       })
     } else {
       mevcut.OD += s.OD
@@ -211,18 +210,13 @@ function satirlariPersoneldeTopla(
       mevcut.hamIzin += s.hamIzin ?? 0
       mevcut.gelecekSD += s.SD
       mevcut.toplamK += s.K
-      mevcut.mehilVar = mevcut.mehilVar || isMehilIzin(s.tur)
     }
   }
 
   const arr: AyyPersonelOzet[] = []
   let seq = 1
   for (const p of map.values()) {
-    const ham = Math.max(0, (p.YG || 0) - (p.IZ || 0))
-    // Zabıta: 24 tabanı korunur; kesinti tabanı personelin toplam izinine göre belirlenir.
-    // Bu sayede dönem öncesi başlayıp döneme dahil olan izinlerde (örn. 14 gün) eksik kesinti oluşmaz.
-    const zabitaBazIzin = Math.max(p.IZ || 0, p.hamIzin || 0)
-    const K = p.mehilVar ? Math.max(0, p.toplamK || 0) : (p.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : ham)
+    const K = Math.max(0, p.toplamK || 0)
     const SD = (p.gelecekSD || 0) + Math.max(0, (p.IZ || 0) - (p.YG || 0))
     arr.push({ sira_no_seq: seq++, sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, unvan: p.unvan, isZabita: p.isZabita, OD: p.OD, IZ: p.IZ, hamIzin: p.hamIzin ?? 0, YG: p.YG, K, SD })
   }
@@ -360,7 +354,9 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
         sd = takvimGunSayisi(new Date(bitMs + 86_400_000), new Date(sonGunMs))
       }
     } else {
-      const zabitaBazIzin = Math.max(iz, iv.gun || 0)
+      // Zabıta özel: önceki dönemden devir (OD>0) varsa ham izin etkisi korunur;
+      // bu dönemde başlayıp sonraki döneme devreden akışta (OD=0, SD>0) dönem içi kesilen (IZ) baz alınır.
+      const zabitaBazIzin = od > 0 ? Math.max(iz, iv.gun || 0) : iz
       K = iv.isZabita ? zabitaYemekAlacagi(zabitaBazIzin) : Math.max(0, yemekliGun - iz)
     }
 
