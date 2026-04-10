@@ -35,7 +35,7 @@ export default function ToplamRaporluMemurlarClient({ yil, baslangicStr, bitisSt
       ['Toplam Raporlu Memurlar'],
       ['Yıl: ' + yil],
       [],
-      ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Toplam Rapor Günü'],
+      ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Toplam Rapor/Heyet Günü'],
       ...satirlar.map(s => [String(s.siraNo), s.sicil_no, s.ad_soyad, String(s.rapor_gun)]),
     ]
     const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n')
@@ -54,7 +54,7 @@ export default function ToplamRaporluMemurlarClient({ yil, baslangicStr, bitisSt
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Toplam Raporlu Memurlar</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            <strong>Statü:</strong> Zabıta Müdürlüğü personeli. <strong>İzin türü:</strong> Cari yılda en az 1 gün Rapor almış olanlar; toplam güne göre azalan sırada listelenir.
+            <strong>Statü:</strong> Zabıta Müdürlüğü personeli. <strong>İzin türü:</strong> Cari yılda en az 1 gün Rapor veya Heyet Raporu almış olanlar; toplam güne göre azalan sırada listelenir.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export default function ToplamRaporluMemurlarClient({ yil, baslangicStr, bitisSt
         </p>
         {satirlar.length === 0 ? (
           <div className="px-4 py-12 text-center text-slate-500">
-            Cari yılda ({yil}) en az 1 gün Rapor alan Zabıta Müdürlüğü personeli bulunamadı.
+            Cari yılda ({yil}) en az 1 gün Rapor veya Heyet Raporu alan Zabıta Müdürlüğü personeli bulunamadı.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -91,7 +91,7 @@ export default function ToplamRaporluMemurlarClient({ yil, baslangicStr, bitisSt
                   <th className="px-4 py-3 text-left font-semibold text-slate-600 w-20">Sıra No</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600 w-28">Sicil No</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600">Adı Soyadı</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 w-36">Toplam Rapor Günü</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 w-36">Toplam Rapor/Heyet Günü</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

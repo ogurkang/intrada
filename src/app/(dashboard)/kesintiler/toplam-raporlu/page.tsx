@@ -37,15 +37,15 @@ export default async function ToplamRaporluMemurlarPage() {
     )
   }
 
-  // 2. İzin hareketleri: Sadece Rapor türü, İptal Edildi hariç (Taslak, Onaylandı, Değiştirildi dahil)
+  // 2. İzin hareketleri: Rapor + Heyet Raporu, İptal Edildi hariç
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sicil_no, tur, ayrilis, baslama, gun')
     .in('sicil_no', Array.from(zabitaSiciller))
     .neq('durum', 'İptal Edildi')
-    .eq('tur', 'Rapor')
+    .in('tur', ['Rapor', 'Heyet Raporu'])
 
-  // 3. Cari yıl içindeki rapor günlerini hesapla (takvim günü, Başlama günü hariç - GAS mantığı)
+  // 3. Cari yıl içindeki rapor/heyet günlerini hesapla (takvim günü, Başlama günü hariç - GAS mantığı)
   const raporGunBySicil: Record<string, number> = {}
   const MS_PER_DAY = 24 * 60 * 60 * 1000
   for (const iz of izinRaw ?? []) {
@@ -66,7 +66,7 @@ export default async function ToplamRaporluMemurlarPage() {
     raporGunBySicil[iz.sicil_no] = (raporGunBySicil[iz.sicil_no] ?? 0) + Math.max(0, gun)
   }
 
-  // 4. En az 1 gün rapor alanları filtrele, azalan sırala
+  // 4. En az 1 gün rapor/heyet alanları filtrele, azalan sırala
   const sicillerWithRapor = Array.from(zabitaSiciller).filter(s => (raporGunBySicil[s] ?? 0) >= 1)
   sicillerWithRapor.sort((a, b) => (raporGunBySicil[b] ?? 0) - (raporGunBySicil[a] ?? 0))
 
