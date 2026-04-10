@@ -16,13 +16,6 @@ interface Props {
   satirlar: ToplamRaporluSatir[]
 }
 
-function csvEscape(s: string): string {
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return '"' + s.replace(/"/g, '""') + '"'
-  }
-  return s
-}
-
 function tarihTr(s: string) {
   if (!s) return '—'
   const d = new Date(s)
@@ -31,21 +24,7 @@ function tarihTr(s: string) {
 
 export default function ToplamRaporluMemurlarClient({ yil, baslangicStr, bitisStr, satirlar }: Props) {
   function handleExcelIndir() {
-    const rows = [
-      ['Toplam Raporlu Memurlar'],
-      ['Yıl: ' + yil],
-      [],
-      ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Toplam Rapor/Heyet Günü'],
-      ...satirlar.map(s => [String(s.siraNo), s.sicil_no, s.ad_soyad, String(s.rapor_gun)]),
-    ]
-    const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n')
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Toplam_Raporlu_Memurlar_${yil}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    window.location.href = '/api/kesintiler/toplam-raporlu/excel'
   }
 
   return (
