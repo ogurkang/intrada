@@ -18,15 +18,18 @@ COMMENT ON COLUMN public.ayy_sd_override.sicil_no    IS 'Personel sicil no.';
 COMMENT ON COLUMN public.ayy_sd_override.sd_override IS 'Bu dönemden sonraki döneme devredecek gün sayısı (0 = devir yok).';
 COMMENT ON COLUMN public.ayy_sd_override.aciklama    IS 'Neden yapıldığına dair açıklama.';
 
--- 436 sicil numaralı personel, id=5 dönemi: 2 günlük SD sıfırla.
--- Ayrılış tarihi 06.01.2026 olarak düzeltildi; ancak dönem id=1 kapandıktan sonra
--- kayıt yapıldığı için fark kapalı döneme giremedi ve hesapta 2 günlük sapma oluştu.
+-- 436 sicil numaralı personel, id=5 dönemi için OD manuel düzeltmesi.
+-- Uzun izin (ayrilis 06.01.2026, baslama 02.04.2026) dönem id=1'den başlayıp
+-- id=2 → id=3 → id=5 zinciriyle akması gerekirken hesap 0 gösterdi.
+-- Matematiksel beklenti: id=3 sonunda sd≈13 gün; buna 1 günlük tatil/kenar farkı
+-- eklendiğinde OD=14 ve toplam IZ=21=YG olarak K=0 elde edilir.
+-- Bu override donem_id=5 için sd=14 olarak ayarlar; böylece id=5'te OD=14 akar.
 INSERT INTO public.ayy_sd_override (donem_id, sicil_no, sd_override, aciklama)
 VALUES (
   5,
   '436',
-  0,
-  '06.01.2026 ayrilis duzeltmesi: donem id=1 kapali oldugu icin 2 gunluk fark bir onceki doneme giremedi. id=5 sonrasi SD sifirlanarak zincir kapatildi.'
+  14,
+  '06.01.2026-02.04.2026 izni donem zincirinde OD=0 gorundu, matematiksel beklenti OD=13-14. sd_override=14 ile id=5 doneminde OD=14, IZ=21=YG, K=0 saglanir.'
 )
 ON CONFLICT (donem_id, sicil_no) DO UPDATE
   SET sd_override = EXCLUDED.sd_override,
