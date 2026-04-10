@@ -185,6 +185,27 @@ export async function ayySdSonrakiDonemIcin(
   for (const s of sonuc.satirlar) {
     if (s.SD > 0) m[s.sira_no] = s.SD
   }
+
+  // Manuel SD düzeltmeleri: belirli dönem+sicil için SD zorla atanır (genellikle 0).
+  const { data: overrides } = await supabase
+    .from('ayy_sd_override')
+    .select('sicil_no, sd_override')
+    .eq('donem_id', donemId)
+
+  if (overrides && overrides.length > 0) {
+    const overrideMap = new Map<string, number>()
+    for (const ov of overrides) {
+      overrideMap.set(String(ov.sicil_no ?? '').trim(), ov.sd_override ?? 0)
+    }
+    for (const s of sonuc.satirlar) {
+      if (overrideMap.has(s.sicil_no)) {
+        delete m[s.sira_no]
+        const yeniSd = overrideMap.get(s.sicil_no)!
+        if (yeniSd > 0) m[s.sira_no] = yeniSd
+      }
+    }
+  }
+
   memo.sdSonrakiDoneme.set(donemId, m)
   return m
 }
