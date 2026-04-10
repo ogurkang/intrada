@@ -32,7 +32,7 @@ export async function calisanEkle(
   const gorev_turu_aciklama =
     gorev_turu === 'Geçici Görevlendirme' ? str('gorev_turu_aciklama') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
-    return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
+    return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
   const hizmetDondur = gorev_turu === 'Aylıksız İzin'
 

@@ -5,7 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
-import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster } from '@/lib/gorev-bilgileri'
+import {
+  GOREV_DURUMU_OPTIONS,
+  GOREV_TURU_OPTIONS,
+  gorevTuruAciklamaGoster,
+  gorevTuruTarihZorunlu,
+} from '@/lib/gorev-bilgileri'
 
 type Calisan = Tables<'calisan'>
 
@@ -31,7 +36,7 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
 
   const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
-  const gorevTarihGoster = gorevTuru === 'Aylıksız İzin' || gorevTuru === 'Geçici Görevlendirme'
+  const gorevTarihGoster = gorevTuruTarihZorunlu(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

@@ -27,7 +27,7 @@ function payloadFromForm(fd: FormData): { ok: true; payload: GorevBilgiSatir } |
   const gorev_turu_aciklama =
     gorev_turu === 'Geçici Görevlendirme' ? str(fd, 'gorev_turu_aciklama') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
-    return { ok: false, hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
+    return { ok: false, hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
   return {
     ok: true,
@@ -73,7 +73,7 @@ export async function gorevBilgileriSatirKaydet(
   if (!parsed.ok) return { hata: parsed.hata }
   const p = normalizeSatir(parsed.payload)
   if (gorevTuruTarihZorunlu(p.gorev_turu) && !p.gorev_turu_tarihi) {
-    return { hata: 'Aylıksız izin veya geçici görevlendirme için tarih seçilmelidir.' }
+    return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
 
   const supabase = await createClient()
@@ -103,7 +103,7 @@ export async function gorevBilgileriTopluKaydet(
   for (const raw of satirlar) {
     const s = normalizeSatir(raw)
     if (gorevTuruTarihZorunlu(s.gorev_turu) && !s.gorev_turu_tarihi) {
-      return { hata: `${s.sicil_no}: Aylıksız izin veya geçici görevlendirme için tarih zorunludur.` }
+      return { hata: `${s.sicil_no}: Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih zorunludur.` }
     }
     const { error } = await supabase
       .from('calisan')

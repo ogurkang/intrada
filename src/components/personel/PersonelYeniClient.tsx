@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
 import { personelDetayHref } from '@/lib/personel-link'
-import { GOREV_DURUMU_OPTIONS, GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster } from '@/lib/gorev-bilgileri'
+import {
+  GOREV_DURUMU_OPTIONS,
+  GOREV_TURU_OPTIONS,
+  gorevTuruAciklamaGoster,
+  gorevTuruTarihZorunlu,
+} from '@/lib/gorev-bilgileri'
 
 const CINSIYET = ['Erkek', 'Kadın']
 const KAN_GRUBU = ['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-']
@@ -16,7 +21,7 @@ export default function PersonelYeniClient() {
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [gorevTuru, setGorevTuru] = useState('Çalışan')
-  const gorevTarihGoster = gorevTuru === 'Aylıksız İzin' || gorevTuru === 'Geçici Görevlendirme'
+  const gorevTarihGoster = gorevTuruTarihZorunlu(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
 
