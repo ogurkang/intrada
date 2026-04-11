@@ -8,7 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ayyHesapla, type AyyIzinRow } from '@/lib/ayy-hesap'
+import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 
 export type AyyDonemRow = {
@@ -324,4 +324,89 @@ export async function ayyIzinDbToAyyIzinRow(
 
 export function createAyyHavuzMemo(): HavuzMemo {
   return { pool: new Map(), sdSonrakiDoneme: new Map() }
+}
+
+/**
+ * Statü bazlı AYY personel:
+ * calisan.gorev_turu ∈ {'Aylıksız İzin', 'Yarı Zamanlı', 'Geçici Görevlendirme'}
+ * ile birlikte Memur/Sözleşmeli kesitimine giren aktif çalışanlar.
+ *
+ * Geçici Görevlendirme: yalnızca gorev_turu_yemek_hakki = false (hayır) olanlar dahil edilir.
+ * Aylıksız İzin ve Yarı Zamanlı: tüm dahil edilir.
+ */
+export async function ayyLoadStatuBazliPersonel(
+  supabase: SupabaseClient,
+  memurSet: Set<string>,
+): Promise<AyyStatuBazliPersonel[]> {
+  if (memurSet.size === 0) return []
+
+  const sicilList = [...memurSet]
+  const zabitaMuaf = await ayyZabitaNormalKesintiMuafSet(supabase)
+
+  // calisan'dan statu bazlı personeli al
+  // Not: gorev_turu_yemek_hakki ve gorev_turu_bitis_tarihi yeni kolonlardır;
+  // Supabase TS tipi henüz bilmediğinden (unknown) cast edilir.
+  type CalisanStatuRow = {
+    sicil_no: string
+    ad_soyad: string | null
+    gorev_turu: string
+    gorev_turu_tarihi: string | null
+    gorev_turu_yemek_hakki: boolean | null
+    gorev_turu_bitis_tarihi: string | null
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const calisanQueryResult = await (supabase as any)
+    .from('calisan')
+    .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_yemek_hakki, gorev_turu_bitis_tarihi')
+    .in('sicil_no', sicilList)
+    .in('gorev_turu', ['Aylıksız İzin', 'Yarı Zamanlı', 'Geçici Görevlendirme'])
+  const calisanRaw: CalisanStatuRow[] | null = calisanQueryResult.data ?? null
+
+  if (!calisanRaw || calisanRaw.length === 0) return []
+
+  // Geçici Görevlendirme: yalnızca yemek hakkı Hayır (false) olanlar dahil
+  const filtered: CalisanStatuRow[] = calisanRaw.filter(c => {
+    if (c.gorev_turu === 'Geçici Görevlendirme') {
+      return c.gorev_turu_yemek_hakki === false
+    }
+    return true
+  })
+
+  if (filtered.length === 0) return []
+
+  const filteredSiciller = filtered.map(c => c.sicil_no)
+
+  // zabıta tespiti
+  const zabitaSet = new Set<string>()
+  const unvanMap: Record<string, string> = {}
+  for (const part of chunk(filteredSiciller, IN_CHUNK)) {
+    const { data: kh } = await supabase
+      .from('kadro_hareketleri')
+      .select('asil, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
+      .in('asil', part)
+      .is('ayrilis_tarihi', null)
+    for (const k of kh ?? []) {
+      const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
+      const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
+      const isZabita = unvan.includes('zabıta') || unvan.includes('zabita') ||
+                      mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')
+      if (isZabita && k.asil) zabitaSet.add(k.asil)
+    }
+    const { data: pk } = await supabase
+      .from('personel_kadro_ozet')
+      .select('sicil_no, kadro_unvani')
+      .in('sicil_no', part)
+    ;(pk ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
+  }
+
+  return filtered.map(c => ({
+    sicil_no:                c.sicil_no,
+    ad_soyad:                c.ad_soyad ?? c.sicil_no,
+    unvan:                   unvanMap[c.sicil_no] ?? '',
+    isZabita:                zabitaSet.has(c.sicil_no) && !zabitaMuaf.has(c.sicil_no.trim()),
+    gorev_turu:              c.gorev_turu,
+    gorev_turu_tarihi:       c.gorev_turu_tarihi ?? null,
+    gorev_turu_bitis_tarihi: c.gorev_turu_bitis_tarihi ?? null,
+    gorev_turu_yemek_hakki:  c.gorev_turu_yemek_hakki ?? null,
+  }))
 }

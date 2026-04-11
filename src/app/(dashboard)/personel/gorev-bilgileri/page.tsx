@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import GorevBilgileriListeClient from '@/components/personel/GorevBilgileriListeClient'
+import GorevBilgileriListeClient, { type GorevListeSatir } from '@/components/personel/GorevBilgileriListeClient'
 import type { Tables } from '@/types/database'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
 import { gorevBilgileriSatirKaydet, gorevBilgileriTopluKaydet } from './actions'
@@ -25,17 +25,27 @@ export default async function GorevBilgileriPage() {
   const supabase = await createClient()
   const D = new Date().toISOString().slice(0, 10)
 
+  type CalisanGorevRow = {
+    sicil_no: string; public_id: string | null; ad_soyad: string
+    gorev_yeri: string | null; gorev_turu: string | null; gorev_turu_tarihi: string | null
+    gorev_turu_bitis_tarihi: string | null; gorev_turu_aciklama: string | null
+    gorev_turu_yemek_hakki: boolean | null; gorev_durumu: string | null
+    engelli_oran: number | null; engelli_baslangic: string | null; engelli_bitis: string | null
+    gorev_durumu_note?: never  // unused, just for typing
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const calisanQuery = (supabase as any)
+    .from('calisan')
+    .select('sicil_no, public_id, ad_soyad, gorev_yeri, gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi, gorev_turu_aciklama, gorev_turu_yemek_hakki, gorev_durumu, engelli_oran, engelli_baslangic, engelli_bitis')
+    .order('ad_soyad')
+
   const [
-    { data: calisanRaw, error },
+    calisanResult,
     { data: phRaw },
     { data: tanimStatuRaw },
   ] = await Promise.all([
-    supabase
-      .from('calisan')
-      .select(
-        'sicil_no, public_id, ad_soyad, gorev_yeri, gorev_turu, gorev_turu_tarihi, gorev_turu_aciklama, gorev_durumu',
-      )
-      .order('ad_soyad'),
+    calisanQuery as Promise<{ data: CalisanGorevRow[] | null; error: { message: string } | null }>,
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi')
@@ -43,13 +53,16 @@ export default async function GorevBilgileriPage() {
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
   ])
 
+  const { data: calisanRaw, error } = calisanResult
+
   const sonAyrilisPerSicil = new Map<string, string | null>()
   for (const r of phRaw ?? []) {
     if (!sonAyrilisPerSicil.has(r.sicil_no)) {
       sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
     }
   }
-  const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw as any ?? []) as CalisanGorevRow[]
   const aktifSiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
@@ -121,7 +134,7 @@ export default async function GorevBilgileriPage() {
 
   const kadroSatirlarFiltered = kadroSatirlar.filter(k => !cikacakKadroSicil.has(k.sicil_no.trim()))
 
-  const data = [...kadroSatirlarFiltered, ...firmaSatirlar].sort((a, b) =>
+  const data = ([...kadroSatirlarFiltered, ...firmaSatirlar] as GorevListeSatir[]).sort((a, b) =>
     karsilastirStatuSonraSicilAd(
       {
         statuEtiket: a.statuEtiket,

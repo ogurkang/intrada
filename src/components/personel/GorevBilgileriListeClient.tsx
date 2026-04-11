@@ -12,6 +12,9 @@ import {
   GOREV_TURU_OPTIONS,
   gorevTuruAciklamaGoster,
   gorevTuruTarihZorunlu,
+  gorevTuruBitisGoster,
+  gorevTuruYemekHakkiGoster,
+  gorevDurumuEngellimi,
 } from '@/lib/gorev-bilgileri'
 import type { GorevBilgiSatir } from '@/app/(dashboard)/personel/gorev-bilgileri/actions'
 import { karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
@@ -29,7 +32,13 @@ export type GorevListeKadroSatir = {
   | 'gorev_turu_tarihi'
   | 'gorev_turu_aciklama'
   | 'gorev_durumu'
->
+> & {
+  gorev_turu_bitis_tarihi?: string | null
+  gorev_turu_yemek_hakki?: boolean | null
+  engelli_oran?: number | null
+  engelli_baslangic?: string | null
+  engelli_bitis?: string | null
+}
 
 export type GorevListeFirmaSatir = {
   kind: 'firma'
@@ -51,8 +60,13 @@ type GorevAlanlari =
   | 'gorev_yeri'
   | 'gorev_turu'
   | 'gorev_turu_tarihi'
+  | 'gorev_turu_bitis_tarihi'
   | 'gorev_turu_aciklama'
+  | 'gorev_turu_yemek_hakki'
   | 'gorev_durumu'
+  | 'engelli_oran'
+  | 'engelli_baslangic'
+  | 'engelli_bitis'
 
 function tarihFormatla(t: string | null) {
   if (!t) return '—'
@@ -127,8 +141,13 @@ export default function GorevBilgileriListeClient({
         gorev_yeri: p.gorev_yeri ?? '',
         gorev_turu: (p.gorev_turu ?? 'Çalışan').trim() || 'Çalışan',
         gorev_turu_tarihi: p.gorev_turu_tarihi ? String(p.gorev_turu_tarihi).slice(0, 10) : '',
+        gorev_turu_bitis_tarihi: p.gorev_turu_bitis_tarihi ? String(p.gorev_turu_bitis_tarihi).slice(0, 10) : '',
         gorev_turu_aciklama: p.gorev_turu_aciklama ?? '',
+        gorev_turu_yemek_hakki: p.gorev_turu_yemek_hakki === true ? 'true' : p.gorev_turu_yemek_hakki === false ? 'false' : '',
         gorev_durumu: p.gorev_durumu ?? 'Diğer',
+        engelli_oran: p.engelli_oran != null ? String(p.engelli_oran) : '',
+        engelli_baslangic: p.engelli_baslangic ? String(p.engelli_baslangic).slice(0, 10) : '',
+        engelli_bitis: p.engelli_bitis ? String(p.engelli_bitis).slice(0, 10) : '',
       },
     })
   }
@@ -139,8 +158,13 @@ export default function GorevBilgileriListeClient({
     if (key === 'gorev_yeri') return p.gorev_yeri ?? ''
     if (key === 'gorev_turu') return (p.gorev_turu ?? 'Çalışan').trim() || 'Çalışan'
     if (key === 'gorev_turu_tarihi') return p.gorev_turu_tarihi ? String(p.gorev_turu_tarihi).slice(0, 10) : ''
+    if (key === 'gorev_turu_bitis_tarihi') return p.gorev_turu_bitis_tarihi ? String(p.gorev_turu_bitis_tarihi).slice(0, 10) : ''
     if (key === 'gorev_turu_aciklama') return p.gorev_turu_aciklama ?? ''
+    if (key === 'gorev_turu_yemek_hakki') return p.gorev_turu_yemek_hakki === true ? 'true' : p.gorev_turu_yemek_hakki === false ? 'false' : ''
     if (key === 'gorev_durumu') return p.gorev_durumu ?? 'Diğer'
+    if (key === 'engelli_oran') return p.engelli_oran != null ? String(p.engelli_oran) : ''
+    if (key === 'engelli_baslangic') return p.engelli_baslangic ? String(p.engelli_baslangic).slice(0, 10) : ''
+    if (key === 'engelli_bitis') return p.engelli_bitis ? String(p.engelli_bitis).slice(0, 10) : ''
     return ''
   }
 
@@ -150,7 +174,18 @@ export default function GorevBilgileriListeClient({
       cur[key] = deger
       if (key === 'gorev_turu' && deger === 'Çalışan') {
         cur.gorev_turu_tarihi = ''
+        cur.gorev_turu_bitis_tarihi = ''
         cur.gorev_turu_aciklama = ''
+        cur.gorev_turu_yemek_hakki = ''
+      }
+      if (key === 'gorev_turu' && deger !== 'Geçici Görevlendirme') {
+        cur.gorev_turu_aciklama = ''
+        cur.gorev_turu_yemek_hakki = ''
+      }
+      if (key === 'gorev_durumu' && deger !== 'Engelli') {
+        cur.engelli_oran = ''
+        cur.engelli_baslangic = ''
+        cur.engelli_bitis = ''
       }
       return { ...prev, [p.sicil_no]: cur }
     })
@@ -161,8 +196,20 @@ export default function GorevBilgileriListeClient({
     return gorevTuruTarihZorunlu(t)
   }
 
+  function inlineBitisGoster(p: GorevListeKadroSatir): boolean {
+    return gorevTuruBitisGoster(inlineDeger(p, 'gorev_turu'))
+  }
+
   function inlineAciklamaGoster(p: GorevListeKadroSatir): boolean {
     return gorevTuruAciklamaGoster(inlineDeger(p, 'gorev_turu'))
+  }
+
+  function inlineYemekHakkiGoster(p: GorevListeKadroSatir): boolean {
+    return gorevTuruYemekHakkiGoster(inlineDeger(p, 'gorev_turu'))
+  }
+
+  function inlineEngelliGoster(p: GorevListeKadroSatir): boolean {
+    return gorevDurumuEngellimi(inlineDeger(p, 'gorev_durumu'))
   }
 
   async function handleInlineKaydet(p: GorevListeKadroSatir) {
@@ -173,8 +220,13 @@ export default function GorevBilgileriListeClient({
     fd.set('gorev_yeri', v.gorev_yeri ?? '')
     fd.set('gorev_turu', v.gorev_turu ?? 'Çalışan')
     fd.set('gorev_turu_tarihi', inlineTarihGoster(p) ? (v.gorev_turu_tarihi ?? '') : '')
+    fd.set('gorev_turu_bitis_tarihi', inlineBitisGoster(p) ? (v.gorev_turu_bitis_tarihi ?? '') : '')
     fd.set('gorev_turu_aciklama', inlineAciklamaGoster(p) ? (v.gorev_turu_aciklama ?? '') : '')
+    fd.set('gorev_turu_yemek_hakki', inlineYemekHakkiGoster(p) ? (v.gorev_turu_yemek_hakki ?? '') : '')
     fd.set('gorev_durumu', v.gorev_durumu ?? 'Diğer')
+    fd.set('engelli_oran', inlineEngelliGoster(p) ? (v.engelli_oran ?? '') : '')
+    fd.set('engelli_baslangic', inlineEngelliGoster(p) ? (v.engelli_baslangic ?? '') : '')
+    fd.set('engelli_bitis', inlineEngelliGoster(p) ? (v.engelli_bitis ?? '') : '')
     startTransition(async () => {
       const res = await onSatirKaydet(p.sicil_no, fd)
       if (res.hata) setHata(res.hata)
@@ -203,7 +255,9 @@ export default function GorevBilgileriListeClient({
     if (key === 'gorev_yeri') return p.gorev_yeri ?? ''
     if (key === 'gorev_turu') return (p.gorev_turu ?? 'Çalışan').trim() || 'Çalışan'
     if (key === 'gorev_turu_tarihi') return p.gorev_turu_tarihi ? String(p.gorev_turu_tarihi).slice(0, 10) : ''
+    if (key === 'gorev_turu_bitis_tarihi') return p.gorev_turu_bitis_tarihi ? String(p.gorev_turu_bitis_tarihi).slice(0, 10) : ''
     if (key === 'gorev_turu_aciklama') return p.gorev_turu_aciklama ?? ''
+    if (key === 'gorev_turu_yemek_hakki') return p.gorev_turu_yemek_hakki === true ? 'true' : p.gorev_turu_yemek_hakki === false ? 'false' : ''
     if (key === 'gorev_durumu') return p.gorev_durumu ?? 'Diğer'
     return ''
   }
@@ -212,8 +266,16 @@ export default function GorevBilgileriListeClient({
     return gorevTuruTarihZorunlu(topluDegerAl(p, 'gorev_turu'))
   }
 
+  function topluBitisGoster(p: GorevListeKadroSatir): boolean {
+    return gorevTuruBitisGoster(topluDegerAl(p, 'gorev_turu'))
+  }
+
   function topluAciklamaGoster(p: GorevListeKadroSatir): boolean {
     return gorevTuruAciklamaGoster(topluDegerAl(p, 'gorev_turu'))
+  }
+
+  function topluYemekHakkiGoster(p: GorevListeKadroSatir): boolean {
+    return gorevTuruYemekHakkiGoster(topluDegerAl(p, 'gorev_turu'))
   }
 
   function handleTopluKaydet() {
@@ -231,24 +293,20 @@ export default function GorevBilgileriListeClient({
       const gorev_turu = (l.gorev_turu ?? p.gorev_turu ?? 'Çalışan').trim() || 'Çalışan'
       const gorev_yeri = l.gorev_yeri !== undefined ? (l.gorev_yeri.trim() || null) : (p.gorev_yeri?.trim() || null)
       const gorev_durumu = (l.gorev_durumu ?? p.gorev_durumu ?? 'Diğer').trim() || 'Diğer'
-      let gorev_turu_tarihi: string | null
-      let gorev_turu_aciklama: string | null
-      if (gorev_turu === 'Çalışan') {
-        gorev_turu_tarihi = null
-        gorev_turu_aciklama = null
-      } else {
-        const raw =
-          l.gorev_turu_tarihi !== undefined
-            ? l.gorev_turu_tarihi
-            : p.gorev_turu_tarihi
-              ? String(p.gorev_turu_tarihi).slice(0, 10)
-              : ''
+      let gorev_turu_tarihi: string | null = null
+      let gorev_turu_bitis_tarihi: string | null = null
+      let gorev_turu_aciklama: string | null = null
+      let gorev_turu_yemek_hakki: boolean | null = null
+      if (gorev_turu !== 'Çalışan') {
+        const raw = l.gorev_turu_tarihi !== undefined ? l.gorev_turu_tarihi : p.gorev_turu_tarihi ? String(p.gorev_turu_tarihi).slice(0, 10) : ''
         gorev_turu_tarihi = raw.trim() || null
+        const rawBit = l.gorev_turu_bitis_tarihi !== undefined ? l.gorev_turu_bitis_tarihi : p.gorev_turu_bitis_tarihi ? String(p.gorev_turu_bitis_tarihi).slice(0, 10) : ''
+        gorev_turu_bitis_tarihi = rawBit.trim() || null
         if (gorev_turu === 'Geçici Görevlendirme') {
           const metin = l.gorev_turu_aciklama !== undefined ? l.gorev_turu_aciklama : (p.gorev_turu_aciklama ?? '')
           gorev_turu_aciklama = metin.trim() || null
-        } else {
-          gorev_turu_aciklama = null
+          const rawY = l.gorev_turu_yemek_hakki !== undefined ? l.gorev_turu_yemek_hakki : (p.gorev_turu_yemek_hakki === true ? 'true' : p.gorev_turu_yemek_hakki === false ? 'false' : '')
+          gorev_turu_yemek_hakki = rawY === 'true' ? true : rawY === 'false' ? false : null
         }
       }
       return {
@@ -256,8 +314,13 @@ export default function GorevBilgileriListeClient({
         gorev_yeri,
         gorev_turu,
         gorev_turu_tarihi,
+        gorev_turu_bitis_tarihi,
         gorev_turu_aciklama,
+        gorev_turu_yemek_hakki,
         gorev_durumu,
+        engelli_oran: null,
+        engelli_baslangic: null,
+        engelli_bitis: null,
       }
     })
     startTransition(async () => {
@@ -365,8 +428,10 @@ export default function GorevBilgileriListeClient({
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[120px]">Statü</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[120px]">Görev yeri</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-44">Görev türü</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">Tarih</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[180px]">Görevlendirme metni</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">Başlangıç</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">Bitiş</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[160px]">Görevlendirme metni</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Yemek</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-40">Görev durumu</th>
                   <th className="text-right px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
                 </tr>
@@ -374,7 +439,7 @@ export default function GorevBilgileriListeClient({
               <tbody className="divide-y divide-slate-100">
                 {filtreli.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-16 text-slate-400">
+                    <td colSpan={12} className="text-center py-16 text-slate-400">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -401,7 +466,9 @@ export default function GorevBilgileriListeClient({
                           </td>
                           <td className="px-4 py-2.5 text-slate-400">—</td>
                           <td className="px-4 py-2.5 text-center text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-center text-slate-400">—</td>
                           <td className="px-4 py-2.5 text-slate-400">—</td>
+                          <td className="px-4 py-2.5 text-center text-slate-400">—</td>
                           <td className="px-4 py-2.5 text-slate-400">—</td>
                           <td className="px-4 py-2.5 text-right text-xs text-slate-500">Firma</td>
                         </tr>
@@ -456,6 +523,7 @@ export default function GorevBilgileriListeClient({
                             <span className="text-slate-700">{p.gorev_turu ?? 'Çalışan'}</span>
                           )}
                         </td>
+                        {/* Başlangıç tarihi */}
                         <td className="px-4 py-2.5 text-center">
                           {duz ? (
                             inlineTarihGoster(p) ? (
@@ -476,6 +544,28 @@ export default function GorevBilgileriListeClient({
                             </span>
                           )}
                         </td>
+                        {/* Bitiş tarihi */}
+                        <td className="px-4 py-2.5 text-center">
+                          {duz ? (
+                            inlineBitisGoster(p) ? (
+                              <input
+                                type="date"
+                                value={inlineDeger(p, 'gorev_turu_bitis_tarihi')}
+                                onChange={e => inlineGuncelle(p, 'gorev_turu_bitis_tarihi', e.target.value)}
+                                className="w-full max-w-[140px] px-1 py-1 border border-slate-300 rounded text-xs"
+                              />
+                            ) : (
+                              <span className="text-slate-400 text-xs">—</span>
+                            )
+                          ) : (
+                            <span className="text-slate-600 tabular-nums text-xs">
+                              {(p.gorev_turu ?? 'Çalışan') === 'Çalışan'
+                                ? '—'
+                                : tarihFormatla(p.gorev_turu_bitis_tarihi ?? null)}
+                            </span>
+                          )}
+                        </td>
+                        {/* Görevlendirme metni */}
                         <td className="px-4 py-2.5">
                           {duz ? (
                             inlineAciklamaGoster(p) ? (
@@ -483,7 +573,7 @@ export default function GorevBilgileriListeClient({
                                 type="text"
                                 value={inlineDeger(p, 'gorev_turu_aciklama')}
                                 onChange={e => inlineGuncelle(p, 'gorev_turu_aciklama', e.target.value)}
-                                className="w-full min-w-[160px] px-2 py-1 border border-slate-300 rounded text-sm"
+                                className="w-full min-w-[140px] px-2 py-1 border border-slate-300 rounded text-sm"
                                 placeholder="Görevlendirme açıklaması"
                               />
                             ) : (
@@ -493,21 +583,81 @@ export default function GorevBilgileriListeClient({
                             <span className="text-slate-600">{p.gorev_turu_aciklama?.trim() || '—'}</span>
                           )}
                         </td>
+                        {/* Yemek hakkı */}
+                        <td className="px-4 py-2.5 text-center">
+                          {duz ? (
+                            inlineYemekHakkiGoster(p) ? (
+                              <select
+                                value={inlineDeger(p, 'gorev_turu_yemek_hakki')}
+                                onChange={e => inlineGuncelle(p, 'gorev_turu_yemek_hakki', e.target.value)}
+                                className="px-1 py-1 border border-slate-300 rounded text-xs bg-white"
+                              >
+                                <option value="">—</option>
+                                <option value="true">Evet</option>
+                                <option value="false">Hayır</option>
+                              </select>
+                            ) : (
+                              <span className="text-slate-400 text-xs">—</span>
+                            )
+                          ) : (
+                            <span className="text-slate-600 text-xs">
+                              {p.gorev_turu === 'Geçici Görevlendirme'
+                                ? p.gorev_turu_yemek_hakki === true
+                                  ? 'Evet'
+                                  : p.gorev_turu_yemek_hakki === false
+                                    ? 'Hayır'
+                                    : '—'
+                                : '—'}
+                            </span>
+                          )}
+                        </td>
+                        {/* Görev durumu + Engelli detay */}
                         <td className="px-4 py-2.5">
                           {duz ? (
-                            <select
-                              value={inlineDeger(p, 'gorev_durumu')}
-                              onChange={e => inlineGuncelle(p, 'gorev_durumu', e.target.value)}
-                              className="w-full px-2 py-1 border border-slate-300 rounded text-sm bg-white"
-                            >
-                              {GOREV_DURUMU_OPTIONS.map(d => (
-                                <option key={d} value={d}>
-                                  {d}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="flex flex-col gap-1">
+                              <select
+                                value={inlineDeger(p, 'gorev_durumu')}
+                                onChange={e => inlineGuncelle(p, 'gorev_durumu', e.target.value)}
+                                className="w-full px-2 py-1 border border-slate-300 rounded text-sm bg-white"
+                              >
+                                {GOREV_DURUMU_OPTIONS.map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                              {inlineEngelliGoster(p) && (
+                                <div className="flex flex-col gap-1 mt-1">
+                                  <input
+                                    type="number"
+                                    min={0} max={100}
+                                    value={inlineDeger(p, 'engelli_oran')}
+                                    onChange={e => inlineGuncelle(p, 'engelli_oran', e.target.value)}
+                                    className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                                    placeholder="Oran %"
+                                  />
+                                  <input
+                                    type="date"
+                                    value={inlineDeger(p, 'engelli_baslangic')}
+                                    onChange={e => inlineGuncelle(p, 'engelli_baslangic', e.target.value)}
+                                    className="w-full px-1 py-1 border border-slate-300 rounded text-xs"
+                                    title="Engelli başlangıç"
+                                  />
+                                  <input
+                                    type="date"
+                                    value={inlineDeger(p, 'engelli_bitis')}
+                                    onChange={e => inlineGuncelle(p, 'engelli_bitis', e.target.value)}
+                                    className="w-full px-1 py-1 border border-slate-300 rounded text-xs"
+                                    title="Engelli bitiş"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           ) : (
-                            <span className="text-slate-600">{p.gorev_durumu ?? 'Diğer'}</span>
+                            <div className="text-slate-600 text-sm">
+                              <span>{p.gorev_durumu ?? 'Diğer'}</span>
+                              {p.gorev_durumu === 'Engelli' && p.engelli_oran != null && (
+                                <span className="text-xs text-slate-400 ml-1">%{p.engelli_oran}</span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-right">
@@ -551,15 +701,17 @@ export default function GorevBilgileriListeClient({
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[6rem]">Statü</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[8rem]">Görev yeri</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-40">Görev türü</th>
-                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-36">Tarih</th>
-                <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[12rem]">Görevlendirme metni</th>
+                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-32">Başlangıç</th>
+                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-32">Bitiş</th>
+                <th className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[10rem]">Görevlendirme metni</th>
+                <th className="text-center px-2 py-2 font-semibold text-slate-600 w-24">Yemek</th>
                 <th className="text-left px-2 py-2 font-semibold text-slate-600 w-36">Görev durumu</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {kadroSirali.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                  <td colSpan={11} className="text-center py-12 text-slate-400">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -612,6 +764,20 @@ export default function GorevBilgileriListeClient({
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
+                      <td className="px-2 py-1.5 text-center">
+                        {topluBitisGoster(p) ? (
+                          <input
+                            type="date"
+                            value={topluDegerAl(p, 'gorev_turu_bitis_tarihi')}
+                            onChange={e => topluGuncelle(p.sicil_no, 'gorev_turu_bitis_tarihi', e.target.value)}
+                            className={`w-full max-w-[9rem] px-1 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+                              degisti ? 'border-blue-300 bg-blue-50/80' : 'border-slate-200 bg-white'
+                            }`}
+                          />
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="px-2 py-1.5">
                         {topluAciklamaGoster(p) ? (
                           <input
@@ -623,6 +789,23 @@ export default function GorevBilgileriListeClient({
                             }`}
                             placeholder="Görevlendirme açıklaması"
                           />
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        {topluYemekHakkiGoster(p) ? (
+                          <select
+                            value={topluDegerAl(p, 'gorev_turu_yemek_hakki')}
+                            onChange={e => topluGuncelle(p.sicil_no, 'gorev_turu_yemek_hakki', e.target.value)}
+                            className={`px-1 py-1 border rounded text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+                              degisti ? 'border-blue-300 bg-blue-50/80' : 'border-slate-200'
+                            }`}
+                          >
+                            <option value="">—</option>
+                            <option value="true">Evet</option>
+                            <option value="false">Hayır</option>
+                          </select>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}

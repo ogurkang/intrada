@@ -101,18 +101,31 @@ Bu kontroller `kesinti-actions.ts → donemAc` içinden `ayyDonemAcilisKontrolu`
 
 ---
 
-## 7) Kritik kod dosyaları
+## 7) Statü Bazlı AYY (SBAY) — özet
+
+Bazı personel `izin_hareketleri` yerine `calisan.gorev_turu` kaynağıyla AYY hesabına girer.
+Ayrıntılı kurallar için → **`statu-bazli-ayy.md`**
+
+| Statü | Kural özeti |
+|-------|-------------|
+| `Aylıksız İzin` | Dönemle örtüşen çalışma günü = IZ; K = YG − IZ |
+| `Yarı Zamanlı` | base_IZ = ⌈YG/2⌉; extra_IZ izin hareketlerinden; K = YG − total_IZ |
+| `Geçici Görevlendirme` (yemek hakkı hayır) | GG süresi K'ya katkı sağlamaz; K = max(0, YG − GG_gun − IZ) |
+
+---
+
+## 8) Kritik kod dosyaları
 
 | Dosya | Rol | Değiştirme riski |
 |-------|-----|-----------------|
-| `src/lib/ayy-hesap.ts` | Ana hesap motoru (IZ, K, SD, OD, mehil, arada kalan) | 🔴 Çok yüksek |
-| `src/lib/ayy-donem-havuz.ts` | Havuz A/B/C yükleme + `kayit_tarihi` filtreleri | 🔴 Çok yüksek |
+| `src/lib/ayy-hesap.ts` | Ana hesap motoru (IZ, K, SD, OD, mehil, arada kalan, SBAY) | 🔴 Çok yüksek |
+| `src/lib/ayy-donem-havuz.ts` | Havuz A/B/C yükleme + `kayit_tarihi` filtreleri + SBAY yükleme | 🔴 Çok yüksek |
 | `src/lib/ayy-kayit-esik.ts` | Kayıt/kapanış eşik karşılaştırması | 🔴 Çok yüksek |
 | `src/lib/kesinti-actions.ts` | Dönem aç/kapat, donemAcilisKontrolu | 🟠 Yüksek |
 
 ---
 
-## 8) Operasyon notu
+## 9) Operasyon notu
 
 - Saat dilimi karışıklığı kaymaya neden olur; UTC tutulmalıdır.
 - Tüm `kapatildi_at` değerleri UTC ISO (ör. `2026-03-09T15:00:00+00:00`) formatında saklanır.

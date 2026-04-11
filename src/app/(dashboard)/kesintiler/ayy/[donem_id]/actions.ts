@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import {
   ayyBuildIzinHavuzu,
+  ayyGetMemurSozlesmeliSiciller,
   ayyGetOncekiDonem,
   ayyIzinDbToAyyIzinRow,
   ayyLoadDonem,
+  ayyLoadStatuBazliPersonel,
   ayyLoadTatiller,
   ayySdSonrakiDonemIcin,
   createAyyHavuzMemo,
@@ -104,6 +106,8 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
   const izinler = await ayyIzinDbToAyyIzinRow(supabase, dahilRaw)
   const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donem_id, donem, tatiller, memo)
   const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+  const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
+  const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
 
   const sonuc = ayyHesapla({
     donemBas: donem.baslangic_tarihi,
@@ -118,6 +122,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
           kapatildi_at:     onceki.kapatildi_at ?? null,
         }
       : undefined,
+    statuBazliPersonel,
   })
 
   return {
