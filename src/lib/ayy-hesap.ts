@@ -458,7 +458,7 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       unvan:    sp.unvan,
       tur:      'Yarı Zamanlı (Baz)',
       isZabita: sp.isZabita,
-      OD: 0, IZ: baseIz, hamIzin: baseIz, YG: yg, K: 0, SD: 0,
+      OD: 0, IZ: baseIz, hamIzin: 0, YG: yg, K: 0, SD: 0,
       kategori: 'Dönemdeki İzinler',
     })
   }
@@ -490,10 +490,12 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       islenenSiciller.add(p.sicil_no.trim())
       const ggGun = statuOverlapGun(sp, basMs, bitMs, bas, bit, tatilRanges)
       const effectiveYG = Math.max(0, p.YG - ggGun)
+      // IZ = görevlendirme günleri + izin hareketi kesintileri (ikisi birlikte görüntülenir)
+      const totalIZ = p.IZ + ggGun
       const newK = sp.isZabita
         ? zabitaYemekAlacagiFromBase(effectiveYG, p.IZ)
         : Math.max(0, effectiveYG - p.IZ)
-      yeniPersoneller.push({ ...p, K: Math.max(0, newK) })
+      yeniPersoneller.push({ ...p, IZ: totalIZ, hamIzin: 0, K: Math.max(0, newK) })
     }
 
     // İzin hareketi olmayan Geçici Görev hayır personeli de ekle
@@ -512,7 +514,7 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
         ad_soyad: sp.ad_soyad,
         unvan: sp.unvan,
         isZabita: sp.isZabita,
-        OD: 0, IZ: 0, hamIzin: 0, YG: yg,
+        OD: 0, IZ: ggGun, hamIzin: 0, YG: yg,
         K: Math.max(0, newK),
         SD: 0,
       })

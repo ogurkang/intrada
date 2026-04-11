@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
+import GorevHatirlaticiWidget, { type GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
 import { getAppAccess } from '@/lib/app-access'
 import { izinDurumDegistir } from './izin/actions'
 import type {
@@ -75,6 +76,81 @@ export default async function DashboardPage() {
       .gte('ayrilis', bugun)
       .limit(10),
   ])
+
+  // 7b) Görev bitiş hatırlatıcıları: gorev_turu_bitis_tarihi veya engelli_bitis bugün+15 gün içinde
+  type HatirlaticiRow = {
+    sicil_no: string; ad_soyad: string | null
+    gorev_turu: string | null; gorev_turu_bitis_tarihi: string | null
+    engelli_bitis: string | null
+  }
+  const hatirlaticiGun = new Date()
+  hatirlaticiGun.setDate(hatirlaticiGun.getDate() + 15)
+  const hatirlaticiSon = hatirlaticiGun.toISOString().split('T')[0]
+
+  // İki ayrı sorgu: gorev bitiş ve engelli bitiş — sonra JS'te filtrele
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const [gorevBitisResult, engeliBitisResult] = await Promise.all([
+    sb.from('calisan')
+      .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_bitis_tarihi, engelli_bitis')
+      .not('gorev_turu_bitis_tarihi', 'is', null)
+      .gte('gorev_turu_bitis_tarihi', bugun)
+      .lte('gorev_turu_bitis_tarihi', hatirlaticiSon),
+    sb.from('calisan')
+      .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_bitis_tarihi, engelli_bitis')
+      .not('engelli_bitis', 'is', null)
+      .gte('engelli_bitis', bugun)
+      .lte('engelli_bitis', hatirlaticiSon),
+  ])
+
+  // Dedup by sicil_no — birleştir
+  const hatirlaticiMap = new Map<string, HatirlaticiRow>()
+  for (const r of [...(gorevBitisResult.data ?? []), ...(engeliBitisResult.data ?? [])]) {
+    const key = r.sicil_no
+    if (!hatirlaticiMap.has(key)) hatirlaticiMap.set(key, r)
+    else {
+      // Birleştir: her iki bitiş tarihini de koru
+      const cur = hatirlaticiMap.get(key)!
+      if (!cur.gorev_turu_bitis_tarihi) cur.gorev_turu_bitis_tarihi = r.gorev_turu_bitis_tarihi
+      if (!cur.engelli_bitis) cur.engelli_bitis = r.engelli_bitis
+    }
+  }
+  const hatirlaticiRaw: HatirlaticiRow[] = [...hatirlaticiMap.values()]
+
+  const gorevHatirlaticilar: GorevHatirlaticiItem[] = []
+  const bugunMs = new Date(bugun).getTime()
+
+  for (const r of hatirlaticiRaw) {
+    if (r.gorev_turu_bitis_tarihi) {
+      const bitisMs = new Date(r.gorev_turu_bitis_tarihi).getTime()
+      const kalanGun = Math.round((bitisMs - bugunMs) / 86_400_000)
+      if (kalanGun >= 0 && kalanGun <= 15) {
+        gorevHatirlaticilar.push({
+          sicil_no: r.sicil_no,
+          ad_soyad: r.ad_soyad ?? r.sicil_no,
+          gorev_turu: r.gorev_turu ?? '',
+          bitis_tarihi: r.gorev_turu_bitis_tarihi,
+          bitis_turu: 'gorev',
+          kalan_gun: kalanGun,
+        })
+      }
+    }
+    if (r.engelli_bitis) {
+      const bitisMs = new Date(r.engelli_bitis).getTime()
+      const kalanGun = Math.round((bitisMs - bugunMs) / 86_400_000)
+      if (kalanGun >= 0 && kalanGun <= 15) {
+        gorevHatirlaticilar.push({
+          sicil_no: r.sicil_no,
+          ad_soyad: r.ad_soyad ?? r.sicil_no,
+          gorev_turu: r.gorev_turu ?? '',
+          bitis_tarihi: r.engelli_bitis,
+          bitis_turu: 'engelli',
+          kalan_gun: kalanGun,
+        })
+      }
+    }
+  }
+  gorevHatirlaticilar.sort((a, b) => a.kalan_gun - b.kalan_gun)
 
   // 7) Sadece panoda görünen siciller için çalışan adı / public_id (tüm tabloyu çekme — yavaşlık riski)
   const sicilSet = new Set<string>()
@@ -284,17 +360,22 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClient
-      aktifPersonelSayisi={personelRaw?.length ?? 0}
-      kadroDoluluk={kadroDoluluk}
-      izinIstatistik={izinIstatistik}
-      bekleyenIzinler={bekleyenIzinler}
-      yaklaşanTatiller={yaklaşanTatiller}
-      izindekiler={izindekiler}
-      izinArtisAdaylari={izinArtisAdaylari}
-      buYil={buYil}
-      canEditIzinHak={access.mode === 'admin'}
-      onDurumDegistir={izinDurumDegistir}
-    />
+    <div className="space-y-6">
+      {gorevHatirlaticilar.length > 0 && (
+        <GorevHatirlaticiWidget items={gorevHatirlaticilar} />
+      )}
+      <DashboardClient
+        aktifPersonelSayisi={personelRaw?.length ?? 0}
+        kadroDoluluk={kadroDoluluk}
+        izinIstatistik={izinIstatistik}
+        bekleyenIzinler={bekleyenIzinler}
+        yaklaşanTatiller={yaklaşanTatiller}
+        izindekiler={izindekiler}
+        izinArtisAdaylari={izinArtisAdaylari}
+        buYil={buYil}
+        canEditIzinHak={access.mode === 'admin'}
+        onDurumDegistir={izinDurumDegistir}
+      />
+    </div>
   )
 }
