@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
@@ -242,12 +242,40 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     }
     return ilk
   })
+  const [altAciklar, setAltAciklar] = useState<Record<string, boolean>>(() => {
+    const ilk: Record<string, boolean> = {}
+    for (const g of menuGroups) {
+      for (const i of g.items) {
+        if (i.children?.length) ilk[i.href] = itemOrSubtreeActive(pathname, i)
+      }
+    }
+    return ilk
+  })
 
   const grupList = filteredGroups
 
   function toggle(grup: string) {
     setAciklar(prev => ({ ...prev, [grup]: !prev[grup] }))
   }
+  function toggleAlt(href: string) {
+    setAltAciklar(prev => ({ ...prev, [href]: !prev[href] }))
+  }
+
+  useEffect(() => {
+    setAltAciklar(prev => {
+      let degisti = false
+      const next = { ...prev }
+      for (const g of menuGroups) {
+        for (const i of g.items) {
+          if (i.children?.length && itemOrSubtreeActive(pathname, i) && !next[i.href]) {
+            next[i.href] = true
+            degisti = true
+          }
+        }
+      }
+      return degisti ? next : prev
+    })
+  }, [pathname, menuGroups])
 
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
@@ -295,23 +323,34 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
                     {grup.items.map((item) => {
                       const aktif = itemPathActive(pathname, item)
                       if (item.children?.length) {
+                        const altAcik = !!altAciklar[item.href]
+                        const altAktif = itemOrSubtreeActive(pathname, item)
                         return (
                           <div key={item.href}>
-                            <Link
-                              href={item.href}
-                              target={item.newTab ? '_blank' : undefined}
-                              rel={item.newTab ? 'noopener noreferrer' : undefined}
-                              onClick={onNavigate}
+                            <button
+                              type="button"
+                              onClick={() => toggleAlt(item.href)}
                               className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
-                                aktif
+                                aktif || altAktif
                                   ? 'bg-slate-700 text-white font-medium'
                                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-                              }`}
+                              } w-full text-left justify-between`}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                              {item.label}
-                            </Link>
-                            {item.children.map((ch) => {
+                              <span className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                                {item.label}
+                              </span>
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${altAcik ? 'rotate-180' : ''}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {altAcik && item.children.map((ch) => {
                               const chAktif = childPathActive(pathname, ch.href)
                               return (
                                 <Link
