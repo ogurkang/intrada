@@ -6,13 +6,15 @@ import { authUserIdByEmail } from '@/lib/auth-admin-helpers'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { revalidatePath } from 'next/cache'
 
+/** `MENU_YETKILENDIRME_TABLO_MODULLERI` ile aynı sıra/anahtarlar (Terfi tabloda yok). */
 const MENU_KEYS = [
   'personel',
-  'terfi',
+  'rapor',
   'izin',
   'bildirim',
   'kesintiler',
   'egitim',
+  'yerelBilgi',
   'yetkilendirme',
   'tanimlar',
 ] as const

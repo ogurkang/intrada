@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
-import GorevHatirlaticiWidget, { type GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
+import type { GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
 import { getAppAccess } from '@/lib/app-access'
 import { izinDurumDegistir } from './izin/actions'
 import type {
@@ -361,9 +361,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {gorevHatirlaticilar.length > 0 && (
-        <GorevHatirlaticiWidget items={gorevHatirlaticilar} />
-      )}
       <DashboardClient
         aktifPersonelSayisi={personelRaw?.length ?? 0}
         kadroDoluluk={kadroDoluluk}
@@ -372,6 +369,7 @@ export default async function DashboardPage() {
         yaklaşanTatiller={yaklaşanTatiller}
         izindekiler={izindekiler}
         izinArtisAdaylari={izinArtisAdaylari}
+        gorevHatirlaticilar={gorevHatirlaticilar}
         buYil={buYil}
         canEditIzinHak={access.mode === 'admin'}
         onDurumDegistir={izinDurumDegistir}

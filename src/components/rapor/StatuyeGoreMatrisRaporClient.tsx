@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx-js-style'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 
@@ -30,6 +31,9 @@ interface Props {
   tabloSatirBaslik?: string
   /** Meslek / yaş: sütun başlığı kaydırma; boş matris uyarısı */
   variant?: 'ogrenim' | 'meslek' | 'yas'
+  /** Üstteki geri link (varsayılan: Rapor Yönetimi) */
+  geriHref?: string
+  geriLabel?: string
 }
 
 function satirVurgusu(etiket: string): string {
@@ -55,6 +59,8 @@ export default function StatuyeGoreMatrisRaporClient({
   altNot,
   tabloSatirBaslik = 'Statü',
   variant = 'ogrenim',
+  geriHref = '/rapor',
+  geriLabel = '← Rapor Yönetimi',
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
@@ -90,20 +96,55 @@ export default function StatuyeGoreMatrisRaporClient({
     [router, raporBasePath],
   )
 
+  const excelIndir = useCallback(() => {
+    if (!aktif) return
+    const rows: string[][] = []
+    rows.push([`${baslik} - ${aktif.label}`])
+    rows.push([`Yıl: ${yil}`, `Anlık görüntü: ${aktif.sonGunuEtiket}`])
+    rows.push([])
+    rows.push([tabloSatirBaslik, ...tablo.kolonlar, 'Toplam'])
+    for (const row of tablo.satirlar) {
+      const top = row.sayilar.reduce((s, n) => s + (n ?? 0), 0)
+      rows.push([row.statuEtiket, ...row.sayilar.map(n => String(n ?? 0)), String(top)])
+    }
+    rows.push(['Toplam', ...tablo.kolonToplam.map(n => String(n ?? 0)), String(tablo.genelToplam)])
+
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Rapor')
+    const arr = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+    const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baslik.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${aktif.label}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [aktif, baslik, tablo, tabloSatirBaslik, yil])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <Link
-            href="/rapor"
+            href={geriHref}
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
-            ← Rapor Yönetimi
+            {geriLabel}
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
           <p className="text-sm text-slate-600 mt-1">{aciklama}</p>
         </div>
         <div className="flex items-center gap-2">
+          {variant === 'yas' && (
+            <button
+              type="button"
+              onClick={excelIndir}
+              className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+            >
+              Excel İndir
+            </button>
+          )}
           <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
           <select
             value={yil}

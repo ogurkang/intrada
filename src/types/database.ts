@@ -163,6 +163,371 @@ export interface Database {
         }
         Relationships: []
       }
+      yerel_bilgi_arac_durum: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yerel_bilgi_arac_turu: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yerel_bilgi_arac_alt_tur: {
+        Row: {
+          id: number
+          arac_turu_id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          arac_turu_id: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          arac_turu_id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'yerel_bilgi_arac_alt_tur_arac_turu_id_fkey'
+            columns: ['arac_turu_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_arac_turu'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      yerel_bilgi_arac_sahiplik_durum: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yerel_bilgi_arac: {
+        Row: {
+          id: number
+          sira_no: number
+          sahiplik_durum_id: number
+          arac_durum_id: number
+          arac_turu_id: number
+          arac_alt_tur_id: number
+          plaka_no: string | null
+          sasi_no: string | null
+          mudurluk_id: number
+          aktif: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number
+          sahiplik_durum_id: number
+          arac_durum_id: number
+          arac_turu_id: number
+          arac_alt_tur_id: number
+          plaka_no?: string | null
+          sasi_no?: string | null
+          mudurluk_id: number
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number
+          sahiplik_durum_id?: number
+          arac_durum_id?: number
+          arac_turu_id?: number
+          arac_alt_tur_id?: number
+          plaka_no?: string | null
+          sasi_no?: string | null
+          mudurluk_id?: number
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'yerel_bilgi_arac_sahiplik_durum_id_fkey'
+            columns: ['sahiplik_durum_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_arac_sahiplik_durum'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_arac_arac_durum_id_fkey'
+            columns: ['arac_durum_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_arac_durum'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_arac_arac_turu_id_fkey'
+            columns: ['arac_turu_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_arac_turu'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_arac_arac_alt_tur_id_fkey'
+            columns: ['arac_alt_tur_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_arac_alt_tur'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_arac_mudurluk_id_fkey'
+            columns: ['mudurluk_id']
+            isOneToOne: false
+            referencedRelation: 'tanim_mudurluk'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      yerel_bilgi_butce_gider: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yerel_bilgi_butce_gelir: {
+        Row: {
+          id: number
+          sira_no: number | null
+          tanim_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          tanim_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      yerel_bilgi_butce_tahmin_islem: {
+        Row: {
+          id: number
+          sira_no: number
+          mudurluk_id: number
+          butce_gider_kalem_id: number | null
+          butce_gelir_kalem_id: number | null
+          tutar: number | null
+          aktif: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number
+          mudurluk_id: number
+          butce_gider_kalem_id?: number | null
+          butce_gelir_kalem_id?: number | null
+          tutar?: number | null
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number
+          mudurluk_id?: number
+          butce_gider_kalem_id?: number | null
+          butce_gelir_kalem_id?: number | null
+          tutar?: number | null
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'yerel_bilgi_butce_tahmin_islem_mudurluk_id_fkey'
+            columns: ['mudurluk_id']
+            isOneToOne: false
+            referencedRelation: 'tanim_mudurluk'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_butce_tahmin_islem_kalem_fkey'
+            columns: ['butce_gider_kalem_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_butce_gider'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      yerel_bilgi_butce_gider_islem: {
+        Row: {
+          id: number
+          sira_no: number
+          mudurluk_id: number
+          butce_gider_kalem_id: number | null
+          butce_gelir_kalem_id: number | null
+          tutar: number | null
+          aktif: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number
+          mudurluk_id: number
+          butce_gider_kalem_id?: number | null
+          butce_gelir_kalem_id?: number | null
+          tutar?: number | null
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number
+          mudurluk_id?: number
+          butce_gider_kalem_id?: number | null
+          butce_gelir_kalem_id?: number | null
+          tutar?: number | null
+          aktif?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'yerel_bilgi_butce_gider_islem_mudurluk_id_fkey'
+            columns: ['mudurluk_id']
+            isOneToOne: false
+            referencedRelation: 'tanim_mudurluk'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'yerel_bilgi_butce_gider_islem_kalem_fkey'
+            columns: ['butce_gider_kalem_id']
+            isOneToOne: false
+            referencedRelation: 'yerel_bilgi_butce_gider'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       tanim_izin_tur: {
         Row: {
           id: number; sira_no: number | null; tur_adi: string; kod: string | null

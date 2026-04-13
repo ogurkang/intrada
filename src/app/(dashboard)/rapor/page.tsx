@@ -59,17 +59,6 @@ export default async function RaporYonetimiPage() {
         </li>
         <li>
           <Link
-            href="/rapor/yerel-bilgi-yas-dagilimi"
-            className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
-          >
-            Yerel Bilgi İçin Yaş Raporu
-            <span className="block text-xs font-normal text-slate-500 mt-0.5">
-              Yaş dağılımı: 18-25, 26-35, 36-45, 46-55, 56-65, 65+
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link
             href="/rapor/konuma-gore-cinsiyet"
             className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
           >

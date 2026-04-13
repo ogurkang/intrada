@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { personelDetayHref } from '@/lib/personel-link'
+import GorevHatirlaticiWidget, { type GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ interface Props {
   yaklaşanTatiller:    YaklaşanTatil[]
   izindekiler:         IzindekiPersonel[]
   izinArtisAdaylari:   IzinArtisAdayi[]
+  gorevHatirlaticilar: GorevHatirlaticiItem[]
   buYil:               number
   canEditIzinHak:      boolean
   onDurumDegistir:     (id: number, yeniDurum: 'Onaylandı' | 'İptal Edildi') => Promise<{ hata?: string }>
@@ -109,6 +111,7 @@ function KpiKart({ baslik, deger, alt, renk, href }: {
 export default function DashboardClient({
   aktifPersonelSayisi, kadroDoluluk, izinIstatistik,
   bekleyenIzinler, yaklaşanTatiller, izindekiler, izinArtisAdaylari,
+  gorevHatirlaticilar,
   buYil, canEditIzinHak, onDurumDegistir,
 }: Props) {
   const [isPending, startTransition] = useTransition()
@@ -390,6 +393,8 @@ export default function DashboardClient({
               </div>
             )}
           </div>
+
+          <GorevHatirlaticiWidget items={gorevHatirlaticilar} />
 
         </div>
       </div>

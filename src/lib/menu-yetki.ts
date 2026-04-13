@@ -14,6 +14,7 @@ export type MenuModulKey =
   | 'bildirim'
   | 'kesintiler'
   | 'egitim'
+  | 'yerelBilgi'
   | 'yetkilendirme'
   | 'tanimlar'
   | 'link'
@@ -33,6 +34,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'bildirim', labelKisa: 'Bildirim', label: 'Bildirim', pathPrefixes: ['/bildirim'] },
   { key: 'kesintiler', labelKisa: 'Kesinti', label: 'Kesintiler', pathPrefixes: ['/kesintiler'] },
   { key: 'egitim', labelKisa: 'Eğitim', label: 'Eğitim', pathPrefixes: ['/egitim'] },
+  { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
   { key: 'link', labelKisa: 'Link', label: 'Paylaşım linkleri', pathPrefixes: ['/link'] },
@@ -144,6 +146,10 @@ export function kullaniciPathAllowed(
 
   if (path.startsWith('/link')) return false
 
+  if (path.startsWith('/yerel-bilgi')) {
+    return menuModulAcik('yerelBilgi', menuIzinleri)
+  }
+
   return false
 }
 
@@ -172,6 +178,7 @@ export function sidebarGrupGoster(
     'Bildirim Yönetimi': 'bildirim',
     'Kesintiler Yönetimi': 'kesintiler',
     'Eğitim Yönetimi': 'egitim',
+    'Yerel Bilgi Yönetimi': 'yerelBilgi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }
