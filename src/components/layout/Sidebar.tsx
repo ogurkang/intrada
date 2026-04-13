@@ -127,6 +127,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
         href: '/yerel-bilgi/islemler',
         label: 'İşlemler',
         children: [
+          { href: '/yerel-bilgi/islemler/belediye-kimlik-formu', label: 'Belediye Kimlik Formu' },
           { href: '/yerel-bilgi/islemler/arac-bilgileri', label: 'Araç Bilgileri Girişi' },
           { href: '/yerel-bilgi/islemler/butce-tahminleri', label: 'Bütçe Tahminleri Girişi' },
           { href: '/yerel-bilgi/islemler/butce-gerceklesmeleri', label: 'Bütçe Gerçekleşmeleri Girişi' },
@@ -140,6 +141,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
           { href: '/yerel-bilgi/raporlar/arac-bilgileri', label: 'Araç Bilgileri Raporu' },
           { href: '/yerel-bilgi/raporlar/butce-tahminleri', label: 'Bütçe Tahminleri Raporu' },
           { href: '/yerel-bilgi/raporlar/butce-gerceklesmeleri', label: 'Bütçe Gerçekleşmeleri Raporu' },
+          { href: '/yerel-bilgi/raporlar/kimlik-form-raporu', label: 'Kimlik Form Raporu' },
         ],
       },
       {

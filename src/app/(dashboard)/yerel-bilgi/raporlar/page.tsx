@@ -29,6 +29,13 @@ const RAPORLAR = [
     aciklama: 'Cari yıl dönemi için müdürlük bütçe gerçekleşme girişlerinin salt okunur özeti.',
     renk: 'border-orange-200 bg-orange-50 text-orange-900',
   },
+  {
+    kod: 'KFR',
+    href: '/yerel-bilgi/raporlar/kimlik-form-raporu',
+    baslik: 'Kimlik Form Raporu',
+    aciklama: 'Belediye kimlik formunda aktif durumdaki kaydın detay raporu.',
+    renk: 'border-cyan-200 bg-cyan-50 text-cyan-900',
+  },
 ] as const
 
 export default function YerelBilgiRaporlarPage() {

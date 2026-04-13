@@ -8,6 +8,13 @@ export default function YerelBilgiIslemlerPage() {
 
   const satirlar = [
     {
+      id: 'bkf',
+      donemAdi: 'Belediye Kimlik Formu',
+      aciklama: 'Kuruluş, başkan ve belediye iletişim bilgilerinin kaydı.',
+      href: '/yerel-bilgi/islemler/belediye-kimlik-formu',
+      renk: 'border-teal-200 bg-teal-50 text-teal-900',
+    },
+    {
       id: 'abg',
       donemAdi: 'Araç Bilgileri Girişi',
       aciklama: 'Araç sahiplik, durum, tür ve plaka / şasi kayıtları.',
