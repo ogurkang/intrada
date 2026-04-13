@@ -68,7 +68,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/statuye-gore-cinsiyet', label: 'Statüye Göre Cinsiyet Raporu' },
       { href: '/rapor/statuye-gore-sayi', label: 'Statüye Göre Sayı Durumu Raporu' },
       { href: '/rapor/statuye-gore-yas', label: 'Statüye Göre Yaş Raporu' },
-      { href: '/rapor/yerel-bilgi-yas-dagilimi', label: 'Yerel Bilgi İçin Yaş Raporu' },
       { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
@@ -117,6 +116,43 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       { href: '/egitim',             label: 'Eğitim Takvimi'   },
       { href: '/egitim/istatistik',  label: 'Eğitim İstatistiği'},
+    ],
+  },
+  {
+    grup: 'Yerel Bilgi Yönetimi',
+    icon: '📍',
+    accordion: true,
+    items: [
+      {
+        href: '/yerel-bilgi/islemler',
+        label: 'İşlemler',
+        children: [
+          { href: '/yerel-bilgi/islemler/arac-bilgileri', label: 'Araç Bilgileri Girişi' },
+          { href: '/yerel-bilgi/islemler/butce-tahminleri', label: 'Bütçe Tahminleri Girişi' },
+          { href: '/yerel-bilgi/islemler/butce-gerceklesmeleri', label: 'Bütçe Gerçekleşmeleri Girişi' },
+        ],
+      },
+      {
+        href: '/yerel-bilgi/raporlar',
+        label: 'Raporlar',
+        children: [
+          { href: '/yerel-bilgi/raporlar/yerel-bilgi-yas-dagilimi', label: 'Yerel Bilgi İçin Yaş Raporu' },
+          { href: '/yerel-bilgi/raporlar/arac-bilgileri', label: 'Araç Bilgileri Raporu' },
+          { href: '/yerel-bilgi/raporlar/butce-tahminleri', label: 'Bütçe Tahminleri Raporu' },
+          { href: '/yerel-bilgi/raporlar/butce-gerceklesmeleri', label: 'Bütçe Gerçekleşmeleri Raporu' },
+        ],
+      },
+      {
+        href: '/yerel-bilgi/tanimlar',
+        label: 'Tanımlar',
+        children: [
+          { href: '/yerel-bilgi/tanimlar/arac-sahiplik-durum', label: 'Araç Sahiplik Durumu Tanımı' },
+          { href: '/yerel-bilgi/tanimlar/arac-durum', label: 'Araç Durum Tanımı' },
+          { href: '/yerel-bilgi/tanimlar/arac-turu', label: 'Araç Türü — Alt Tür Tanımı' },
+          { href: '/yerel-bilgi/tanimlar/butce-gider', label: 'Bütçe Gider Tanımı' },
+          { href: '/yerel-bilgi/tanimlar/butce-gelir', label: 'Bütçe Gelir Tanımı' },
+        ],
+      },
     ],
   },
   {
