@@ -14,6 +14,8 @@ interface DashboardShellProps {
   /** Sunucudan gelir; opak terfi yolu (ör. /abc123). */
   terfiMenuHref?: string
   access: AppAccess
+  /** Aktif deploy/build kimliği (debug amaçlı). */
+  buildMarker?: string
 }
 
 export default function DashboardShell({
@@ -22,6 +24,7 @@ export default function DashboardShell({
   kullaniciKarsilamaAd,
   terfiMenuHref = '/terfi',
   access,
+  buildMarker,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -64,6 +67,9 @@ export default function DashboardShell({
             {children}
           </PermissionGate>
         </main>
+        <div className="px-6 pb-3 text-[11px] text-slate-400 text-right">
+          build: {buildMarker ?? 'unknown'}
+        </div>
       </div>
     </div>
   )

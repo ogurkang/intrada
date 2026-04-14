@@ -433,7 +433,7 @@ export default function GorevBilgileriListeClient({
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[160px]">Görevlendirme metni</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Yemek</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-40">Görev durumu</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-28">İşlemler</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

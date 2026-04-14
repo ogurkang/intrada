@@ -48,9 +48,20 @@ export default async function DashboardLayout({
     }
   }
 
+  const buildSha =
+    process.env.NEXT_PUBLIC_BUILD_MARKER ??
+    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+    process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
+    'local-dev'
+
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
-      <DashboardShell userEmail={user.email} kullaniciKarsilamaAd={kullaniciKarsilamaAd} access={access}>
+      <DashboardShell
+        userEmail={user.email}
+        kullaniciKarsilamaAd={kullaniciKarsilamaAd}
+        access={access}
+        buildMarker={buildSha}
+      >
         {children}
       </DashboardShell>
     </IlkKurulumGuard>
