@@ -34,6 +34,8 @@ export type AyyIzinDbRow = {
 type HavuzMemo = {
   pool: Map<number, AyyIzinDbRow[]>
   sdSonrakiDoneme: Map<number, Record<string, number>>
+  /** donemId → önceki dönem hesabındaki sira_no → IZ (Zabıta SD taşma kuralı tespiti için) */
+  prevIzDoneme: Map<number, Record<string, number>>
 }
 
 const IN_CHUNK = 200
@@ -186,6 +188,14 @@ export async function ayySdSonrakiDonemIcin(
     if (s.SD > 0) m[s.sira_no] = s.SD
   }
 
+  // Önceki dönem IZ değerlerini sakla (Zabıta SD taşma kuralı tespiti için).
+  // Bu dönem (donemId) hesabında prevIzBySiraNo olarak kullanılacak.
+  const prevIzMap: Record<string, number> = {}
+  for (const s of sonuc.satirlar) {
+    prevIzMap[s.sira_no] = s.IZ
+  }
+  memo.prevIzDoneme.set(donemId, prevIzMap)
+
   // Manuel SD düzeltmeleri: belirli dönem+sicil için SD zorla atanır (genellikle 0).
   const { data: overrides } = await supabase
     .from('ayy_sd_override')
@@ -323,7 +333,7 @@ export async function ayyIzinDbToAyyIzinRow(
 }
 
 export function createAyyHavuzMemo(): HavuzMemo {
-  return { pool: new Map(), sdSonrakiDoneme: new Map() }
+  return { pool: new Map(), sdSonrakiDoneme: new Map(), prevIzDoneme: new Map() }
 }
 
 /**

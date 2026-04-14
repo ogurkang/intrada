@@ -34,19 +34,21 @@ export interface AyyIzinRow {
 export type AyyOncekiDonemKosulu = AyyOncekiDonemEsik
 
 export interface AyyHesapSatir {
-  sira_no:  string
-  sicil_no: string
-  ad_soyad: string
-  unvan:    string
-  tur:      string
-  isZabita: boolean
-  OD:       number
-  IZ:       number
-  hamIzin:  number
-  YG:       number
-  K:        number
-  SD:       number
-  kategori: Kategori
+  sira_no:    string
+  sicil_no:   string
+  ad_soyad:   string
+  unvan:      string
+  tur:        string
+  isZabita:   boolean
+  OD:         number
+  IZ:         number
+  hamIzin:    number
+  YG:         number
+  K:          number
+  SD:         number
+  kategori:   Kategori
+  /** OD'nin kaynağı önceki dönem YG aşımıysa true (yeni Zabıta SD taşma kuralı devrede) */
+  odYGAsimi:  boolean
 }
 
 export interface AyyPersonelOzet {
@@ -232,7 +234,7 @@ function statuOverlapGun(
 function satirlariPersoneldeTopla(
   satirlar: AyyHesapSatir[],
 ): AyyPersonelOzet[] {
-  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number; toplamK: number; mehilVar: boolean }>()
+  const map = new Map<string, Omit<AyyPersonelOzet, 'sira_no_seq'> & { gelecekSD: number; toplamK: number; mehilVar: boolean; odYGAsimiTopla: number }>()
 
   for (const s of satirlar) {
     const mevcut = map.get(s.sicil_no)
@@ -248,9 +250,10 @@ function satirlariPersoneldeTopla(
         YG:       s.YG,
         K:        0,
         SD:       0,
-        gelecekSD: s.SD,
-        toplamK: s.K,
-        mehilVar: isMehilIzin(s.tur),
+        gelecekSD:      s.SD,
+        toplamK:        s.K,
+        mehilVar:       isMehilIzin(s.tur),
+        odYGAsimiTopla: s.odYGAsimi ? s.OD : 0,
       })
     } else {
       mevcut.OD += s.OD
@@ -259,6 +262,7 @@ function satirlariPersoneldeTopla(
       mevcut.gelecekSD += s.SD
       mevcut.toplamK += s.K
       mevcut.mehilVar = mevcut.mehilVar || isMehilIzin(s.tur)
+      mevcut.odYGAsimiTopla += s.odYGAsimi ? s.OD : 0
     }
   }
 
@@ -266,9 +270,21 @@ function satirlariPersoneldeTopla(
   let seq = 1
   for (const p of map.values()) {
     const ham = Math.max(0, (p.YG || 0) - (p.IZ || 0))
-    // Özette K: mehil için satır toplamı; zabıta için 30−IZ (yalnızca bu dönemdeki kesilen gün);
-    // normal için YG−IZ. hamIzin SD kısmını içerdiğinden baz olarak kullanılmaz.
-    const K = p.mehilVar ? Math.max(0, p.toplamK || 0) : (p.isZabita ? zabitaYemekAlacagi(p.IZ || 0) : ham)
+    // Özette K hesabı:
+    // - Mehil: satır toplamı (mehil kendi K'sını kendin hesaplar)
+    // - Zabıta + YG aşımı OD: yeni kural → max(0, 24 − odYGAsimiTopla − IZ)
+    // - Zabıta normal: eski kural → zabitaYemekAlacagi(IZ)
+    // - Normal personel: YG − IZ
+    let K: number
+    if (p.mehilVar) {
+      K = Math.max(0, p.toplamK || 0)
+    } else if (p.isZabita && p.odYGAsimiTopla > 0) {
+      K = Math.max(0, 24 - p.odYGAsimiTopla - (p.IZ || 0))
+    } else if (p.isZabita) {
+      K = zabitaYemekAlacagi(p.IZ || 0)
+    } else {
+      K = ham
+    }
     const SD = (p.gelecekSD || 0) + Math.max(0, (p.IZ || 0) - (p.YG || 0))
     arr.push({ sira_no_seq: seq++, sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, unvan: p.unvan, isZabita: p.isZabita, OD: p.OD, IZ: p.IZ, hamIzin: p.hamIzin ?? 0, YG: p.YG, K, SD })
   }
@@ -293,6 +309,12 @@ export interface AyyHesapParams {
   tatiller:    { tatil_adi: string; tatil_turu: string | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[]
   /** Önceki dönem sonucundan gelen sira_no → SD map */
   odBySiraNo?: Record<string, number>
+  /**
+   * Önceki dönem hesabındaki sira_no → IZ map.
+   * Zabıta SD taşma kuralı tespiti için kullanılır:
+   * prevIZ >= YG (30) ise OD "YG aşımı"ndan kaynaklanıyordur → yeni kural devreye girer.
+   */
+  prevIzBySiraNo?: Record<string, number>
   /** Bu dönemin takvimsel önceki AYY dönemi; gecikmiş kayıt + takvimde önceki dönemde kalan izinler için */
   oncekiDonem?: AyyOncekiDonemKosulu
   /**
@@ -303,7 +325,7 @@ export interface AyyHesapParams {
 }
 
 export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
-  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {}, oncekiDonem, statuBazliPersonel = [] } = params
+  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {}, prevIzBySiraNo = {}, oncekiDonem, statuBazliPersonel = [] } = params
 
   const bas = parseDate(donemBas)!
   const bit = parseDate(donemBit)!
@@ -389,6 +411,11 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       iz = Math.min(hesaplananIzin, yemekliGun)
     }
 
+    // Zabıta SD taşma kuralı tespiti:
+    // Önceki dönemde bu iznin IZ değeri YG (30)'a ulaştıysa SD "YG aşımı"ndan kaynaklanır.
+    const prevIz = prevIzBySiraNo[iv.sira_no] ?? 0
+    const odIsYGAsimi = iv.isZabita && od > 0 && prevIz >= yemekliGun
+
     let K: number
     if (isMehilIzin(iv.tur)) {
       const donus = parseDate(iv.baslama)
@@ -410,13 +437,16 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       if (sonGunMs !== null && sonGunMs > bitMs) {
         sd = takvimGunSayisi(new Date(bitMs + 86_400_000), new Date(sonGunMs))
       }
+    } else if (odIsYGAsimi) {
+      // Yeni kural: OD önceki dönem YG aşımından geliyorsa hem OD hem IZ 24'ten düşülür.
+      K = Math.max(0, 24 - od - iz)
     } else {
       // Zabıta K: sadece bu dönemdeki kesilen gün (iz) baz alınır.
       // iv.gun sonraki döneme taşan (SD) kısmı da içerdiğinden baz olarak kullanılmaz.
       K = iv.isZabita ? zabitaYemekAlacagi(iz) : Math.max(0, yemekliGun - iz)
     }
 
-    satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori })
+    satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori, odYGAsimi: odIsYGAsimi })
     odYazildi.add(iv.sira_no)
   }
 
@@ -432,14 +462,15 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     const iz = Math.min(overlapGun, yg)
     const k  = sp.isZabita ? zabitaYemekAlacagi(iz) : Math.max(0, yg - iz)
     satirlar.push({
-      sira_no:  `SYN_AIZ_${sp.sicil_no}`,
-      sicil_no: sp.sicil_no,
-      ad_soyad: sp.ad_soyad,
-      unvan:    sp.unvan,
-      tur:      'Aylıksız İzin',
-      isZabita: sp.isZabita,
+      sira_no:   `SYN_AIZ_${sp.sicil_no}`,
+      sicil_no:  sp.sicil_no,
+      ad_soyad:  sp.ad_soyad,
+      unvan:     sp.unvan,
+      tur:       'Aylıksız İzin',
+      isZabita:  sp.isZabita,
       OD: 0, IZ: iz, hamIzin: iz, YG: yg, K: k, SD: 0,
-      kategori: 'Dönemdeki İzinler',
+      kategori:  'Dönemdeki İzinler',
+      odYGAsimi: false,
     })
   }
 
@@ -452,14 +483,15 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     const baseIz = Math.ceil(yzGun / 2)
     if (baseIz <= 0) continue
     satirlar.push({
-      sira_no:  `SYN_YZM_${sp.sicil_no}`,
-      sicil_no: sp.sicil_no,
-      ad_soyad: sp.ad_soyad,
-      unvan:    sp.unvan,
-      tur:      'Yarı Zamanlı (Baz)',
-      isZabita: sp.isZabita,
+      sira_no:   `SYN_YZM_${sp.sicil_no}`,
+      sicil_no:  sp.sicil_no,
+      ad_soyad:  sp.ad_soyad,
+      unvan:     sp.unvan,
+      tur:       'Yarı Zamanlı (Baz)',
+      isZabita:  sp.isZabita,
       OD: 0, IZ: baseIz, hamIzin: 0, YG: yg, K: 0, SD: 0,
-      kategori: 'Dönemdeki İzinler',
+      kategori:  'Dönemdeki İzinler',
+      odYGAsimi: false,
     })
   }
 

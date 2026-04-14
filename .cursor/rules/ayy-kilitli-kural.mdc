@@ -49,6 +49,7 @@ K = iv.isZabita ? zabitaYemekAlacagi(iz) : Math.max(0, yemekliGun - iz)
 ```
 - Baz değer `iz`'dir (bu dönemde kesilen gün), **`iv.gun`** veya **`hamIzin`** değildir.
 - `iv.gun` ve `hamIzin` sonraki döneme taşan günleri içerebilir; bunları baz almak `K > YG` hatasına yol açar.
+- **İstisna:** Yeni kural 8 (SD taşma OD) devredeyse `K = max(0, 24 − od − iz)` kullanılır.
 
 ### 4. `zabitaYemekAlacagi` fonksiyonu
 ```ts
@@ -60,6 +61,45 @@ function zabitaYemekAlacagi(iz: number): number {
 }
 ```
 - 30 günlük taban ve 24 günlük tavan değiştirilemez.
+
+### 8. Zabıta SD Taşma OD Kuralı — Yeni (2026-04-13)
+
+**Koşul:** Önceki dönemde o iznin `IZ >= YG (30)` iken `SD > 0` oluşmuşsa bu SD, mevcut döneme
+"YG aşımı OD" olarak taşınır. Aksi hâllerde (takvim taşması veya geç yazılan izin) eski kural geçerlidir.
+
+| OD kaynağı | Önceki dönem iz | Kural |
+|---|---|---|
+| YG aşımı (iz = 30 iken sd > 0) | ≥ YG (30) | **Yeni: `K = max(0, 24 − od − iz)`** |
+| Takvim taşması (iz < 30 iken sd > 0) | < YG | **Eski: `zabitaYemekAlacagi(iz)`** |
+| Geç yazılan izin | — (od = 0 kodda) | **Eski: `zabitaYemekAlacagi(iz)`** |
+
+**Tespit mekanizması:**
+```ts
+const prevIz = prevIzBySiraNo?.[iv.sira_no] ?? 0
+const odIsYGAsimi = iv.isZabita && od > 0 && prevIz >= yemekliGun  // yemekliGun = 30
+```
+- `prevIzBySiraNo`: `ayy-donem-havuz.ts → ayySdSonrakiDonemIcin` içinde hesaplanır,
+  `memo.prevIzDoneme` üzerinden `ayyHesapla` parametresine aktarılır.
+
+**Personel özet K (zabıta, yeni kural devredeyken):**
+```ts
+odYGAsimiTopla > 0
+  ? K = max(0, 24 − odYGAsimiTopla − totalIZ)
+  : K = zabitaYemekAlacagi(totalIZ)
+```
+
+**Örnek:**
+| Dönem | iz | OD | K |
+|---|---|---|---|
+| Period 1: 32 gün izin (iz=30=YG, sd=2) | 30 | — | 0 |
+| Period 2: od=2, iz=2 | 2 | 2 | max(0,24−2−2)=20 |
+| Period 2: od=5, iz=3 | 3 | 5 | max(0,24−5−3)=16 |
+
+**Karşı örnek (eski kural korunur):**
+| Dönem | iz (önceki) | OD | K |
+|---|---|---|---|
+| Period 1: 3 gün izin (iz=2, YG dolmadı, sd=1) | 2 | — | 24 |
+| Period 2: od=1, iz=1 | önceki iz=2 <30 | 1 | zabitaYemekAlacagi(1)=24 |
 
 ### 5. Mehil izni `K` ve `IZ` mantığı
 - `K`, "mehil dönüşünden dönem sonuna kalan gün" ile hesaplanır; klasik `YG - IZ` değil.
