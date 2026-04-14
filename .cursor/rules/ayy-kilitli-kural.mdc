@@ -101,6 +101,28 @@ odYGAsimiTopla > 0
 | Period 1: 3 gün izin (iz=2, YG dolmadı, sd=1) | 2 | — | 24 |
 | Period 2: od=1, iz=1 | önceki iz=2 <30 | 1 | zabitaYemekAlacagi(1)=24 |
 
+### 9. Zabıta Personel-Bazlı IZ Taşma Kuralı — Faz 2 (2026-04-13)
+
+**Koşul:** Önceki dönemde bir zabıta personelinin **birden fazla izni birleşince** toplam IZ > YG (30)
+olması durumunda. Her iznin bireysel `SD = 0` olabilir (takvim taşması yok), ama toplam `IZ > YG`.
+
+**Tespit:** `personel.IZ − personel.YG − satır_bazlı_SD_toplamı > 0`
+
+**Uygulama:** Mevcut dönemde K = `max(0, 24 − overflow − IZ_mevcut)`.
+Bu dönemde hiç izni olmayan personel için de özet satırı oluşturulur (OD=overflow, IZ=0, K=max(0,24−overflow)).
+
+**Gerçek Örnek — sicil 459 (Period 5 → Period 6):**
+- Leave 494 (Hastane Yatış, geç yazılan): arada kalan kural → iz=2, sd=0
+- Leave 495 (Heyet Raporu, dIhtimali): iz=30, sd=0
+- Toplam IZ=32 > YG=30 → personel SD=2 (ekranda görünen)
+- Satır-bazlı SD toplamı=0 → untracked overflow=2
+- Period 6'da sicil 459 hiç izin hareketi yok → personelere OD=2, K=max(0,24-2)=22 eklenir.
+
+**Kod mekanizması:**
+- `ayy-donem-havuz.ts → ayySdSonrakiDonemIcin` → `memo.prevPersonelIzOverflow`
+- `ayyHesapla` parametresi: `prevPersonelIzOverflowBySicilNo`
+- Post-processing: `yeniPersoneller2` bloğu (GGYK post-processing'den sonra)
+
 ### 5. Mehil izni `K` ve `IZ` mantığı
 - `K`, "mehil dönüşünden dönem sonuna kalan gün" ile hesaplanır; klasik `YG - IZ` değil.
 - `IZ = YG - K` olarak türetilir.

@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
   const izinler = await ayyIzinDbToAyyIzinRow(supabase, dahilRaw)
   const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donemId, donem, tatiller, memo)
   const prevIzBySiraNo = memo.prevIzDoneme.get(donemId) ?? {}
+  const prevPersonelIzOverflowBySicilNo = memo.prevPersonelIzOverflow.get(donemId) ?? {}
   const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
 
   const sonuc = ayyHesapla({
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
     tatiller,
     odBySiraNo,
     prevIzBySiraNo,
+    prevPersonelIzOverflowBySicilNo,
     oncekiDonem: onceki
       ? {
           baslangic_tarihi: onceki.baslangic_tarihi,

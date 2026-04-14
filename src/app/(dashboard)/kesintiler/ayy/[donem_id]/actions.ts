@@ -106,6 +106,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
   const izinler = await ayyIzinDbToAyyIzinRow(supabase, dahilRaw)
   const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donem_id, donem, tatiller, memo)
   const prevIzBySiraNo = memo.prevIzDoneme.get(donem_id) ?? {}
+  const prevPersonelIzOverflowBySicilNo = memo.prevPersonelIzOverflow.get(donem_id) ?? {}
   const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
   const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
   const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
@@ -117,6 +118,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
     tatiller,
     odBySiraNo,
     prevIzBySiraNo,
+    prevPersonelIzOverflowBySicilNo,
     oncekiDonem: onceki
       ? {
           baslangic_tarihi: onceki.baslangic_tarihi,

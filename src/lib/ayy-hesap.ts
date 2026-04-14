@@ -75,6 +75,17 @@ export interface AyyHesapSonucu {
 }
 
 /**
+ * Önceki dönemde zabıta personelinin toplam IZ > YG olması durumunda
+ * taşan gün sayısı ve kişi bilgisi. ayy-donem-havuz.ts tarafından hesaplanır.
+ */
+export interface PrevPersonelIzOverflowInfo {
+  /** IZ > YG farkı; satır-bazlı SD ile örtüşmeyen kısmı temsil eder */
+  overflow: number
+  ad_soyad: string
+  unvan: string
+}
+
+/**
  * Statü bazlı AYY personel (aylıksız izin / yarı zamanlı / geçici görev yemek hakkı hayır).
  * ayy-donem-havuz.ts tarafından calisan tablosundan yüklenir.
  */
@@ -322,10 +333,17 @@ export interface AyyHesapParams {
    * İzin hareketlerinden bağımsız olarak AYY hesabını etkileyen calisan kayıtları.
    */
   statuBazliPersonel?: AyyStatuBazliPersonel[]
+  /**
+   * Önceki dönemde zabıta personelinin toplam IZ > YG olması durumunda
+   * satır-bazlı SD ile örtüşmeyen taşma günleri (sicil_no → bilgi).
+   * Mevcut dönemde bu günler K'dan düşülür: K = max(0, 24 − overflow − IZ).
+   * Mevcut dönemde hiç izni olmayan personel için de yeni bir özet satırı oluşturulur.
+   */
+  prevPersonelIzOverflowBySicilNo?: Record<string, PrevPersonelIzOverflowInfo>
 }
 
 export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
-  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {}, prevIzBySiraNo = {}, oncekiDonem, statuBazliPersonel = [] } = params
+  const { donemBas, donemBit, izinler, tatiller, odBySiraNo = {}, prevIzBySiraNo = {}, oncekiDonem, statuBazliPersonel = [], prevPersonelIzOverflowBySicilNo = {} } = params
 
   const bas = parseDate(donemBas)!
   const bit = parseDate(donemBit)!
@@ -560,6 +578,54 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     })
     yeniPersoneller.forEach((p, i) => { p.sira_no_seq = i + 1 })
     personeller = yeniPersoneller
+  }
+
+  // ─── Personel-bazlı IZ Taşma OD (Faz 2) ─────────────────────────────────────
+  // Zabıta personelinin önceki dönemde toplam IZ > YG olması durumunda
+  // satır-bazlı SD ile örtüşmeyen taşma günleri bu dönemde K'dan düşülür.
+  // (Faz 1 = satır-bazlı tek iznin iz=YG, sd>0 durumu. Faz 2 = birden fazla iznin toplamı YG'yi aşması.)
+  if (Object.keys(prevPersonelIzOverflowBySicilNo).length > 0) {
+    const yeniPersoneller2: AyyPersonelOzet[] = []
+    const islenenSiciller2 = new Set<string>()
+
+    for (const p of personeller) {
+      const info = prevPersonelIzOverflowBySicilNo[p.sicil_no.trim()]
+      if (!info || !p.isZabita || info.overflow <= 0) {
+        yeniPersoneller2.push(p)
+        continue
+      }
+      islenenSiciller2.add(p.sicil_no.trim())
+      // K = max(0, 24 − overflow − IZ_bu_dönem)
+      const newK = Math.max(0, 24 - info.overflow - (p.IZ || 0))
+      yeniPersoneller2.push({ ...p, OD: (p.OD || 0) + info.overflow, K: newK })
+    }
+
+    // Bu dönemde hiç izin hareketi olmayan ama önceki dönemde IZ taşması olan zabıta personeli
+    for (const [sicil, info] of Object.entries(prevPersonelIzOverflowBySicilNo)) {
+      if (islenenSiciller2.has(sicil) || info.overflow <= 0) continue
+      yeniPersoneller2.push({
+        sira_no_seq: 0,
+        sicil_no:    sicil,
+        ad_soyad:    info.ad_soyad,
+        unvan:       info.unvan,
+        isZabita:    true,
+        OD:          info.overflow,
+        IZ:          0,
+        hamIzin:     0,
+        YG:          30,
+        K:           Math.max(0, 24 - info.overflow),
+        SD:          0,
+      })
+    }
+
+    yeniPersoneller2.sort((a, b) => {
+      const na = parseInt(a.sicil_no) || 0
+      const nb = parseInt(b.sicil_no) || 0
+      if (na !== nb) return na - nb
+      return a.sicil_no.localeCompare(b.sicil_no)
+    })
+    yeniPersoneller2.forEach((p, i) => { p.sira_no_seq = i + 1 })
+    personeller = yeniPersoneller2
   }
 
   const takipteki    = satirlariPersoneldeTopla(satirlar.filter(s => s.kategori === 'Takipteki İzinler'))

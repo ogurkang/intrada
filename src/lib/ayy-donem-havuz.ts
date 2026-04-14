@@ -8,7 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
+import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 
 export type AyyDonemRow = {
@@ -36,6 +36,11 @@ type HavuzMemo = {
   sdSonrakiDoneme: Map<number, Record<string, number>>
   /** donemId → önceki dönem hesabındaki sira_no → IZ (Zabıta SD taşma kuralı tespiti için) */
   prevIzDoneme: Map<number, Record<string, number>>
+  /**
+   * donemId → önceki dönem hesabındaki zabıta personelinin toplam IZ > YG taşması
+   * (satır-bazlı SD ile örtüşmeyen kısım). Faz 2 OD kuralı için kullanılır.
+   */
+  prevPersonelIzOverflow: Map<number, Record<string, PrevPersonelIzOverflowInfo>>
 }
 
 const IN_CHUNK = 200
@@ -196,6 +201,31 @@ export async function ayySdSonrakiDonemIcin(
   }
   memo.prevIzDoneme.set(donemId, prevIzMap)
 
+  // Personel-bazlı IZ taşma hesabı (Faz 2 OD kuralı).
+  // Zabıta personelinin toplam IZ > YG (30) durumunda, satır-bazlı SD ile
+  // örtüşmeyen fazla günler bir sonraki döneme taşınır.
+  const sicilRowSdSums: Record<string, number> = {}
+  for (const s of sonuc.satirlar) {
+    if (s.SD > 0 && s.sicil_no) {
+      sicilRowSdSums[s.sicil_no] = (sicilRowSdSums[s.sicil_no] ?? 0) + s.SD
+    }
+  }
+  const prevPersonelIzOverflowMap: Record<string, PrevPersonelIzOverflowInfo> = {}
+  for (const p of sonuc.personeller) {
+    if (!p.isZabita) continue
+    const personelIzOverflow = Math.max(0, p.IZ - p.YG)
+    const alreadyTracked = sicilRowSdSums[p.sicil_no] ?? 0
+    const untracked = Math.max(0, personelIzOverflow - alreadyTracked)
+    if (untracked > 0) {
+      prevPersonelIzOverflowMap[p.sicil_no] = {
+        overflow: untracked,
+        ad_soyad: p.ad_soyad,
+        unvan:    p.unvan,
+      }
+    }
+  }
+  memo.prevPersonelIzOverflow.set(donemId, prevPersonelIzOverflowMap)
+
   // Manuel SD düzeltmeleri: belirli dönem+sicil için SD zorla atanır (genellikle 0).
   const { data: overrides } = await supabase
     .from('ayy_sd_override')
@@ -333,7 +363,7 @@ export async function ayyIzinDbToAyyIzinRow(
 }
 
 export function createAyyHavuzMemo(): HavuzMemo {
-  return { pool: new Map(), sdSonrakiDoneme: new Map(), prevIzDoneme: new Map() }
+  return { pool: new Map(), sdSonrakiDoneme: new Map(), prevIzDoneme: new Map(), prevPersonelIzOverflow: new Map() }
 }
 
 /**
