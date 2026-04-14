@@ -9,9 +9,9 @@ import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 
 type Kadro   = Tables<'kadro_hareketleri'>
-type Durumu  = Kadro['durumu']
 interface Personel { sicil_no: string; ad_soyad: string }
 const trNumericCollator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' })
+const EXCEL_YESIL = '#217346'
 
 function kadroSiraNoSirala(a: string | null, b: string | null): number {
   const aa = (a ?? '').trim()
@@ -42,22 +42,120 @@ interface Props {
 }
 
 const DURUM_RENK: Record<string, string> = {
+  Asil:  'bg-green-100 text-green-700',
   Dolu:  'bg-green-100 text-green-700',
   Vekil: 'bg-amber-100 text-amber-700',
   Boş:   'bg-slate-100 text-slate-500',
+}
+const DURUM_FILTRELER = ['Tümü', 'Dolu', 'Asil', 'Vekil', 'Boş'] as const
+type DurumFiltre = (typeof DURUM_FILTRELER)[number]
+
+type ColumnFilterKey =
+  | 'kadro_derecesi'
+  | 'kadro_gorev_unvani'
+  | 'mudurluk'
+  | 'statu'
+  | 'asil'
+  | 'vekil'
+  | 'durumu'
+
+type ColumnFilters = Record<ColumnFilterKey, string[]>
+
+const BOS_KOLON_FILTRE: ColumnFilters = {
+  kadro_derecesi: [],
+  kadro_gorev_unvani: [],
+  mudurluk: [],
+  statu: [],
+  asil: [],
+  vekil: [],
+  durumu: [],
+}
+
+function HeaderMultiSelectFilter({
+  title,
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  title: string
+  options: string[]
+  selected: string[]
+  onToggle: (v: string) => void
+  onClear: () => void
+}) {
+  const [arama, setArama] = useState('')
+  const aktif = selected.length > 0
+  const filtreliOpsiyonlar = useMemo(() => {
+    const q = trNormalize(arama)
+    if (!q) return options
+    return options.filter(v => trNormalize(v).includes(q))
+  }, [options, arama])
+
+  return (
+    <details className="relative inline-block" onClick={e => e.stopPropagation()}>
+      <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-slate-500 hover:text-slate-700">
+        <svg className={`h-3.5 w-3.5 ${aktif ? 'text-blue-600' : ''}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path d="M3 5a1 1 0 0 1 1-1h12a1 1 0 0 1 .8 1.6L12 12v4a1 1 0 0 1-1.447.894l-2-1A1 1 0 0 1 8 15v-3L3.2 5.6A1 1 0 0 1 3 5Z" />
+        </svg>
+        {aktif && <span className="text-[10px] font-semibold">{selected.length}</span>}
+      </summary>
+      <div className="absolute left-0 z-30 mt-2 w-[min(26rem,calc(100vw-2rem))] min-w-[18rem] rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <p className="text-xs font-semibold text-slate-700">{title}</p>
+          <button
+            type="button"
+            onClick={e => {
+              e.preventDefault()
+              onClear()
+            }}
+            className="text-[11px] text-slate-500 hover:text-slate-800"
+          >
+            Temizle
+          </button>
+        </div>
+        <div className="mb-2 px-1">
+          <input
+            type="text"
+            value={arama}
+            onChange={e => setArama(e.target.value)}
+            placeholder="Filtre içinde ara..."
+            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+        </div>
+        <div className="max-h-64 overflow-auto pr-1">
+          {filtreliOpsiyonlar.map(v => (
+            <label key={v} className="flex items-start gap-2 rounded px-1 py-1 text-xs text-slate-700 hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selected.includes(v)}
+                onChange={() => onToggle(v)}
+                className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300"
+              />
+              <span className="leading-4">{v}</span>
+            </label>
+          ))}
+          {filtreliOpsiyonlar.length === 0 && (
+            <p className="px-1 py-2 text-xs text-slate-400">Eşleşen seçenek bulunamadı.</p>
+          )}
+        </div>
+      </div>
+    </details>
+  )
 }
 
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export default function KadroListClient({ data, personeller, statuler, mudurluler, unvanlar, gelisNedenleri, ayrilisNedenleri, onEkle, onGuncelle }: Props) {
   const router = useRouter()
-  const [sadece_aktif, setSadeceAktif] = useState(true)
-  const [durumFiltre, setDurumFiltre]  = useState<Durumu | 'Tümü'>('Tümü')
+  const [durumFiltre, setDurumFiltre]  = useState<DurumFiltre>('Tümü')
   const [statuSekme, setStatuSekme]   = useState('Tümü')
   const [aramaQ, setAramaQ]           = useState('')
   const [modalAcik, setModalAcik]     = useState(false)
   const [secili, setSecili]           = useState<Kadro | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
+  const [kolonFiltre, setKolonFiltre] = useState<ColumnFilters>(BOS_KOLON_FILTRE)
+  const [hizliFiltre, setHizliFiltre] = useState<'yok' | 'mudurler'>('yok')
 
   const statuSekmeler = useMemo(() => {
     const benzersiz = [...new Set(data.map(k => k.statu).filter(Boolean) as string[])].sort()
@@ -70,11 +168,73 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     return m
   }, [personeller])
 
+  const filtreOpsiyonlari = useMemo(() => {
+    const degerler = {
+      kadro_derecesi: new Set<string>(),
+      kadro_gorev_unvani: new Set<string>(),
+      mudurluk: new Set<string>(),
+      statu: new Set<string>(),
+      asil: new Set<string>(),
+      vekil: new Set<string>(),
+      durumu: new Set<string>(),
+    }
+
+    for (const k of data) {
+      if (k.kadro_derecesi) degerler.kadro_derecesi.add(k.kadro_derecesi)
+
+      const unvan = [k.kadro_unvani, k.gorev_unvani]
+        .filter(Boolean)
+        .map(x => String(x).trim())
+        .filter(Boolean)
+        .join(' / ')
+      if (unvan) degerler.kadro_gorev_unvani.add(unvan)
+
+      const mudurluk = [k.kadro_mudurlugu, k.gorev_mudurlugu]
+        .filter(Boolean)
+        .map(x => String(x).trim())
+        .filter(Boolean)
+        .join(' / ')
+      if (mudurluk) degerler.mudurluk.add(mudurluk)
+
+      if (k.statu) degerler.statu.add(k.statu)
+      if (k.asil) degerler.asil.add(`${adMap[k.asil] ?? k.asil} (${k.asil})`)
+      if (k.vekil) degerler.vekil.add(`${adMap[k.vekil] ?? k.vekil} (${k.vekil})`)
+      if (k.durumu) degerler.durumu.add(k.durumu === 'Dolu' ? 'Asil' : k.durumu)
+    }
+
+    return {
+      kadro_derecesi: [...degerler.kadro_derecesi].sort((a, b) => trNumericCollator.compare(a, b)),
+      kadro_gorev_unvani: [...degerler.kadro_gorev_unvani].sort((a, b) => a.localeCompare(b, 'tr')),
+      mudurluk: [...degerler.mudurluk].sort((a, b) => a.localeCompare(b, 'tr')),
+      statu: [...degerler.statu].sort((a, b) => a.localeCompare(b, 'tr')),
+      asil: [...degerler.asil].sort((a, b) => a.localeCompare(b, 'tr')),
+      vekil: [...degerler.vekil].sort((a, b) => a.localeCompare(b, 'tr')),
+      durumu: [...degerler.durumu].sort((a, b) => a.localeCompare(b, 'tr')),
+    }
+  }, [data, adMap])
+
+  function toggleKolonFiltre(key: ColumnFilterKey, value: string) {
+    setKolonFiltre(prev => {
+      const secili = prev[key]
+      const varMi = secili.includes(value)
+      return {
+        ...prev,
+        [key]: varMi ? secili.filter(v => v !== value) : [...secili, value],
+      }
+    })
+  }
+
   const filtreli = useMemo(() => {
     let list = [...data]
     if (statuSekme !== 'Tümü') list = list.filter(k => k.statu === statuSekme)
-    if (sadece_aktif) list = list.filter(k => !k.ayrilis_tarihi)
-    if (durumFiltre !== 'Tümü') list = list.filter(k => k.durumu === durumFiltre)
+    if (durumFiltre !== 'Tümü') {
+      list = list.filter(k => {
+        if (durumFiltre === 'Dolu') return Boolean(k.asil || k.vekil)
+        if (durumFiltre === 'Asil') return Boolean(k.asil)
+        if (durumFiltre === 'Vekil') return Boolean(k.vekil)
+        return !k.asil && !k.vekil
+      })
+    }
     if (aramaQ.trim()) {
       const q = trNormalize(aramaQ)
       list = list.filter(k =>
@@ -87,13 +247,152 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
         trNormalize(k.statu).includes(q)
       )
     }
+    if (kolonFiltre.kadro_derecesi.length > 0) {
+      list = list.filter(k => kolonFiltre.kadro_derecesi.includes(k.kadro_derecesi ?? ''))
+    }
+    if (kolonFiltre.kadro_gorev_unvani.length > 0) {
+      list = list.filter(k => {
+        const unvan = [k.kadro_unvani, k.gorev_unvani]
+          .filter(Boolean)
+          .map(x => String(x).trim())
+          .filter(Boolean)
+          .join(' / ')
+        return kolonFiltre.kadro_gorev_unvani.includes(unvan)
+      })
+    }
+    if (kolonFiltre.mudurluk.length > 0) {
+      list = list.filter(k => {
+        const mudurluk = [k.kadro_mudurlugu, k.gorev_mudurlugu]
+          .filter(Boolean)
+          .map(x => String(x).trim())
+          .filter(Boolean)
+          .join(' / ')
+        return kolonFiltre.mudurluk.includes(mudurluk)
+      })
+    }
+    if (kolonFiltre.statu.length > 0) {
+      list = list.filter(k => kolonFiltre.statu.includes(k.statu ?? ''))
+    }
+    if (kolonFiltre.asil.length > 0) {
+      list = list.filter(k => kolonFiltre.asil.includes(k.asil ? `${adMap[k.asil] ?? k.asil} (${k.asil})` : ''))
+    }
+    if (kolonFiltre.vekil.length > 0) {
+      list = list.filter(k => kolonFiltre.vekil.includes(k.vekil ? `${adMap[k.vekil] ?? k.vekil} (${k.vekil})` : ''))
+    }
+    if (kolonFiltre.durumu.length > 0) {
+      list = list.filter(k => kolonFiltre.durumu.includes(k.durumu === 'Dolu' ? 'Asil' : (k.durumu ?? '')))
+    }
+    if (hizliFiltre === 'mudurler') {
+      list = list.filter(k => trNormalize(k.kadro_unvani ?? '').includes('mudur'))
+    }
     list.sort((a, b) => {
       const byKadroNo = kadroSiraNoSirala(a.kadro_sira_no, b.kadro_sira_no)
       if (byKadroNo !== 0) return byKadroNo
       return (a.kadro_unvani ?? '').localeCompare(b.kadro_unvani ?? '', 'tr')
     })
     return list
-  }, [data, statuSekme, sadece_aktif, durumFiltre, aramaQ, adMap])
+  }, [data, statuSekme, durumFiltre, aramaQ, adMap, kolonFiltre, hizliFiltre])
+
+  async function excelIndir() {
+    const XLSX = await import('xlsx-js-style')
+    const baslik = 'Adapazarı Belediyesi - Norm Kadro Defteri'
+    const FONT_PT = 12
+
+    /** Excel: kadro ünvanı / müdürlük + personel; Statü ve Durum yok */
+    const kolonBasliklari = [
+      'Sıra No',
+      'Kadro Sıra No',
+      'Kadro Derecesi',
+      'Kadro Ünvanı',
+      'Kadro Müdürlüğü',
+      'Asil Personel',
+      'Vekil Personel',
+    ]
+
+    const satirlar = filtreli.map((k, idx) => {
+      const kadroUnvani = (k.kadro_unvani ?? '').trim() || '—'
+      const kadroMudurlugu = (k.kadro_mudurlugu ?? '').trim() || '—'
+      const asil = k.asil ? `${adMap[k.asil] ?? k.asil}\n${k.asil}` : '—'
+      const vekil = k.vekil ? `${adMap[k.vekil] ?? k.vekil}\n${k.vekil}` : '—'
+
+      return [
+        idx + 1,
+        k.kadro_sira_no ?? '—',
+        k.kadro_derecesi ?? '—',
+        kadroUnvani,
+        kadroMudurlugu,
+        asil,
+        vekil,
+      ]
+    })
+
+    const aoa: (string | number)[][] = [[baslik], kolonBasliklari, ...satirlar]
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }]
+    ws['!cols'] = [
+      { wch: 5 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 28 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 22 },
+    ]
+    ws['!pageSetup'] = {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToWidth: 1,
+      fitToHeight: 0,
+    }
+
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    const HEADER_ROW = 1
+    for (let R = 0; R <= range.e.r; R++) {
+      for (let C = 0; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C })
+        if (!ws[addr]) continue
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cell = ws[addr] as any
+        const isTitle = R === 0
+        const isHeader = R === HEADER_ROW
+        const isData = R > HEADER_ROW
+        const abcCenter = isData && C <= 2
+
+        let horizontal: 'left' | 'center' | 'right' = 'left'
+        if (isTitle) horizontal = 'center'
+        else if (isHeader) horizontal = C <= 2 ? 'center' : 'left'
+        else if (abcCenter) horizontal = 'center'
+
+        cell.s = {
+          alignment: {
+            vertical: 'top',
+            horizontal,
+            wrapText: true,
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+            bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+            left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+            right: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          },
+          font: {
+            name: 'Calibri',
+            sz: FONT_PT,
+            bold: isTitle || isHeader,
+            color: { rgb: '1F2937' },
+          },
+        }
+        if (isHeader) {
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } }
+        }
+      }
+    }
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Norm Kadro')
+    XLSX.writeFile(wb, `norm-kadro-defteri-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   function yeniEkleAc()       { setSecili(null); setSunuciHata(null); setModalAcik(true) }
   function duzenleAc(k: Kadro){ setSecili(k);    setSunuciHata(null); setModalAcik(true) }
@@ -130,6 +429,14 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
             <input type="text" placeholder="Ara…" value={aramaQ} onChange={e => setAramaQ(e.target.value)}
               className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 w-44" />
           </div>
+          <button
+            type="button"
+            onClick={excelIndir}
+            className="flex items-center gap-2 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap"
+            style={{ backgroundColor: EXCEL_YESIL }}
+          >
+            Excel İndir
+          </button>
           <button onClick={yeniEkleAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium whitespace-nowrap">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -179,12 +486,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
 
       {/* Filtre çubuğu */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer mr-2">
-          <input type="checkbox" checked={sadece_aktif} onChange={e => setSadeceAktif(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-slate-800" />
-          Sadece aktif (ayrılmamış)
-        </label>
-        {(['Tümü', 'Dolu', 'Vekil', 'Boş'] as const).map(d => (
+        {DURUM_FILTRELER.map(d => (
           <button key={d} onClick={() => setDurumFiltre(d)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
               durumFiltre === d ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
@@ -192,24 +494,121 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
             {d}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setKolonFiltre(BOS_KOLON_FILTRE)}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-white text-slate-600 border-slate-300 hover:border-slate-400"
+        >
+          Sütun filtrelerini temizle
+        </button>
+        <div className="inline-flex items-center gap-2 text-xs text-slate-500 ml-1 border-l border-slate-300 pl-3">
+          <button
+            type="button"
+            onClick={() => setHizliFiltre(prev => (prev === 'mudurler' ? 'yok' : 'mudurler'))}
+            className={`px-2 py-1 rounded border ${
+              hizliFiltre === 'mudurler'
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            Müdürler
+          </button>
+        </div>
         <span className="text-xs text-slate-400 ml-1">{filtreli.length} kayıt</span>
       </div>
 
       {/* Tablo */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-visible min-h-[420px]">
+        <div className="overflow-x-auto overflow-y-visible min-h-[360px]">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Kadro Sıra No</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Kadro Derecesi</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Kadro / Görev Ünvanı</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Müdürlük</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Statü</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Asil Personel</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Vekil Personel</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">
+                  <div className="inline-flex items-center gap-1.5">
+                    Kadro Derecesi
+                    <HeaderMultiSelectFilter
+                      title="Kadro Derecesi"
+                      options={filtreOpsiyonlari.kadro_derecesi}
+                      selected={kolonFiltre.kadro_derecesi}
+                      onToggle={v => toggleKolonFiltre('kadro_derecesi', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, kadro_derecesi: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">
+                  <div className="inline-flex items-center gap-1.5">
+                    Kadro / Görev Ünvanı
+                    <HeaderMultiSelectFilter
+                      title="Kadro / Görev Ünvanı"
+                      options={filtreOpsiyonlari.kadro_gorev_unvani}
+                      selected={kolonFiltre.kadro_gorev_unvani}
+                      onToggle={v => toggleKolonFiltre('kadro_gorev_unvani', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, kadro_gorev_unvani: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">
+                  <div className="inline-flex items-center gap-1.5">
+                    Müdürlük
+                    <HeaderMultiSelectFilter
+                      title="Müdürlük"
+                      options={filtreOpsiyonlari.mudurluk}
+                      selected={kolonFiltre.mudurluk}
+                      onToggle={v => toggleKolonFiltre('mudurluk', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, mudurluk: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">
+                  <div className="inline-flex items-center gap-1.5">
+                    Statü
+                    <HeaderMultiSelectFilter
+                      title="Statü"
+                      options={filtreOpsiyonlari.statu}
+                      selected={kolonFiltre.statu}
+                      onToggle={v => toggleKolonFiltre('statu', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, statu: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">
+                  <div className="inline-flex items-center gap-1.5">
+                    Asil Personel
+                    <HeaderMultiSelectFilter
+                      title="Asil Personel"
+                      options={filtreOpsiyonlari.asil}
+                      selected={kolonFiltre.asil}
+                      onToggle={v => toggleKolonFiltre('asil', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, asil: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">
+                  <div className="inline-flex items-center gap-1.5">
+                    Vekil Personel
+                    <HeaderMultiSelectFilter
+                      title="Vekil Personel"
+                      options={filtreOpsiyonlari.vekil}
+                      selected={kolonFiltre.vekil}
+                      onToggle={v => toggleKolonFiltre('vekil', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, vekil: [] }))}
+                    />
+                  </div>
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">
+                  <div className="inline-flex items-center gap-1.5">
+                    Durum
+                    <HeaderMultiSelectFilter
+                      title="Durum"
+                      options={filtreOpsiyonlari.durumu}
+                      selected={kolonFiltre.durumu}
+                      onToggle={v => toggleKolonFiltre('durumu', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, durumu: [] }))}
+                    />
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -257,8 +656,8 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                     ) : <span className="text-slate-300">—</span>}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${DURUM_RENK[k.durumu] ?? ''}`}>
-                      {k.durumu}
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${DURUM_RENK[k.durumu === 'Dolu' ? 'Asil' : (k.durumu ?? '')] ?? ''}`}>
+                      {k.durumu === 'Dolu' ? 'Asil' : k.durumu}
                     </span>
                   </td>
                 </tr>

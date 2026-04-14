@@ -53,7 +53,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       calisanlarItem,
       { href: '/personel/ayrilanlar', label: 'Ayrılanlar'          },
-      { href: '/firma-calisanlar',    label: 'Firma Personel'      },
+      { href: '/firma-calisanlar',    label: 'ADABEL Personel'      },
       { href: '/kadro',               label: 'Kadro Hareketleri'   },
       { href: '/personel-hareketleri', label: 'Personel Hareketleri'},
       { href: terfiMenuHref,          label: 'Terfi Hareketleri'   },
@@ -327,29 +327,41 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
                         const altAktif = itemOrSubtreeActive(pathname, item)
                         return (
                           <div key={item.href}>
-                            <button
-                              type="button"
-                              onClick={() => toggleAlt(item.href)}
-                              className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
-                                aktif || altAktif
-                                  ? 'bg-slate-700 text-white font-medium'
-                                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-                              } w-full text-left justify-between`}
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                                {item.label}
-                              </span>
-                              <svg
-                                className={`w-3.5 h-3.5 transition-transform duration-200 ${altAcik ? 'rotate-180' : ''}`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
+                            <div className="flex items-stretch min-w-0">
+                              <Link
+                                href={item.href}
+                                onClick={onNavigate}
+                                className={`flex flex-1 min-w-0 items-center gap-2 pl-12 pr-2 py-2 text-sm transition-colors ${
+                                  aktif || altAktif
+                                    ? 'bg-slate-700 text-white font-medium'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                                }`}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
+                                <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-current opacity-60" />
+                                <span className="truncate">{item.label}</span>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => toggleAlt(item.href)}
+                                aria-expanded={altAcik}
+                                aria-label={`${item.label} alt menüsünü aç veya kapat`}
+                                className={`shrink-0 px-2 py-2 text-sm transition-colors border-l border-slate-700/80 ${
+                                  altAktif
+                                    ? 'bg-slate-700 text-white'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                                }`}
+                              >
+                                <svg
+                                  className={`w-3.5 h-3.5 transition-transform duration-200 ${altAcik ? 'rotate-180' : ''}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2.5}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            </div>
                             {altAcik && item.children.map((ch) => {
                               const chAktif = childPathActive(pathname, ch.href)
                               return (
