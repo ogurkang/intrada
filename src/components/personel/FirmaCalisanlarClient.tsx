@@ -23,12 +23,19 @@ function tarihFmt(t: string | null) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
+function tarihSiralaDegeri(t: string | null): number {
+  if (!t) return Number.NaN
+  const ts = Date.parse(t)
+  return Number.isFinite(ts) ? ts : Number.NaN
+}
+
 const SAYFA_BOYUTU = 10
 
 export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, onGuncelle, onSil }: Props) {
   const router = useRouter()
   const [arama, setArama]             = useState('')
   const [sekme, setSekme]             = useState<'calisanlar' | 'ayrilanlar'>('calisanlar')
+  const [ayrilanSiralama, setAyrilanSiralama] = useState<'asc' | 'desc'>('desc')
   const [mudFiltre, setMud]           = useState('')
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<FC | null>(null)
@@ -45,11 +52,20 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
   [kayitlar])
   const ayrilanlarList = useMemo(() =>
     kayitlar.filter(k => !isFirmaCalisanAktif(k.ayrilis_tarihi)).sort((a, b) => {
+      const ta = tarihSiralaDegeri(a.ayrilis_tarihi)
+      const tb = tarihSiralaDegeri(b.ayrilis_tarihi)
+      const aGecerli = Number.isFinite(ta)
+      const bGecerli = Number.isFinite(tb)
+      if (aGecerli && bGecerli && ta !== tb) {
+        return ayrilanSiralama === 'asc' ? ta - tb : tb - ta
+      }
+      if (aGecerli !== bGecerli) return aGecerli ? -1 : 1
+
       const na = parseInt(a.sicil_no ?? '0', 10) || 0
       const nb = parseInt(b.sicil_no ?? '0', 10) || 0
       return nb - na
     }),
-  [kayitlar])
+  [kayitlar, ayrilanSiralama])
 
   const liste = sekme === 'calisanlar' ? calisanlarList : ayrilanlarList
 
@@ -141,6 +157,17 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
             {s === 'calisanlar' ? 'Çalışanlar' : 'Ayrılanlar'}
           </button>
         ))}
+        {sekme === 'ayrilanlar' && (
+          <select
+            value={ayrilanSiralama}
+            onChange={e => setAyrilanSiralama(e.target.value as 'asc' | 'desc')}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+            title="Ayrılanları ayrılış tarihine göre sırala"
+          >
+            <option value="desc">Ayrılış: Yeni → Eski</option>
+            <option value="asc">Ayrılış: Eski → Yeni</option>
+          </select>
+        )}
         <select value={mudFiltre} onChange={e => setMud(e.target.value)}
           className="ml-auto px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
           <option value="">Tüm Müdürlükler</option>
@@ -156,7 +183,9 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Müdürlük / Görevi</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Giriş Tarihi</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">
+                {sekme === 'ayrilanlar' ? 'Ayrılış Tarihi' : 'Giriş Tarihi'}
+              </th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
             </tr>
           </thead>
@@ -178,7 +207,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
                   {k.gorevi && <p className="text-slate-400">{k.gorevi}</p>}
                 </td>
                 <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">
-                  {tarihFmt(k.kuruma_giris_tarihi)}
+                  {sekme === 'ayrilanlar' ? tarihFmt(k.ayrilis_tarihi) : tarihFmt(k.kuruma_giris_tarihi)}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {!isFirmaCalisanAktif(k.ayrilis_tarihi) ? (

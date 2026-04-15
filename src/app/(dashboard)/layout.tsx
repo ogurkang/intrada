@@ -37,6 +37,18 @@ export default async function DashboardLayout({
   }
 
   const access = await getAppAccess(supabase, user.id)
+  if (access.mode === 'blocked') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md bg-white border border-red-200 rounded-xl p-8 text-center shadow-sm">
+          <p className="text-red-900 font-medium">Sistem erişiminiz kapatılmıştır</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Hesabınız için giriş yetkisi yönetici tarafından pasife alınmıştır. Açtırmak için yetkili yönetici ile iletişime geçin.
+          </p>
+        </div>
+      </div>
+    )
+  }
   const ilkTamam = profil.ilk_giris_tamam
 
   let kullaniciKarsilamaAd: string | null = null

@@ -19,6 +19,7 @@ export type YetkiSatir = {
     id: string
     rol: 'admin' | 'kullanici'
     menu_izinleri: Json | null
+    hesap_aktif: boolean
   } | null
 }
 
@@ -26,6 +27,7 @@ type Draft = {
   rol: 'admin' | 'kullanici'
   /** Kullanıcı için: sadece true tutulur; admin için hepsi true (görüntü) */
   menu: Partial<Record<MenuModulKey, boolean>>
+  hesapAktif: boolean
   authUuid: string
 }
 
@@ -48,17 +50,19 @@ function baslangicDraft(p: YetkiSatir['profil']): Draft {
     return {
       rol: 'kullanici',
       menu: {},
+      hesapAktif: true,
       authUuid: '',
     }
   }
   if (p.rol === 'admin') {
     const menu: Partial<Record<MenuModulKey, boolean>> = {}
     for (const x of MENU_YETKILENDIRME_MODULLERI) menu[x.key] = true
-    return { rol: 'admin', menu, authUuid: '' }
+    return { rol: 'admin', menu, hesapAktif: p.hesap_aktif !== false, authUuid: '' }
   }
   return {
     rol: 'kullanici',
     menu: menuDbOku(p),
+    hesapAktif: p.hesap_aktif !== false,
     authUuid: '',
   }
 }
@@ -81,6 +85,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
           id: s.profil?.id ?? null,
           r: s.profil?.rol ?? null,
           m: s.profil?.menu_izinleri,
+          h: s.profil?.hesap_aktif ?? null,
         })),
       ),
     [satirlar],
@@ -181,6 +186,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       const fd = new FormData()
       fd.set('profile_id', s.profil.id)
       fd.set('rol', d.rol)
+      if (d.hesapAktif) fd.set('hesap_aktif', 'on')
         if (d.rol === 'kullanici') {
         for (const x of MENU_YETKILENDIRME_TABLO_MODULLERI) {
           if (d.menu[x.key] === true) fd.set(`menu_${x.key}`, 'on')
@@ -202,6 +208,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
     if (uuid) fd.set('auth_user_id', uuid)
     fd.set('sicil_no', s.sicil_no)
     fd.set('rol', d.rol)
+    if (d.hesapAktif) fd.set('hesap_aktif', 'on')
         if (d.rol === 'kullanici') {
         for (const x of MENU_YETKILENDIRME_TABLO_MODULLERI) {
           if (d.menu[x.key] === true) fd.set(`menu_${x.key}`, 'on')
@@ -297,6 +304,9 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
               <th className="text-center px-1 py-2 font-semibold text-slate-600 whitespace-nowrap border-r border-slate-100" colSpan={2}>
                 Rol
               </th>
+              <th className="text-center px-1 py-2 font-semibold text-slate-600 whitespace-nowrap border-r border-slate-100 min-w-[4rem]">
+                Erişim
+              </th>
               {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
                 <th
                   key={m.key}
@@ -320,6 +330,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
               <th colSpan={4} />
               <th className="text-center px-1 py-0.5 font-normal">Admin</th>
               <th className="text-center px-1 py-0.5 font-normal border-r border-slate-100">Kullanıcı</th>
+              <th className="text-center px-1 py-0.5 font-normal border-r border-slate-100">Açık</th>
               {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
                 <th key={m.key} className="p-0" />
               ))}
@@ -372,6 +383,15 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
                       checked={!adminMi}
                       onChange={() => rolDegistir(s.sicil_no, 'kullanici')}
                       name={`rol-${s.sicil_no}`}
+                    />
+                  </td>
+                  <td className="text-center px-1 py-1 border-r border-slate-100">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-400"
+                      checked={d.hesapAktif}
+                      onChange={e => guncelleDraft(s.sicil_no, cur => ({ ...cur, hesapAktif: e.target.checked }))}
+                      title="Kapatılırsa kullanıcı sisteme erişemez"
                     />
                   </td>
                   {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
@@ -444,7 +464,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       <p className="mt-3 text-xs text-slate-500">
         Profilli satır: {profilliSayisi} / {satirlar.length}. Profil yoksa: Auth’ta hesap + personel/firma personel
         e-posta uyumluysa <strong>Oluştur</strong> yeterli (UUID isteğe bağlı). Toplu yönetici için sol kutuyu
-        işaretleyin.
+        işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
       </p>
     </div>
   )

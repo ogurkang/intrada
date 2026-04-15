@@ -193,6 +193,7 @@ interface SidebarProps {
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
   if (access.mode === 'full' || access.mode === 'admin') return access.mode
+  if (access.mode === 'blocked') return 'kullanici'
   return 'kullanici'
 }
 

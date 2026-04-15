@@ -5,6 +5,7 @@ export type AppAccess =
   | { mode: 'full' }
   | { mode: 'admin' }
   | { mode: 'kullanici'; sicilNo: string; menuIzinleri: Record<string, boolean> }
+  | { mode: 'blocked'; sicilNo: string }
 
 export async function getAppAccess(
   supabase: SupabaseClient,
@@ -12,7 +13,7 @@ export async function getAppAccess(
 ): Promise<AppAccess> {
   const { data, error } = await supabase
     .from('app_profiles')
-    .select('sicil_no, rol, menu_izinleri')
+    .select('sicil_no, rol, menu_izinleri, hesap_aktif')
     .eq('id', userId)
     .maybeSingle()
 
@@ -26,6 +27,13 @@ export async function getAppAccess(
   const rolNorm = String(data.rol ?? '')
     .trim()
     .toLocaleLowerCase('tr-TR')
+  const hesapAktif = data.hesap_aktif !== false
+  if (!hesapAktif) {
+    return {
+      mode: 'blocked',
+      sicilNo: data.sicil_no,
+    }
+  }
   if (rolNorm === 'admin' || rolNorm === 'yönetici' || rolNorm === 'yonetici' || rolNorm === 'ik_admin') {
     return { mode: 'admin' }
   }

@@ -893,6 +893,7 @@ export interface Database {
           id: string
           sicil_no: string
           rol: 'admin' | 'kullanici'
+          hesap_aktif: boolean
           menu_izinleri: Json
           updated_at: string
           kullanici_adi: string | null
@@ -903,6 +904,7 @@ export interface Database {
           id: string
           sicil_no: string
           rol?: 'admin' | 'kullanici'
+          hesap_aktif?: boolean
           menu_izinleri?: Json
           updated_at?: string
           kullanici_adi?: string | null
@@ -913,6 +915,7 @@ export interface Database {
           id?: string
           sicil_no?: string
           rol?: 'admin' | 'kullanici'
+          hesap_aktif?: boolean
           menu_izinleri?: Json
           updated_at?: string
           kullanici_adi?: string | null

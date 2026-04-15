@@ -37,7 +37,7 @@ export default async function YetkilendirmePage() {
         .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
         .order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
-      supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri'),
+      supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri, hesap_aktif'),
       supabase
         .from('firma_calisanlar')
         .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi, e_posta')

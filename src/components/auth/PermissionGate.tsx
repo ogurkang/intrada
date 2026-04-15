@@ -20,6 +20,15 @@ export default function PermissionGate({ access, children, terfiMenuHref = '/ter
     return <>{children}</>
   }
 
+  if (access.mode === 'blocked') {
+    return (
+      <div className="max-w-lg mx-auto mt-16 rounded-xl border border-red-300 bg-red-50 px-6 py-8 text-center">
+        <p className="text-lg font-bold text-red-900">Erişim kapatıldı</p>
+        <p className="mt-2 text-sm text-red-800/90">Bu kullanıcı için sistem erişimi yönetici tarafından geçici olarak kapatılmıştır.</p>
+      </div>
+    )
+  }
+
   if (access.mode !== 'kullanici') {
     return <>{children}</>
   }

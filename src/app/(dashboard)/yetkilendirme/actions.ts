@@ -51,6 +51,7 @@ export async function appProfilGuncelle(
 
   const rol = String(formData.get('rol') ?? '').trim()
   if (rol !== 'admin' && rol !== 'kullanici') return { hata: 'Geçersiz rol.' }
+  const hesap_aktif = formData.get('hesap_aktif') === 'on'
 
   const { data: mevcutProfil } = await r.supabase
     .from('app_profiles')
@@ -73,6 +74,7 @@ export async function appProfilGuncelle(
     .from('app_profiles')
     .update({
       rol,
+      hesap_aktif,
       menu_izinleri,
       updated_at: new Date().toISOString(),
     })
@@ -111,6 +113,7 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
   const sicil_no = String(formData.get('sicil_no') ?? '').trim()
   const rol = String(formData.get('rol') ?? '').trim()
   const uuidElle = String(formData.get('auth_user_id') ?? '').trim()
+  const hesap_aktif = formData.get('hesap_aktif') === 'on'
 
   if (!sicil_no) return { hata: 'Sicil numarası eksik.' }
   if (rol !== 'admin' && rol !== 'kullanici') return { hata: 'Geçersiz rol.' }
@@ -217,6 +220,7 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
     id: authUserId!,
     sicil_no,
     rol,
+    hesap_aktif,
     menu_izinleri,
     ilk_giris_tamam: false,
     kurtarma_hash: {},
