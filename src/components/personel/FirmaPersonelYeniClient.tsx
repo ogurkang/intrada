@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 
 interface Props {
   mudurluler: string[]
@@ -31,13 +30,7 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
         window.opener.postMessage('refresh', '*')
         window.close()
       } else {
-        router.push(
-          res.public_id
-            ? `/link/${res.public_id}`
-            : res.id
-              ? firmaCalisanDetayHref({ id: res.id })
-              : '/firma-calisanlar',
-        )
+        router.push('/firma-calisanlar')
       }
     }
   }
@@ -49,7 +42,7 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
           ← Listeye Dön
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Yeni Firma Personel</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Yeni ADEBEL Personel</h1>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 max-w-2xl">

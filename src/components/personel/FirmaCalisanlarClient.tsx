@@ -102,7 +102,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-800">Firma Personel</h1>
+          <h1 className="text-2xl font-bold text-slate-800">ADEBEL Personel</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             <span className="text-green-600 font-medium">{calisanlarList.length} çalışan</span>
             <span className="mx-2 text-slate-300">·</span>
