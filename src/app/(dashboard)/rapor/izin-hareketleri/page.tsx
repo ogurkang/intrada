@@ -42,7 +42,7 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
     user
       ? supabase
           .from('rapor_izin_excel_gecmis')
-          .select('id, yil, sira_bas, sira_bit, kayit_sayisi, created_at')
+          .select('id, yil, sira_bas, sira_bit, kayit_sayisi, actor_email, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(5)
@@ -50,12 +50,12 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
   ])
 
   const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
-  const filtreli = (izinRaw ?? []).filter(r => {
+  const seciliSayisi = (izinRaw ?? []).filter(r => {
     if (!aralikGecerli || aralikBas == null || aralikBit == null) return false
     const sira = parsePozitifInt(r.sira_no ?? undefined)
     if (sira == null) return false
     return sira >= aralikBas && sira <= aralikBit
-  })
+  }).length
 
   const excelHref =
     aralikGecerli && aralikBas != null && aralikBit != null
@@ -69,7 +69,11 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
         <p className="text-sm text-slate-500 mt-1">İki sıra numarası aralığı ile izin hareketlerini salt okunur inceleyip Excel olarak indirebilirsiniz.</p>
       </div>
 
-      <form className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap items-end gap-3">
+      <form
+        action="/api/rapor/izin-hareketleri/excel"
+        method="get"
+        className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap items-end gap-3"
+      >
         <label className="text-sm text-slate-600">
           <span className="block mb-1">Yıl</span>
           <input name="yil" defaultValue={yil} className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -82,19 +86,57 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
           <span className="block mb-1">Sıra No (Bitiş)</span>
           <input name="siraBit" defaultValue={p.siraBit ?? ''} className="w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
         </label>
-        <button type="submit" className="rounded-lg bg-slate-800 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700">
-          Listele
+        <button
+          type="submit"
+          className="rounded-lg bg-emerald-700 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-600"
+          title="Yıl, başlangıç ve bitiş sıra numarası ile Excel indir"
+        >
+          Excel İndir{excelHref ? ` (${seciliSayisi})` : ''}
         </button>
-        {excelHref && (
-          <Link href={excelHref} className="rounded-lg bg-emerald-700 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-600">
-            Excel İndir ({filtreli.length})
-          </Link>
-        )}
       </form>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-700 mb-2">Son 5 Excel İndirme</h2>
+        {(gecmisRaw ?? []).length === 0 ? (
+          <p className="text-sm text-slate-400">Henüz indirme kaydı yok.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Tarih/Saat</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Kullanıcı</th>
+                  <th className="text-left px-3 py-2 font-semibold text-slate-600">Aralık</th>
+                  <th className="text-center px-3 py-2 font-semibold text-slate-600">Kayıt</th>
+                  <th className="text-right px-3 py-2 font-semibold text-slate-600">İndir</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(gecmisRaw ?? []).map(g => (
+                  <tr key={g.id}>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{new Date(g.created_at).toLocaleString('tr-TR')}</td>
+                    <td className="px-3 py-2 text-slate-600">{(g.actor_email ?? '').trim() || '—'}</td>
+                    <td className="px-3 py-2 text-slate-700">{g.yil}/{g.sira_bas}-{g.sira_bit}</td>
+                    <td className="px-3 py-2 text-center text-slate-700">{g.kayit_sayisi}</td>
+                    <td className="px-3 py-2 text-right">
+                      <Link
+                        href={`/api/rapor/izin-hareketleri/excel?gecmisId=${g.id}`}
+                        className="inline-flex rounded-lg bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-600"
+                      >
+                        İndir
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 text-sm text-slate-600">
-          {aralikGecerli ? `${yil} yılı ${aralikBas} - ${aralikBit} aralığı` : 'Liste için başlangıç ve bitiş sıra numarası girin.'}
+          {yil} yılı izin hareketleri (salt okunur)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -111,12 +153,12 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtreli.length === 0 ? (
+              {(izinRaw ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-slate-400">Bu aralıkta izin hareketi bulunamadı.</td>
+                  <td colSpan={8} className="px-3 py-8 text-center text-slate-400">Bu yıla ait izin hareketi bulunamadı.</td>
                 </tr>
               ) : (
-                filtreli.map(r => (
+                (izinRaw ?? []).map(r => (
                   <tr key={r.id}>
                     <td className="px-3 py-2 text-slate-700">{r.yil}/{r.sira_no ?? '—'}</td>
                     <td className="px-3 py-2 font-mono text-xs text-slate-600">{r.sicil_no}</td>
@@ -132,21 +174,6 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-700 mb-2">Son 5 Excel İndirme</h2>
-        {(gecmisRaw ?? []).length === 0 ? (
-          <p className="text-sm text-slate-400">Henüz indirme kaydı yok.</p>
-        ) : (
-          <ul className="space-y-1.5 text-sm text-slate-600">
-            {(gecmisRaw ?? []).map(g => (
-              <li key={g.id}>
-                {new Date(g.created_at).toLocaleString('tr-TR')} · {g.yil}/{g.sira_bas}-{g.sira_bit} · {g.kayit_sayisi} kayıt
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   )

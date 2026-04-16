@@ -812,14 +812,20 @@ export interface Database {
         Row: {
           id: number; user_id: string; yil: number
           sira_bas: number; sira_bit: number; kayit_sayisi: number; created_at: string
+          actor_email: string | null
+          izin_ids: Json
         }
         Insert: {
           id?: number; user_id: string; yil: number
           sira_bas: number; sira_bit: number; kayit_sayisi?: number; created_at?: string
+          actor_email?: string | null
+          izin_ids?: Json
         }
         Update: {
           id?: number; user_id?: string; yil?: number
           sira_bas?: number; sira_bit?: number; kayit_sayisi?: number; created_at?: string
+          actor_email?: string | null
+          izin_ids?: Json
         }
         Relationships: []
       }
