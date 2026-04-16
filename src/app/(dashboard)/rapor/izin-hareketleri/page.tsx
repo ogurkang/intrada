@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 interface Props {
   searchParams: Promise<{ yil?: string; siraBas?: string; siraBit?: string }>
@@ -23,6 +24,8 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const adminMi = isAdminLike(access)
 
   const varsayilanYil = new Date().getFullYear()
   const yil = parsePozitifInt(p.yil) ?? varsayilanYil
@@ -32,6 +35,21 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
   const aralikBas = aralikGecerli ? Math.min(siraBas, siraBit) : null
   const aralikBit = aralikGecerli ? Math.max(siraBas, siraBit) : null
 
+  const gecmisSorgu = user
+    ? adminMi
+      ? supabase
+          .from('rapor_izin_excel_gecmis')
+          .select('id, yil, sira_bas, sira_bit, kayit_sayisi, actor_email, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5)
+      : supabase
+          .from('rapor_izin_excel_gecmis')
+          .select('id, yil, sira_bas, sira_bit, kayit_sayisi, actor_email, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5)
+    : Promise.resolve({ data: [] as never[] })
+
   const [{ data: izinRaw }, { data: calisanRaw }, { data: gecmisRaw }] = await Promise.all([
     supabase
       .from('izin_hareketleri')
@@ -39,14 +57,7 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
       .eq('yil', yil)
       .order('id', { ascending: false }),
     supabase.from('calisan').select('sicil_no, ad_soyad'),
-    user
-      ? supabase
-          .from('rapor_izin_excel_gecmis')
-          .select('id, yil, sira_bas, sira_bit, kayit_sayisi, actor_email, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
-      : Promise.resolve({ data: [] as never[] }),
+    gecmisSorgu,
   ])
 
   const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))

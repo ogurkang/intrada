@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 
 function parsePozitifInt(v: string | null): number | null {
   if (!v) return null
@@ -31,6 +32,8 @@ export async function GET(req: Request) {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const access = await getAppAccess(supabase, user.id)
+    const adminMi = isAdminLike(access)
 
     const { searchParams } = new URL(req.url)
     const gecmisId = parsePozitifInt(searchParams.get('gecmisId'))
@@ -50,7 +53,7 @@ export async function GET(req: Request) {
         .eq('id', gecmisId)
         .maybeSingle()
       if (logErr) return NextResponse.json({ error: logErr.message }, { status: 500 })
-      if (!logRow || logRow.user_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!logRow || (!adminMi && logRow.user_id !== user.id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       yilResolved = logRow.yil
       alt = logRow.sira_bas
       ust = logRow.sira_bit
