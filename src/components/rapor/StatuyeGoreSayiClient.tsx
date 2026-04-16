@@ -72,6 +72,14 @@ export default function StatuyeGoreSayiClient({
           <p className="text-sm text-slate-600 mt-1">{aciklama}</p>
         </div>
         <div className="flex items-center gap-2">
+          {aktif && (
+            <Link
+              href={`/api/rapor/statuye-gore-sayi/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
+              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+            >
+              Excel İndir ({aktif.label})
+            </Link>
+          )}
           <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
           <select
             value={yil}

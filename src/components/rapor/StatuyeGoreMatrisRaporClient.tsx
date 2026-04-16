@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import * as XLSX from 'xlsx-js-style'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 
@@ -96,32 +95,6 @@ export default function StatuyeGoreMatrisRaporClient({
     [router, raporBasePath],
   )
 
-  const excelIndir = useCallback(() => {
-    if (!aktif) return
-    const rows: string[][] = []
-    rows.push([`${baslik} - ${aktif.label}`])
-    rows.push([`Yıl: ${yil}`, `Anlık görüntü: ${aktif.sonGunuEtiket}`])
-    rows.push([])
-    rows.push([tabloSatirBaslik, ...tablo.kolonlar, 'Toplam'])
-    for (const row of tablo.satirlar) {
-      const top = row.sayilar.reduce((s, n) => s + (n ?? 0), 0)
-      rows.push([row.statuEtiket, ...row.sayilar.map(n => String(n ?? 0)), String(top)])
-    }
-    rows.push(['Toplam', ...tablo.kolonToplam.map(n => String(n ?? 0)), String(tablo.genelToplam)])
-
-    const ws = XLSX.utils.aoa_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Rapor')
-    const arr = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-    const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${baslik.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_${aktif.label}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [aktif, baslik, tablo, tabloSatirBaslik, yil])
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -136,14 +109,13 @@ export default function StatuyeGoreMatrisRaporClient({
           <p className="text-sm text-slate-600 mt-1">{aciklama}</p>
         </div>
         <div className="flex items-center gap-2">
-          {variant === 'yas' && (
-            <button
-              type="button"
-              onClick={excelIndir}
-              className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+          {variant === 'yas' && aktif && (
+            <Link
+              href={`/api/rapor/statuye-gore-yas/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
+              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
-              Excel İndir
-            </button>
+              Excel İndir ({aktif.label})
+            </Link>
           )}
           <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
           <select
