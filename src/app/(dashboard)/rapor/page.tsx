@@ -26,6 +26,17 @@ export default async function RaporYonetimiPage() {
       <ul className="space-y-2">
         <li>
           <Link
+            href="/rapor/izin-hareketleri"
+            className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
+          >
+            İzin Hareketleri Raporu
+            <span className="block text-xs font-normal text-slate-500 mt-0.5">
+              İki sıra numarası aralığına göre izin hareketlerini salt okunur görüntüleyip Excel indirebilirsiniz
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/rapor/statuye-gore-cinsiyet"
             className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
           >

@@ -808,6 +808,21 @@ export interface Database {
         }
         Relationships: [{ foreignKeyName: "izin_haklari_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
+      rapor_izin_excel_gecmis: {
+        Row: {
+          id: number; user_id: string; yil: number
+          sira_bas: number; sira_bit: number; kayit_sayisi: number; created_at: string
+        }
+        Insert: {
+          id?: number; user_id: string; yil: number
+          sira_bas: number; sira_bit: number; kayit_sayisi?: number; created_at?: string
+        }
+        Update: {
+          id?: number; user_id?: string; yil?: number
+          sira_bas?: number; sira_bit?: number; kayit_sayisi?: number; created_at?: string
+        }
+        Relationships: []
+      }
       // ─────────────────── BİLDİRİM ───────────────────
       calisan_ogrenim: {
         Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; aktif: boolean; kayit_zamani: string }
