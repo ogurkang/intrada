@@ -24,8 +24,10 @@ interface Props {
   maxYil: number
   tabs: StatuyeGoreMatrisTabVerisi[]
   raporBasePath: string
+  excelBasePath?: string
   baslik: string
   aciklama: string
+  aciklamaContainerClassName?: string
   altNot?: string
   tabloSatirBaslik?: string
   /** Meslek / yaş: sütun başlığı kaydırma; boş matris uyarısı */
@@ -53,8 +55,10 @@ export default function StatuyeGoreMatrisRaporClient({
   maxYil,
   tabs,
   raporBasePath,
+  excelBasePath,
   baslik,
   aciklama,
+  aciklamaContainerClassName,
   altNot,
   tabloSatirBaslik = 'Statü',
   variant = 'ogrenim',
@@ -98,7 +102,7 @@ export default function StatuyeGoreMatrisRaporClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+        <div className={aciklamaContainerClassName}>
           <Link
             href={geriHref}
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
@@ -109,9 +113,9 @@ export default function StatuyeGoreMatrisRaporClient({
           <p className="text-sm text-slate-600 mt-1">{aciklama}</p>
         </div>
         <div className="flex items-center gap-2">
-          {variant === 'yas' && aktif && (
+          {(variant === 'yas' || variant === 'ogrenim' || variant === 'meslek') && aktif && excelBasePath && (
             <Link
-              href={`/api/rapor/statuye-gore-yas/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
+              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
               className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})

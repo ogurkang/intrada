@@ -161,8 +161,10 @@ export default async function KonumaGoreCinsiyetPage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/rapor/konuma-gore-cinsiyet"
+      excelBasePath="/api/rapor/konuma-gore-cinsiyet/excel"
       baslik="Konuma Göre Cinsiyet Raporu"
       aciklama={KONUM_ACIKLAMA}
+      aciklamaContainerClassName="max-w-3xl"
       tabloSatirBaslik="Konum"
     />
   )

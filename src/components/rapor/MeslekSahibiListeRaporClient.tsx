@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { MeslekSahibiListeSatir } from '@/lib/rapor-meslek-sahibi-liste'
@@ -21,8 +21,10 @@ interface Props {
   maxYil: number
   tabs: MeslekSahibiListeTabVerisi[]
   raporBasePath: string
+  excelBasePath?: string
   baslik: string
   aciklama: string
+  aciklamaContainerClassName?: string
   altNot?: string
 }
 
@@ -32,8 +34,10 @@ export default function MeslekSahibiListeRaporClient({
   maxYil,
   tabs,
   raporBasePath,
+  excelBasePath,
   baslik,
   aciklama,
+  aciklamaContainerClassName,
   altNot,
 }: Props) {
   const router = useRouter()
@@ -48,7 +52,7 @@ export default function MeslekSahibiListeRaporClient({
       if (r.meslek_adi.trim()) s.add(r.meslek_adi.trim())
     }
     return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
-  }, [aktif?.satirlar])
+  }, [aktif])
 
   const gorunenSatirlar = useMemo(() => {
     if (!aktif) return []
@@ -63,14 +67,10 @@ export default function MeslekSahibiListeRaporClient({
     [router, raporBasePath],
   )
 
-  useEffect(() => {
-    setMeslekFiltre('')
-  }, [sekmeIndex])
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+        <div className={aciklamaContainerClassName}>
           <Link
             href="/rapor"
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
@@ -81,6 +81,14 @@ export default function MeslekSahibiListeRaporClient({
           <p className="text-sm text-slate-600 mt-1">{aciklama}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 justify-end">
+          {aktif && excelBasePath && (
+            <Link
+              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${meslekFiltre.trim() ? `&m=${encodeURIComponent(meslekFiltre.trim())}` : ''}`}
+              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+            >
+              Excel İndir ({aktif.label})
+            </Link>
+          )}
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 whitespace-nowrap">Meslek</label>
             <select
@@ -119,7 +127,10 @@ export default function MeslekSahibiListeRaporClient({
             <button
               key={`${t.label}-${i}`}
               type="button"
-              onClick={() => setSekmeIndex(i)}
+              onClick={() => {
+                setSekmeIndex(i)
+                setMeslekFiltre('')
+              }}
               className={`px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 sekmeIndex === i
                   ? 'border-teal-600 text-teal-800 bg-teal-50/50'

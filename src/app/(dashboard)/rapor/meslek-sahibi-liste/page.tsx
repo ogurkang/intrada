@@ -165,8 +165,10 @@ export default async function MeslekSahibiListePage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/rapor/meslek-sahibi-liste"
+      excelBasePath="/api/rapor/meslek-sahibi-liste/excel"
       baslik="Meslek Sahibi Personel Listesi"
       aciklama={LISTE_ACIKLAMA}
+      aciklamaContainerClassName="max-w-3xl"
       altNot={LISTE_ALT_NOT}
     />
   )

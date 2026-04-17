@@ -23,8 +23,11 @@ interface Props {
   tabs: StatuyeGoreCinsiyetTabVerisi[]
   /** Yıl seçici yönlendirmesi, örn. /rapor/konuma-gore-cinsiyet */
   raporBasePath?: string
+  /** Excel indirme yolu, örn. /api/rapor/konuma-gore-cinsiyet/excel */
+  excelBasePath?: string
   baslik?: string
   aciklama?: string
+  aciklamaContainerClassName?: string
   tabloSatirBaslik?: string
 }
 
@@ -34,8 +37,10 @@ export default function StatuyeGoreCinsiyetClient({
   maxYil,
   tabs,
   raporBasePath = '/rapor/statuye-gore-cinsiyet',
+  excelBasePath = '/api/rapor/statuye-gore-cinsiyet/excel',
   baslik = 'Statüye Göre Cinsiyet Raporu',
   aciklama = 'Aylık sekmelerde liste, o ayın son günü itibarıyla aktif personeli gösterir. YILLIK sekme: yıl sonu (31 Aralık) anlık görüntüsü.',
+  aciklamaContainerClassName,
   tabloSatirBaslik = 'Statü',
 }: Props) {
   const router = useRouter()
@@ -64,7 +69,7 @@ export default function StatuyeGoreCinsiyetClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+        <div className={aciklamaContainerClassName}>
           <Link
             href="/rapor"
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
@@ -77,7 +82,7 @@ export default function StatuyeGoreCinsiyetClient({
         <div className="flex items-center gap-2">
           {aktif && (
             <Link
-              href={`/api/rapor/statuye-gore-cinsiyet/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
+              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
               className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})

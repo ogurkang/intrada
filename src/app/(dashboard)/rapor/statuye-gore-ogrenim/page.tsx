@@ -186,8 +186,10 @@ export default async function StatuyeGoreOgrenimPage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/rapor/statuye-gore-ogrenim"
+      excelBasePath="/api/rapor/statuye-gore-ogrenim/excel"
       baslik="Statüye Göre Öğrenim Durumu Raporu"
       aciklama={OGRENIM_ACIKLAMA}
+      aciklamaContainerClassName="max-w-3xl"
       altNot={OGRENIM_ALT_NOT}
       tabloSatirBaslik="Statü"
       variant="ogrenim"

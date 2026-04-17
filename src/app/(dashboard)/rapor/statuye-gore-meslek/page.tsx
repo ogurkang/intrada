@@ -176,8 +176,10 @@ export default async function StatuyeGoreMeslekPage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/rapor/statuye-gore-meslek"
+      excelBasePath="/api/rapor/statuye-gore-meslek/excel"
       baslik="Statüye Göre Meslek Raporu"
       aciklama={MESLEK_ACIKLAMA}
+      aciklamaContainerClassName="max-w-3xl"
       altNot={MESLEK_ALT_NOT}
       tabloSatirBaslik="Meslek"
       variant="meslek"
