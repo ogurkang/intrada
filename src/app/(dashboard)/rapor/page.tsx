@@ -37,6 +37,17 @@ export default async function RaporYonetimiPage() {
         </li>
         <li>
           <Link
+            href="/rapor/isci-izinleri"
+            className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
+          >
+            İşçi İzinleri Raporu
+            <span className="block text-xs font-normal text-slate-500 mt-0.5">
+              İşçi statüsündeki personeller için izin hakkı, kullanılan izin ve kalan izin bilgisi
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/rapor/statuye-gore-cinsiyet"
             className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:border-teal-300 hover:bg-teal-50/50 transition-colors"
           >
