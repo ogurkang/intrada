@@ -732,6 +732,30 @@ export interface Database {
         }
         Relationships: [{ foreignKeyName: "personel_hareketleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
+      personel_audit_log: {
+        Row: {
+          id: number; sicil_no: string; modul: string; islem: string; ozet: string
+          actor_id: string | null; actor_email: string | null
+          ref_table: string | null; ref_id: string | null
+          onceki: Json | null; sonraki: Json | null; created_at: string
+        }
+        Insert: {
+          id?: number; sicil_no: string; modul: string; islem: string; ozet: string
+          actor_id?: string | null; actor_email?: string | null
+          ref_table?: string | null; ref_id?: string | null
+          onceki?: Json | null; sonraki?: Json | null; created_at?: string
+        }
+        Update: {
+          id?: number; sicil_no?: string; modul?: string; islem?: string; ozet?: string
+          actor_id?: string | null; actor_email?: string | null
+          ref_table?: string | null; ref_id?: string | null
+          onceki?: Json | null; sonraki?: Json | null; created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "personel_audit_log_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] },
+          { foreignKeyName: "personel_audit_log_actor_id_fkey"; columns: ["actor_id"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] }
+        ]
+      }
       terfi_hareketleri: {
         Row: {
           id: number; sicil_no: string; ad_soyad: string | null; rol: string | null
@@ -1302,6 +1326,7 @@ export type Views<T extends keyof Database['public']['Views']> =
 export type Calisan           = Tables<'calisan'>
 export type KadroHareketi    = Tables<'kadro_hareketleri'>
 export type PersonelHareketi  = Tables<'personel_hareketleri'>
+export type PersonelAuditLog  = Tables<'personel_audit_log'>
 export type TerfiHareketi    = Tables<'terfi_hareketleri'>
 export type IzinHareketi     = Tables<'izin_hareketleri'>
 export type IzinHakki        = Tables<'izin_haklari'>

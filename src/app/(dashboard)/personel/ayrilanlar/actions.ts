@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 export async function personelAktifEt(formData: FormData): Promise<{ hata?: string }> {
   const sicil_no = String(formData.get('sicil_no') ?? '').trim()
@@ -42,6 +43,23 @@ export async function personelAktifEt(formData: FormData): Promise<{ hata?: stri
     .eq('id', son.id)
 
   if (updErr) return { hata: updErr.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'personel',
+    islem: 'Aktif Et',
+    ozet: `Ayrılan personel aktif edildi (${giris}${neden ? ` - ${neden}` : ''}).`,
+    ref_table: 'personel_hareketleri',
+    ref_id: String(son.id),
+    onceki: {
+      aciklama: son.aciklama ?? null,
+    },
+    sonraki: {
+      ayrilis_tarihi: null,
+      ise_baslama_tarihi: giris,
+      hareket_tipi: son.hareket_tipi ?? 'Göreve Başlama',
+      aciklama: yeniAciklama,
+    },
+  })
 
   // Ayrılanlar ve çalışan listeleri, hareketler vs. yenilensin
   revalidatePath('/personel/ayrilanlar')

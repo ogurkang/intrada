@@ -7,6 +7,7 @@ import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
+import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -104,7 +105,7 @@ export async function personelHareketiEkle(
   if (!yururluk_tarihi) return { hata: 'Yürürlük tarihi zorunludur.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('personel_hareketleri').insert({
+  const payload = {
     sicil_no,
     hareket_tipi,
     yururluk_tarihi,
@@ -123,9 +124,19 @@ export async function personelHareketiEkle(
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
     kayit_zamani:          new Date().toISOString(),
-  })
+  }
+  const { data: inserted, error } = await supabase.from('personel_hareketleri').insert(payload).select('id').single()
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'personel',
+    islem: 'Hareket Ekle',
+    ozet: `${hareket_tipi} hareketi eklendi (${yururluk_tarihi}).`,
+    ref_table: 'personel_hareketleri',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
@@ -136,7 +147,14 @@ export async function personelHareketiGuncelle(
   formData: FormData
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
-  const { error } = await supabase.from('personel_hareketleri').update({
+  const { data: onceki } = await supabase
+    .from('personel_hareketleri')
+    .select(
+      'hareket_tipi, yururluk_tarihi, kadro_sira_no, yeni_gorev_yeri, yeni_unvan, yeni_sinif, yeni_kadro_derecesi, yeni_kha_derece, yeni_kha_kademe, yeni_ekea_derece, yeni_ekea_kademe, ise_baslama_tarihi, ayrilis_tarihi, dayanak, aciklama, dagitim_mudurlukleri',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  const payload = {
     hareket_tipi:          str(formData, 'hareket_tipi'),
     yururluk_tarihi:       str(formData, 'yururluk_tarihi'),
     kadro_sira_no:         str(formData, 'kadro_sira_no'),
@@ -153,9 +171,20 @@ export async function personelHareketiGuncelle(
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
-  }).eq('id', id)
+  }
+  const { error } = await supabase.from('personel_hareketleri').update(payload).eq('id', id)
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'personel',
+    islem: 'Hareket Güncelle',
+    ozet: `${payload.hareket_tipi ?? 'Hareket'} kaydı güncellendi.`,
+    ref_table: 'personel_hareketleri',
+    ref_id: String(id),
+    onceki: onceki ?? null,
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
@@ -185,7 +214,7 @@ export async function ogrenimEkle(
   const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
   if (varsayilan) await digerOgrenimVarsayilanKapat(supabase, sicil_no, null)
 
-  const { error } = await supabase.from('calisan_ogrenim').insert({
+  const payload = {
     sicil_no,
     ogrenim_turu: str(fd, 'ogrenim_turu'),
     okul_adi: str(fd, 'okul_adi'),
@@ -195,8 +224,18 @@ export async function ogrenimEkle(
     mezuniyet_tarihi: mezIso(str(fd, 'mezuniyet_tarihi')),
     varsayilan,
     aktif: varsayilan,
-  })
+  }
+  const { data: inserted, error } = await supabase.from('calisan_ogrenim').insert(payload).select('id').single()
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'öğrenim',
+    islem: 'Ekle',
+    ozet: `${payload.ogrenim_turu ?? 'Öğrenim'} kaydı eklendi.`,
+    ref_table: 'calisan_ogrenim',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/bildirim/ogrenim')
   return {}
@@ -210,21 +249,37 @@ export async function ogrenimGuncelle(
   const supabase = await createClient()
   const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
   if (varsayilan) await digerOgrenimVarsayilanKapat(supabase, sicil_no, id)
+  const { data: onceki } = await supabase
+    .from('calisan_ogrenim')
+    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .eq('id', id)
+    .maybeSingle()
 
+  const payload = {
+    ogrenim_turu: str(fd, 'ogrenim_turu'),
+    okul_adi: str(fd, 'okul_adi'),
+    bolum: str(fd, 'bolum'),
+    meslegi: str(fd, 'meslegi'),
+    mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
+    mezuniyet_tarihi: mezIso(str(fd, 'mezuniyet_tarihi')),
+    varsayilan,
+    aktif: varsayilan,
+  }
   const { error } = await supabase
     .from('calisan_ogrenim')
-    .update({
-      ogrenim_turu: str(fd, 'ogrenim_turu'),
-      okul_adi: str(fd, 'okul_adi'),
-      bolum: str(fd, 'bolum'),
-      meslegi: str(fd, 'meslegi'),
-      mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
-      mezuniyet_tarihi: mezIso(str(fd, 'mezuniyet_tarihi')),
-      varsayilan,
-      aktif: varsayilan,
-    })
+    .update(payload)
     .eq('id', id)
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'öğrenim',
+    islem: 'Güncelle',
+    ozet: `${payload.ogrenim_turu ?? 'Öğrenim'} kaydı güncellendi.`,
+    ref_table: 'calisan_ogrenim',
+    ref_id: String(id),
+    onceki: onceki ?? null,
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/bildirim/ogrenim')
   return {}
@@ -235,8 +290,22 @@ export async function ogrenimSil(
   sicil_no: string
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: onceki } = await supabase
+    .from('calisan_ogrenim')
+    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .eq('id', id)
+    .maybeSingle()
   const { error } = await supabase.from('calisan_ogrenim').delete().eq('id', id)
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'öğrenim',
+    islem: 'Sil',
+    ozet: `${onceki?.ogrenim_turu ?? 'Öğrenim'} kaydı silindi.`,
+    ref_table: 'calisan_ogrenim',
+    ref_id: String(id),
+    onceki: onceki ?? null,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
@@ -256,7 +325,12 @@ export async function aileKaydet(
     return { hata: 'Çocuk bilgileri geçersiz.' }
   }
   const supabase = await createClient()
-  const { error } = await supabase.from('aile_bildirimi').upsert({
+  const { data: onceki } = await supabase
+    .from('aile_bildirimi')
+    .select('medeni_hal, esin_ad_soyad, esin_tckn, is_durumu, gelir_durumu, cocuklar_json')
+    .eq('sicil_no', sicil_no)
+    .maybeSingle()
+  const payload = {
     sicil_no,
     medeni_hal:    str(fd, 'medeni_hal'),
     esin_ad_soyad: str(fd, 'esin_ad_soyad'),
@@ -265,8 +339,21 @@ export async function aileKaydet(
     gelir_durumu:  str(fd, 'gelir_durumu'),
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     cocuklar_json,
+  }
+  const { error } = await supabase.from('aile_bildirimi').upsert({
+    ...payload,
   }, { onConflict: 'sicil_no' })
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'aile',
+    islem: onceki ? 'Güncelle' : 'Ekle',
+    ozet: onceki ? 'Aile bildirimi güncellendi.' : 'Aile bildirimi eklendi.',
+    ref_table: 'aile_bildirimi',
+    ref_id: sicil_no,
+    onceki: onceki ?? null,
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
@@ -284,19 +371,36 @@ export async function izinHakiEkleGuncelle(
   if (!yil || yil < 2000 || yil > 2100) return { hata: 'Geçerli bir yıl giriniz.' }
 
   const supabase = await createClient()
+  const { data: onceki } = await supabase
+    .from('izin_haklari')
+    .select('yil, devreden_gun, hak_edilen_gun, kullanilan_gun, kalan_gun')
+    .eq('sicil_no', sicil_no)
+    .eq('yil', yil)
+    .maybeSingle()
+  const payload = {
+    yil,
+    sicil_no,
+    devreden_gun:   Math.max(0, devreden_gun),
+    hak_edilen_gun: Math.max(0, hak_edilen_gun),
+  }
 
   // UPSERT: yil+sicil_no unique constraint var
   const { error } = await supabase.from('izin_haklari').upsert(
-    {
-      yil,
-      sicil_no,
-      devreden_gun:   Math.max(0, devreden_gun),
-      hak_edilen_gun: Math.max(0, hak_edilen_gun),
-    },
+    payload,
     { onConflict: 'yil,sicil_no' }
   )
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'izin hakkı',
+    islem: onceki ? 'Güncelle' : 'Ekle',
+    ozet: `${yil} yılı izin hakkı ${onceki ? 'güncellendi' : 'eklendi'}.`,
+    ref_table: 'izin_haklari',
+    ref_id: `${sicil_no}-${yil}`,
+    onceki: onceki ?? null,
+    sonraki: payload,
+  })
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }

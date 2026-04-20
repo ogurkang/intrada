@@ -51,6 +51,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         calisan={calisan as Tables<'calisan'>}
         kadrolar={rest.kadrolar}
         hareketler={rest.hareketler}
+        auditLoglar={rest.auditLoglar}
         izinHaklari={rest.izinHaklari}
         izinHareketleri={rest.izinHareketleri}
         terfiKayitlari={rest.terfiKayitlari}

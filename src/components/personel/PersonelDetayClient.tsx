@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { Fragment, useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Tables } from '@/types/database'
@@ -12,6 +12,7 @@ import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
 type PH        = Tables<'personel_hareketleri'>
+type AuditLog  = Tables<'personel_audit_log'>
 type IzinHak      = Tables<'izin_haklari'>
 type IzinHareketi = Tables<'izin_hareketleri'>
 type TH           = Tables<'terfi_hareketleri'>
@@ -49,6 +50,7 @@ interface Props {
   calisan: Calisan
   kadrolar: KH[]
   hareketler: PH[]
+  auditLoglar: AuditLog[]
   izinHaklari: IzinHak[]
   izinHareketleri: IzinHareketi[]
   terfiKayitlari: TH[]
@@ -798,42 +800,310 @@ function PerformansTab() {
 
 // ─── Geçmiş ───────────────────────────────────────────────────────────────────
 
-function GecmisTab({ hareketler }: { hareketler: PH[] }) {
-  if (hareketler.length === 0) {
-    return (
-      <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-        Personel hareketi kaydı bulunamadı.
-      </div>
-    )
+function modulBadgeClass(modul: string | null | undefined): string {
+  const m = String(modul ?? '').trim().toLocaleLowerCase('tr-TR')
+  if (m === 'izin') return 'bg-emerald-100 text-emerald-700'
+  if (m === 'kadro') return 'bg-indigo-100 text-indigo-700'
+  if (m === 'eğitim' || m === 'egitim') return 'bg-sky-100 text-sky-700'
+  if (m === 'terfi') return 'bg-fuchsia-100 text-fuchsia-700'
+  if (m === 'personel') return 'bg-slate-100 text-slate-700'
+  return 'bg-amber-100 text-amber-700'
+}
+
+function jsonPretty(value: unknown): string {
+  if (value == null) return '—'
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
   }
+}
+
+const SENSITIVE_KEYS = new Set([
+  'tckn',
+  'esin_tckn',
+  'telefon',
+  'e_posta',
+  'adresi',
+  'yakini_telefonu',
+  'anne_adi',
+  'baba_adi',
+])
+
+function maskValue(v: unknown): unknown {
+  if (v == null) return v
+  const s = String(v)
+  if (s.length <= 4) return '***'
+  return `${s.slice(0, 2)}***${s.slice(-2)}`
+}
+
+function sanitizeAuditPayload(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeAuditPayload)
+  if (!value || typeof value !== 'object') return value
+  const obj = value as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    const keyLower = k.toLocaleLowerCase('tr-TR')
+    if (SENSITIVE_KEYS.has(keyLower)) {
+      out[k] = maskValue(v)
+      continue
+    }
+    out[k] = sanitizeAuditPayload(v)
+  }
+  return out
+}
+
+function ymd(v: string | null | undefined): string {
+  if (!v) return ''
+  return String(v).slice(0, 10)
+}
+
+function resolveAuditRefHref(log: AuditLog): string | null {
+  const table = String(log.ref_table ?? '').trim()
+  const refId = String(log.ref_id ?? '').trim()
+  if (!table || !refId) return null
+
+  if (table === 'izin_hareketleri') {
+    const n = Number.parseInt(refId, 10)
+    if (Number.isFinite(n)) return `/izin/${n}`
+    return null
+  }
+  if (table === 'personel_hareketleri') {
+    const n = Number.parseInt(refId, 10)
+    if (Number.isFinite(n)) return `/personel-hareketleri/${n}/goruntule`
+    return null
+  }
+  if (table === 'calisan_ogrenim' || table === 'aile_bildirimi' || table === 'izin_haklari') {
+    if (table === 'calisan_ogrenim') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=ogrenim`
+    if (table === 'aile_bildirimi') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=aile`
+    if (table === 'izin_haklari') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=izin`
+    return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=gecmis`
+  }
+  return null
+}
+
+function GecmisTab({ auditLoglar }: { auditLoglar: AuditLog[] }) {
+  const [modulFiltre, setModulFiltre] = useState('tum')
+  const [islemFiltre, setIslemFiltre] = useState('tum')
+  const [search, setSearch] = useState('')
+  const [basTarih, setBasTarih] = useState('')
+  const [bitTarih, setBitTarih] = useState('')
+  const [page, setPage] = useState(1)
+  const [acikSatirId, setAcikSatirId] = useState<number | null>(null)
+  const PAGE_SIZE = 25
+
+  const modulSecenekleri = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of auditLoglar) {
+      const v = String(r.modul ?? '').trim()
+      if (v) s.add(v)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [auditLoglar])
+
+  const islemSecenekleri = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of auditLoglar) {
+      const v = String(r.islem ?? '').trim()
+      if (v) s.add(v)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [auditLoglar])
+
+  const filtreli = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase('tr-TR')
+    return auditLoglar.filter(r => {
+      if (modulFiltre !== 'tum' && r.modul !== modulFiltre) return false
+      if (islemFiltre !== 'tum' && r.islem !== islemFiltre) return false
+      const d = ymd(r.created_at)
+      if (basTarih && d < basTarih) return false
+      if (bitTarih && d > bitTarih) return false
+      if (!q) return true
+      const actor = String(r.actor_email ?? '').toLocaleLowerCase('tr-TR')
+      const ozet = String(r.ozet ?? '').toLocaleLowerCase('tr-TR')
+      const modul = String(r.modul ?? '').toLocaleLowerCase('tr-TR')
+      const islem = String(r.islem ?? '').toLocaleLowerCase('tr-TR')
+      return actor.includes(q) || ozet.includes(q) || modul.includes(q) || islem.includes(q)
+    })
+  }, [auditLoglar, modulFiltre, islemFiltre, search, basTarih, bitTarih])
+
+  useEffect(() => {
+    setPage(1)
+  }, [modulFiltre, islemFiltre, search, basTarih, bitTarih])
+
+  const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / PAGE_SIZE))
+  const aktifPage = Math.min(page, toplamSayfa)
+  const sayfali = useMemo(() => {
+    const bas = (aktifPage - 1) * PAGE_SIZE
+    return filtreli.slice(bas, bas + PAGE_SIZE)
+  }, [filtreli, aktifPage])
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100">
-        <h3 className="text-sm font-semibold text-slate-700">Personel Hareketleri ({hareketler.length})</h3>
+        <h3 className="text-sm font-semibold text-slate-700">Personel Audit Geçmişi</h3>
+        <p className="text-xs text-slate-500 mt-1">
+          Audit log tek kaynak görünümü. Satıra tıklayarak önce/sonra detayını açabilirsiniz.
+        </p>
       </div>
+
+      <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center gap-3">
+        <select
+          value={modulFiltre}
+          onChange={e => setModulFiltre(e.target.value)}
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+        >
+          <option value="tum">Tüm Modüller</option>
+          {modulSecenekleri.map(m => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <select
+          value={islemFiltre}
+          onChange={e => setIslemFiltre(e.target.value)}
+          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+        >
+          <option value="tum">Tüm İşlemler</option>
+          {islemSecenekleri.map(i => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+        </select>
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Özet veya kullanıcı ara…"
+          className="min-w-[220px] max-w-[380px] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+        />
+        <label className="text-xs text-slate-600 flex items-center gap-2">
+          Başlangıç
+          <input
+            type="date"
+            value={basTarih}
+            onChange={e => setBasTarih(e.target.value)}
+            className="px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+          />
+        </label>
+        <label className="text-xs text-slate-600 flex items-center gap-2">
+          Bitiş
+          <input
+            type="date"
+            value={bitTarih}
+            onChange={e => setBitTarih(e.target.value)}
+            className="px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+          />
+        </label>
+        <span className="text-xs text-slate-500 ml-auto">
+          {filtreli.length} / {auditLoglar.length} kayıt
+        </span>
+      </div>
+
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[980px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Yürürlük Tarihi</th>
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Hareket Tipi</th>
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Yeni Ünvan</th>
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Yeni Görev Yeri</th>
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Açıklama</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Tarih/Saat</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Modül</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">İşlem</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Özet</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">İşlemi Yapan</th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Referans</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {hareketler.map(h => (
-              <tr key={h.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 text-slate-600">{tarihFormatla(h.yururluk_tarihi)}</td>
-                <td className="px-4 py-3 text-slate-700">{h.hareket_tipi ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{h.yeni_unvan ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{h.yeni_gorev_yeri ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-500 text-xs">{h.aciklama ?? '—'}</td>
+            {sayfali.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  Filtreye uyan audit kaydı bulunamadı.
+                </td>
               </tr>
-            ))}
+            ) : (
+              sayfali.map(log => {
+                const acik = acikSatirId === log.id
+                const refHref = resolveAuditRefHref(log)
+                return (
+                  <Fragment key={log.id}>
+                    <tr
+                      className="hover:bg-slate-50 cursor-pointer"
+                      onClick={() => setAcikSatirId(acik ? null : log.id)}
+                    >
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{new Date(log.created_at).toLocaleString('tr-TR')}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${modulBadgeClass(log.modul)}`}>
+                          {log.modul}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">{log.islem}</td>
+                      <td className="px-4 py-3 text-slate-600">{log.ozet}</td>
+                      <td className="px-4 py-3 text-slate-500">{log.actor_email ?? 'Sistem'}</td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">
+                        {refHref ? (
+                          <Link
+                            href={refHref}
+                            onClick={e => e.stopPropagation()}
+                            className="underline decoration-dotted hover:text-slate-700"
+                          >
+                            {log.ref_table ?? '—'} / {log.ref_id ?? '—'}
+                          </Link>
+                        ) : (
+                          `${log.ref_table ?? '—'} / ${log.ref_id ?? '—'}`
+                        )}
+                      </td>
+                    </tr>
+                    {acik && (
+                      <tr className="bg-slate-50/60">
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                              <div className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 border-b border-slate-200">
+                                Önce
+                              </div>
+                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(sanitizeAuditPayload(log.onceki))}</pre>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                              <div className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 border-b border-slate-200">
+                                Sonra
+                              </div>
+                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(sanitizeAuditPayload(log.sonraki))}</pre>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })
+            )}
           </tbody>
         </table>
+      </div>
+
+      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-sm">
+        <span className="text-slate-500">
+          Sayfa {aktifPage} / {toplamSayfa}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={aktifPage <= 1}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white"
+          >
+            Önceki
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.min(toplamSayfa, p + 1))}
+            disabled={aktifPage >= toplamSayfa}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white"
+          >
+            Sonraki
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -843,6 +1113,7 @@ function GecmisTab({ hareketler }: { hareketler: PH[] }) {
 
 export default function PersonelDetayClient({
   kaynak, calisan, kadrolar, hareketler, izinHaklari, izinHareketleri,
+  auditLoglar,
   terfiKayitlari, ogrenimler, aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
   tanimGostergeKha = null,
   terfiOncesiTarihce = [],
@@ -852,7 +1123,23 @@ export default function PersonelDetayClient({
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
 
   useEffect(() => {
-    if (searchParams.get('sekme') === 'gecmis') setAktif('Geçmiş')
+    const sekmeParam = String(searchParams.get('sekme') ?? '').trim().toLocaleLowerCase('tr-TR')
+    if (!sekmeParam) return
+    if (sekmeParam === 'gecmis') {
+      setAktif('Geçmiş')
+      return
+    }
+    if (sekmeParam === 'ogrenim') {
+      setAktif('Öğrenim Bilgileri')
+      return
+    }
+    if (sekmeParam === 'aile') {
+      setAktif('Aile Bilgileri')
+      return
+    }
+    if (sekmeParam === 'izin') {
+      setAktif('İzin Bilgileri')
+    }
   }, [searchParams])
   const sicil = (calisan.sicil_no ?? '').trim()
   const duzenleSegment = encodeURIComponent((calisan as { public_id?: string }).public_id ?? sicil)
@@ -948,7 +1235,7 @@ export default function PersonelDetayClient({
           )}
           {aktif === 'Eğitim Bilgileri'     && <EgitimTab egitimKatilimlari={egitimKatilimlari ?? []} />}
           {aktif === 'Performans Bilgileri' && <PerformansTab />}
-          {aktif === 'Geçmiş'              && <GecmisTab hareketler={hareketler} />}
+          {aktif === 'Geçmiş'              && <GecmisTab auditLoglar={auditLoglar} />}
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   zabitaUnvaniMi,
   type IzinGunSonuc,
 } from '@/lib/izin-gun'
+import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 type Durum = 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
 
@@ -148,9 +149,26 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     durum:     'Taslak' as Durum,
     kayit_tarihi: new Date().toISOString(),
     islem_yapan: islemEtiketi,
-  }).select('public_id').single()
+  }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'izin',
+    islem: 'Ekle',
+    ozet: `${tur} izni eklendi (${gun} gün, ${yil}/${sira_no}).`,
+    ref_table: 'izin_hareketleri',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki: {
+      yil,
+      sira_no,
+      tur,
+      ayrilis: ayrilisKayit,
+      baslama,
+      gun,
+      durum: 'Taslak',
+    },
+  })
   revalidatePath('/izin')
   revalidatePath('/izin/haklar')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
@@ -219,6 +237,34 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
   }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: mevcut?.sicil_no ?? '',
+    modul: 'izin',
+    islem: 'Güncelle',
+    ozet: `${tur} izni güncellendi (${gun} gün, durum: ${yeniDurum}).`,
+    ref_table: 'izin_hareketleri',
+    ref_id: String(id),
+    onceki: {
+      tur: mevcut?.tur,
+      ayrilis: mevcut?.ayrilis,
+      baslama: mevcut?.baslama,
+      gun: mevcut?.gun,
+      vekalet: mevcut?.vekalet,
+      aciklama: mevcut?.aciklama,
+      durum: mevcut?.durum,
+      bilgi: mevcut?.bilgi,
+    },
+    sonraki: {
+      tur,
+      ayrilis: ayrilisKayit,
+      baslama,
+      gun,
+      vekalet: vekaletStr,
+      aciklama: aciklamaStr,
+      durum: yeniDurum,
+      bilgi: str(formData, 'bilgi'),
+    },
+  })
   const linkPid = updated?.public_id ?? mevcut?.public_id
   if (linkPid) revalidatePath(`/link/${linkPid}`)
   if (mevcut?.sicil_no && mevcut?.yil) {
@@ -236,7 +282,7 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
   const islemEtiketi = await getIslemYapanEtiketi()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
-    .select('sicil_no, yil, public_id')
+    .select('sicil_no, yil, public_id, tur, durum')
     .eq('id', id)
     .single()
   const { error } = await supabase
@@ -245,6 +291,18 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
     .eq('id', id)
 
   if (error) return { hata: error.message }
+  if (mevcut?.sicil_no) {
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no: mevcut.sicil_no,
+      modul: 'izin',
+      islem: 'Durum Değiştir',
+      ozet: `${mevcut.tur ?? 'İzin'} durumu ${mevcut.durum ?? '—'} -> ${yeniDurum} olarak güncellendi.`,
+      ref_table: 'izin_hareketleri',
+      ref_id: String(id),
+      onceki: { durum: mevcut.durum },
+      sonraki: { durum: yeniDurum },
+    })
+  }
   if (mevcut?.public_id) revalidatePath(`/link/${mevcut.public_id}`)
   if (mevcut?.sicil_no && mevcut?.yil) {
     await izinHaklariKullanilanGuncelle(supabase, mevcut.sicil_no, mevcut.yil)

@@ -20,6 +20,7 @@ export type PersonelDetayLoadResult = {
   kaynak: string
   kadrolar: Tables<'kadro_hareketleri'>[]
   hareketler: Tables<'personel_hareketleri'>[]
+  auditLoglar: Tables<'personel_audit_log'>[]
   izinHaklari: Tables<'izin_haklari'>[]
   izinHareketleri: Tables<'izin_hareketleri'>[]
   terfiKayitlari: Tables<'terfi_hareketleri'>[]
@@ -83,6 +84,7 @@ export async function fetchPersonelDetayPageData(
     { data: calisan, error },
     { data: kadroHareketleriRaw },
     { data: hareketlerRaw },
+    { data: auditLogRaw },
     { data: izinHaklariRaw },
     { data: izinHareketleriRaw },
     { data: terfiRaw },
@@ -105,6 +107,12 @@ export async function fetchPersonelDetayPageData(
       .select('*')
       .eq('sicil_no', sicil_no)
       .order('yururluk_tarihi', { ascending: false }),
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .eq('sicil_no', sicil_no)
+      .order('created_at', { ascending: false })
+      .limit(200),
     supabase
       .from('izin_haklari')
       .select('*')
@@ -151,6 +159,7 @@ export async function fetchPersonelDetayPageData(
 
   const kadrolar = (kadroHareketleriRaw ?? []) as Tables<'kadro_hareketleri'>[]
   const hareketler = (hareketlerRaw ?? []) as Tables<'personel_hareketleri'>[]
+  const auditLoglar = (auditLogRaw ?? []) as Tables<'personel_audit_log'>[]
   const izinHaklari = (izinHaklariRaw ?? []) as Tables<'izin_haklari'>[]
   const izinHareketleri = (izinHareketleriRaw ?? []) as Tables<'izin_hareketleri'>[]
   const terfiKayitlari = (terfiRaw ?? []) as Tables<'terfi_hareketleri'>[]
@@ -245,6 +254,7 @@ export async function fetchPersonelDetayPageData(
     kaynak,
     kadrolar,
     hareketler,
+    auditLoglar,
     izinHaklari,
     izinHareketleri,
     terfiKayitlari,
