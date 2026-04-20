@@ -56,24 +56,27 @@ export default async function AracBilgileriRaporuPage() {
   const altMap = new Map((altTurlerRaw ?? []).map(r => [r.id, r.tanim_adi]))
   const mudMap = new Map((mudurluklerRaw ?? []).map(r => [r.id, r.mudurluk_adi]))
 
-  const geriBtn =
-    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
-
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-        <div className="min-w-0">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="max-w-4xl">
+          <Link
+            href="/yerel-bilgi/raporlar"
+            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+          >
+            ← Yerel Bilgi — Raporlar
+          </Link>
           <h1 className="text-2xl font-bold text-slate-800">Araç Bilgileri Raporu</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Yalnızca aktif araçlar; salt okunur liste, sıra numarasına göre küçükten büyüğe.
+          <p className="text-sm text-slate-600 mt-1">
+            Yalnızca aktif araçlar; sahiplik, durum, tür ve müdürlük bazında salt okunur rapor.
           </p>
         </div>
-        <div className="flex gap-2 justify-end">
-          <Link href="/api/yerel-bilgi/raporlar/arac-bilgileri/excel" className={geriBtn}>
-            Excel İndir
-          </Link>
-          <Link href="/yerel-bilgi/raporlar" className={geriBtn}>
-            ← Yerel Bilgi — Raporlar
+        <div className="flex items-center gap-2">
+          <Link
+            href="/api/yerel-bilgi/raporlar/arac-bilgileri/excel"
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-600 transition-colors"
+          >
+            Excel İndir ({(aracRaw ?? []).length})
           </Link>
         </div>
       </div>

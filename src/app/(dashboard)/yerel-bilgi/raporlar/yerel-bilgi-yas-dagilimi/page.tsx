@@ -150,6 +150,7 @@ export default async function YerelBilgiYasDagilimiPage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/yerel-bilgi/raporlar/yerel-bilgi-yas-dagilimi"
+      excelBasePath="/api/yerel-bilgi/raporlar/yerel-bilgi-yas-dagilimi/excel"
       baslik="Yerel Bilgi İçin Yaş Raporu"
       aciklama={ACIKLAMA}
       tabloSatirBaslik="Statü"

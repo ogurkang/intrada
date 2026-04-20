@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import { mudurlukIdFromAuthSession } from '@/lib/kadro-mudurluk-id'
 
+function fmt(n: number | null) {
+  if (n == null || !Number.isFinite(Number(n))) return '0,00'
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,12 +32,82 @@ export async function GET() {
     if (row.butce_gelir_kalem_id != null) gelirMap.set(row.butce_gelir_kalem_id, row.tutar ?? null)
   }
 
-  const rows: (string | number | null)[][] = [['Müdürlük', mud?.mudurluk_adi ?? '—'], [], ['Gider Kalemi', 'Gerçekleşme Tutarı']]
-  for (const k of gider ?? []) rows.push([k.tanim_adi, giderMap.get(k.id) ?? 0])
-  rows.push([], ['Gelir Kalemi', 'Gerçekleşme Tutarı'])
-  for (const k of gelir ?? []) rows.push([k.tanim_adi, gelirMap.get(k.id) ?? 0])
+  const yil = new Date().getFullYear()
+  const giderRows = gider ?? []
+  const gelirRows = gelir ?? []
+  const satirSayisi = Math.max(giderRows.length, gelirRows.length)
+  const giderToplam = giderRows.reduce((acc, k) => acc + Number(giderMap.get(k.id) ?? 0), 0)
+  const gelirToplam = gelirRows.reduce((acc, k) => acc + Number(gelirMap.get(k.id) ?? 0), 0)
+
+  const rows: string[][] = [
+    [`${yil} Yılı Bütçe Gerçekleşmeleri Raporu`, '', '', '', ''],
+    [`Müdürlük: ${mud?.mudurluk_adi ?? 'Tanımsız'}`, '', '', '', ''],
+    ['', '', '', '', ''],
+    ['Bütçe Gider Türü (Gerçekleşme)', '', '', 'Bütçe Gelir Türü (Gerçekleşme)', ''],
+  ]
+  for (let i = 0; i < satirSayisi; i++) {
+    const g = giderRows[i]
+    const l = gelirRows[i]
+    rows.push([
+      g?.tanim_adi ?? '',
+      g ? fmt(giderMap.get(g.id) ?? null) : '',
+      '',
+      l?.tanim_adi ?? '',
+      l ? fmt(gelirMap.get(l.id) ?? null) : '',
+    ])
+  }
+  rows.push(['Toplam', fmt(giderToplam), '', 'Toplam', fmt(gelirToplam)])
 
   const ws = XLSX.utils.aoa_to_sheet(rows)
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } },
+    { s: { r: 3, c: 3 }, e: { r: 3, c: 4 } },
+  ]
+  ws['!cols'] = [{ wch: 42 }, { wch: 12 }, { wch: 4 }, { wch: 42 }, { wch: 12 }]
+
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
+  for (let r = 0; r <= range.e.r; r++) {
+    for (let c = 0; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c })
+      if (!ws[addr]) continue
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cell = ws[addr] as any
+      const isTopTitle = r <= 1
+      const isBlockHeader = r === 3 && (c === 0 || c === 1 || c === 3 || c === 4)
+      const isTotalRow = r === satirSayisi + 4
+      const isAmountCol = c === 1 || c === 4
+      const isSpacerCol = c === 2
+      const isDataCell = r >= 4 && !isSpacerCol
+
+      cell.s = {
+        font: {
+          name: 'Calibri',
+          sz: 11,
+          bold: isTopTitle || isBlockHeader || isTotalRow,
+        },
+        alignment: {
+          vertical: 'center',
+          horizontal: isTopTitle ? 'center' : isBlockHeader ? 'left' : isAmountCol ? 'right' : 'left',
+          wrapText: true,
+        },
+      }
+
+      if (isDataCell || isBlockHeader) {
+        cell.s.border = {
+          top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        }
+      }
+      if (isBlockHeader || isTotalRow) {
+        cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+      }
+    }
+  }
+
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Butce Gerceklesme')
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })

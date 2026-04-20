@@ -22,6 +22,8 @@ export default async function KimlikFormRaporuPage() {
     .limit(1)
     .maybeSingle()
 
+  const excelBtn =
+    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors'
   const geriBtn =
     'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
 
@@ -33,7 +35,7 @@ export default async function KimlikFormRaporuPage() {
           <p className="text-sm text-slate-500 mt-0.5">Aktif kaydın bilgileri bu ekranda gösterilir.</p>
         </div>
         <div className="flex gap-2 justify-end">
-          <Link href="/api/yerel-bilgi/raporlar/kimlik-formu/excel" className={geriBtn}>
+          <Link href="/api/yerel-bilgi/raporlar/kimlik-formu/excel" className={excelBtn}>
             Excel İndir
           </Link>
           <Link href="/yerel-bilgi/raporlar" className={geriBtn}>

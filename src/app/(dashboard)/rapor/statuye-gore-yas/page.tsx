@@ -157,6 +157,7 @@ export default async function StatuyeGoreYasPage({
       maxYil={MAX_YIL}
       tabs={tabs}
       raporBasePath="/rapor/statuye-gore-yas"
+      excelBasePath="/api/rapor/statuye-gore-yas/excel"
       baslik="Statüye Göre Yaş Raporu"
       aciklama={YAS_ACIKLAMA}
       altNot={YAS_ALT_NOT}

@@ -33,7 +33,16 @@ export default async function ButceGerceklesmeleriRaporPage() {
     if (row.butce_gelir_kalem_id != null) gelirMap.set(row.butce_gelir_kalem_id, row.tutar ?? null)
   }
 
-  const btn = 'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
+  const giderRows = giderDefs ?? []
+  const gelirRows = gelirDefs ?? []
+  const maxSatir = Math.max(giderRows.length, gelirRows.length)
+  const giderToplam = giderRows.reduce((acc, k) => acc + Number(giderMap.get(k.id) ?? 0), 0)
+  const gelirToplam = gelirRows.reduce((acc, k) => acc + Number(gelirMap.get(k.id) ?? 0), 0)
+
+  const excelBtn =
+    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors'
+  const geriBtn =
+    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
@@ -42,8 +51,8 @@ export default async function ButceGerceklesmeleriRaporPage() {
           <p className="text-sm text-slate-500 mt-1">Müdürlük: {mudRow?.mudurluk_adi ?? 'Tanımsız'}</p>
         </div>
         <div className="flex gap-2 justify-end">
-          <Link href="/api/yerel-bilgi/raporlar/butce-gerceklesmeleri/excel" className={btn}>Excel İndir</Link>
-          <Link href="/yerel-bilgi/raporlar" className={btn}>← Yerel Bilgi — Raporlar</Link>
+          <Link href="/api/yerel-bilgi/raporlar/butce-gerceklesmeleri/excel" className={excelBtn}>Excel İndir</Link>
+          <Link href="/yerel-bilgi/raporlar" className={geriBtn}>← Yerel Bilgi — Raporlar</Link>
         </div>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -51,7 +60,19 @@ export default async function ButceGerceklesmeleriRaporPage() {
           <div className="px-4 py-3 bg-slate-50 border-b font-semibold text-slate-700">Bütçe Gider Türü (Gerçekleşme)</div>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-slate-100">
-              {(giderDefs ?? []).map(k => <tr key={k.id}><td className="px-4 py-2">{k.tanim_adi}</td><td className="px-4 py-2 text-right tabular-nums">{fmt(giderMap.get(k.id) ?? null)}</td></tr>)}
+              {Array.from({ length: maxSatir }, (_, i) => {
+                const k = giderRows[i]
+                return (
+                  <tr key={k ? `gider-${k.id}` : `gider-empty-${i}`}>
+                    <td className="px-4 py-2">{k?.tanim_adi ?? '\u00A0'}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{k ? fmt(giderMap.get(k.id) ?? null) : ''}</td>
+                  </tr>
+                )
+              })}
+              <tr className="bg-slate-100 border-t-2 border-slate-200 font-semibold">
+                <td className="px-4 py-2.5 text-slate-800">Toplam</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{fmt(giderToplam)}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -59,7 +80,19 @@ export default async function ButceGerceklesmeleriRaporPage() {
           <div className="px-4 py-3 bg-slate-50 border-b font-semibold text-slate-700">Bütçe Gelir Türü (Gerçekleşme)</div>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-slate-100">
-              {(gelirDefs ?? []).map(k => <tr key={k.id}><td className="px-4 py-2">{k.tanim_adi}</td><td className="px-4 py-2 text-right tabular-nums">{fmt(gelirMap.get(k.id) ?? null)}</td></tr>)}
+              {Array.from({ length: maxSatir }, (_, i) => {
+                const k = gelirRows[i]
+                return (
+                  <tr key={k ? `gelir-${k.id}` : `gelir-empty-${i}`}>
+                    <td className="px-4 py-2">{k?.tanim_adi ?? '\u00A0'}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{k ? fmt(gelirMap.get(k.id) ?? null) : ''}</td>
+                  </tr>
+                )
+              })}
+              <tr className="bg-slate-100 border-t-2 border-slate-200 font-semibold">
+                <td className="px-4 py-2.5 text-slate-800">Toplam</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-slate-900">{fmt(gelirToplam)}</td>
+              </tr>
             </tbody>
           </table>
         </div>
