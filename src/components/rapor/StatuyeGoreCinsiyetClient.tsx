@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import type { RaporPeriyot, StatuCinsiyetSatir } from '@/lib/rapor-statuye-gore-cinsiyet'
 
 export interface StatuyeGoreCinsiyetTabVerisi {
@@ -12,7 +13,7 @@ export interface StatuyeGoreCinsiyetTabVerisi {
   satirlar: StatuCinsiyetSatir[]
   gelenler: string[]
   ayrilanlar: string[]
-  /** Konuma göre rapor: müdürlük eşleşmeyen kadro/firma personel (detay satırları) */
+  /** Konuma göre rapor: müdürlük eşleşmeyen kadro/ADABEL Personeli (detay satırları) */
   konumAtanmamisListe?: string[]
 }
 
@@ -143,7 +144,7 @@ export default function StatuyeGoreCinsiyetClient({
                   {tablo.satirlar.map((row, ri) => {
                     const satirTop = row.kadin + row.erkek
                     const vurgu =
-                      row.statuEtiket === 'Firma Personel'
+                      row.statuEtiket === FIRMA_STATU_ETIKET
                         ? 'bg-amber-50/80'
                         : row.statuEtiket === 'Tanımda olmayan statü' || row.statuEtiket === 'Konum atanmamış'
                           ? 'bg-orange-50/50'

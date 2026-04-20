@@ -1,6 +1,6 @@
 /**
  * Müdürlük konumuna (İç / Dış) göre cinsiyet — tanim_mudurluk.konum ile eşleştirme.
- * Kadro ve firma personeli aynı İç/Dış mantığıyla sayılır; ayrı «Firma Personel» satırı yoktur.
+ * Kadro ve ADABEL Personeli aynı İç/Dış mantığıyla sayılır; ayrı «ADABEL Personeli» satırı yoktur.
  */
 
 import type {

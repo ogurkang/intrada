@@ -11,6 +11,7 @@ import {
   type KadroRaporRow,
   type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import { statuEtiketSirasi, type StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 
 function sliceD(s: string | null | undefined): string | null {
@@ -123,7 +124,7 @@ export function statuYasSnapshot(input: {
     satirlar.push({ statuEtiket: 'Tanımda olmayan statü', sayilar: diger })
   }
 
-  satirlar.push({ statuEtiket: 'Firma Personel', sayilar: firmaSatir })
+  satirlar.push({ statuEtiket: FIRMA_STATU_ETIKET, sayilar: firmaSatir })
 
   return { kolonlar, satirlar }
 }

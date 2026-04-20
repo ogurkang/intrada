@@ -37,7 +37,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const SAYI_ACIKLAMA =
-  'Kadro asıl personeli tanımlı statü satırlarında; eşleşmeyen statü «Tanımda olmayan statü»; firma personeli ayrı satırda toplanır. Cinsiyet ayrımı yoktur.'
+  'Kadro asıl personeli tanımlı statü satırlarında; eşleşmeyen statü «Tanımda olmayan statü»; ADABEL Personeli ayrı satırda toplanır. Cinsiyet ayrımı yoktur.'
 
 export default async function StatuyeGoreSayiPage({
   searchParams,

@@ -58,7 +58,7 @@ export default async function FirmaPersonelDuzenlePage({
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
         <Link href="/firma-calisanlar" className="hover:text-slate-800 transition-colors">
-          Firma Personel
+          ADABEL Personeli
         </Link>
         <span className="text-slate-300">/</span>
         <Link href={detayHref} className="hover:text-slate-800 transition-colors">

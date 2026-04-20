@@ -1,5 +1,5 @@
 /**
- * Statüye göre sayı durumu — anlık görüntü tarihinde aktif kadro + firma toplamı (cinsiyet ayrımı yok).
+ * Statüye göre sayı durumu — anlık görüntü tarihinde aktif kadro + ADABEL Personeli toplamı (cinsiyet ayrımı yok).
  */
 
 import {
@@ -10,6 +10,7 @@ import {
   type KadroRaporRow,
   type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import { statuEtiketSirasi } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 
 function sliceD(s: string | null | undefined): string | null {
@@ -74,7 +75,7 @@ export function statuSayiSnapshot(input: {
   for (const f of firma) {
     if (firmaAktifGun(f, D)) firmaN += 1
   }
-  satirlar.push({ statuEtiket: 'Firma Personel', sayi: firmaN })
+  satirlar.push({ statuEtiket: FIRMA_STATU_ETIKET, sayi: firmaN })
 
   return { satirlar }
 }

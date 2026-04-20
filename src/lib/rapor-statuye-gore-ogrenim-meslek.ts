@@ -1,6 +1,6 @@
 /**
  * Statüye göre öğrenim durumu ve statüye göre meslek raporları —
- * anlık görüntü tarihi (D), kadro asıl + firma personeli.
+ * anlık görüntü tarihi (D), kadro asıl + ADABEL Personeli.
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   type KadroRaporRow,
   type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import { ogrenimTuruSiraIndex } from '@/lib/ogrenim-sira'
 
 function sliceD(s: string | null | undefined): string | null {
@@ -97,7 +98,7 @@ export interface StatuMatrisSatir {
 export interface OgrenimSnapshotResult {
   kolonlar: string[]
   satirlar: StatuMatrisSatir[]
-  /** «Belirtilmemiş» sütununda sayılan kadro/firma personeli (ad soyad) */
+  /** «Belirtilmemiş» sütununda sayılan kadro/ADABEL Personeli (ad soyad) */
   belirtilmemisListe: string[]
 }
 
@@ -190,7 +191,7 @@ export function statuOgrenimSnapshot(input: {
     satirlar.push({ statuEtiket: 'Tanımda olmayan statü', sayilar: diger })
   }
 
-  satirlar.push({ statuEtiket: 'Firma Personel', sayilar: firmaSatir })
+  satirlar.push({ statuEtiket: FIRMA_STATU_ETIKET, sayilar: firmaSatir })
 
   const belirtilmemisListe = [...new Set(belirtilmemisAdlar)].sort((a, b) => a.localeCompare(b, 'tr'))
 
@@ -209,7 +210,7 @@ export function statuMeslekSnapshot(input: {
   const statuSirali = statuEtiketSirasi(tanimStatuler)
   const etiketler = new Set(statuSirali)
   /** Yatay eksen: tanımlı statüler + tanımsız kadro + firma sütunu */
-  const kolonlar = [...statuSirali, 'Tanımda olmayan statü', 'Firma Personel']
+  const kolonlar = [...statuSirali, 'Tanımda olmayan statü', FIRMA_STATU_ETIKET]
   const colIx = (label: string) => kolonlar.indexOf(label)
 
   const byAsil = new Map<string, KadroRaporRow[]>()
@@ -278,7 +279,7 @@ export function statuMeslekSnapshot(input: {
     if (g === undefined) continue
     const hedef = say[g]
     if (!hedef) continue
-    const ci = colIx('Firma Personel')
+    const ci = colIx(FIRMA_STATU_ETIKET)
     if (ci >= 0) hedef[ci] += 1
   }
 

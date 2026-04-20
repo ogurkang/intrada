@@ -42,7 +42,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const MESLEK_ACIKLAMA =
-  'Kadro personeli için varsayılan öğrenim kaydındaki meslek alanı; firma personeli için firma kartındaki meslek alanı kullanılır. Yalnızca meslek bilgisi dolu olan personel sayıma dahildir. Satırlar meslekleri, sütunlar tanımlı statüleri, «Tanımda olmayan statü» ve «Firma Personel» sütunlarını gösterir. Detay liste için «Meslek Sahibi Personel Listesi» raporuna bakınız.'
+  'Kadro personeli için varsayılan öğrenim kaydındaki meslek alanı; ADABEL Personeli için firma kartındaki meslek alanı kullanılır. Yalnızca meslek bilgisi dolu olan personel sayıma dahildir. Satırlar meslekleri, sütunlar tanımlı statüleri, «Tanımda olmayan statü» ve «ADABEL Personeli» sütunlarını gösterir. Detay liste için «Meslek Sahibi Personel Listesi» raporuna bakınız.'
 
 const MESLEK_ALT_NOT =
   'Gelenler / Ayrılanlar: seçili dönemde kuruma giriş veya işe başlama; ayrılış tarihleri diğer raporlarla aynı mantıktadır.'

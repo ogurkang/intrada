@@ -347,7 +347,7 @@ export default function GorevBilgileriListeClient({
             <strong> Çalışan</strong> olarak kaydedildiğinde ilerleme devam eder.
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Sıra: Tanımlar → Statü sırası; ardından firma personel (yalnızca ayrılış tarihi boş). Firma satırları bu ekrandan düzenlenmez.
+            Sıra: Tanımlar → Statü sırası; ardından ADABEL Personeli (yalnızca ayrılış tarihi boş). Bu satırlar bu ekrandan düzenlenmez.
           </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">

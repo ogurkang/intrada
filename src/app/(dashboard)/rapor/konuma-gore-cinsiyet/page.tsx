@@ -42,7 +42,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const KONUM_ACIKLAMA =
-  'Kadro ve firma personeli, görev müdürlüğünün (kadroda yoksa kadro müdürlüğünün; firmada görev müdürlüğünün) Tanımlar > Müdürlük kaydındaki konumuna (İç/Dış) göre sayılır. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Müdürlük eşleşmeyenler tabloda «Konum atanmamış» satırında ve altta isim listesinde gösterilir.'
+  'Kadro ve ADABEL Personeli, görev müdürlüğünün (kadroda yoksa kadro müdürlüğünün; firmada görev müdürlüğünün) Tanımlar > Müdürlük kaydındaki konumuna (İç/Dış) göre sayılır. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Müdürlük eşleşmeyenler tabloda «Konum atanmamış» satırında ve altta isim listesinde gösterilir.'
 
 export default async function KonumaGoreCinsiyetPage({
   searchParams,

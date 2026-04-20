@@ -258,7 +258,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-600">
-          <strong>Memur</strong> statülü aktif personel ile <strong>Firma Personel</strong> ekranındaki çalışanlar
+          <strong>Memur</strong> statülü aktif personel ile <strong>ADABEL Personeli</strong> ekranındaki çalışanlar
           sekmesinde yer alan aktif çalışanlar aynı tabloda listelenir (sicil sırası). <strong>Terfi</strong> erişimi bu
           tabloda yok; Terfi personel yönetimi üzerinden yönetilir. Varsayılan:{' '}
           <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur işaretler).
@@ -318,7 +318,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
               ))}
               <th
                 className="text-left px-2 py-2 font-semibold text-slate-600 min-w-[120px] border-l border-slate-200"
-                title="Boş bırakın: personel veya firma personel e-postası ile Auth hesabı otomatik eşleşir"
+                title="Boş bırakın: personel veya ADABEL Personeli e-postası ile Auth hesabı otomatik eşleşir"
               >
                 UUID (isteğe)
               </th>
@@ -413,7 +413,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
                         value={d.authUuid}
                         onChange={e => authUuidDegistir(s.sicil_no, e.target.value)}
                         placeholder="Boş = otomatik"
-                        title="Genelde boş bırakın; personel/firma personel e-posta ile Auth’ta eşleşir. Özel durumda UUID yapıştırın."
+                        title="Genelde boş bırakın; personel veya ADABEL Personeli e-postası ile Auth’ta eşleşir. Özel durumda UUID yapıştırın."
                         className="w-full min-w-[100px] max-w-[160px] border border-slate-200 rounded px-1 py-0.5 font-mono text-[10px]"
                       />
                     ) : (
@@ -462,7 +462,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
       )}
 
       <p className="mt-3 text-xs text-slate-500">
-        Profilli satır: {profilliSayisi} / {satirlar.length}. Profil yoksa: Auth’ta hesap + personel/firma personel
+        Profilli satır: {profilliSayisi} / {satirlar.length}. Profil yoksa: Auth’ta hesap + personel veya ADABEL Personeli
         e-posta uyumluysa <strong>Oluştur</strong> yeterli (UUID isteğe bağlı). Toplu yönetici için sol kutuyu
         işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
       </p>

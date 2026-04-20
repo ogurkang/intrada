@@ -121,7 +121,7 @@ export default async function YetkilendirmePage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Aktif <strong>Memur</strong> kadrosu + <strong>Firma Personel</strong> çalışanlar sekmesindeki aktif kayıtlar,
+          Aktif <strong>Memur</strong> kadrosu + <strong>ADABEL Personeli</strong> çalışanlar sekmesindeki aktif kayıtlar,
           sicil sırasıyla · Toplam{' '}
           <span className="font-semibold">{satirlar.length}</span> satır
         </p>

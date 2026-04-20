@@ -7,6 +7,7 @@ import {
   type KadroRaporRow,
   type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import type { StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 import { statuEtiketSirasi } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 import { yasCariYildan } from '@/lib/rapor-statuye-gore-yas'
@@ -94,7 +95,7 @@ export function yerelBilgiYasDagilimiSnapshot(input: {
   if (diger.some(n => n > 0)) {
     satirlar.push({ statuEtiket: 'Tanımda olmayan statü', sayilar: diger })
   }
-  satirlar.push({ statuEtiket: 'Firma Personel', sayilar: firmaSatir })
+  satirlar.push({ statuEtiket: FIRMA_STATU_ETIKET, sayilar: firmaSatir })
 
   return {
     kolonlar,

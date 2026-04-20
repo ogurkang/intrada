@@ -42,7 +42,7 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
           ← Listeye Dön
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Yeni ADEBEL Personel</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Yeni ADABEL Personeli</h1>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 max-w-2xl">

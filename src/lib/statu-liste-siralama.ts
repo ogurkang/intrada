@@ -1,7 +1,8 @@
 import { type TanimStatuRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { statuEtiketSirasi } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 
-export const FIRMA_STATU_ETIKET = 'Firma Personel'
+export { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 export const TANIMSIZ_STATU_ETIKET = 'Tanımda olmayan statü'
 
 /** Tanımlar > Statü sırası (sira_no); eşleşmeyenler için gruplama anahtarı. */

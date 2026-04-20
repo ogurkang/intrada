@@ -176,7 +176,7 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
     if (!email) {
       return {
         hata:
-          'Bu sicil için personel/firma personel kaydında e-posta yok. Önce ilgili kartta e-posta girin veya Auth’ta hesap açıldıktan sonra kişi ilk girişte profil otomatik oluşur.',
+          'Bu sicil için personel veya ADABEL Personeli kaydında e-posta yok. Önce ilgili kartta e-posta girin veya Auth’ta hesap açıldıktan sonra kişi ilk girişte profil otomatik oluşur.',
       }
     }
 

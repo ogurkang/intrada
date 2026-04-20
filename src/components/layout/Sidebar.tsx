@@ -53,7 +53,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       calisanlarItem,
       { href: '/personel/ayrilanlar', label: 'Ayrılanlar'          },
-      { href: '/firma-calisanlar',    label: 'ADABEL Personel'      },
+      { href: '/firma-calisanlar',    label: 'ADABEL Personeli'      },
       { href: '/kadro',               label: 'Kadro Hareketleri'   },
       { href: '/personel-hareketleri', label: 'Personel Hareketleri'},
       { href: terfiMenuHref,          label: 'Terfi Hareketleri'   },
@@ -73,6 +73,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },
+      { href: '/rapor/gorev-yerine-gore-liste', label: 'Görev Yerine Göre Personel Listesi' },
     ],
   },
   {

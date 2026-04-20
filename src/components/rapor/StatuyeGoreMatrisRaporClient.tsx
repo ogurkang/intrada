@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import type { StatuMatrisSatir } from '@/lib/rapor-statuye-gore-ogrenim-meslek'
 
 export interface StatuyeGoreMatrisTabVerisi {
@@ -38,13 +39,13 @@ interface Props {
 }
 
 function satirVurgusu(etiket: string): string {
-  if (etiket === 'Firma Personel') return 'bg-amber-50/80'
+  if (etiket === FIRMA_STATU_ETIKET) return 'bg-amber-50/80'
   if (etiket === 'Tanımda olmayan statü') return 'bg-orange-50/50'
   return ''
 }
 
 function satirVurgusuSticky(etiket: string): string {
-  if (etiket === 'Firma Personel') return 'bg-amber-50/80'
+  if (etiket === FIRMA_STATU_ETIKET) return 'bg-amber-50/80'
   if (etiket === 'Tanımda olmayan statü') return 'bg-orange-50/50'
   return 'bg-white'
 }
@@ -237,7 +238,7 @@ export default function StatuyeGoreMatrisRaporClient({
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
               <h3 className="text-sm font-semibold text-slate-800 mb-2">Öğrenim durumu belirtilmemiş personel</h3>
               <p className="text-xs text-slate-600 mb-2">
-                Tabloda «Belirtilmemiş» sütununda sayılan kadro/firma personelinin adları (virgülle ayrılmış).
+                Tabloda «Belirtilmemiş» sütununda sayılan kadro ile ADABEL Personeli kayıtlarının adları (virgülle ayrılmış).
               </p>
               <p className="text-sm text-slate-800 leading-relaxed">{aktif.belirtilmemisListe.join(', ')}</p>
             </div>

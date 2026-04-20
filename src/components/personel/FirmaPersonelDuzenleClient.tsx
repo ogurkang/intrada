@@ -38,7 +38,7 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Firma Personel Düzenle — {k.ad_soyad}</h1>
+        <h1 className="text-2xl font-bold text-slate-800">ADABEL Personeli Düzenle — {k.ad_soyad}</h1>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">

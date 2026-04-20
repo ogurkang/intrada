@@ -1,6 +1,8 @@
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
+
 /**
  * Statüye göre cinsiyet raporu — anlık görüntü tarihi (ay sonu veya yıl sonu),
- * kadro asıl personeli + firma personel satırı.
+ * kadro asıl personeli + ADABEL Personeli satırı.
  */
 
 export type RaporPeriyot = 'yillik' | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
@@ -32,7 +34,7 @@ export interface CalisanRaporRow {
 
 export interface FirmaRaporRow {
   id: number
-  /** Firma personelde isteğe bağlı; rapor listelerinde gösterim için */
+  /** ADABEL Personeli kaydında isteğe bağlı; rapor listelerinde gösterim için */
   sicil_no?: string | null
   ad_soyad: string
   cinsiyet: string | null
@@ -228,7 +230,7 @@ export function statuCinsiyetSnapshot(input: SnapshotInput): {
   }
 
   return {
-    satirlar: [...satirlar, { statuEtiket: 'Firma Personel', kadin: fk, erkek: fe }],
+    satirlar: [...satirlar, { statuEtiket: FIRMA_STATU_ETIKET, kadin: fk, erkek: fe }],
   }
 }
 

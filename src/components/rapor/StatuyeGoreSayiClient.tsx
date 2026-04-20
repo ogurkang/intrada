@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { StatuSayiSatir } from '@/lib/rapor-statuye-gore-sayi'
 
@@ -26,7 +27,7 @@ interface Props {
 }
 
 function satirVurgusu(etiket: string): string {
-  if (etiket === 'Firma Personel') return 'bg-amber-50/80'
+  if (etiket === FIRMA_STATU_ETIKET) return 'bg-amber-50/80'
   if (etiket === 'Tanımda olmayan statü') return 'bg-orange-50/50'
   return ''
 }
@@ -38,7 +39,7 @@ export default function StatuyeGoreSayiClient({
   tabs,
   raporBasePath = '/rapor/statuye-gore-sayi',
   baslik = 'Statüye Göre Sayı Durumu Raporu',
-  aciklama = 'Anlık görüntü tarihinde aktif kadro asıl personeli ve firma personeli; statü başına toplam sayı.',
+  aciklama = 'Anlık görüntü tarihinde aktif kadro asıl personeli ve ADABEL Personeli; statü başına toplam sayı.',
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
@@ -161,7 +162,7 @@ export default function StatuyeGoreSayiClient({
           </div>
 
           <p className="text-xs text-slate-500">
-            Sayılar, seçili anlık görüntü tarihinde aktif olan kadro asıl ve firma personelini kapsar. Yaş hesabı bu
+            Sayılar, seçili anlık görüntü tarihinde aktif olan kadro asıl personeli ve ADABEL Personeli kayıtlarını kapsar. Yaş hesabı bu
             raporda kullanılmaz. Gelenler / ayrılanlar diğer statü raporlarıyla aynı dönem mantığındadır.
           </p>
         </>

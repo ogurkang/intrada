@@ -39,7 +39,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const LISTE_ACIKLAMA =
-  'Varsayılan öğrenim kaydındaki meslek alanı dolu kadro personeli ile firma kartında meslek alanı dolu firma personeli listelenir. Sekmeler, diğer raporlarla aynı anlık görüntü tarihlerini kullanır.'
+  'Varsayılan öğrenim kaydındaki meslek alanı dolu kadro personeli ile firma kartında meslek alanı dolu ADABEL Personeli listelenir. Sekmeler, diğer raporlarla aynı anlık görüntü tarihlerini kullanır.'
 
 const LISTE_ALT_NOT =
   'Gelenler / Ayrılanlar: seçili dönemde kuruma giriş veya işe başlama; ayrılış tarihleri diğer raporlarla aynı mantıktadır.'

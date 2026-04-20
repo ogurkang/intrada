@@ -46,7 +46,7 @@ export function meslekSahibiListeSirala(rows: MeslekSahibiListeSatir[]): MeslekS
   })
 }
 
-/** Anlık görüntü: meslek alanı dolu kadro (varsayılan öğrenim) + firma personeli. */
+/** Anlık görüntü: meslek alanı dolu kadro (varsayılan öğrenim) + ADABEL Personeli. */
 export function meslekSahibiListeSnapshot(input: {
   D: string
   kadro: KadroRaporRow[]
