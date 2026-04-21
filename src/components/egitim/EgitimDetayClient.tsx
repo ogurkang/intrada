@@ -279,6 +279,12 @@ export default function EgitimDetayClient({
           </svg>
           İstatistik
         </Link>
+        <Link
+          href={`/api/egitim/${donem.id}/excel`}
+          className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+        >
+          Excel İndir
+        </Link>
         {!readonly && (
           <button onClick={yeniEkleAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
@@ -303,7 +309,7 @@ export default function EgitimDetayClient({
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Bitiş</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Süre</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Katılımcı Sayısı</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Kişi Başı</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Toplam Süre</th>
               <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
             </tr>
           </thead>
@@ -313,7 +319,7 @@ export default function EgitimDetayClient({
             )}
             {egitimler.map((e, idx) => {
               const katilimSayisi = (katilimMap[e.id] ?? []).length
-              const kisiBasi = e.sure_dakika * katilimSayisi
+              const toplamSure = e.sure_dakika * katilimSayisi
               return (
               <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 text-center text-xs text-slate-500">{idx + 1}</td>
@@ -351,7 +357,7 @@ export default function EgitimDetayClient({
                   </button>
                 </td>
                 <td className="px-4 py-3 text-center text-xs text-slate-600">
-                  {kisiBasi > 0 ? `${kisiBasi} dk` : '—'}
+                  {toplamSure > 0 ? `${toplamSure} dk` : '—'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {!readonly && (
