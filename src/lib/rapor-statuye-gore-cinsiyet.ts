@@ -19,6 +19,9 @@ export interface KadroRaporRow {
   memuriyet_tarihi: string | null
   ayrilis_tarihi: string | null
   durumu: string | null
+  /** Belediye geneli / görev yeri raporları */
+  kadro_unvani?: string | null
+  gorev_unvani?: string | null
   /** Konum raporu — aktif satırdan görev veya kadro müdürlüğü */
   gorev_mudurlugu?: string | null
   kadro_mudurlugu?: string | null
