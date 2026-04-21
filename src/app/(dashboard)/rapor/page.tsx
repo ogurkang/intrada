@@ -39,6 +39,13 @@ const RAPOR_KARTLARI = [
     renk: 'border-indigo-200 bg-indigo-50 text-indigo-900',
   },
   {
+    kod: 'SGH',
+    href: '/rapor/statuye-gore-hizmet',
+    baslik: 'Statüye Göre Hizmet Raporu',
+    aciklama: 'Hizmet süresi aralıklarına göre dağılım; 360 gün esaslı yıl/ay/gün verilerinden hesaplanır',
+    renk: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  },
+  {
     kod: 'KGC',
     href: '/rapor/konuma-gore-cinsiyet',
     baslik: 'Konuma Göre Cinsiyet Raporu',

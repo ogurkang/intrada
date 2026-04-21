@@ -40,7 +40,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
           label: 'Çalışanlar',
           children: [
             { href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' },
-            { href: '/personel/hizmet-sureleri-giris', label: 'Hizmet Süreleri' },
           ],
         }
       : { href: calisanlarHref, label: 'Personel Kartım' }
@@ -70,6 +69,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/statuye-gore-cinsiyet', label: 'Statüye Göre Cinsiyet Raporu' },
       { href: '/rapor/statuye-gore-sayi', label: 'Statüye Göre Sayı Durumu Raporu' },
       { href: '/rapor/statuye-gore-yas', label: 'Statüye Göre Yaş Raporu' },
+      { href: '/rapor/statuye-gore-hizmet', label: 'Statüye Göre Hizmet Raporu' },
       { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },

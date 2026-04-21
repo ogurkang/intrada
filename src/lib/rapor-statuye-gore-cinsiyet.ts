@@ -30,6 +30,10 @@ export interface CalisanRaporRow {
   cinsiyet: string | null
   /** Yaş raporu — `calisan.dogum_tarihi` */
   dogum_tarihi?: string | null
+  /** Hizmet raporu — `calisan` kartındaki 360 esaslı alanlar */
+  hizmet_suresi_yil?: number | null
+  hizmet_suresi_ay?: number | null
+  hizmet_suresi_gun?: number | null
 }
 
 export interface FirmaRaporRow {

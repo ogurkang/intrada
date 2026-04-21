@@ -3,7 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import HizmetSureleriGirisClient from '@/components/personel/HizmetSureleriGirisClient'
 import type { Tables } from '@/types/database'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
-import { hizmetSureleriSatirKaydet, hizmetSureleriTopluKaydet } from './actions'
+import {
+  hizmetSureleriSatirKaydet,
+  hizmetSureleriTopluKaydet,
+} from './actions'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
