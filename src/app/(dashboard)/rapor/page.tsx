@@ -80,6 +80,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Kadro müdürlüğüne göre alfabetik, müdürlük içinde sicil artan sıralı personel listesi',
     renk: 'border-lime-200 bg-lime-50 text-lime-900',
   },
+  {
+    kod: 'BPL',
+    href: '/rapor/belediye-geneli-personel-liste',
+    baslik: 'Belediye Geneli Personel Listesi',
+    aciklama: 'Kimlik, statü, unvan, müdürlük ve iletişim bilgileriyle belediye geneli aktif personel listesi',
+    renk: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {
