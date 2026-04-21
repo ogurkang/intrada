@@ -163,6 +163,40 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'Stratejik Yönetim',
+    icon: '🎯',
+    accordion: true,
+    items: [
+      {
+        href: '/stratejik-yonetim/stratejik-plan',
+        label: 'Stratejik Plan',
+        children: [
+          { href: '/stratejik-yonetim/stratejik-plan/islemler', label: 'İşlemler' },
+          { href: '/stratejik-yonetim/stratejik-plan/raporlar', label: 'Raporlar' },
+          { href: '/stratejik-yonetim/stratejik-plan/tanimlar', label: 'Tanımlar' },
+        ],
+      },
+      {
+        href: '/stratejik-yonetim/performans-programi',
+        label: 'Performans Programı',
+        children: [
+          { href: '/stratejik-yonetim/performans-programi/islemler', label: 'İşlemler' },
+          { href: '/stratejik-yonetim/performans-programi/raporlar', label: 'Raporlar' },
+          { href: '/stratejik-yonetim/performans-programi/tanimlar', label: 'Tanımlar' },
+        ],
+      },
+      {
+        href: '/stratejik-yonetim/faaliyet-raporu',
+        label: 'Faaliyet Raporu',
+        children: [
+          { href: '/stratejik-yonetim/faaliyet-raporu/islemler', label: 'İşlemler' },
+          { href: '/stratejik-yonetim/faaliyet-raporu/raporlar', label: 'Raporlar' },
+          { href: '/stratejik-yonetim/faaliyet-raporu/tanimlar', label: 'Tanımlar' },
+        ],
+      },
+    ],
+  },
+  {
     grup: 'Tanımlar Yönetimi',
     icon: '⚙️',
     accordion: true,
