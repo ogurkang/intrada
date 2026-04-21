@@ -200,22 +200,6 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
 
   const menu_izinleri = rol === 'admin' ? {} : menuFormdanOku(formData)
 
-  if (!calisanVarMi) {
-    if (!calisanTemel?.ad_soyad?.trim()) {
-      return { hata: 'Bu sicil için ana personel kaydı oluşturulamadı: ad soyad bilgisi eksik.' }
-    }
-    const { error: calInsertErr } = await r.supabase.from('calisan').insert({
-      sicil_no,
-      ad_soyad: calisanTemel.ad_soyad.trim(),
-      e_posta: calisanTemel.e_posta ?? null,
-      telefon: calisanTemel.telefon ?? null,
-      cinsiyet: calisanTemel.cinsiyet ?? null,
-      dogum_tarihi: calisanTemel.dogum_tarihi ?? null,
-      tckn: calisanTemel.tckn ?? null,
-    })
-    if (calInsertErr) return { hata: `Ana personel kaydı açılamadı: ${calInsertErr.message}` }
-  }
-
   const { error } = await r.supabase.from('app_profiles').insert({
     id: authUserId!,
     sicil_no,

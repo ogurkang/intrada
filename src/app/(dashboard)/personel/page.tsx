@@ -2,9 +2,18 @@ import { createClient } from '@/lib/supabase/server'
 import PersonelListClient from '@/components/personel/PersonelListClient'
 import type { Tables } from '@/types/database'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
 
 export default async function PersonelPage() {
   const supabase = await createClient()
+  const D = new Date().toISOString().slice(0, 10)
 
   const [{ data: calisanRaw, error }, { data: phRaw }] = await Promise.all([
     supabase
@@ -24,12 +33,34 @@ export default async function PersonelPage() {
     }
   }
   const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
-  const aktifSiciller = new Set<string>()
+  const aktifAdaySiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+    if (!sonAyrilis) aktifAdaySiciller.add(c.sicil_no)
   })
-  const data = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
+
+  // Personel listesinde yalnızca aktif kadro satırı bulunan asıl personeli göster.
+  const kadroByAsil = new Map<string, KadroRaporRow[]>()
+  const adaylar = [...aktifAdaySiciller]
+  for (const part of chunk(adaylar, 120)) {
+    if (part.length === 0) continue
+    const { data: kRows } = await supabase
+      .from('kadro_hareketleri')
+      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+      .in('asil', part)
+    for (const r of kRows ?? []) {
+      if (!r.asil) continue
+      const list = kadroByAsil.get(r.asil) ?? []
+      list.push(r as KadroRaporRow)
+      kadroByAsil.set(r.asil, list)
+    }
+  }
+
+  const data = calisanFiltreli.filter(c => {
+    if (!aktifAdaySiciller.has(c.sicil_no)) return false
+    const rows = kadroByAsil.get(c.sicil_no) ?? []
+    return Boolean(secilenKadroSatirAsil(rows, D))
+  })
 
   return (
     <>

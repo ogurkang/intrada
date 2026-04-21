@@ -74,10 +74,12 @@ export default async function HizmetSureleriGirisPage() {
     .map(c => {
       const rows = kadroByAsil.get(c.sicil_no) ?? []
       const sec = secilenKadroSatirAsil(rows, D)
-      const raw = sec?.statu
+      if (!sec) return null
+      const raw = sec.statu
       const statuEtiket = etiketAnahtari(etiketler, raw) || TANIMSIZ_STATU_ETIKET
       return { statuEtiket, ...c }
     })
+    .filter((x): x is { statuEtiket: string } & typeof kadroAday[number] => x !== null)
     .sort((a, b) =>
       karsilastirStatuSonraSicilAd(
         { statuEtiket: a.statuEtiket, sicil_no: a.sicil_no, ad_soyad: a.ad_soyad },
