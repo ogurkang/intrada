@@ -19,6 +19,7 @@ interface Props {
   data: Satir[]
   inputType: 'text' | 'select'
   secenekler?: string[]
+  sortBy?: 'ad_soyad' | 'sicil_no'
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: { sicil_no: string; deger: string | null }[]) => Promise<{ hata?: string; kaydedilen?: number }>
 }
@@ -29,6 +30,7 @@ export default function PersonelTekAlanTopluClient({
   data,
   inputType,
   secenekler = [],
+  sortBy = 'ad_soyad',
   onSatirKaydet,
   onTopluKaydet,
 }: Props) {
@@ -42,7 +44,15 @@ export default function PersonelTekAlanTopluClient({
   const [topluMesaj, setTopluMesaj] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const sirali = useMemo(() => [...data].sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')), [data])
+  const sirali = useMemo(
+    () =>
+      [...data].sort((a, b) =>
+        sortBy === 'sicil_no'
+          ? a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true })
+          : a.ad_soyad.localeCompare(b.ad_soyad, 'tr'),
+      ),
+    [data, sortBy],
+  )
 
   const filtreli = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase('tr-TR')

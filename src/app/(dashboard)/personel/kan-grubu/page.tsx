@@ -31,6 +31,7 @@ export default async function KanGrubuPage() {
       data={data}
       inputType="select"
       secenekler={KAN_GRUPLARI}
+      sortBy="sicil_no"
       onSatirKaydet={kanGrubuSatirKaydet}
       onTopluKaydet={kanGrubuTopluKaydet}
     />
