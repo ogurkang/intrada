@@ -42,8 +42,7 @@ export default function MeslekSahibiListeRaporClient({
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
-  const [meslekFiltre, setMeslekFiltre] = useState('')
-  const [seciliSiciller, setSeciliSiciller] = useState<string[]>([])
+  const [meslekFiltreler, setMeslekFiltreler] = useState<string[]>([])
   const aktif = tabs[sekmeIndex]
 
   const meslekSecenekleri = useMemo(() => {
@@ -57,9 +56,10 @@ export default function MeslekSahibiListeRaporClient({
 
   const gorunenSatirlar = useMemo(() => {
     if (!aktif) return []
-    if (!meslekFiltre.trim()) return aktif.satirlar
-    return aktif.satirlar.filter(r => r.meslek_adi.trim() === meslekFiltre.trim())
-  }, [aktif, meslekFiltre])
+    if (!meslekFiltreler.length) return aktif.satirlar
+    const set = new Set(meslekFiltreler.map(m => m.trim()))
+    return aktif.satirlar.filter(r => set.has(r.meslek_adi.trim()))
+  }, [aktif, meslekFiltreler])
 
   const yilDegistir = useCallback(
     (y: number) => {
@@ -68,7 +68,7 @@ export default function MeslekSahibiListeRaporClient({
     [router, raporBasePath],
   )
 
-  const excelIds = seciliSiciller.length ? `&ids=${encodeURIComponent(seciliSiciller.join(','))}` : ''
+  const excelMeslek = meslekFiltreler.length ? `&m=${encodeURIComponent(meslekFiltreler.join(','))}` : ''
 
   return (
     <div className="space-y-6">
@@ -86,7 +86,7 @@ export default function MeslekSahibiListeRaporClient({
         <div className="flex flex-wrap items-center gap-3 justify-end">
           {aktif && excelBasePath && (
             <Link
-              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${meslekFiltre.trim() ? `&m=${encodeURIComponent(meslekFiltre.trim())}` : ''}${excelIds}`}
+              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${excelMeslek}`}
               className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})
@@ -94,18 +94,39 @@ export default function MeslekSahibiListeRaporClient({
           )}
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 whitespace-nowrap">Meslek</label>
-            <select
-              value={meslekFiltre}
-              onChange={e => setMeslekFiltre(e.target.value)}
-              className="min-w-[200px] max-w-[min(100vw-2rem,320px)] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-            >
-              <option value="">Tümü</option>
-              {meslekSecenekleri.map(m => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <details className="relative">
+              <summary className="list-none cursor-pointer min-w-[220px] max-w-[min(100vw-2rem,320px)] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-700">
+                {meslekFiltreler.length ? `${meslekFiltreler.length} meslek seçili` : 'Tümü'}
+              </summary>
+              <div className="absolute right-0 z-10 mt-1 w-80 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">Checkbox ile seçiniz</p>
+                  <button
+                    type="button"
+                    onClick={() => setMeslekFiltreler([])}
+                    className="text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Temizle
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {meslekSecenekleri.map(m => (
+                    <label key={m} className="inline-flex items-center gap-2 text-xs text-slate-700 w-full">
+                      <input
+                        type="checkbox"
+                        checked={meslekFiltreler.includes(m)}
+                        onChange={e =>
+                          setMeslekFiltreler(prev =>
+                            e.target.checked ? Array.from(new Set([...prev, m])) : prev.filter(x => x !== m),
+                          )
+                        }
+                      />
+                      {m}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </details>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
@@ -132,7 +153,7 @@ export default function MeslekSahibiListeRaporClient({
               type="button"
               onClick={() => {
                 setSekmeIndex(i)
-                setMeslekFiltre('')
+                setMeslekFiltreler([])
               }}
               className={`px-3 py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 sekmeIndex === i
@@ -157,19 +178,6 @@ export default function MeslekSahibiListeRaporClient({
               <table className="w-full text-sm border-collapse min-w-[640px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">
-                      <input
-                        type="checkbox"
-                        checked={gorunenSatirlar.length > 0 && gorunenSatirlar.every(r => seciliSiciller.includes(r.sicil_no))}
-                        onChange={e =>
-                          setSeciliSiciller(prev =>
-                            e.target.checked
-                              ? Array.from(new Set([...prev, ...gorunenSatirlar.map(r => r.sicil_no)]))
-                              : prev.filter(s => !gorunenSatirlar.some(r => r.sicil_no === s)),
-                          )
-                        }
-                      />
-                    </th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">Sıra No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 w-28">Sicil No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[180px]">Ad Soyad</th>
@@ -179,7 +187,7 @@ export default function MeslekSahibiListeRaporClient({
                 <tbody className="divide-y divide-slate-100">
                   {gorunenSatirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
                         {aktif.satirlar.length === 0
                           ? 'Bu dönem ve tarih için meslek bilgisi kayıtlı personel yok.'
                           : 'Seçilen meslek için kayıt yok.'}
@@ -188,17 +196,6 @@ export default function MeslekSahibiListeRaporClient({
                   ) : (
                     gorunenSatirlar.map((row, i) => (
                       <tr key={`${row.sicil_no}-${row.ad_soyad}-${row.meslek_adi}-${i}`} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2.5 text-center">
-                          <input
-                            type="checkbox"
-                            checked={seciliSiciller.includes(row.sicil_no)}
-                            onChange={e =>
-                              setSeciliSiciller(prev =>
-                                e.target.checked ? Array.from(new Set([...prev, row.sicil_no])) : prev.filter(s => s !== row.sicil_no),
-                              )
-                            }
-                          />
-                        </td>
                         <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                         <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>

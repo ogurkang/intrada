@@ -45,7 +45,10 @@ export default async function MudurlugeGorePersonelListePage({
   const yil = Number.isFinite(parsed)
     ? Math.min(MAX_YIL, Math.max(MIN_YIL, parsed))
     : new Date().getFullYear()
-  const initialMudurluk = String(sp.m ?? '').trim()
+  const initialMudurlukler = String(sp.m ?? '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
 
   const supabase = await createClient()
   const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
@@ -100,7 +103,7 @@ export default async function MudurlugeGorePersonelListePage({
       maxYil={MAX_YIL}
       tabs={tabs}
       tumMudurlukler={tumMudurlukler}
-      initialMudurluk={initialMudurluk}
+      initialMudurlukler={initialMudurlukler}
       raporBasePath="/rapor/mudurluge-gore-personel-liste"
       excelBasePath="/api/rapor/mudurluge-gore-personel-liste/excel"
     />

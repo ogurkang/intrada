@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { gelenlerAyrilanlar, type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, tehlikeMudurlukOzet, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
+import { parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
@@ -17,47 +16,22 @@ export default async function TehlikeSiniflarinaGoreMudurlukPage({
   const p = periyot === 'yillik' ? 'yillik' : String(periyot)
 
   const supabase = await createClient()
-  const [
-    { data: mudRaw },
-    { data: kadroRaw },
-    { data: calisanRaw },
-    { data: phAyrRaw },
-    { data: phIseRaw },
-  ] = await Promise.all([
-    supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
-    supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu').not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad'),
-    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi').not('ayrilis_tarihi', 'is', null).gte('ayrilis_tarihi', `${yil}-01-01`).lte('ayrilis_tarihi', `${yil}-12-31`),
-    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi').not('ise_baslama_tarihi', 'is', null).gte('ise_baslama_tarihi', `${yil}-01-01`).lte('ise_baslama_tarihi', `${yil}-12-31`),
-  ])
-  const tehlikeByMudurluk = new Map<string, TehlikeSinifi>()
-  for (const m of mudRaw ?? []) tehlikeByMudurluk.set(m.mudurluk_adi, (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli')
-  const calisanBySicil = new Map<string, { ad_soyad: string }>()
-  for (const c of calisanRaw ?? []) calisanBySicil.set(c.sicil_no, { ad_soyad: c.ad_soyad })
-  const personelSatirlar = aktifPersonelTehlikeSatirlari({
-    D,
-    kadro: (kadroRaw ?? []) as KadroRaporRow[],
-    calisanBySicil,
-    tehlikeByMudurluk,
-  })
-  const satirlar = tehlikeMudurlukOzet(personelSatirlar)
+  const { data: mudRaw } = await supabase
+    .from('tanim_mudurluk')
+    .select('tehlike_sinifi')
+    .eq('aktif', true)
 
-  const phSeen = new Set<string>()
-  const ph = []
-  for (const r of [...(phAyrRaw ?? []), ...(phIseRaw ?? [])]) {
-    const key = `${r.sicil_no}|${r.ayrilis_tarihi ?? ''}|${r.ise_baslama_tarihi ?? ''}`
-    if (phSeen.has(key)) continue
-    phSeen.add(key)
-    ph.push(r)
+  const tehlikeSirasi: TehlikeSinifi[] = ['Az Tehlikeli', 'Tehlikeli', 'Çok Tehlikeli']
+  const tehlikeSayilari = new Map<TehlikeSinifi, number>(tehlikeSirasi.map(k => [k, 0]))
+  for (const m of mudRaw ?? []) {
+    const sinif = (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli'
+    tehlikeSayilari.set(sinif, (tehlikeSayilari.get(sinif) ?? 0) + 1)
   }
-  const { gelenler, ayrilanlar } = gelenlerAyrilanlar({
-    periyot: periyot === 'yillik' ? 'yillik' : (periyot as 1),
-    yil,
-    kadro: (kadroRaw ?? []) as KadroRaporRow[],
-    calisanBySicil: new Map([...calisanBySicil.entries()].map(([sicil_no, v]) => [sicil_no, { sicil_no, ad_soyad: v.ad_soyad, cinsiyet: null }])),
-    firma: [],
-    personelHareketleri: ph,
-  })
+  const satirlar = tehlikeSirasi.map(sinif => ({
+    tehlike_sinifi: sinif,
+    mudurluk_sayisi: tehlikeSayilari.get(sinif) ?? 0,
+  }))
+  const toplam = satirlar.reduce((a, b) => a + b.mudurluk_sayisi, 0)
 
   return (
     <div className="space-y-5">
@@ -65,7 +39,7 @@ export default async function TehlikeSiniflarinaGoreMudurlukPage({
         <div>
           <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700">← Rapor Yönetimi</Link>
           <h1 className="text-2xl font-bold text-slate-800 mt-1">Tehlike Sınıflarına Göre Müdürlük Raporu</h1>
-          <p className="text-sm text-slate-600">ADABEL Personeli hariç aktif personel üzerinden müdürlük tehlike sınıfı özeti.</p>
+          <p className="text-sm text-slate-600">Tehlike sınıfına göre müdürlük adedi özeti.</p>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/api/rapor/tehlike-siniflarina-gore-mudurluk/excel?y=${yil}&p=${p}`} className="bg-emerald-700 text-white text-sm px-4 py-2 rounded-lg">Excel İndir ({label})</Link>
@@ -87,17 +61,27 @@ export default async function TehlikeSiniflarinaGoreMudurlukPage({
           })}
         </nav>
       </div>
-      <div className="bg-white border rounded-xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="bg-slate-50 border-b"><th className="px-3 py-2 text-left">Müdürlük</th><th className="px-3 py-2 text-left">Tehlike Sınıfı</th><th className="px-3 py-2 text-center">Personel Sayısı</th></tr></thead>
-          <tbody className="divide-y">
-            {satirlar.map((r, i) => <tr key={`${r.mudurluk}-${i}`}><td className="px-3 py-2">{r.mudurluk}</td><td className="px-3 py-2">{r.tehlike_sinifi}</td><td className="px-3 py-2 text-center">{r.personel_sayisi}</td></tr>)}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm border-collapse min-w-[360px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-4 py-3 font-semibold text-slate-700">Tehlike Sınıfı</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-700 w-40">Müdürlük Sayısı</th>
+            </tr>
+          </thead>
+          <tbody>
+            {satirlar.map((r, i) => (
+              <tr key={`${r.tehlike_sinifi}-${i}`} className="border-b border-slate-100">
+                <td className="px-4 py-2.5 text-slate-800 font-medium">{r.tehlike_sinifi}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-slate-800">{r.mudurluk_sayisi}</td>
+              </tr>
+            ))}
+            <tr className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+              <td className="px-4 py-3 text-slate-900">Toplam</td>
+              <td className="px-3 py-3 text-center tabular-nums text-slate-900">{toplam}</td>
+            </tr>
           </tbody>
         </table>
-      </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="border rounded-xl p-4 bg-white"><h3 className="font-semibold text-sm mb-2">Gelenler</h3><p className="text-sm text-slate-700">{gelenler.length ? gelenler.join(', ') : '—'}</p></div>
-        <div className="border rounded-xl p-4 bg-white"><h3 className="font-semibold text-sm mb-2">Ayrılanlar</h3><p className="text-sm text-slate-700">{ayrilanlar.length ? ayrilanlar.join(', ') : '—'}</p></div>
       </div>
     </div>
   )

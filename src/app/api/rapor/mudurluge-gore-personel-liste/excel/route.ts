@@ -52,8 +52,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
-    const mudurlukFilter = String(searchParams.get('m') ?? '').trim()
-    const ids = String(searchParams.get('ids') ?? '')
+    const mudurlukFilterler = String(searchParams.get('m') ?? '')
       .split(',')
       .map(s => s.trim())
       .filter(Boolean)
@@ -89,14 +88,16 @@ export async function GET(req: Request) {
       kadro,
       calisanBySicil,
     })
-    if (mudurlukFilter) satirlar = satirlar.filter(r => r.mudurluk === mudurlukFilter)
-    if (ids.length) satirlar = satirlar.filter(r => ids.includes(r.sicil_no))
+    if (mudurlukFilterler.length) {
+      const set = new Set(mudurlukFilterler)
+      satirlar = satirlar.filter(r => set.has(r.mudurluk))
+    }
 
     const rows: (string | number)[][] = [
       padRow(4, ['Müdürlüğe Göre Personel Listesi']),
       padRow(4, [`Yıl: ${yil} · Sekme: ${label}`]),
       padRow(4, [`Anlık görüntü tarihi: ${sonGunuMetin(D)}`]),
-      padRow(4, [mudurlukFilter ? `Müdürlük filtresi: ${mudurlukFilter}` : 'Müdürlük filtresi: Tümü']),
+      padRow(4, [mudurlukFilterler.length ? `Müdürlük filtresi: ${mudurlukFilterler.join(', ')}` : 'Müdürlük filtresi: Tümü']),
       padRow(4, ['']),
       padRow(4, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Müdürlük']),
       ...satirlar.map((s, i) => padRow(4, [i + 1, s.sicil_no, s.ad_soyad, s.mudurluk])),

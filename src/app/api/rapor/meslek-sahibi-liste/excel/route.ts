@@ -86,8 +86,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
-    const meslekFilter = String(searchParams.get('m') ?? '').trim()
-    const ids = String(searchParams.get('ids') ?? '')
+    const meslekFilterler = String(searchParams.get('m') ?? '')
       .split(',')
       .map(s => s.trim())
       .filter(Boolean)
@@ -171,11 +170,9 @@ export async function GET(req: Request) {
       firma,
       ogrenimBySicil,
     })
-    if (meslekFilter) {
-      satirlar = satirlar.filter(r => r.meslek_adi.trim() === meslekFilter)
-    }
-    if (ids.length) {
-      satirlar = satirlar.filter(r => ids.includes(r.sicil_no))
+    if (meslekFilterler.length) {
+      const set = new Set(meslekFilterler.map(m => m.trim()))
+      satirlar = satirlar.filter(r => set.has(r.meslek_adi.trim()))
     }
     const { gelenler, ayrilanlar } = gelenlerAyrilanlar({
       periyot,
@@ -191,7 +188,7 @@ export async function GET(req: Request) {
       padRow(4, ['Meslek Sahibi Personel Listesi']),
       padRow(4, [`Yıl: ${yil} · Sekme: ${label}`]),
       padRow(4, [`Anlık görüntü tarihi: ${sonGunuMetin(D)}`]),
-      padRow(4, [meslekFilter ? `Meslek filtresi: ${meslekFilter}` : 'Meslek filtresi: Tümü']),
+      padRow(4, [meslekFilterler.length ? `Meslek filtresi: ${meslekFilterler.join(', ')}` : 'Meslek filtresi: Tümü']),
       padRow(4, ['']),
       padRow(4, ['Sıra No', 'Sicil No', 'Ad Soyad', 'Meslek Adı']),
       ...satirlar.map((s: MeslekSahibiListeSatir, i: number) => padRow(4, [i + 1, s.sicil_no, s.ad_soyad, s.meslek_adi])),

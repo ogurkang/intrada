@@ -28,9 +28,14 @@ function bosKadro(sicil: string): KadroGenis {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await createClient()
+    const url = new URL(req.url)
+    const mudurlukFilterler = String(url.searchParams.get('m') ?? '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
     const D = new Date().toISOString().slice(0, 10)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calisanQuery = (supabase as any).from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri').order('ad_soyad')
@@ -90,7 +95,7 @@ export async function GET() {
     const sirali = [...kadroSatirlarRaw.filter(k => !cikacak.has(k.sicil_no.trim())), ...firmaSatirlarRaw].sort((a, b) =>
       karsilastirStatuSonraSicilAd({ statuEtiket: a.statuEtiket, sicil_no: a.sicil_no, ad_soyad: a.ad_soyad }, { statuEtiket: b.statuEtiket, sicil_no: b.sicil_no, ad_soyad: b.ad_soyad }, statuSirali),
     )
-    const satirlar = sirali.map(row =>
+    let satirlar = sirali.map(row =>
       gorevYerineGoreListeSatirUret(
         mudKonum,
         row.kind === 'kadro'
@@ -98,6 +103,10 @@ export async function GET() {
           : { kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },
       ),
     )
+    if (mudurlukFilterler.length) {
+      const set = new Set(mudurlukFilterler)
+      satirlar = satirlar.filter(r => set.has(r.mudurluk))
+    }
     const rows: (string | number)[][] = [
       ['Görev Yerine Göre Personel Listesi'],
       [`Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`],

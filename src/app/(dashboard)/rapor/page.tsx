@@ -97,15 +97,15 @@ const RAPOR_KARTLARI = [
   {
     kod: 'TML',
     href: '/rapor/tehlikeli-sinif-mudurluk-listesi',
-    baslik: 'Tehlikeli Sınıfına Göre Müdürlük Listesi',
-    aciklama: 'Tehlikeli sınıfına düşen müdürlüklerin liste ve personel adedi.',
+    baslik: 'Tehlike Sınıfına Göre Müdürlük Listesi',
+    aciklama: 'Aktif müdürlükleri tehlike sınıfı önceliğine göre listeler.',
     renk: 'border-red-200 bg-red-50 text-red-900',
   },
   {
     kod: 'TPL',
     href: '/rapor/tehlikeli-sinif-personel-listesi',
-    baslik: 'Tehlikeli Sınıfına Göre Personel Listesi',
-    aciklama: 'Tehlikeli sınıfta çalışan aktif personel listesi (ADABEL hariç).',
+    baslik: 'Tehlike Sınıfına Göre Personel Listesi',
+    aciklama: 'Tehlike sınıfı, müdürlük ve sicil sırasına göre personel listesi (ADABEL hariç).',
     renk: 'border-rose-200 bg-rose-50 text-rose-900',
   },
   {

@@ -36,7 +36,12 @@ export async function GET(req: Request) {
         if (seciliSet.size > 0 && !seciliSet.has(kg)) return null
         return { sicil_no: sicil, ad_soyad: c.ad_soyad, kan_grubu: kg }
       })
-      .filter(Boolean) as { sicil_no: string; ad_soyad: string; kan_grubu: string }[]
+      .filter(Boolean)
+      .sort((a, b) => a!.sicil_no.localeCompare(b!.sicil_no, 'tr', { numeric: true })) as {
+      sicil_no: string
+      ad_soyad: string
+      kan_grubu: string
+    }[]
     const ws = XLSX.utils.aoa_to_sheet([
       ['Kan Grubuna Göre Personel Listesi'],
       [`Yıl: ${yil}`],

@@ -19,7 +19,7 @@ interface Props {
   maxYil: number
   tabs: MudurlugeGorePersonelTabVerisi[]
   tumMudurlukler: string[]
-  initialMudurluk: string
+  initialMudurlukler: string[]
   raporBasePath: string
   excelBasePath: string
 }
@@ -30,33 +30,31 @@ export default function MudurlugeGorePersonelListeClient({
   maxYil,
   tabs,
   tumMudurlukler,
-  initialMudurluk,
+  initialMudurlukler,
   raporBasePath,
   excelBasePath,
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
-  const [mudurlukFiltre, setMudurlukFiltre] = useState(initialMudurluk)
-  const [seciliSiciller, setSeciliSiciller] = useState<string[]>([])
+  const [mudurlukFiltreler, setMudurlukFiltreler] = useState<string[]>(initialMudurlukler)
   const aktif = tabs[sekmeIndex]
 
   const gorunenSatirlar = useMemo(() => {
     if (!aktif) return [] as MudurlugeGorePersonelSatir[]
-    const mud = mudurlukFiltre.trim()
-    if (!mud) return aktif.satirlar
-    return aktif.satirlar.filter(r => r.mudurluk === mud)
-  }, [aktif, mudurlukFiltre])
+    if (mudurlukFiltreler.length === 0) return aktif.satirlar
+    const seciliSet = new Set(mudurlukFiltreler)
+    return aktif.satirlar.filter(r => seciliSet.has(r.mudurluk))
+  }, [aktif, mudurlukFiltreler])
 
   const yilDegistir = useCallback(
     (y: number) => {
-      const mud = mudurlukFiltre.trim()
+      const mud = mudurlukFiltreler.join(',')
       const q = mud ? `?y=${y}&m=${encodeURIComponent(mud)}` : `?y=${y}`
       router.push(`${raporBasePath}${q}`)
     },
-    [router, raporBasePath, mudurlukFiltre],
+    [router, raporBasePath, mudurlukFiltreler],
   )
-
-  const excelIds = seciliSiciller.length ? `&ids=${encodeURIComponent(seciliSiciller.join(','))}` : ''
+  const excelMudurluk = mudurlukFiltreler.length ? `&m=${encodeURIComponent(mudurlukFiltreler.join(','))}` : ''
 
   return (
     <div className="space-y-6">
@@ -73,25 +71,46 @@ export default function MudurlugeGorePersonelListeClient({
         <div className="flex flex-wrap items-center gap-2 justify-end">
           {aktif && (
             <Link
-              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${mudurlukFiltre.trim() ? `&m=${encodeURIComponent(mudurlukFiltre.trim())}` : ''}${excelIds}`}
+              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${excelMudurluk}`}
               className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})
             </Link>
           )}
           <label className="text-sm text-slate-600 whitespace-nowrap">Müdürlük</label>
-          <select
-            value={mudurlukFiltre}
-            onChange={e => setMudurlukFiltre(e.target.value)}
-            className="min-w-[220px] max-w-[min(100vw-2rem,340px)] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-          >
-            <option value="">Tümü</option>
-            {tumMudurlukler.map(m => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          <details className="relative">
+            <summary className="list-none cursor-pointer min-w-[220px] max-w-[min(100vw-2rem,340px)] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-700">
+              {mudurlukFiltreler.length ? `${mudurlukFiltreler.length} müdürlük seçili` : 'Tümü'}
+            </summary>
+            <div className="absolute right-0 z-10 mt-1 w-80 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs text-slate-500">Checkbox ile seçiniz</p>
+                <button
+                  type="button"
+                  onClick={() => setMudurlukFiltreler([])}
+                  className="text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Temizle
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {tumMudurlukler.map(m => (
+                  <label key={m} className="inline-flex items-center gap-2 text-xs text-slate-700 w-full">
+                    <input
+                      type="checkbox"
+                      checked={mudurlukFiltreler.includes(m)}
+                      onChange={e =>
+                        setMudurlukFiltreler(prev =>
+                          e.target.checked ? Array.from(new Set([...prev, m])) : prev.filter(x => x !== m),
+                        )
+                      }
+                    />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </details>
           <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
           <select
             value={yil}
@@ -137,19 +156,6 @@ export default function MudurlugeGorePersonelListeClient({
               <table className="w-full text-sm border-collapse min-w-[640px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">
-                      <input
-                        type="checkbox"
-                        checked={gorunenSatirlar.length > 0 && gorunenSatirlar.every(r => seciliSiciller.includes(r.sicil_no))}
-                        onChange={e =>
-                          setSeciliSiciller(prev =>
-                            e.target.checked
-                              ? Array.from(new Set([...prev, ...gorunenSatirlar.map(r => r.sicil_no)]))
-                              : prev.filter(s => !gorunenSatirlar.some(r => r.sicil_no === s)),
-                          )
-                        }
-                      />
-                    </th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-20">Sıra No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 w-32">Sicil No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[220px]">Adı Soyadı</th>
@@ -159,24 +165,13 @@ export default function MudurlugeGorePersonelListeClient({
                 <tbody className="divide-y divide-slate-100">
                   {gorunenSatirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
                   ) : (
                     gorunenSatirlar.map((row, i) => (
                       <tr key={`${row.sicil_no}-${row.ad_soyad}-${row.mudurluk}-${i}`} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2.5 text-center">
-                          <input
-                            type="checkbox"
-                            checked={seciliSiciller.includes(row.sicil_no)}
-                            onChange={e =>
-                              setSeciliSiciller(prev =>
-                                e.target.checked ? Array.from(new Set([...prev, row.sicil_no])) : prev.filter(s => s !== row.sicil_no),
-                              )
-                            }
-                          />
-                        </td>
                         <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                         <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>

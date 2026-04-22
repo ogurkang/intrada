@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, tehlikeMudurlukOzet, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
+import { parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
@@ -14,25 +13,34 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
   const { periyot, D, label } = parseRaporPeriyot(yil, sp.p)
   const p = periyot === 'yillik' ? 'yillik' : String(periyot)
   const supabase = await createClient()
-  const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
-    supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
-    supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu').not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad'),
-  ])
-  const tehlikeByMudurluk = new Map<string, TehlikeSinifi>()
-  for (const m of mudRaw ?? []) tehlikeByMudurluk.set(m.mudurluk_adi, (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli')
-  const calisanBySicil = new Map<string, { ad_soyad: string }>()
-  for (const c of calisanRaw ?? []) calisanBySicil.set(c.sicil_no, { ad_soyad: c.ad_soyad })
-  const satirlar = tehlikeMudurlukOzet(
-    aktifPersonelTehlikeSatirlari({ D, kadro: (kadroRaw ?? []) as KadroRaporRow[], calisanBySicil, tehlikeByMudurluk }),
-  ).filter(r => r.tehlike_sinifi === 'Tehlikeli')
+  const { data: mudRaw } = await supabase
+    .from('tanim_mudurluk')
+    .select('mudurluk_adi, tehlike_sinifi')
+    .eq('aktif', true)
+
+  const tehlikeSira: Record<TehlikeSinifi, number> = {
+    'Az Tehlikeli': 1,
+    Tehlikeli: 2,
+    'Çok Tehlikeli': 3,
+  }
+  const satirlar = (mudRaw ?? [])
+    .map(r => ({
+      mudurluk: r.mudurluk_adi,
+      tehlike_sinifi: ((r.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli') as TehlikeSinifi,
+    }))
+    .sort(
+      (a, b) =>
+        tehlikeSira[a.tehlike_sinifi] - tehlikeSira[b.tehlike_sinifi] ||
+        a.mudurluk.localeCompare(b.mudurluk, 'tr'),
+    )
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700">← Rapor Yönetimi</Link>
-          <h1 className="text-2xl font-bold text-slate-800 mt-1">Tehlikeli Sınıfına Göre Müdürlük Listesi</h1>
+          <h1 className="text-2xl font-bold text-slate-800 mt-1">Tehlike Sınıfına Göre Müdürlük Listesi</h1>
+          <p className="text-sm text-slate-600 mt-1">Aktif olan müdürlükleri tehlike sınıfına göre listeler.</p>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/api/rapor/tehlikeli-sinif-mudurluk-listesi/excel?y=${yil}&p=${p}`} className="bg-emerald-700 text-white text-sm px-4 py-2 rounded-lg">Excel İndir ({label})</Link>
@@ -40,8 +48,25 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
         </div>
       </div>
       <div className="border-b border-slate-200 overflow-x-auto"><nav className="flex min-w-max">{AYLAR.map((a, i) => { const pv = i === 0 ? 'yillik' : String(i); const aktif = pv === p; return <Link key={a} href={`?y=${yil}&p=${pv}`} className={`px-3 py-2 text-sm border-b-2 ${aktif ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-600'}`}>{a}</Link> })}</nav></div>
-      <div className="bg-white border rounded-xl overflow-x-auto">
-        <table className="w-full text-sm"><thead><tr className="bg-slate-50 border-b"><th className="px-3 py-2 text-center">Sıra No</th><th className="px-3 py-2 text-left">Müdürlük</th><th className="px-3 py-2 text-center">Personel Sayısı</th></tr></thead><tbody className="divide-y">{satirlar.map((r, i) => <tr key={`${r.mudurluk}-${i}`}><td className="px-3 py-2 text-center">{i + 1}</td><td className="px-3 py-2">{r.mudurluk}</td><td className="px-3 py-2 text-center">{r.personel_sayisi}</td></tr>)}</tbody></table>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm border-collapse min-w-[520px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
+              <th className="px-3 py-3 text-left font-semibold text-slate-700">Tehlike Sınıfı</th>
+              <th className="px-3 py-3 text-left font-semibold text-slate-700">Müdürlük</th>
+            </tr>
+          </thead>
+          <tbody>
+            {satirlar.map((r, i) => (
+              <tr key={`${r.mudurluk}-${i}`} className="border-b border-slate-100">
+                <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
+                <td className="px-3 py-2.5 text-slate-800">{r.tehlike_sinifi}</td>
+                <td className="px-3 py-2.5 text-slate-800">{r.mudurluk}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

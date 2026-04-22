@@ -6,6 +6,7 @@ export interface GorevYerineGoreListeSatir {
   kaynak: GorevYerineGoreKaynak
   sicil_no: string | null
   ad_soyad: string
+  mudurluk: string
   konum: string
   cinsiyet: string
   unvan: string
@@ -87,10 +88,12 @@ export function gorevYerineGoreListeSatirUret(
   row: GorevYerineGoreListeKayit,
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
+    const mudurluk = String(row.kadro.kadro_mudurlugu ?? '').trim() || '—'
     return {
       kaynak: 'kadro',
       sicil_no: row.sicil_no,
       ad_soyad: row.ad_soyad,
+      mudurluk,
       konum: mudurlukKonumGoster(mudKonum, row.kadro.kadro_mudurlugu),
       cinsiyet: cinsiyetGoster(row.cinsiyet),
       unvan: String(row.kadro.gorev_unvani ?? '').trim() || '—',
@@ -98,10 +101,12 @@ export function gorevYerineGoreListeSatirUret(
       fiili_gorev: fiiliGorevKadro(row.gorev_yeri, row.kadro.gorev_mudurlugu),
     }
   }
+  const mudurluk = String(row.gorev_mudurlugu ?? '').trim() || '—'
   return {
     kaynak: 'firma',
     sicil_no: row.sicil_no,
     ad_soyad: row.ad_soyad,
+    mudurluk,
     konum: mudurlukKonumGoster(mudKonum, row.gorev_mudurlugu),
     cinsiyet: cinsiyetGoster(row.cinsiyet),
     unvan: String(row.gorevi ?? '').trim() || '—',
