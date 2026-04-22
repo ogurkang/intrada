@@ -76,6 +76,14 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">SGK/SSK Sicil No</label>
+              <input
+                name="sgk_ssk_sicil_no"
+                defaultValue={(calisan as Calisan & { sgk_ssk_sicil_no?: string | null }).sgk_ssk_sicil_no ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Doğum Tarihi</label>
               <input name="dogum_tarihi" type="date" defaultValue={calisan.dogum_tarihi ?? ''}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />

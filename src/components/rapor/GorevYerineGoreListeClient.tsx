@@ -8,9 +8,10 @@ interface Props {
   satirlar: GorevYerineGoreListeSatir[]
   anlikTarihEtiket: string
   aciklama: string
+  excelHref?: string
 }
 
-export default function GorevYerineGoreListeClient({ satirlar, anlikTarihEtiket, aciklama }: Props) {
+export default function GorevYerineGoreListeClient({ satirlar, anlikTarihEtiket, aciklama, excelHref }: Props) {
   const [filtre, setFiltre] = useState('')
 
   const numarali = useMemo(() => {
@@ -42,6 +43,14 @@ export default function GorevYerineGoreListeClient({ satirlar, anlikTarihEtiket,
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        {excelHref && (
+          <Link
+            href={excelHref}
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+          >
+            Excel İndir
+          </Link>
+        )}
         <label className="text-sm text-slate-600">Ara (ad veya sicil)</label>
         <input
           type="search"

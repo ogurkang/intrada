@@ -87,6 +87,10 @@ export async function GET(req: Request) {
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
     const meslekFilter = String(searchParams.get('m') ?? '').trim()
+    const ids = String(searchParams.get('ids') ?? '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
 
     const [
       { data: kadroRaw },
@@ -169,6 +173,9 @@ export async function GET(req: Request) {
     })
     if (meslekFilter) {
       satirlar = satirlar.filter(r => r.meslek_adi.trim() === meslekFilter)
+    }
+    if (ids.length) {
+      satirlar = satirlar.filter(r => ids.includes(r.sicil_no))
     }
     const { gelenler, ayrilanlar } = gelenlerAyrilanlar({
       periyot,

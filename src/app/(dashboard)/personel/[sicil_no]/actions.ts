@@ -39,6 +39,7 @@ export async function calisanGuncelle(
   const temel: Record<string, unknown> = {
     ad_soyad,
     tckn:             str(formData, 'tckn'),
+    sgk_ssk_sicil_no: str(formData, 'sgk_ssk_sicil_no'),
     dogum_tarihi:     str(formData, 'dogum_tarihi'),
     cinsiyet:         str(formData, 'cinsiyet'),
     kan_grubu:        str(formData, 'kan_grubu'),

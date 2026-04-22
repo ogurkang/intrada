@@ -53,6 +53,10 @@ export async function GET(req: Request) {
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
     const mudurlukFilter = String(searchParams.get('m') ?? '').trim()
+    const ids = String(searchParams.get('ids') ?? '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
 
     const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
       supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
@@ -86,6 +90,7 @@ export async function GET(req: Request) {
       calisanBySicil,
     })
     if (mudurlukFilter) satirlar = satirlar.filter(r => r.mudurluk === mudurlukFilter)
+    if (ids.length) satirlar = satirlar.filter(r => ids.includes(r.sicil_no))
 
     const rows: (string | number)[][] = [
       padRow(4, ['Müdürlüğe Göre Personel Listesi']),

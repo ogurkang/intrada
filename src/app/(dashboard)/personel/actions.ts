@@ -42,6 +42,7 @@ export async function calisanEkle(
       sicil_no,
       ad_soyad,
       tckn: str('tckn'),
+      sgk_ssk_sicil_no: str('sgk_ssk_sicil_no'),
       dogum_tarihi:    str('dogum_tarihi'),
       cinsiyet:        str('cinsiyet'),
       kan_grubu:       str('kan_grubu'),

@@ -15,11 +15,15 @@ export async function mudurlukEkle(
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
   const konum = String(formData.get('konum') ?? 'İç').trim()
   if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
+  const tehlike_sinifi = String(formData.get('tehlike_sinifi') ?? 'Az Tehlikeli').trim()
+  if (!['Az Tehlikeli', 'Tehlikeli', 'Çok Tehlikeli'].includes(tehlike_sinifi)) {
+    return { hata: 'Tehlike sınıfı geçersiz.' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_mudurluk')
-    .insert({ mudurluk_adi, konum, aktif: true })
+    .insert({ mudurluk_adi, konum, tehlike_sinifi, aktif: true })
 
   if (error) return { hata: error.message }
   revalidatePath(SAYFA)
@@ -36,11 +40,15 @@ export async function mudurlukGuncelle(
   if (!mudurluk_adi) return { hata: 'Müdürlük adı boş bırakılamaz.' }
   const konum = String(formData.get('konum') ?? 'İç').trim()
   if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
+  const tehlike_sinifi = String(formData.get('tehlike_sinifi') ?? 'Az Tehlikeli').trim()
+  if (!['Az Tehlikeli', 'Tehlikeli', 'Çok Tehlikeli'].includes(tehlike_sinifi)) {
+    return { hata: 'Tehlike sınıfı geçersiz.' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('tanim_mudurluk')
-    .update({ mudurluk_adi, konum })
+    .update({ mudurluk_adi, konum, tehlike_sinifi })
     .eq('id', id)
 
   if (error) return { hata: error.message }

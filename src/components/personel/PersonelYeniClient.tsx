@@ -84,6 +84,15 @@ export default function PersonelYeniClient() {
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-500"
               placeholder="12345678901" />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">SGK/SSK Sicil No</label>
+            <input
+              name="sgk_ssk_sicil_no"
+              type="text"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              placeholder="SGK/SSK Sicil No"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

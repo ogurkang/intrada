@@ -122,9 +122,9 @@ export interface Database {
         Relationships: []
       }
       tanim_mudurluk: {
-        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; konum: string; aktif: boolean; created_at: string }
-        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; konum?: string; aktif?: boolean; created_at?: string }
-        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; konum?: string; aktif?: boolean; created_at?: string }
+        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; konum: string; tehlike_sinifi: string; aktif: boolean; created_at: string }
+        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; konum?: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
+        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; konum?: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
         Relationships: []
       }
       tanim_statu: {
@@ -598,7 +598,7 @@ export interface Database {
       calisan: {
         Row: {
           sicil_no: string; public_id: string; ad_soyad: string; tckn: string | null; dogum_tarihi: string | null
-          cinsiyet: string | null; kan_grubu: string | null; telefon: string | null
+          cinsiyet: string | null; kan_grubu: string | null; sgk_ssk_sicil_no: string | null; telefon: string | null
           e_posta: string | null; dogum_yeri: string | null; anne_adi: string | null
           baba_adi: string | null; adresi: string | null; yakini: string | null
           yakini_telefonu: string | null; askerlik_durumu: string | null
@@ -609,7 +609,7 @@ export interface Database {
         }
         Insert: {
           sicil_no: string; ad_soyad: string; public_id?: string; tckn?: string | null; dogum_tarihi?: string | null
-          cinsiyet?: string | null; kan_grubu?: string | null; telefon?: string | null
+          cinsiyet?: string | null; kan_grubu?: string | null; sgk_ssk_sicil_no?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
@@ -620,7 +620,7 @@ export interface Database {
         }
         Update: {
           sicil_no?: string; public_id?: string; ad_soyad?: string; tckn?: string | null; dogum_tarihi?: string | null
-          cinsiyet?: string | null; kan_grubu?: string | null; telefon?: string | null
+          cinsiyet?: string | null; kan_grubu?: string | null; sgk_ssk_sicil_no?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
           baba_adi?: string | null; adresi?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null

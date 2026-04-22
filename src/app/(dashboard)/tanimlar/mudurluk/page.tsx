@@ -36,6 +36,16 @@ export default async function MudurlukPage() {
               { value: 'Dış', label: 'Dış' },
             ],
           },
+          {
+            key: 'tehlike_sinifi',
+            label: 'Tehlike Sınıfı',
+            required: true,
+            options: [
+              { value: 'Az Tehlikeli', label: 'Az Tehlikeli' },
+              { value: 'Tehlikeli', label: 'Tehlikeli' },
+              { value: 'Çok Tehlikeli', label: 'Çok Tehlikeli' },
+            ],
+          },
         ]}
         onAdd={mudurlukEkle}
         onUpdate={mudurlukGuncelle}

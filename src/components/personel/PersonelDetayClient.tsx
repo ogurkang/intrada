@@ -114,6 +114,7 @@ function KisiselTab({
           <Alan etiket="Sicil No"        deger={calisan.sicil_no} />
           <Alan etiket="Adı Soyadı"      deger={calisan.ad_soyad} />
           <Alan etiket="TCKN"            deger={calisan.tckn} />
+          <Alan etiket="SGK/SSK Sicil No" deger={(calisan as typeof calisan & { sgk_ssk_sicil_no?: string | null }).sgk_ssk_sicil_no ?? null} />
           <Alan etiket="Doğum Tarihi"    deger={tarihFormatla(calisan.dogum_tarihi)} />
           <Alan etiket="Doğum Yeri"      deger={calisan.dogum_yeri} />
           <Alan etiket="Cinsiyet"        deger={calisan.cinsiyet} />

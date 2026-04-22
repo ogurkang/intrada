@@ -215,7 +215,12 @@ export default async function GorevYerineGoreListePage() {
         </div>
       )}
 
-      <GorevYerineGoreListeClient satirlar={satirlar} anlikTarihEtiket={anlikTarihEtiket} aciklama={LISTE_ACIKLAMA} />
+      <GorevYerineGoreListeClient
+        satirlar={satirlar}
+        anlikTarihEtiket={anlikTarihEtiket}
+        aciklama={LISTE_ACIKLAMA}
+        excelHref="/api/rapor/gorev-yerine-gore-liste/excel"
+      />
     </div>
   )
 }
