@@ -116,6 +116,13 @@ const RAPOR_KARTLARI = [
     renk: 'border-cyan-200 bg-cyan-50 text-cyan-900',
   },
   {
+    kod: 'DGL',
+    href: '/rapor/dogum-gunune-gore-personel-liste',
+    baslik: 'Doğum Gününe Göre Personel Listesi',
+    aciklama: 'Aylık sekmelerde ilgili ayda doğan aktif personellerin sicil ve ad soyad listesi.',
+    renk: 'border-teal-200 bg-teal-50 text-teal-900',
+  },
+  {
     kod: 'BPL',
     href: '/rapor/belediye-geneli-personel-liste',
     baslik: 'Belediye Geneli Personel Listesi',

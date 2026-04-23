@@ -41,7 +41,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
           children: [
             { href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' },
             { href: '/personel/sgk-ssk-sicil-no', label: 'SGK/SSK Sicil No' },
-            { href: '/personel/kan-grubu', label: 'Kan Grubu Bilgisi' },
           ],
         }
       : { href: calisanlarHref, label: 'Personel Kartım' }
@@ -82,6 +81,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/tehlikeli-sinif-mudurluk-listesi', label: 'Tehlike Sınıfına Göre Müdürlük Listesi' },
       { href: '/rapor/tehlikeli-sinif-personel-listesi', label: 'Tehlike Sınıfına Göre Personel Listesi' },
       { href: '/rapor/kan-grubuna-gore-personel-liste', label: 'Kan Grubuna Göre Personel Listesi' },
+      { href: '/rapor/dogum-gunune-gore-personel-liste', label: 'Doğum Gününe Göre Personel Listesi' },
       { href: '/rapor/belediye-geneli-personel-liste', label: 'Belediye Geneli Personel Listesi' },
     ],
   },

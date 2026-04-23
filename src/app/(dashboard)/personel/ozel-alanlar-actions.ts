@@ -13,7 +13,6 @@ async function revalidateOzelAlan(sicil_no: string) {
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/personel')
   revalidatePath('/personel/sgk-ssk-sicil-no')
-  revalidatePath('/personel/kan-grubu')
 }
 
 export async function sgkSicilSatirKaydet(

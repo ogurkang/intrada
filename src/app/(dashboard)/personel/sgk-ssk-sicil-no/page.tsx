@@ -28,6 +28,7 @@ export default async function SgkSskSicilNoPage() {
       alanEtiketi="sgk_ssk_sicil_no"
       data={data}
       inputType="text"
+      sortBy="sicil_no_desc"
       onSatirKaydet={sgkSicilSatirKaydet}
       onTopluKaydet={sgkSicilTopluKaydet}
     />

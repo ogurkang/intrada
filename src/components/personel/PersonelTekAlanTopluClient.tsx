@@ -19,7 +19,7 @@ interface Props {
   data: Satir[]
   inputType: 'text' | 'select'
   secenekler?: string[]
-  sortBy?: 'ad_soyad' | 'sicil_no'
+  sortBy?: 'ad_soyad' | 'sicil_no' | 'sicil_no_desc'
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: { sicil_no: string; deger: string | null }[]) => Promise<{ hata?: string; kaydedilen?: number }>
 }
@@ -49,6 +49,8 @@ export default function PersonelTekAlanTopluClient({
       [...data].sort((a, b) =>
         sortBy === 'sicil_no'
           ? a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true })
+          : sortBy === 'sicil_no_desc'
+            ? b.sicil_no.localeCompare(a.sicil_no, 'tr', { numeric: true })
           : a.ad_soyad.localeCompare(b.ad_soyad, 'tr'),
       ),
     [data, sortBy],
