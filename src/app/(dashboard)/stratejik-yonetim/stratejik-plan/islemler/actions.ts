@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 
 function txt(v: FormDataEntryValue | null): string {
   return String(v ?? '').trim()
@@ -271,5 +273,164 @@ export async function gostergeGuncelle(id: number, donemId: number, fd: FormData
   if (error) return { hata: error.message }
   revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
   return {}
+}
+
+function normMud(v: string | null | undefined): string {
+  return String(v ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr-TR')
+}
+
+function tamamlananCeyrek(yil: number): number {
+  const now = new Date()
+  const simdikiYil = now.getFullYear()
+  if (yil < simdikiYil) return 4
+  if (yil > simdikiYil) return 0
+  return Math.floor(now.getMonth() / 3)
+}
+
+async function veriGirisAyar(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ yoneticiMudurlukler: string[]; kullaniciMudurlukler: string[]; tumunuGorebilir: boolean }> {
+  const { data: auth } = await supabase.auth.getUser()
+  const user = auth.user
+  if (!user) return { yoneticiMudurlukler: [], kullaniciMudurlukler: [], tumunuGorebilir: false }
+
+  const access = await getAppAccess(supabase, user.id)
+  if (access.mode === 'blocked') return { yoneticiMudurlukler: [], kullaniciMudurlukler: [], tumunuGorebilir: false }
+
+  const { data: yetkiRows } = await supabase
+    .from('stratejik_plan_veri_giris_yetki_mudurluk' as never)
+    .select('mudurluk_adi')
+    .eq('aktif', true)
+
+  const yoneticiMudurlukler = (yetkiRows ?? [])
+    .map(r => String((r as { mudurluk_adi?: string }).mudurluk_adi ?? '').trim())
+    .filter(Boolean)
+
+  if (isAdminLike(access)) {
+    return { yoneticiMudurlukler, kullaniciMudurlukler: [], tumunuGorebilir: true }
+  }
+  if (access.mode !== 'kullanici') {
+    return { yoneticiMudurlukler, kullaniciMudurlukler: [], tumunuGorebilir: false }
+  }
+
+  const km = await getKullaniciGorevMudurlukleri(supabase, access.sicilNo)
+  const tumunuGorebilir = km.mudurlukler.some(m => yoneticiMudurlukler.some(y => normMud(y) === normMud(m)))
+  return {
+    yoneticiMudurlukler,
+    kullaniciMudurlukler: km.mudurlukler,
+    tumunuGorebilir,
+  }
+}
+
+export async function stratejikVeriDonemDurumAyarla(
+  donemId: number,
+  yil: number,
+  ceyrek: number,
+  durum: 'Açık' | 'Kapalı',
+): Promise<{ hata?: string }> {
+  if (![1, 2, 3, 4].includes(ceyrek)) return { hata: 'Çeyrek bilgisi geçersiz.' }
+  if (!['Açık', 'Kapalı'].includes(durum)) return { hata: 'Durum geçersiz.' }
+  if (ceyrek > tamamlananCeyrek(yil)) return { hata: 'Henüz tamamlanmayan çeyrek açılamaz.' }
+
+  const supabase = await createClient()
+  const ayar = await veriGirisAyar(supabase)
+  const yonetebilir = ayar.tumunuGorebilir || ayar.kullaniciMudurlukler.some(m => ayar.yoneticiMudurlukler.some(y => normMud(y) === normMud(m)))
+  if (!yonetebilir) return { hata: 'Veri giriş dönemini açma/kapatma yetkiniz yok.' }
+
+  const { error } = await supabase.from('stratejik_plan_gosterge_veri_donem' as never).upsert(
+    {
+      stratejik_donem_id: donemId,
+      yil,
+      ceyrek,
+      durum,
+      updated_at: new Date().toISOString(),
+    } as never,
+    { onConflict: 'stratejik_donem_id,yil,ceyrek' },
+  )
+  if (error) return { hata: error.message }
+
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}/veri-giris`)
+  return {}
+}
+
+export async function stratejikVeriGirisKaydet(
+  donemId: number,
+  yil: number,
+  ceyrek: number,
+  satirlar: { gosterge_id: number; gerceklesen: number }[],
+): Promise<{ hata?: string; kaydedilen?: number }> {
+  if (![1, 2, 3, 4].includes(ceyrek)) return { hata: 'Çeyrek bilgisi geçersiz.' }
+  if (ceyrek > tamamlananCeyrek(yil)) return { hata: 'Henüz tamamlanmayan çeyrek için veri girişi yapılamaz.' }
+
+  const supabase = await createClient()
+  const ayar = await veriGirisAyar(supabase)
+
+  const { data: donemDurum } = await supabase
+    .from('stratejik_plan_gosterge_veri_donem' as never)
+    .select('durum')
+    .eq('stratejik_donem_id', donemId)
+    .eq('yil', yil)
+    .eq('ceyrek', ceyrek)
+    .maybeSingle()
+
+  const durum = String((donemDurum as { durum?: string } | null)?.durum ?? 'Kapalı')
+  if (durum !== 'Açık') return { hata: 'Bu çeyrek için veri girişi kapalı.' }
+
+  const temiz = satirlar
+    .filter(s => Number.isFinite(s.gosterge_id))
+    .map(s => ({ gosterge_id: s.gosterge_id, gerceklesen: Number(s.gerceklesen) }))
+    .filter(s => Number.isFinite(s.gerceklesen))
+  if (temiz.length === 0) return { hata: 'Kaydedilecek geçerli satır yok.' }
+
+  const gIds = [...new Set(temiz.map(s => s.gosterge_id))]
+  const { data: gRows } = await supabase
+    .from('stratejik_plan_gosterge' as never)
+    .select('id, alt_hedef_id')
+    .in('id', gIds)
+
+  const altIds = [...new Set((gRows ?? []).map(r => (r as { alt_hedef_id?: number }).alt_hedef_id).filter(Boolean))]
+  const { data: altRows } = altIds.length
+    ? await supabase.from('stratejik_plan_alt_hedef' as never).select('id, mudurluk').in('id', altIds as number[])
+    : { data: [] as never[] }
+  const altMudMap = new Map<number, string>((altRows ?? []).map(a => [Number((a as { id: number }).id), String((a as { mudurluk?: string }).mudurluk ?? '')]))
+  const gAltMap = new Map<number, number>((gRows ?? []).map(g => [Number((g as { id: number }).id), Number((g as { alt_hedef_id: number }).alt_hedef_id)]))
+
+  if (!ayar.tumunuGorebilir) {
+    const izinMud = new Set(ayar.kullaniciMudurlukler.map(normMud))
+    for (const gid of gIds) {
+      const altId = gAltMap.get(gid)
+      const mud = altId ? altMudMap.get(altId) ?? '' : ''
+      if (!izinMud.has(normMud(mud))) return { hata: 'Yetkiniz olmayan müdürlük göstergesi için kayıt yapılamaz.' }
+    }
+  }
+
+  const { data: auth } = await supabase.auth.getUser()
+  const actorId = auth.user?.id ?? null
+  const payload = temiz.map(s => {
+    const altId = gAltMap.get(s.gosterge_id)
+    const mud = altId ? altMudMap.get(altId) ?? null : null
+    return {
+      stratejik_donem_id: donemId,
+      gosterge_id: s.gosterge_id,
+      yil,
+      ceyrek,
+      gerceklesen: s.gerceklesen,
+      mudurluk: mud,
+      updated_by: actorId,
+      created_by: actorId,
+      updated_at: new Date().toISOString(),
+    }
+  })
+
+  const { error } = await supabase
+    .from('stratejik_plan_gosterge_gerceklesme' as never)
+    .upsert(payload as never, { onConflict: 'gosterge_id,yil,ceyrek' })
+  if (error) return { hata: error.message }
+
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}/veri-giris`)
+  return { kaydedilen: payload.length }
 }
 
