@@ -25,7 +25,7 @@ export default async function StratejikPlanVeriGirisPage({
   searchParams,
 }: {
   params: Promise<{ donem_id: string }>
-  searchParams: Promise<{ ceyrek?: string; mudurluk?: string }>
+  searchParams: Promise<{ ceyrek?: string; mudurluk?: string; sekme?: string }>
 }) {
   const p = await params
   const s = await searchParams
@@ -50,6 +50,8 @@ export default async function StratejikPlanVeriGirisPage({
   const targetField = `yil_${yilIndex}` as 'yil_1' | 'yil_2' | 'yil_3' | 'yil_4' | 'yil_5'
   const secilenCeyrekRaw = Number.parseInt(String(s.ceyrek ?? '1'), 10)
   const secilenCeyrek = [1, 2, 3, 4].includes(secilenCeyrekRaw) ? secilenCeyrekRaw : 1
+  const sekmeRaw = String(s.sekme ?? '').toLocaleLowerCase('tr-TR')
+  const aktifTab = sekmeRaw === 'yillik' ? 5 : ([1, 2, 3, 4].includes(Number.parseInt(sekmeRaw, 10)) ? Number.parseInt(sekmeRaw, 10) : secilenCeyrek)
   const tamamlanan = tamamlananCeyrek(yil)
 
   const {
@@ -106,18 +108,21 @@ export default async function StratejikPlanVeriGirisPage({
   const { data: girisRows } = gostergeIds.length
     ? await supabase
       .from('stratejik_plan_gosterge_gerceklesme' as never)
-      .select('gosterge_id, ceyrek, gerceklesen')
+      .select('gosterge_id, ceyrek, gerceklesen, durum_aciklama')
       .eq('stratejik_donem_id', donemId)
       .eq('yil', yil)
       .in('gosterge_id', gostergeIds)
     : { data: [] as never[] }
 
   const qMap = new Map<string, number>()
+  const qAciklamaMap = new Map<string, string>()
   for (const r of girisRows ?? []) {
     const gid = Number((r as { gosterge_id: number }).gosterge_id)
     const q = Number((r as { ceyrek: number }).ceyrek)
     const v = Number((r as { gerceklesen?: number }).gerceklesen ?? 0)
     qMap.set(`${gid}:${q}`, Number.isFinite(v) ? v : 0)
+    const aciklama = String((r as { durum_aciklama?: string }).durum_aciklama ?? '')
+    if (aciklama) qAciklamaMap.set(`${gid}:${q}`, aciklama)
   }
 
   const altMudMap = new Map<number, string>((altRows ?? []).map(a => [Number((a as { id: number }).id), String((a as { mudurluk?: string }).mudurluk ?? '')]))
@@ -134,10 +139,15 @@ export default async function StratejikPlanVeriGirisPage({
     const gerceklesmeOran = hedef > 0 ? (yillikToplam / hedef) * 100 : null
     return {
       gosterge_id: gid,
-      mudurluk: altMudMap.get(altId) ?? '-',
       gosterge_adi: String((g as { gosterge_adi?: string }).gosterge_adi ?? ''),
       hedef: Number.isFinite(hedef) ? hedef : null,
       qDegerler: { q1, q2, q3, q4 },
+      qAciklamalar: {
+        q1: qAciklamaMap.get(`${gid}:1`) ?? '',
+        q2: qAciklamaMap.get(`${gid}:2`) ?? '',
+        q3: qAciklamaMap.get(`${gid}:3`) ?? '',
+        q4: qAciklamaMap.get(`${gid}:4`) ?? '',
+      },
       yillikToplam,
       gerceklesmeOran: gerceklesmeOran == null ? null : Number(gerceklesmeOran.toFixed(2)),
     }
@@ -161,6 +171,7 @@ export default async function StratejikPlanVeriGirisPage({
       donemAdi={String((donem as { donem_adi?: string }).donem_adi ?? `Dönem #${donemId}`)}
       yil={yil}
       aktifCeyrek={secilenCeyrek as 1 | 2 | 3 | 4}
+      aktifTab={aktifTab as 1 | 2 | 3 | 4 | 5}
       tamamlananCeyrek={tamamlanan}
       ceyrekDurumlari={ceyrekDurumlari}
       mudurlukSecenekleri={izinMud}

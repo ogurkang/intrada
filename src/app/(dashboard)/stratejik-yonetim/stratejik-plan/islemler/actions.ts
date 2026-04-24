@@ -360,7 +360,7 @@ export async function stratejikVeriGirisKaydet(
   donemId: number,
   yil: number,
   ceyrek: number,
-  satirlar: { gosterge_id: number; gerceklesen: number }[],
+  satirlar: { gosterge_id: number; gerceklesen: number; durum_aciklama?: string }[],
 ): Promise<{ hata?: string; kaydedilen?: number }> {
   if (![1, 2, 3, 4].includes(ceyrek)) return { hata: 'Çeyrek bilgisi geçersiz.' }
   if (ceyrek > tamamlananCeyrek(yil)) return { hata: 'Henüz tamamlanmayan çeyrek için veri girişi yapılamaz.' }
@@ -381,7 +381,11 @@ export async function stratejikVeriGirisKaydet(
 
   const temiz = satirlar
     .filter(s => Number.isFinite(s.gosterge_id))
-    .map(s => ({ gosterge_id: s.gosterge_id, gerceklesen: Number(s.gerceklesen) }))
+    .map(s => ({
+      gosterge_id: s.gosterge_id,
+      gerceklesen: Number(s.gerceklesen),
+      durum_aciklama: String(s.durum_aciklama ?? '').trim() || null,
+    }))
     .filter(s => Number.isFinite(s.gerceklesen))
   if (temiz.length === 0) return { hata: 'Kaydedilecek geçerli satır yok.' }
 
@@ -418,6 +422,7 @@ export async function stratejikVeriGirisKaydet(
       yil,
       ceyrek,
       gerceklesen: s.gerceklesen,
+      durum_aciklama: s.durum_aciklama,
       mudurluk: mud,
       updated_by: actorId,
       created_by: actorId,
