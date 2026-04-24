@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import PersonelTekAlanTopluClient from '@/components/personel/PersonelTekAlanTopluClient'
 import { sgkSicilSatirKaydet, sgkSicilTopluKaydet } from '@/app/(dashboard)/personel/ozel-alanlar-actions'
+import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 
 export default async function SgkSskSicilNoPage() {
   const supabase = await createClient()
@@ -12,7 +13,7 @@ export default async function SgkSskSicilNoPage() {
   for (const r of phRaw ?? []) {
     if (!sonAyrilisPerSicil.has(r.sicil_no)) sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
   }
-  const data = (calisanRaw ?? [])
+  const data = filterOutGodmodeCalisan(calisanRaw ?? [])
     .filter(c => !sonAyrilisPerSicil.get(c.sicil_no))
     .map(c => ({
       sicil_no: c.sicil_no,
@@ -28,7 +29,7 @@ export default async function SgkSskSicilNoPage() {
       alanEtiketi="sgk_ssk_sicil_no"
       data={data}
       inputType="text"
-      sortBy="sicil_no_desc"
+      sortBy="sicil_no"
       onSatirKaydet={sgkSicilSatirKaydet}
       onTopluKaydet={sgkSicilTopluKaydet}
     />
