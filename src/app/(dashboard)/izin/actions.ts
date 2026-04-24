@@ -123,6 +123,9 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
     .from('calisan').select('sicil_no').eq('sicil_no', sicil_no).maybeSingle()
   if (!calisan) return { hata: `"${sicil_no}" sicil numaralı personel bulunamadı.` }
 
+  const cakisma = await izinCakismaMesaji(supabase, sicil_no, ayrilisKayit, baslama)
+  if (cakisma) return { hata: cakisma }
+
   const sira_no = await siradakiSiraNo(supabase, yil)
 
   let bilgiStr = str(formData, 'bilgi')
@@ -173,6 +176,40 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
   revalidatePath('/izin/haklar')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   return {}
+}
+
+async function izinCakismaMesaji(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicilNo: string,
+  ayrilis: string,
+  baslama: string,
+): Promise<string | null> {
+  const { data: cakisan } = await supabase
+    .from('izin_hareketleri')
+    .select('sira_no, islem_yapan')
+    .eq('sicil_no', sicilNo)
+    .neq('durum', 'İptal Edildi')
+    .lt('ayrilis', baslama)
+    .gt('baslama', ayrilis)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!cakisan) return null
+  const islemYapan = (cakisan.islem_yapan ?? 'Bilinmeyen kullanıcı').trim() || 'Bilinmeyen kullanıcı'
+  const siraNo = (cakisan.sira_no ?? '—').trim() || '—'
+  return `Personelin "${islemYapan}" tarafından kaydedilmiş "${siraNo}" no'lu izni ile çakışıyor.`
+}
+
+export async function izinCakismaKontrol(formData: FormData): Promise<{ hata?: string }> {
+  const sicilNo = String(formData.get('sicil_no') ?? '').trim()
+  const ayrilis = str(formData, 'ayrilis')
+  const baslama = str(formData, 'baslama')
+  if (!sicilNo || !ayrilis || !baslama || baslama <= ayrilis) return {}
+
+  const supabase = await createClient()
+  const cakisma = await izinCakismaMesaji(supabase, sicilNo, ayrilis, baslama)
+  return cakisma ? { hata: cakisma } : {}
 }
 
 export async function izinGuncelle(id: number, formData: FormData): Promise<{ hata?: string }> {

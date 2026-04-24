@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { izinGunHesapla } from '@/app/(dashboard)/izin/actions'
+import { izinCakismaKontrol, izinGunHesapla } from '@/app/(dashboard)/izin/actions'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 interface Personel { sicil_no: string; ad_soyad: string }
@@ -76,6 +76,13 @@ export default function IzinYeniClient({
     fd.set('sicil_no', secilenSicil)
     fd.set('gun', String(gun))
     fd.set('yil', String(yil))
+
+    const cakismaKontrol = await izinCakismaKontrol(fd)
+    if (cakismaKontrol.hata) {
+      setHata(cakismaKontrol.hata)
+      return
+    }
+
     startTransition(async () => {
       const res = await onEkle(fd)
       if (res.hata) {
