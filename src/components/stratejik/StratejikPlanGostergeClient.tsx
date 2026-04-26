@@ -32,13 +32,13 @@ interface TopluSatir {
 
 interface Props {
   donemId: number
-  altHedefId: number
-  altHedefAdi: string
+  faaliyetId: number
+  faaliyetAdi: string
   yillar: number[]
   gostergeListesi: SpGosterge[]
-  onEkle: (altHedefId: number, donemId: number, fd: FormData) => Promise<{ hata?: string }>
+  onEkle: (faaliyetId: number, donemId: number, fd: FormData) => Promise<{ hata?: string }>
   onTopluEkle: (
-    altHedefId: number,
+    faaliyetId: number,
     donemId: number,
     satirlar: {
       sira_no: number | null
@@ -77,8 +77,8 @@ function newTopluSatir(): TopluSatir {
 
 export default function StratejikPlanGostergeClient({
   donemId,
-  altHedefId,
-  altHedefAdi,
+  faaliyetId,
+  faaliyetAdi,
   yillar,
   gostergeListesi,
   onEkle,
@@ -109,9 +109,10 @@ export default function StratejikPlanGostergeClient({
   }, [router])
 
   function yeniAc() {
-    if (typeof window !== 'undefined') {
-      window.open(`${window.location.pathname}/yeni`, '_blank')
-    }
+    setSecili(null)
+    setHata(null)
+    setMod('tekil')
+    setFormAcik(true)
   }
 
   function duzenleAc(g: SpGosterge) {
@@ -132,7 +133,7 @@ export default function StratejikPlanGostergeClient({
   function kaydet(fd: FormData) {
     setHata(null)
     startTransition(async () => {
-      const res = secili ? await onGuncelle(secili.id, donemId, fd) : await onEkle(altHedefId, donemId, fd)
+      const res = secili ? await onGuncelle(secili.id, donemId, fd) : await onEkle(faaliyetId, donemId, fd)
       if (res.hata) setHata(res.hata)
       else {
         setFormAcik(false)
@@ -156,7 +157,7 @@ export default function StratejikPlanGostergeClient({
       yil_5: toNum(s.yil_5),
     }))
     startTransition(async () => {
-      const res = await onTopluEkle(altHedefId, donemId, payload)
+      const res = await onTopluEkle(faaliyetId, donemId, payload)
       if (res.hata) setTopluHata(res.hata)
       else {
         setTopluMesaj(`${res.kaydedilen ?? 0} gösterge eklendi.`)
@@ -170,8 +171,8 @@ export default function StratejikPlanGostergeClient({
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{altHedefAdi}</h1>
-          <p className="text-sm text-slate-500 mt-1">Bu alt hedefe bağlı göstergeleri yönetebilirsiniz.</p>
+          <h1 className="text-2xl font-bold text-slate-800">{faaliyetAdi}</h1>
+          <p className="text-sm text-slate-500 mt-1">Bu faaliyete bağlı göstergeleri yönetebilirsiniz.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={yeniAc} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
@@ -199,7 +200,7 @@ export default function StratejikPlanGostergeClient({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {gostergeListesi.length === 0 ? (
-                <tr><td colSpan={3 + yillar.length + 1} className="px-4 py-12 text-center text-slate-500">Bu alt hedefe bağlı gösterge bulunamadı.</td></tr>
+                <tr><td colSpan={3 + yillar.length + 1} className="px-4 py-12 text-center text-slate-500">Bu faaliyete bağlı gösterge bulunamadı.</td></tr>
               ) : (
                 gostergeListesi.map((g, i) => (
                   <tr key={g.id} className="hover:bg-slate-50">

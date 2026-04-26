@@ -74,13 +74,13 @@ export default function StratejikPlanAltHedefClient({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{hedefAdi}</h1>
-          <p className="text-sm text-slate-500 mt-1">Bu hedefe bağlı alt hedefleri yönetebilirsiniz.</p>
+          <p className="text-sm text-slate-500 mt-1">Bu hedefe bağlı performans hedeflerini yönetebilirsiniz.</p>
         </div>
         <button onClick={yeniAc} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Alt Hedef Ekle
+          Performans Hedefi Ekle
         </button>
       </div>
 
@@ -91,14 +91,14 @@ export default function StratejikPlanAltHedefClient({
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="px-4 py-3 text-center w-20">Sıra No</th>
                 <th className="px-4 py-3 text-left w-32">Kodu</th>
-                <th className="px-4 py-3 text-left">Alt Hedef Adı</th>
+                <th className="px-4 py-3 text-left">Performans Hedefi Adı</th>
                 <th className="px-4 py-3 text-left w-72">Müdürlük</th>
                 <th className="px-4 py-3 text-center w-28">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {altHedefler.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-500">Bu hedefe bağlı alt hedef bulunamadı.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-500">Bu hedefe bağlı performans hedefi bulunamadı.</td></tr>
               ) : (
                 altHedefler.map((a, i) => (
                   <tr key={a.id} className="hover:bg-slate-50">
@@ -133,7 +133,7 @@ export default function StratejikPlanAltHedefClient({
         </div>
       </div>
 
-      <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Alt Hedef Düzenle' : 'Alt Hedef Ekle'} size="sm">
+      <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Performans Hedefi Düzenle' : 'Performans Hedefi Ekle'} size="sm">
         <form onSubmit={async e => { e.preventDefault(); await kaydet(new FormData(e.currentTarget)) }} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -146,7 +146,7 @@ export default function StratejikPlanAltHedefClient({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Alt Hedef Adı *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Performans Hedefi Adı *</label>
             <input name="alt_hedef_adi" required defaultValue={secili?.alt_hedef_adi ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
           </div>
           <div className="grid grid-cols-5 gap-2">

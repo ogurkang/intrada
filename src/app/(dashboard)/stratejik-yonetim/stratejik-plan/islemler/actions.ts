@@ -177,6 +177,42 @@ export async function altHedefGuncelle(id: number, donemId: number, fd: FormData
   return {}
 }
 
+export async function faaliyetEkle(altHedefId: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
+  const siraNoRaw = txt(fd.get('sira_no'))
+  const faaliyet_adi = txt(fd.get('faaliyet_adi'))
+  if (!faaliyet_adi) return { hata: 'Faaliyet adı zorunludur.' }
+  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
+  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('stratejik_plan_faaliyet' as never).insert({
+    alt_hedef_id: altHedefId,
+    sira_no,
+    faaliyet_adi,
+    aktif: true,
+  } as never)
+  if (error) return { hata: error.message }
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
+export async function faaliyetGuncelle(id: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
+  const siraNoRaw = txt(fd.get('sira_no'))
+  const faaliyet_adi = txt(fd.get('faaliyet_adi'))
+  if (!faaliyet_adi) return { hata: 'Faaliyet adı zorunludur.' }
+  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
+  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('stratejik_plan_faaliyet' as never)
+    .update({ sira_no, faaliyet_adi } as never)
+    .eq('id', id)
+  if (error) return { hata: error.message }
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
 function num(v: FormDataEntryValue | null): number | null {
   const s = txt(v)
   if (!s) return null
@@ -184,7 +220,7 @@ function num(v: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export async function gostergeEkle(altHedefId: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
+export async function gostergeEkle(faaliyetId: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
   const siraNoRaw = txt(fd.get('sira_no'))
   const gosterge_adi = txt(fd.get('gosterge_adi'))
   const birim = txt(fd.get('birim'))
@@ -193,8 +229,17 @@ export async function gostergeEkle(altHedefId: number, donemId: number, fd: Form
   if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
 
   const supabase = await createClient()
+  const { data: faaliyet } = await supabase
+    .from('stratejik_plan_faaliyet' as never)
+    .select('id, alt_hedef_id')
+    .eq('id', faaliyetId)
+    .maybeSingle()
+  const altHedefId = Number((faaliyet as { alt_hedef_id?: number } | null)?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId)) return { hata: 'Faaliyet bulunamadı.' }
+
   const { error } = await supabase.from('stratejik_plan_gosterge' as never).insert({
     alt_hedef_id: altHedefId,
+    faaliyet_id: faaliyetId,
     sira_no,
     gosterge_adi,
     birim,
@@ -211,7 +256,7 @@ export async function gostergeEkle(altHedefId: number, donemId: number, fd: Form
 }
 
 export async function gostergeTopluEkle(
-  altHedefId: number,
+  faaliyetId: number,
   donemId: number,
   satirlar: {
     sira_no: number | null
@@ -225,9 +270,19 @@ export async function gostergeTopluEkle(
   }[],
 ): Promise<{ hata?: string; kaydedilen?: number }> {
   if (!satirlar.length) return { kaydedilen: 0 }
+  const supabase = await createClient()
+  const { data: faaliyet } = await supabase
+    .from('stratejik_plan_faaliyet' as never)
+    .select('id, alt_hedef_id')
+    .eq('id', faaliyetId)
+    .maybeSingle()
+  const altHedefId = Number((faaliyet as { alt_hedef_id?: number } | null)?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId)) return { hata: 'Faaliyet bulunamadı.' }
+
   const temiz = satirlar
     .map(s => ({
       alt_hedef_id: altHedefId,
+      faaliyet_id: faaliyetId,
       sira_no: s.sira_no,
       gosterge_adi: String(s.gosterge_adi ?? '').trim(),
       birim: String(s.birim ?? '').trim(),
@@ -241,7 +296,6 @@ export async function gostergeTopluEkle(
     .filter(s => s.gosterge_adi && s.birim)
   if (!temiz.length) return { hata: 'Toplu ekleme için en az bir geçerli satır giriniz.' }
 
-  const supabase = await createClient()
   const { error } = await supabase.from('stratejik_plan_gosterge' as never).insert(temiz as never)
   if (error) return { hata: error.message }
   revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)

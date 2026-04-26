@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanHedefClient, { type SpHedef } from '@/components/stratejik/StratejikPlanHedefClient'
+import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
 import { hedefEkle, hedefGuncelle } from '../../actions'
 
 export default async function StratejikPlanAmacDetayPage({
@@ -48,9 +48,13 @@ export default async function StratejikPlanAmacDetayPage({
 
   return (
     <div className="space-y-4">
-      <Link href={`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        ← Amaç listesine dön
-      </Link>
+      <StratejikPlanBreadcrumb
+        items={[
+          { label: 'İşlemler', href: '/stratejik-yonetim/stratejik-plan/islemler' },
+          { label: 'Amaçlar', href: `/stratejik-yonetim/stratejik-plan/islemler/${donemId}` },
+          { label: 'Hedefler' },
+        ]}
+      />
       <StratejikPlanHedefClient
         donemId={donemId}
         amacId={amacId}
