@@ -96,7 +96,7 @@ export async function GET(req: Request) {
       .order('sira_no', { ascending: true })
     const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
     const ayarliSatirlar = (ayarRaw ?? [])
-      .map(a => satirByKey.get(String(a.kayit_key ?? '').trim()))
+      .map((a: { kayit_key: string | null }) => satirByKey.get(String(a.kayit_key ?? '').trim()))
       .filter((x): x is (typeof satirlar)[number] => !!x)
     satirlar = ayarliSatirlar
     if (mudurlukFilterler.length) {

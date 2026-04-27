@@ -199,7 +199,7 @@ export default async function GorevYerineGoreListePage() {
     .order('sira_no', { ascending: true })
 
   const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
-  const seciliKeys = (ayarRaw ?? []).map(a => String(a.kayit_key ?? '').trim()).filter(Boolean)
+  const seciliKeys = (ayarRaw ?? []).map((a: { kayit_key: string | null }) => String(a.kayit_key ?? '').trim()).filter(Boolean)
   const ayarliSatirlar = seciliKeys.map(k => satirByKey.get(k)).filter((s): s is GorevYerineGoreListeSatir => !!s)
   const seciliSet = new Set(ayarliSatirlar.map(s => s.kayit_key))
   const secilmeyenSatirlar = satirlar.filter(s => !seciliSet.has(s.kayit_key))
