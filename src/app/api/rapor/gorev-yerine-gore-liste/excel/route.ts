@@ -95,9 +95,9 @@ export async function GET(req: Request) {
       .select('kayit_key, sira_no')
       .order('sira_no', { ascending: true })
     const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
-    const seciliKeys: string[] = (ayarRaw ?? [])
+    const seciliKeys = (ayarRaw ?? [])
       .map((a: { kayit_key: string | null }) => String(a.kayit_key ?? '').trim())
-      .filter((k): k is string => Boolean(k))
+      .filter(Boolean) as string[]
     const ayarliSatirlar = seciliKeys
       .map((k: string) => satirByKey.get(k))
       .filter((x): x is (typeof satirlar)[number] => !!x)
