@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import { FIRMA_STATU_ETIKET, TANIMSIZ_STATU_ETIKET, hazirlaStatuSirali, karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
 import { gorevYerineGoreListeSatirUret, mudurlukKonumMetniHaritasi, type KadroGenis } from '@/lib/rapor-gorev-yerine-gore-liste'
 
@@ -73,36 +72,31 @@ export async function GET(req: Request) {
     const kadroSatirlarRaw = kadroCalisan.map(c => {
       const sec = secilenKadroSatirAsil(kadroByAsil.get(c.sicil_no) ?? [], D)
       const k = sec ?? bosKadro(c.sicil_no)
-      return { kind: 'kadro' as const, statuEtiket: etiketAnahtari(etiketler, sec?.statu) || TANIMSIZ_STATU_ETIKET, sicil_no: c.sicil_no, ad_soyad: c.ad_soyad, cinsiyet: c.cinsiyet, gorev_yeri: c.gorev_yeri, kadro: k }
+      return { kayit_key: `kadro:${c.sicil_no}`, kind: 'kadro' as const, statuEtiket: etiketAnahtari(etiketler, sec?.statu) || TANIMSIZ_STATU_ETIKET, sicil_no: c.sicil_no, ad_soyad: c.ad_soyad, cinsiyet: c.cinsiyet, gorev_yeri: c.gorev_yeri, kadro: k }
     })
-    const { data: firmaRaw } = await supabase.from('firma_calisanlar').select('sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet').order('ad_soyad')
-    const firmaAktif = filterOutHiddenSystemByEmail(firmaRaw ?? []).filter(f => isFirmaCalisanAktif(f.ayrilis_tarihi, D))
-    const kadroBySicil = new Map(kadroSatirlarRaw.map(k => [k.sicil_no.trim(), k] as const))
-    const cikacak = new Set<string>()
-    const firmaSatirlarRaw = firmaAktif
-      .filter(f => {
-        const sicil = String(f.sicil_no ?? '').trim()
-        if (!sicil) return true
-        const kadro = kadroBySicil.get(sicil)
-        if (!kadro) return true
-        if (kadro.statuEtiket === TANIMSIZ_STATU_ETIKET) {
-          cikacak.add(sicil)
-          return true
-        }
-        return false
-      })
-      .map(f => ({ kind: 'firma' as const, statuEtiket: FIRMA_STATU_ETIKET, sicil_no: f.sicil_no, ad_soyad: f.ad_soyad, cinsiyet: f.cinsiyet, gorev_mudurlugu: f.gorev_mudurlugu, gorevi: f.gorevi }))
-    const sirali = [...kadroSatirlarRaw.filter(k => !cikacak.has(k.sicil_no.trim())), ...firmaSatirlarRaw].sort((a, b) =>
+    const { data: firmaRaw } = await supabase.from('firma_calisanlar').select('id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet').order('ad_soyad')
+    const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
+      .map(f => ({ kayit_key: `firma:${f.id}`, kind: 'firma' as const, statuEtiket: FIRMA_STATU_ETIKET, sicil_no: f.sicil_no, ad_soyad: f.ad_soyad, cinsiyet: f.cinsiyet, gorev_mudurlugu: f.gorev_mudurlugu, gorevi: f.gorevi }))
+    const sirali = [...kadroSatirlarRaw, ...firmaSatirlarRaw].sort((a, b) =>
       karsilastirStatuSonraSicilAd({ statuEtiket: a.statuEtiket, sicil_no: a.sicil_no, ad_soyad: a.ad_soyad }, { statuEtiket: b.statuEtiket, sicil_no: b.sicil_no, ad_soyad: b.ad_soyad }, statuSirali),
     )
     let satirlar = sirali.map(row =>
       gorevYerineGoreListeSatirUret(
         mudKonum,
         row.kind === 'kadro'
-          ? { kind: 'kadro', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_yeri: row.gorev_yeri, statuEtiket: row.statuEtiket, kadro: row.kadro }
-          : { kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },
+          ? { kayit_key: row.kayit_key, kind: 'kadro', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_yeri: row.gorev_yeri, statuEtiket: row.statuEtiket, kadro: row.kadro }
+          : { kayit_key: row.kayit_key, kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },
       ),
     )
+    const { data: ayarRaw } = await supabase
+      .from('rapor_gorev_yeri_liste_ayar')
+      .select('kayit_key, sira_no')
+      .order('sira_no', { ascending: true })
+    const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
+    const ayarliSatirlar = (ayarRaw ?? [])
+      .map(a => satirByKey.get(String(a.kayit_key ?? '').trim()))
+      .filter((x): x is (typeof satirlar)[number] => !!x)
+    satirlar = ayarliSatirlar
     if (mudurlukFilterler.length) {
       const set = new Set(mudurlukFilterler)
       satirlar = satirlar.filter(r => set.has(r.mudurluk))

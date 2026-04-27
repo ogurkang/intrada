@@ -3,7 +3,6 @@ import GorevYerineGoreListeClient from '@/components/rapor/GorevYerineGoreListeC
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import {
   FIRMA_STATU_ETIKET,
   TANIMSIZ_STATU_ETIKET,
@@ -38,7 +37,7 @@ function bosKadro(sicil: string): KadroGenis {
 }
 
 const LISTE_ACIKLAMA =
-  'Konum: Tanımlar > Müdürlük kaydındaki konum (kadro personelde kadro müdürlüğü; ADABEL personelde görev müdürlüğü ile eşleşir). Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü). Sonraki aşamada müdürlüğe göre gruplama eklenecektir.'
+  'Konum: Tanımlar > Müdürlük kaydındaki konum (kadro personelde kadro müdürlüğü; ADABEL personelde görev müdürlüğü ile eşleşir). Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
 
 export default async function GorevYerineGoreListePage() {
   const supabase = await createClient()
@@ -122,6 +121,7 @@ export default async function GorevYerineGoreListePage() {
     const rawStatu = sec?.statu
     const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
     return {
+      kayit_key: `kadro:${c.sicil_no}`,
       kind: 'kadro' as const,
       statuEtiket,
       sicil_no: c.sicil_no,
@@ -137,24 +137,8 @@ export default async function GorevYerineGoreListePage() {
     .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet')
     .order('ad_soyad')
 
-  const firmaAktif = filterOutHiddenSystemByEmail(firmaRaw ?? []).filter(f =>
-    isFirmaCalisanAktif(f.ayrilis_tarihi, D),
-  )
-  const kadroBySicil = new Map(kadroSatirlarRaw.map(k => [k.sicil_no.trim(), k] as const))
-  const cikacakKadroSicil = new Set<string>()
-  const firmaSatirlarRaw = firmaAktif
-    .filter(f => {
-      const sicil = String(f.sicil_no ?? '').trim()
-      if (!sicil) return true
-      const kadro = kadroBySicil.get(sicil)
-      if (!kadro) return true
-      if (kadro.statuEtiket === TANIMSIZ_STATU_ETIKET) {
-        cikacakKadroSicil.add(sicil)
-        return true
-      }
-      return false
-    })
-    .map(f => ({
+  const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? []).map(f => ({
+      kayit_key: `firma:${f.id}`,
       kind: 'firma' as const,
       statuEtiket: FIRMA_STATU_ETIKET,
       sicil_no: f.sicil_no,
@@ -164,9 +148,7 @@ export default async function GorevYerineGoreListePage() {
       gorevi: f.gorevi,
     }))
 
-  const kadroSatirlarFiltered = kadroSatirlarRaw.filter(k => !cikacakKadroSicil.has(k.sicil_no.trim()))
-
-  const siralı = [...kadroSatirlarFiltered, ...firmaSatirlarRaw].sort((a, b) =>
+  const siralı = [...kadroSatirlarRaw, ...firmaSatirlarRaw].sort((a, b) =>
     karsilastirStatuSonraSicilAd(
       {
         statuEtiket: a.statuEtiket,
@@ -187,6 +169,7 @@ export default async function GorevYerineGoreListePage() {
       mudKonum,
       row.kind === 'kadro'
         ? {
+            kayit_key: row.kayit_key,
             kind: 'kadro',
             sicil_no: row.sicil_no,
             ad_soyad: row.ad_soyad,
@@ -196,6 +179,7 @@ export default async function GorevYerineGoreListePage() {
             kadro: row.kadro,
           }
         : {
+            kayit_key: row.kayit_key,
             kind: 'firma',
             sicil_no: row.sicil_no,
             ad_soyad: row.ad_soyad,
@@ -207,6 +191,18 @@ export default async function GorevYerineGoreListePage() {
     ),
   )
 
+  const { data: ayarRaw } = await supabase
+    .from('rapor_gorev_yeri_liste_ayar')
+    .select('kayit_key, sira_no')
+    .order('sira_no', { ascending: true })
+
+  const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
+  const seciliKeys = (ayarRaw ?? []).map(a => String(a.kayit_key ?? '').trim()).filter(Boolean)
+  const ayarliSatirlar = seciliKeys.map(k => satirByKey.get(k)).filter((s): s is GorevYerineGoreListeSatir => !!s)
+  const seciliSet = new Set(ayarliSatirlar.map(s => s.kayit_key))
+  const secilmeyenSatirlar = satirlar.filter(s => !seciliSet.has(s.kayit_key))
+  const kayitListesiSatirlari = ayarliSatirlar
+
   return (
     <div>
       {error && (
@@ -216,7 +212,10 @@ export default async function GorevYerineGoreListePage() {
       )}
 
       <GorevYerineGoreListeClient
-        satirlar={satirlar}
+        satirlar={kayitListesiSatirlari}
+        tumSatirlar={satirlar}
+        seciliKeyler={ayarliSatirlar.map(s => s.kayit_key)}
+        secilmeyenSatirlar={secilmeyenSatirlar}
         anlikTarihEtiket={anlikTarihEtiket}
         aciklama={LISTE_ACIKLAMA}
         excelHref="/api/rapor/gorev-yerine-gore-liste/excel"

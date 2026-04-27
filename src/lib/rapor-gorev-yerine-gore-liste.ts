@@ -3,6 +3,7 @@ import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 export type GorevYerineGoreKaynak = 'kadro' | 'firma'
 
 export interface GorevYerineGoreListeSatir {
+  kayit_key: string
   kaynak: GorevYerineGoreKaynak
   sicil_no: string | null
   ad_soyad: string
@@ -65,6 +66,7 @@ export type KadroGenis = KadroRaporRow & { gorev_unvani?: string | null }
 
 export type GorevYerineGoreListeKayit =
   | {
+      kayit_key: string
       kind: 'kadro'
       sicil_no: string
       ad_soyad: string
@@ -74,6 +76,7 @@ export type GorevYerineGoreListeKayit =
       kadro: KadroGenis
     }
   | {
+      kayit_key: string
       kind: 'firma'
       sicil_no: string | null
       ad_soyad: string
@@ -90,6 +93,7 @@ export function gorevYerineGoreListeSatirUret(
   if (row.kind === 'kadro') {
     const mudurluk = String(row.kadro.kadro_mudurlugu ?? '').trim() || '—'
     return {
+      kayit_key: row.kayit_key,
       kaynak: 'kadro',
       sicil_no: row.sicil_no,
       ad_soyad: row.ad_soyad,
@@ -103,6 +107,7 @@ export function gorevYerineGoreListeSatirUret(
   }
   const mudurluk = String(row.gorev_mudurlugu ?? '').trim() || '—'
   return {
+    kayit_key: row.kayit_key,
     kaynak: 'firma',
     sicil_no: row.sicil_no,
     ad_soyad: row.ad_soyad,
