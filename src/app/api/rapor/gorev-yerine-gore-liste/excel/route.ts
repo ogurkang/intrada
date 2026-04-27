@@ -30,6 +30,8 @@ function bosKadro(sicil: string): KadroGenis {
 export async function GET(req: Request) {
   try {
     const supabase = await createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
     const url = new URL(req.url)
     const mudurlukFilterler = String(url.searchParams.get('m') ?? '')
       .split(',')
@@ -88,7 +90,7 @@ export async function GET(req: Request) {
           : { kayit_key: row.kayit_key, kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },
       ),
     )
-    const { data: ayarRaw } = await supabase
+    const { data: ayarRaw } = await sb
       .from('rapor_gorev_yeri_liste_ayar')
       .select('kayit_key, sira_no')
       .order('sira_no', { ascending: true })

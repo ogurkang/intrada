@@ -41,6 +41,8 @@ const LISTE_ACIKLAMA =
 
 export default async function GorevYerineGoreListePage() {
   const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
   const D = new Date().toISOString().slice(0, 10)
   const anlikTarihEtiket = new Date().toLocaleDateString('tr-TR', {
     day: 'numeric',
@@ -191,7 +193,7 @@ export default async function GorevYerineGoreListePage() {
     ),
   )
 
-  const { data: ayarRaw } = await supabase
+  const { data: ayarRaw } = await sb
     .from('rapor_gorev_yeri_liste_ayar')
     .select('kayit_key, sira_no')
     .order('sira_no', { ascending: true })
