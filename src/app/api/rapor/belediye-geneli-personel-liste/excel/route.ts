@@ -61,7 +61,7 @@ export async function GET(req: Request) {
         .not('asil', 'is', null),
       supabase
         .from('calisan')
-        .select('sicil_no, ad_soyad, cinsiyet, tckn, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon'),
+      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
     ])
 
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -72,12 +72,14 @@ export async function GET(req: Request) {
         ad_soyad: c.ad_soyad,
         cinsiyet: c.cinsiyet,
         tckn: c.tckn,
+        sgk_ssk_sicil_no: c.sgk_ssk_sicil_no,
         dogum_tarihi: c.dogum_tarihi,
         dogum_yeri: c.dogum_yeri,
         baba_adi: c.baba_adi,
         anne_adi: c.anne_adi,
         adresi: c.adresi,
         telefon: c.telefon,
+        kan_grubu: c.kan_grubu,
       })
     }
 
@@ -89,7 +91,7 @@ export async function GET(req: Request) {
       calisanBySicil,
     })
 
-    const cols = 17
+    const cols = 19
     const rows: (string | number)[][] = [
       padRow(cols, ['Belediye Geneli Personel Listesi']),
       padRow(cols, [`Yıl: ${yil} · Sekme: ${label}`]),
@@ -106,6 +108,7 @@ export async function GET(req: Request) {
         'Kadro Müdürlüğü',
         'Görev Müdürlüğü',
         'TC Kimlik No',
+        'SGK/SSK Sicil No',
         'Kuruma Giriş Tarihi',
         'Doğum Tarihi',
         'Doğum Yeri',
@@ -113,6 +116,7 @@ export async function GET(req: Request) {
         'Anne Adı',
         'Adres',
         'Cep Telefonu',
+        'Kan Grubu',
       ]),
       ...satirlar.map((r, i) =>
         padRow(cols, [
@@ -126,6 +130,7 @@ export async function GET(req: Request) {
           r.kadro_mudurlugu,
           r.gorev_mudurlugu,
           r.tckn,
+          r.sgk_ssk_sicil_no,
           r.kuruma_giris_tarihi,
           r.dogum_tarihi,
           r.dogum_yeri,
@@ -133,9 +138,10 @@ export async function GET(req: Request) {
           r.anne_adi,
           r.adres,
           r.cep_telefonu,
+          r.kan_grubu,
         ]),
       ),
-      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
+      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -149,8 +155,8 @@ export async function GET(req: Request) {
     ]
     ws['!cols'] = [
       { wch: 8 }, { wch: 12 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
-      { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
-      { wch: 12 }, { wch: 30 }, { wch: 14 },
+      { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+      { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 12 },
     ]
 
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
@@ -168,7 +174,7 @@ export async function GET(req: Request) {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 || c === 10 || c === 11 ? 'center' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 || c === 11 || c === 12 ? 'center' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),

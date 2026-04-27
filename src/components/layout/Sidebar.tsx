@@ -40,7 +40,6 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
           label: 'Çalışanlar',
           children: [
             { href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' },
-            { href: '/personel/sgk-ssk-sicil-no', label: 'SGK/SSK Sicil No' },
           ],
         }
       : { href: calisanlarHref, label: 'Personel Kartım' }

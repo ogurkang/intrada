@@ -12,7 +12,6 @@ function cleanText(v: unknown): string | null {
 async function revalidateOzelAlan(sicil_no: string) {
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/personel')
-  revalidatePath('/personel/sgk-ssk-sicil-no')
 }
 
 export async function sgkSicilSatirKaydet(

@@ -104,7 +104,7 @@ export default function BelediyeGeneliPersonelListeClient({
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[2200px]">
+              <table className="w-full text-sm border-collapse min-w-[2400px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-20">Sıra No</th>
@@ -117,6 +117,7 @@ export default function BelediyeGeneliPersonelListeClient({
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[180px]">Kadro Müdürlüğü</th>
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[180px]">Görev Müdürlüğü</th>
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 w-36">TC Kimlik No</th>
+                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-36">SGK/SSK Sicil No</th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-28">Kuruma Giriş Tarihi</th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-28">Doğum Tarihi</th>
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Doğum Yeri</th>
@@ -124,12 +125,13 @@ export default function BelediyeGeneliPersonelListeClient({
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Anne Adı</th>
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[240px]">Adres</th>
                     <th className="text-left px-3 py-3 font-semibold text-slate-700 w-32">Cep Telefonu</th>
+                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-24">Kan Grubu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {aktif.satirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={17} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={19} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
@@ -146,6 +148,7 @@ export default function BelediyeGeneliPersonelListeClient({
                         <td className="px-3 py-2.5 text-slate-700">{r.kadro_mudurlugu}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.gorev_mudurlugu}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.tckn}</td>
+                        <td className="px-3 py-2.5 text-slate-700">{r.sgk_ssk_sicil_no}</td>
                         <td className="px-3 py-2.5 text-center text-slate-700">{r.kuruma_giris_tarihi}</td>
                         <td className="px-3 py-2.5 text-center text-slate-700">{r.dogum_tarihi}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.dogum_yeri}</td>
@@ -153,6 +156,7 @@ export default function BelediyeGeneliPersonelListeClient({
                         <td className="px-3 py-2.5 text-slate-700">{r.anne_adi}</td>
                         <td className="px-3 py-2.5 text-slate-700 whitespace-normal break-words">{r.adres}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.cep_telefonu}</td>
+                        <td className="px-3 py-2.5 text-slate-700">{r.kan_grubu}</td>
                       </tr>
                     ))
                   )}

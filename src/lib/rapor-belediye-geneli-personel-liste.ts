@@ -15,6 +15,7 @@ export interface BelediyeGeneliPersonelSatir {
   kadro_mudurlugu: string
   gorev_mudurlugu: string
   tckn: string
+  sgk_ssk_sicil_no: string
   kuruma_giris_tarihi: string
   dogum_tarihi: string
   dogum_yeri: string
@@ -22,6 +23,7 @@ export interface BelediyeGeneliPersonelSatir {
   anne_adi: string
   adres: string
   cep_telefonu: string
+  kan_grubu: string
 }
 
 export interface BelediyeCalisanRow extends CalisanRaporRow {
@@ -32,6 +34,8 @@ export interface BelediyeCalisanRow extends CalisanRaporRow {
   adresi?: string | null
   telefon?: string | null
   dogum_tarihi?: string | null
+  sgk_ssk_sicil_no?: string | null
+  kan_grubu?: string | null
 }
 
 function txt(v: string | null | undefined) {
@@ -78,6 +82,7 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
       kadro_mudurlugu: txt(secilen.kadro_mudurlugu),
       gorev_mudurlugu: txt(secilen.gorev_mudurlugu),
       tckn: txt(calisan.tckn),
+      sgk_ssk_sicil_no: txt(calisan.sgk_ssk_sicil_no),
       kuruma_giris_tarihi: tarih(kadroBaslangic(secilen)),
       dogum_tarihi: tarih(calisan.dogum_tarihi),
       dogum_yeri: txt(calisan.dogum_yeri),
@@ -85,6 +90,7 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
       anne_adi: txt(calisan.anne_adi),
       adres: txt(calisan.adresi),
       cep_telefonu: txt(calisan.telefon),
+      kan_grubu: txt(calisan.kan_grubu),
     })
   }
 

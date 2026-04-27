@@ -55,7 +55,7 @@ export default async function BelediyeGeneliPersonelListePage({
       .not('asil', 'is', null),
     supabase
       .from('calisan')
-      .select('sicil_no, ad_soyad, cinsiyet, tckn, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon'),
+      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
   ])
 
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -66,12 +66,14 @@ export default async function BelediyeGeneliPersonelListePage({
       ad_soyad: c.ad_soyad,
       cinsiyet: c.cinsiyet,
       tckn: c.tckn,
+      sgk_ssk_sicil_no: c.sgk_ssk_sicil_no,
       dogum_tarihi: c.dogum_tarihi,
       dogum_yeri: c.dogum_yeri,
       baba_adi: c.baba_adi,
       anne_adi: c.anne_adi,
       adresi: c.adresi,
       telefon: c.telefon,
+      kan_grubu: c.kan_grubu,
     })
   }
 
