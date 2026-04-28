@@ -129,6 +129,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Kimlik, statü, unvan, müdürlük ve iletişim bilgileriyle belediye geneli aktif personel listesi',
     renk: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900',
   },
+  {
+    kod: 'YIB',
+    href: '/rapor/yonetici-iletisim-bilgileri-liste',
+    baslik: 'Yönetici İletişim Bilgileri Listesi',
+    aciklama: 'Belediye Başkanı, Başkan Yardımcısı ve Müdür unvanlı kayıtlar için iletişim listesi',
+    renk: 'border-slate-300 bg-slate-50 text-slate-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {
