@@ -102,10 +102,12 @@ export default function KadroDetayClient({
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Durum & Ayrılış</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Durum & Ayrılış & İptal</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="Ayrılış Tarihi" deger={tarih(row.ayrilis_tarihi)} />
               <Alan etiket="Ayrılış Nedeni" deger={row.ayrilis_nedeni} />
+              <Alan etiket="İptal Karar Tarihi" deger={tarih(row.iptal_karar_tarihi)} />
+              <Alan etiket="İptal Karar No" deger={row.iptal_karar_no} />
               <Alan etiket="Gittiği Yer" deger={row.gittigi_yer} />
               <Alan etiket="Açıklama" deger={row.aciklama} />
             </div>

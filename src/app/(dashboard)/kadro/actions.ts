@@ -35,7 +35,14 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   const statu         = str(formData, 'statu')
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
+  const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
+  const iptalKararNo = str(formData, 'iptal_karar_no')
+  const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
+
+  if (iptalMi && (asil || vekil)) {
+    return { hata: 'İptal alanları dolu iken bu kayda Asil/Vekil personel atanamaz.' }
+  }
 
   // Statüsü Memur, Sözleşmeli veya İşçi olanlarda kadro sıra no zorunlu
   const kadroNoZorunluStatuler = ['Memur', 'Sözleşmeli', 'İşçi']
@@ -49,6 +56,8 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   const { data: inserted, error } = await supabase.from('kadro_hareketleri').insert({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    iptal_karar_tarihi:   iptalKararTarihi,
+    iptal_karar_no:       iptalKararNo,
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
@@ -80,7 +89,14 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const statu         = str(formData, 'statu')
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
+  const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
+  const iptalKararNo = str(formData, 'iptal_karar_no')
+  const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
+
+  if (iptalMi && (asil || vekil)) {
+    return { hata: 'İptal alanları dolu iken bu kayda Asil/Vekil personel atanamaz.' }
+  }
 
   const kadroNoZorunluStatuler = ['Memur', 'Sözleşmeli', 'İşçi']
   if (statu && kadroNoZorunluStatuler.includes(statu) && !kadro_sira_no) {
@@ -93,6 +109,8 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const { data: updated, error } = await supabase.from('kadro_hareketleri').update({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
     meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    iptal_karar_tarihi:   iptalKararTarihi,
+    iptal_karar_no:       iptalKararNo,
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,

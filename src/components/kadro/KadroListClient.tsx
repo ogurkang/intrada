@@ -309,7 +309,8 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       'Vekil Personel',
     ]
 
-    const satirlar = filtreli.map((k, idx) => {
+    const excelKayitlari = filtreli.filter(k => !(k.iptal_karar_tarihi || k.iptal_karar_no))
+    const satirlar = excelKayitlari.map((k, idx) => {
       const kadroUnvani = (k.kadro_unvani ?? '').trim() || '—'
       const kadroMudurlugu = (k.kadro_mudurlugu ?? '').trim() || '—'
       const asil = k.asil ? `${adMap[k.asil] ?? k.asil}\n${k.asil}` : '—'

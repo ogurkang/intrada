@@ -34,13 +34,14 @@ const KADRO_DURUM_BADGE: Record<string, string> = {
 }
 
 function PersonelSecici({
-  name, label, personeller, defaultValue, onSeciliChange,
+  name, label, personeller, defaultValue, onSeciliChange, disabled,
 }: {
   name: string
   label: string
   personeller: Personel[]
   defaultValue?: string | null
   onSeciliChange?: (sicil: string) => void
+  disabled?: boolean
 }) {
   const [q, setQ] = useState(defaultValue ? (personeller.find(p => p.sicil_no === defaultValue)?.ad_soyad ?? defaultValue) : '')
   const [secili, setSecili] = useState(defaultValue ?? '')
@@ -63,7 +64,9 @@ function PersonelSecici({
       {secili ? (
         <div className="flex items-center justify-between p-2.5 border border-green-200 bg-green-50 rounded-lg text-sm">
           <span className="font-medium text-slate-800">{personeller.find(p => p.sicil_no === secili)?.ad_soyad ?? secili}</span>
-          <button type="button" onClick={() => { setSecili(''); setQ('') }} className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
+          {!disabled && (
+            <button type="button" onClick={() => { setSecili(''); setQ('') }} className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
+          )}
         </div>
       ) : (
         <div className="relative">
@@ -71,6 +74,7 @@ function PersonelSecici({
             onChange={e => { setQ(e.target.value); setAcik(true) }}
             onFocus={() => setAcik(true)}
             onBlur={() => setTimeout(() => setAcik(false), 150)}
+            disabled={disabled}
             className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
           {acik && filtreli.length > 0 && (
             <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -113,14 +117,19 @@ export default function KadroFormModal({
   const d = secili
   const [asilSicil, setAsilSicil] = useState(d?.asil ?? '')
   const [vekilSicil, setVekilSicil] = useState(d?.vekil ?? '')
+  const [iptalKararTarihi, setIptalKararTarihi] = useState(d?.iptal_karar_tarihi ?? '')
+  const [iptalKararNo, setIptalKararNo] = useState(d?.iptal_karar_no ?? '')
 
   useEffect(() => {
     if (!open) return
     setAsilSicil(d?.asil ?? '')
     setVekilSicil(d?.vekil ?? '')
-  }, [open, d?.id, d?.asil, d?.vekil])
+    setIptalKararTarihi(d?.iptal_karar_tarihi ?? '')
+    setIptalKararNo(d?.iptal_karar_no ?? '')
+  }, [open, d?.id, d?.asil, d?.vekil, d?.iptal_karar_tarihi, d?.iptal_karar_no])
 
   const hesaplananDurum = kadroDurumuHesapla(asilSicil, vekilSicil)
+  const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -199,6 +208,7 @@ export default function KadroFormModal({
               personeller={personeller}
               defaultValue={d?.asil}
               onSeciliChange={setAsilSicil}
+              disabled={iptalMi}
             />
             <PersonelSecici
               key={`vekil-${d?.id ?? 'yeni'}`}
@@ -207,6 +217,7 @@ export default function KadroFormModal({
               personeller={personeller}
               defaultValue={d?.vekil}
               onSeciliChange={setVekilSicil}
+              disabled={iptalMi}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -216,7 +227,7 @@ export default function KadroFormModal({
         </div>
         <hr className="border-slate-100" />
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Durum & Ayrılış</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Durum & Ayrılış & İptal</p>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Kadro durumu</label>
@@ -230,6 +241,33 @@ export default function KadroFormModal({
             {input('ayrilis_tarihi', 'Ayrılış Tarihi', { type: 'date' })}
             {sel('ayrilis_nedeni', 'Ayrılış Nedeni', ayrilisNedenleri ?? [])}
           </div>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">İptal Karar Tarihi</label>
+              <input
+                name="iptal_karar_tarihi"
+                type="date"
+                defaultValue={d?.iptal_karar_tarihi ?? ''}
+                onChange={e => setIptalKararTarihi(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">İptal Karar No</label>
+              <input
+                name="iptal_karar_no"
+                type="text"
+                defaultValue={d?.iptal_karar_no ?? ''}
+                onChange={e => setIptalKararNo(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+            </div>
+          </div>
+          {iptalMi && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-3">
+              İptal alanları dolu olduğu için bu kayda Asil/Vekil personel atanamaz.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3 mt-3">
             {input('gittigi_yer', 'Gittiği Yer')}
             {input('aciklama', 'Açıklama')}

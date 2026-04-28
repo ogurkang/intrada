@@ -30,6 +30,7 @@ export default function GorevYerineGoreListeClient({
   const [filtre, setFiltre] = useState('')
   const [secilenArama, setSecilenArama] = useState('')
   const [kayitArama, setKayitArama] = useState('')
+  const [seciliKayitKey, setSeciliKayitKey] = useState<string | null>(null)
   const [seciliMudurlukler, setSeciliMudurlukler] = useState<string[]>([])
   const [seciliListKeyler, setSeciliListKeyler] = useState<string[]>(seciliKeyler)
   const [mesaj, setMesaj] = useState<string | null>(null)
@@ -101,6 +102,20 @@ export default function GorevYerineGoreListeClient({
 
   function soldanCikar(kayitKey: string) {
     setSeciliListKeyler(prev => prev.filter(k => k !== kayitKey))
+  }
+
+  function siradaTasi(kayitKey: string, yon: 'yukari' | 'asagi') {
+    setSeciliListKeyler(prev => {
+      const idx = prev.indexOf(kayitKey)
+      if (idx < 0) return prev
+      const hedef = yon === 'yukari' ? idx - 1 : idx + 1
+      if (hedef < 0 || hedef >= prev.length) return prev
+      const next = [...prev]
+      const tmp = next[idx]
+      next[idx] = next[hedef]
+      next[hedef] = tmp
+      return next
+    })
   }
 
   function ayarKaydet() {
@@ -238,16 +253,43 @@ export default function GorevYerineGoreListeClient({
                 />
               </div>
               <div className="max-h-[420px] overflow-auto p-2 space-y-1">
-                {secilenFiltreli.map(r => (
-                  <button
-                    type="button"
+                {secilenFiltreli.map(r => {
+                  const idxGlobal = seciliListKeyler.indexOf(r.kayit_key)
+                  const secili = seciliKayitKey === r.kayit_key
+                  return (
+                  <div
                     key={r.kayit_key}
-                    onClick={() => soldanCikar(r.kayit_key)}
-                    className="w-full text-left text-sm p-2 hover:bg-slate-50 rounded"
+                    onClick={() => setSeciliKayitKey(r.kayit_key)}
+                    onDoubleClick={() => soldanCikar(r.kayit_key)}
+                    className={`w-full text-sm p-2 rounded border cursor-pointer ${
+                      secili ? 'border-teal-500 bg-teal-50' : 'border-slate-200 bg-white'
+                    }`}
                   >
-                    {r.ad_soyad} <span className="text-slate-500">({r.mudurluk})</span>
-                  </button>
-                ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium text-slate-800">
+                        {r.ad_soyad} <span className="text-slate-500 font-normal">({r.mudurluk})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => siradaTasi(r.kayit_key, 'yukari')}
+                        disabled={!secili || idxGlobal === 0}
+                        className="px-2 py-1 text-xs rounded border border-slate-300 disabled:opacity-40"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => siradaTasi(r.kayit_key, 'asagi')}
+                        disabled={!secili || idxGlobal === seciliListKeyler.length - 1}
+                        className="px-2 py-1 text-xs rounded border border-slate-300 disabled:opacity-40"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    </div>
+                  </div>
+                )})}
               </div>
             </div>
           </div>
