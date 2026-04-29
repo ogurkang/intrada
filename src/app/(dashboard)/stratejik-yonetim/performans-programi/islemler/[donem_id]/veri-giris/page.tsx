@@ -67,7 +67,14 @@ export default async function PerformansProgramiVeriGirisPage({
     altHedefler.map((a: { id?: number; mudurluk?: string }) => [Number(a.id), { mudurluk: String(a.mudurluk ?? '') }]),
   )
 
-  const satirlar = (faaliyetRaw ?? []).map((f: { id?: number; sira_no?: number; faaliyet_adi?: string; alt_hedef_id?: number }) => ({
+  type VeriGirisFaaliyetSatir = {
+    id: number
+    sira_no: number | null
+    faaliyet_adi: string
+    mudurluk: string
+    gosterge_sayisi: number
+  }
+  const satirlar: VeriGirisFaaliyetSatir[] = (faaliyetRaw ?? []).map((f: { id?: number; sira_no?: number; faaliyet_adi?: string; alt_hedef_id?: number }) => ({
     id: Number(f.id),
     sira_no: Number.isFinite(Number(f.sira_no)) ? Number(f.sira_no) : null,
     faaliyet_adi: String(f.faaliyet_adi ?? ''),
@@ -87,7 +94,7 @@ export default async function PerformansProgramiVeriGirisPage({
     const fid = Number((m as { faaliyet_id?: number }).faaliyet_id)
     const mud = String((m as { mudurluk?: string }).mudurluk ?? '')
     if (!Number.isFinite(fid)) continue
-    const satirMud = satirlar.find(s => s.id === fid)?.mudurluk ?? ''
+    const satirMud = satirlar.find((s: VeriGirisFaaliyetSatir) => s.id === fid)?.mudurluk ?? ''
     if (normMud(mud) !== normMud(satirMud)) continue
     const t = Number((m as { sonraki_yil_butce_1?: number; tutar?: number }).sonraki_yil_butce_1 ?? (m as { tutar?: number }).tutar ?? 0)
     maliyetByFaaliyet.set(fid, (maliyetByFaaliyet.get(fid) ?? 0) + (Number.isFinite(t) ? t : 0))

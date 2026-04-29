@@ -64,8 +64,20 @@ export default async function PerformansProgramiVeriGirisFaaliyetDetayPage({
     .eq('faaliyet_id', faaliyetId)
     .eq('yil', yil)
     .eq('mudurluk', mudurluk)
-  const veriByGosterge = new Map<number, { planlanan_cari_yil?: number; gerceklesme_tahmini_cari_yil?: number; gosterge_aciklama?: string; hesaplama_yontemi?: string }>(
-    (veriRows ?? []).map((r: { gosterge_id?: number; planlanan_cari_yil?: number; gerceklesme_tahmini_cari_yil?: number; gosterge_aciklama?: string; hesaplama_yontemi?: string }) => [Number(r.gosterge_id), r]),
+  type VeriGirisRow = {
+    gosterge_id?: number
+    birim?: string
+    onceki_yil_gerceklesme?: number
+    planlanan_cari_yil?: number
+    gerceklesme_tahmini_cari_yil?: number
+    tahmin_sonraki_yil_1?: number
+    tahmin_sonraki_yil_2?: number
+    tahmin_sonraki_yil_3?: number
+    gosterge_aciklama?: string
+    hesaplama_yontemi?: string
+  }
+  const veriByGosterge = new Map<number, VeriGirisRow>(
+    (veriRows ?? []).map((r: VeriGirisRow) => [Number(r.gosterge_id), r]),
   )
 
   const satirlar: PpVeriGirisSatir[] = (gostergeRaw ?? []).map((g: { id?: number; sira_no?: number; gosterge_adi?: string; birim?: string; yil_1?: number; yil_2?: number; yil_3?: number; yil_4?: number; yil_5?: number }) => {
