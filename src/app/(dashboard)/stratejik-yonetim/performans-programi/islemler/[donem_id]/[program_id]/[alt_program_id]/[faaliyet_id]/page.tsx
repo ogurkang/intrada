@@ -34,7 +34,7 @@ export default async function PerformansProgramiFaaliyetDetayPage({
       if (!Number.isFinite(by) || !Number.isFinite(sy) || yil < by || yil > sy) return null
       return { id: Number(r.id), amac_adi: String(r.amac_adi ?? '') }
     })
-    .filter((x): x is { id: number; amac_adi: string } => !!x)
+    .filter(Boolean) as { id: number; amac_adi: string }[]
   const bagAmacIds = (bagRaw ?? []).map((b: { amac_id?: number }) => Number(b.amac_id)).filter(Number.isFinite)
   const { data: amacDetayRaw } = bagAmacIds.length ? await sb.from('stratejik_plan_amac').select('id, amac_adi').in('id', bagAmacIds) : { data: [] }
   const { data: hedefRaw } = bagAmacIds.length ? await sb.from('stratejik_plan_hedef').select('id, amac_id').in('amac_id', bagAmacIds) : { data: [] }

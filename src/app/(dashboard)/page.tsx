@@ -54,7 +54,7 @@ export default async function DashboardPage() {
     // 4) Bekleyen (Taslak) izinler — en fazla 20
     supabase
       .from('izin_hareketleri')
-      .select('id, sira_no, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi')
+      .select('id, sira_no, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi, islem_yapan')
       .eq('durum', 'Taslak')
       .order('kayit_tarihi', { ascending: true })
       .limit(20),
@@ -211,6 +211,7 @@ export default async function DashboardPage() {
     bitis:            iz.baslama,
     gun_sayisi:       iz.gun,
     olusturma_tarihi: iz.kayit_tarihi,
+    islem_yapan:      iz.islem_yapan,
   }))
 
   // Yaklaşan tatiller

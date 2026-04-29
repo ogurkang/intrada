@@ -31,6 +31,7 @@ export interface BekleyenIzin {
   bitis:          string | null
   gun_sayisi:     number | null
   olusturma_tarihi: string | null
+  islem_yapan?:   string | null
 }
 
 export interface YaklaşanTatil {
@@ -262,7 +263,7 @@ export default function DashboardClient({
             <div className="divide-y divide-slate-100">
               {bekleyenIzinler.map(iz => (
                 <div key={iz.id} className="px-5 py-3 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <Link href={personelDetayHref({ sicil_no: iz.sicil_no, public_id: iz.public_id })}
@@ -285,6 +286,12 @@ export default function DashboardClient({
                         )}
                       </p>
                       {hatalar[iz.id] && <p className="text-xs text-red-600 mt-0.5">{hatalar[iz.id]}</p>}
+                    </div>
+                    <div className="shrink-0 min-w-[180px] pt-0.5">
+                      <p className="text-[11px] uppercase tracking-wide text-slate-400">İşlem Yapan</p>
+                      <p className="text-xs text-slate-600 truncate" title={iz.islem_yapan ?? undefined}>
+                        {iz.islem_yapan ?? '—'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
