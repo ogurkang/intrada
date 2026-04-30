@@ -136,6 +136,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Belediye Başkanı, Başkan Yardımcısı ve Müdür unvanlı kayıtlar için iletişim listesi',
     renk: 'border-slate-300 bg-slate-50 text-slate-900',
   },
+  {
+    kod: 'AGP',
+    href: '/rapor/adrese-gore-personel-liste',
+    baslik: 'Adrese Göre Personel Listesi',
+    aciklama: 'YILLIK ve Ocak–Aralık sekmeleriyle aktif personelin sicil, ad soyad, statü ve adres bilgisi listesi.',
+    renk: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {

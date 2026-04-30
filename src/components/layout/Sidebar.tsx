@@ -83,6 +83,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/dogum-gunune-gore-personel-liste', label: 'Doğum Gününe Göre Personel Listesi' },
       { href: '/rapor/belediye-geneli-personel-liste', label: 'Belediye Geneli Personel Listesi' },
       { href: '/rapor/yonetici-iletisim-bilgileri-liste', label: 'Yönetici İletişim Bilgileri Listesi' },
+      { href: '/rapor/adrese-gore-personel-liste', label: 'Adrese Göre Personel Listesi' },
     ],
   },
   {
