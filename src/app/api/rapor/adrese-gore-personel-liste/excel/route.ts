@@ -71,7 +71,7 @@ export async function GET(req: Request) {
 
     const label = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
     const rows: (string | number)[][] = [
-      ['Adrese Gore Personel Listesi'],
+      ['Adrese Göre Personel Listesi'],
       [`Yil: ${yil} · Sekme: ${label}`],
       [`Anlik goruntu tarihi: ${sonGunuMetin(D)}`],
       [''],
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
     ws['!cols'] = [{ wch: 8 }, { wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 56 }]
 
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Adrese Gore Personel')
+    XLSX.utils.book_append_sheet(wb, ws, 'Adrese Göre Personel')
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
     const filename = `Adrese_Gore_Personel_Listesi_${yil}_${label}.xlsx`
     const encodedFilename = encodeURIComponent(filename)
