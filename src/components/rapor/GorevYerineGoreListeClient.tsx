@@ -31,6 +31,8 @@ export default function GorevYerineGoreListeClient({
   const [secilenArama, setSecilenArama] = useState('')
   const [kayitArama, setKayitArama] = useState('')
   const [seciliKayitKey, setSeciliKayitKey] = useState<string | null>(null)
+  const [suruklenenKayitKey, setSuruklenenKayitKey] = useState<string | null>(null)
+  const [dropHedefKayitKey, setDropHedefKayitKey] = useState<string | null>(null)
   const [seciliMudurlukler, setSeciliMudurlukler] = useState<string[]>([])
   const [seciliListKeyler, setSeciliListKeyler] = useState<string[]>(seciliKeyler)
   const [mesaj, setMesaj] = useState<string | null>(null)
@@ -98,6 +100,24 @@ export default function GorevYerineGoreListeClient({
 
   function sagaEkle(kayitKey: string) {
     setSeciliListKeyler(prev => (prev.includes(kayitKey) ? prev : [...prev, kayitKey]))
+  }
+
+  function sagdaKonumaEkle(kayitKey: string, hedefKayitKey: string | null) {
+    setSeciliListKeyler(prev => {
+      if (prev.includes(kayitKey)) return prev
+      const next = [...prev]
+      if (!hedefKayitKey) {
+        next.push(kayitKey)
+        return next
+      }
+      const hedefIdx = next.indexOf(hedefKayitKey)
+      if (hedefIdx < 0) {
+        next.push(kayitKey)
+        return next
+      }
+      next.splice(hedefIdx, 0, kayitKey)
+      return next
+    })
   }
 
   function soldanCikar(kayitKey: string) {
@@ -234,6 +254,12 @@ export default function GorevYerineGoreListeClient({
                     type="button"
                     key={r.kayit_key}
                     onClick={() => sagaEkle(r.kayit_key)}
+                    draggable
+                    onDragStart={() => setSuruklenenKayitKey(r.kayit_key)}
+                    onDragEnd={() => {
+                      setSuruklenenKayitKey(null)
+                      setDropHedefKayitKey(null)
+                    }}
                     className="w-full text-left text-sm p-2 hover:bg-slate-50 rounded"
                   >
                     {r.ad_soyad} <span className="text-slate-500">({r.mudurluk})</span>
@@ -256,13 +282,30 @@ export default function GorevYerineGoreListeClient({
                 {secilenFiltreli.map(r => {
                   const idxGlobal = seciliListKeyler.indexOf(r.kayit_key)
                   const secili = seciliKayitKey === r.kayit_key
+                  const dropHedef = dropHedefKayitKey === r.kayit_key
                   return (
                   <div
                     key={r.kayit_key}
                     onClick={() => setSeciliKayitKey(r.kayit_key)}
                     onDoubleClick={() => soldanCikar(r.kayit_key)}
+                    onDragOver={e => {
+                      if (!suruklenenKayitKey) return
+                      e.preventDefault()
+                      setDropHedefKayitKey(r.kayit_key)
+                    }}
+                    onDrop={e => {
+                      e.preventDefault()
+                      if (!suruklenenKayitKey) return
+                      sagdaKonumaEkle(suruklenenKayitKey, r.kayit_key)
+                      setSuruklenenKayitKey(null)
+                      setDropHedefKayitKey(null)
+                    }}
                     className={`w-full text-sm p-2 rounded border cursor-pointer ${
-                      secili ? 'border-teal-500 bg-teal-50' : 'border-slate-200 bg-white'
+                      dropHedef
+                        ? 'border-indigo-400 bg-indigo-50'
+                        : secili
+                          ? 'border-teal-500 bg-teal-50'
+                          : 'border-slate-200 bg-white'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -290,6 +333,25 @@ export default function GorevYerineGoreListeClient({
                     </div>
                   </div>
                 )})}
+                <div
+                  className={`w-full rounded border border-dashed px-3 py-2 text-xs text-center ${
+                    suruklenenKayitKey ? 'border-indigo-300 text-indigo-600 bg-indigo-50' : 'border-slate-200 text-slate-400'
+                  }`}
+                  onDragOver={e => {
+                    if (!suruklenenKayitKey) return
+                    e.preventDefault()
+                    setDropHedefKayitKey(null)
+                  }}
+                  onDrop={e => {
+                    e.preventDefault()
+                    if (!suruklenenKayitKey) return
+                    sagdaKonumaEkle(suruklenenKayitKey, null)
+                    setSuruklenenKayitKey(null)
+                    setDropHedefKayitKey(null)
+                  }}
+                >
+                  Liste sonuna eklemek icin buraya birak
+                </div>
               </div>
             </div>
           </div>
