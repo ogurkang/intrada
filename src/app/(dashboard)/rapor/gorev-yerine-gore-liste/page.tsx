@@ -92,7 +92,7 @@ export default async function GorevYerineGoreListePage() {
   const aktifSiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+    if (!sonAyrilis || sonAyrilis > D) aktifSiciller.add(c.sicil_no)
   })
   const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
 
@@ -139,7 +139,12 @@ export default async function GorevYerineGoreListePage() {
     .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet')
     .order('ad_soyad')
 
-  const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? []).map(f => ({
+  const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
+    .filter(f => {
+      const ayr = String(f.ayrilis_tarihi ?? '').slice(0, 10)
+      return !ayr || ayr > D
+    })
+    .map(f => ({
       kayit_key: `firma:${f.id}`,
       kind: 'firma' as const,
       statuEtiket: FIRMA_STATU_ETIKET,
