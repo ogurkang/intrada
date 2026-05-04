@@ -137,6 +137,13 @@ const RAPOR_KARTLARI = [
     renk: 'border-slate-300 bg-slate-50 text-slate-900',
   },
   {
+    kod: 'YOD',
+    href: '/rapor/yonetici-ogrenim-durum-liste',
+    baslik: 'Yönetici Öğrenim Durum Listesi',
+    aciklama: 'Görev unvanında Müdür ifadesi geçen personellerin öğrenim bilgilerinin tümü (sicil artan).',
+    renk: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+  },
+  {
     kod: 'AGP',
     href: '/rapor/adrese-gore-personel-liste',
     baslik: 'Adrese Göre Personel Listesi',
