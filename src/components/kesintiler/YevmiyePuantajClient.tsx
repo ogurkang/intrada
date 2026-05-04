@@ -302,6 +302,7 @@ export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink =
                   <th className="px-2 py-2 text-center font-semibold text-slate-600 w-10" title="Ücretli İzin">Üİ İZİN</th>
                   <th className="px-2 py-2 text-center font-semibold text-slate-600 w-10" title="Ücretsiz İzin">Ü.İZİN</th>
                   <th className="px-2 py-2 text-center font-semibold text-slate-600 w-10" title="Rapor">İST.</th>
+                  <th className="px-2 py-2 text-center font-semibold text-slate-600 w-10" title="Bayram Günü">B</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -434,6 +435,7 @@ function YevmiyeSatir({
       <td className="px-2 py-1 text-center tabular-nums font-medium">{p.izinUI}</td>
       <td className="px-2 py-1 text-center tabular-nums font-medium">{p.izinU}</td>
       <td className="px-2 py-1 text-center tabular-nums font-medium">{p.izinIst}</td>
+      <td className="px-2 py-1 text-center tabular-nums font-medium">{p.gunB}</td>
     </tr>
   )
 }

@@ -3,6 +3,9 @@ import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
+import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
+import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
+import { haftaSonuIzinHucreKodu } from '@/lib/puantaj-hafta-sonu-izin'
 
 const GUNLER_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
 
@@ -67,44 +70,28 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
     const b = tarihParse(t.tatil_baslangici)
     const e = tarihParse(t.tatil_bitisi)
     if (!b || !e) return
-    const tur = String(t.tatil_turu ?? '').trim()
-    const adi = String(t.tatil_adi ?? '').trim()
-    tatilRanges.push({ baslangic: b, bitis: e, kod: tur === 'Bayram' || adi.includes('Bayram') ? 'B' : 'RT' })
+    const tur = String(t.tatil_turu ?? '').trim().toLocaleLowerCase('tr-TR')
+    tatilRanges.push({ baslangic: b, bitis: e, kod: tur.includes('bayram') ? 'B' : 'RT' })
   })
 
   const { data: izinTurRaw } = await supabase
     .from('tanim_izin_tur')
     .select('tur_adi, kod')
     .eq('durum', true)
-  const turAdiToKod: Record<string, string> = {}
-  ;(izinTurRaw ?? []).forEach(t => {
-    const ad = String(t.tur_adi ?? '').trim()
-    const kod = String(t.kod ?? '').trim()
-    if (ad) turAdiToKod[ad] = kod || (ad.includes('Yıllık') ? 'S' : ad.includes('Rapor') ? 'R' : ad.includes('Ücretsiz') ? 'Ü' : ad.includes('Ücretli') ? 'Üİ' : ad.includes('Ölüm') ? 'Öİ' : 'S')
-  })
+  const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
 
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
-    .select('sicil_no, tur, ayrilis, baslama')
-    .neq('durum', 'Taslak')
+    .select('sicil_no, tur, ayrilis, baslama, durum')
     .neq('durum', 'İptal Edildi')
     .lte('ayrilis', bitis)
     .gt('baslama', baslangic)
-
-  const izinHareketleri: { sicil: string; ayrilis: number; baslama: number; kod: string }[] = []
-  ;(izinRaw ?? []).forEach(i => {
-    const a = tarihParse(i.ayrilis ?? '')
-    const b = tarihParse(i.baslama ?? '')
-    if (!a || !b) return
-    const tur = String(i.tur ?? '').trim()
-    const kod = turAdiToKod[tur] ?? (tur.includes('Yıllık') ? 'S' : tur.includes('Rapor') ? 'R' : tur.includes('Ücretsiz') ? 'Ü' : tur.includes('Ücretli') ? 'Üİ' : tur.includes('Ölüm') ? 'Öİ' : 'S')
-    izinHareketleri.push({
-      sicil: String(i.sicil_no ?? '').trim(),
-      ayrilis: a.getTime(),
-      baslama: b.getTime(),
-      kod,
-    })
-  })
+  const izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
+    izinRaw ?? [],
+    String(baslangic).slice(0, 10),
+    String(bitis).slice(0, 10),
+    turAdiToKod,
+  )
 
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
@@ -195,14 +182,25 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
       if (savedForSicil[g.tarih] !== undefined && savedForSicil[g.tarih] !== '') {
         deger = savedForSicil[g.tarih]
       } else {
-        deger = g.isHaftaTatil ? 'HT' : g.isResmiTatil && g.tatilKod ? g.tatilKod : 'X'
-        const tarihT = tarihParse(g.tarih)!.getTime()
-        for (const ih of izinHareketleri) {
-          if (ih.sicil !== p.sicil) continue
-          if (tarihT >= ih.ayrilis && tarihT < ih.baslama) {
-            deger = ih.kod || 'S'
-            break
+        const dow = new Date(`${g.tarih}T12:00:00`).getDay()
+        const izinKodRaw = izinKodlariBySicilGun[p.sicil]?.[g.tarih]
+        if (g.isResmiTatil && g.tatilKod) {
+          deger = g.tatilKod
+        } else if (izinKodRaw) {
+          if (g.isHaftaTatil) {
+            const goster = haftaSonuIzinHucreKodu({
+              statu: p.statu,
+              izinKodu: izinKodRaw,
+              haftaGunu: dow,
+            })
+            deger = goster ?? 'HT'
+          } else {
+            deger = izinKodRaw
           }
+        } else if (g.isHaftaTatil) {
+          deger = 'HT'
+        } else {
+          deger = 'X'
         }
       }
       grid[p.sicil][g.tarih] = deger
@@ -213,11 +211,12 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
   const personellerOzet = personeller.map(p => {
     const gridAgg = grid[p.sicil] ?? {}
     const fmAgg = fazlaMesaiGrid[p.sicil] ?? {}
-    let gunX = 0, gunHT = 0, fmNor = 0, fmBay = 0, izinS = 0, izinUI = 0, izinU = 0, izinIst = 0
+    let gunX = 0, gunHT = 0, gunB = 0, fmNor = 0, fmBay = 0, izinS = 0, izinUI = 0, izinU = 0, izinIst = 0
     for (const g of gunler) {
       const deg = gridAgg[g.tarih] ?? ''
       if (deg === 'X' || deg === 'x') gunX++
       else if (deg === 'HT') gunHT++
+      else if (deg === 'B') gunB++
       else if (deg === 'S') izinS++
       else if (deg === 'Üİ') izinUI++
       else if (deg === 'Ü') izinU++
@@ -235,6 +234,7 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
       siraNo: (p as { siraNo?: number }).siraNo ?? 0,
       gunX,
       gunHT,
+      gunB,
       fmNor: Math.round(fmNor * 100) / 100,
       fmBay: Math.round(fmBay * 100) / 100,
       izinS,
@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
       mudurSicil ? (imzaAdMap[mudurSicil] ?? mudurSicil) : '',
     ]
 
-    const colCount = 3 + gunler.length + 9
+    const colCount = 3 + gunler.length + 10
     const rows: (string | number | XLSX.CellObject)[][] = []
     const mergeRows: number[] = []
 
@@ -317,7 +317,7 @@ export async function GET(request: NextRequest) {
     rows.push(mergeSatir(`Dönem: ${tarih(donem.baslangic_tarihi)} - ${tarih(donem.bitis_tarihi)}`, colCount, { gri: true }))
     mergeRows.push(rows.length - 1)
 
-    const headerLabels = ['Sıra No', 'Sicil No', 'Adı Soyadı', ...gunler.map(g => String(g.gun)), 'N.Ç.', 'H.T.', 'FM NOR.', 'FM BAY.', 'FM YTOP', 'S.İZİN', 'Üİ İZİN', 'Ü.İZİN', 'İST.']
+    const headerLabels = ['Sıra No', 'Sicil No', 'Adı Soyadı', ...gunler.map(g => String(g.gun)), 'N.Ç.', 'H.T.', 'FM NOR.', 'FM BAY.', 'FM YTOP', 'S.İZİN', 'Üİ İZİN', 'Ü.İZİN', 'İST.', 'B']
     const headerStil = { fill: { fgColor: { rgb: 'E0E0E0' } }, alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true }, font: { bold: true } }
     rows.push(headerLabels.map(v => ({ v: String(v), t: 's' as const, s: headerStil })))
 
@@ -339,8 +339,8 @@ export async function GET(request: NextRequest) {
       const gunKodlar = gunler.map(g => grid[p.sicil_no]?.[g.tarih] ?? '—')
       const fmYtop = gunler.reduce((s, g) => s + (fazlaMesaiGrid[p.sicil_no]?.[g.tarih] ?? 0), 0)
       const kodRow = isIscı
-        ? [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, '', p.fmBay, '', p.izinS, p.izinUI, p.izinU, p.izinIst]
-        : [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, p.fmNor, p.fmBay, fmYtop.toFixed(1), p.izinS, p.izinUI, p.izinU, p.izinIst]
+        ? [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, '', p.fmBay, '', p.izinS, p.izinUI, p.izinU, p.izinIst, p.gunB]
+        : [p.siraNo, p.sicil_no, p.ad_soyad, ...gunKodlar, p.gunX, p.gunHT, p.fmNor, p.fmBay, fmYtop.toFixed(1), p.izinS, p.izinUI, p.izinU, p.izinIst, p.gunB]
       rows.push(kodRow.map((v, colIdx) => {
         const fill = colIdx >= 3 && colIdx < 3 + gunler.length ? kodRenk(String(v)) : undefined
         const stil = fill ? { ...dataStil, fill } : dataStil
@@ -353,7 +353,7 @@ export async function GET(request: NextRequest) {
           const fm = fazlaMesaiGrid[p.sicil_no]?.[g.tarih] ?? 0
           return fm > 0 ? fm : ''
         })
-        const fmRow = ['', '', '', ...gunFm, '', '', p.fmNor, '', fmYtop.toFixed(1), '', '', '', '']
+        const fmRow = ['', '', '', ...gunFm, '', '', p.fmNor, '', fmYtop.toFixed(1), '', '', '', '', '']
         rows.push(fmRow.map(v => ({ v: v || '', t: typeof v === 'number' ? ('n' as const) : ('s' as const), s: dataStil })))
         borderRows.add(rows.length - 1)
       }
@@ -404,6 +404,7 @@ export async function GET(request: NextRequest) {
       { wch: 8 },
       { wch: 8 },
       { wch: 8 },
+      { wch: 6 },
       { wch: 6 },
       { wch: 6 },
       { wch: 6 },

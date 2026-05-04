@@ -58,6 +58,7 @@ export interface YevmiyePersonel {
   siraNo: number
   gunX: number
   gunHT: number
+  gunB: number
   fmNor: number
   fmBay: number
   izinS: number
@@ -152,9 +153,8 @@ export async function yevmiyePuantajYukle(
     const b = tarihParse(t.tatil_baslangici)
     const e = tarihParse(t.tatil_bitisi)
     if (!b || !e) return
-    const tur = String(t.tatil_turu ?? '').trim()
-    const adi = String(t.tatil_adi ?? '').trim()
-    const kod = tur === 'Bayram' || adi.includes('Bayram') ? 'B' : 'RT'
+    const tur = String(t.tatil_turu ?? '').trim().toLocaleLowerCase('tr-TR')
+    const kod = tur.includes('bayram') ? 'B' : 'RT'
     tatilRanges.push({ baslangic: b, bitis: e, kod })
   })
 
@@ -319,11 +319,12 @@ export async function yevmiyePuantajYukle(
       const sicilAgg = p.sicil
       const gridAgg = grid[sicilAgg] ?? {}
       const fmAgg = fazlaMesaiGrid[sicilAgg] ?? {}
-      let gunX = 0, gunHT = 0, fmNor = 0, fmBay = 0, izinS = 0, izinUI = 0, izinU = 0, izinIst = 0
+      let gunX = 0, gunHT = 0, gunB = 0, fmNor = 0, fmBay = 0, izinS = 0, izinUI = 0, izinU = 0, izinIst = 0
       for (const g of gunler) {
         const deg = gridAgg[g.tarih] ?? ''
         if (deg === 'X' || deg === 'x') gunX++
         else if (deg === 'HT') gunHT++
+        else if (deg === 'B') gunB++
         else if (deg === 'S') izinS++
         else if (deg === 'Üİ') izinUI++
         else if (deg === 'Ü') izinU++
@@ -341,6 +342,7 @@ export async function yevmiyePuantajYukle(
         siraNo: (p as { siraNo?: number }).siraNo ?? 0,
         gunX,
         gunHT,
+        gunB,
         fmNor: Math.round(fmNor * 100) / 100,
         fmBay: Math.round(fmBay * 100) / 100,
         izinS,

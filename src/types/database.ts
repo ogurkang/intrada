@@ -576,6 +576,33 @@ export interface Database {
         }
         Relationships: []
       }
+      tanim_izin_tatil_tur: {
+        Row: {
+          id: number
+          tur_adi: string
+          sira_no: number | null
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          tur_adi: string
+          sira_no?: number | null
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          tur_adi?: string
+          sira_no?: number | null
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_izin_kural: {
         Row: {
           id: number; sira_no: number | null; statu: string; cumartesi: boolean | null

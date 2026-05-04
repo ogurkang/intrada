@@ -7,8 +7,6 @@ import type { Tables } from '@/types/database'
 
 type Tatil = Tables<'tanim_izin_tatil'>
 
-const TATIL_TURLERI = ['Ulusal Bayram', 'Resmi Tatil', 'Dini Bayram', 'Hafta Sonu', 'İdari Tatil', 'Diğer']
-
 function gunHesapla(bas: string, bit: string) {
   if (!bas || !bit) return '—'
   const fark = Math.round((new Date(bit).getTime() - new Date(bas).getTime()) / 86400000) + 1
@@ -22,12 +20,14 @@ function tarihFormatla(t: string) {
 
 interface Props {
   data: Tatil[]
+  /** Tanımlar > Tatil Tür Tanımları kaynaklı seçenekler; tabloda kullanımda olup tanımda olmayan türler sona eklenir. */
+  tatilTurSecenekleri: string[]
   onAdd:    (fd: FormData) => Promise<{ hata?: string }>
   onUpdate: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onToggle: (id: number, durum: boolean) => Promise<{ hata?: string }>
 }
 
-export default function TatilClient({ data, onAdd, onUpdate, onToggle }: Props) {
+export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate, onToggle }: Props) {
   const saltOkunur = useTanimlarSaltOkunur()
   const [modalAcik, setModalAcik]    = useState(false)
   const [secili, setSecili]          = useState<Tatil | null>(null)
@@ -59,7 +59,12 @@ export default function TatilClient({ data, onAdd, onUpdate, onToggle }: Props) 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Tatil Tanımları</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Tatil Tanımları</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Bu ekrandaki tatil tür tanımları 2429 sayılı Ulusal Bayram ve Genel Tatiller Hakkında Kanun hükümlerine göre belirlenmiştir.
+          </p>
+        </div>
         {!saltOkunur && (
         <button onClick={yeniEkle}
           className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
@@ -135,7 +140,9 @@ export default function TatilClient({ data, onAdd, onUpdate, onToggle }: Props) 
             <select name="tatil_turu" defaultValue={secili?.tatil_turu ?? ''}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
               <option value="">— Seçin —</option>
-              {TATIL_TURLERI.map(s => <option key={s} value={s}>{s}</option>)}
+              {tatilTurSecenekleri.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
