@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { trNormalize } from '@/lib/turkce-search'
 
@@ -9,6 +9,8 @@ interface HareketSatir {
   sicil_no:          string
   ad_soyad:          string
   hareket_tipi:      string | null
+  kadro_id:          number
+  kadro_rol:         'asil' | 'vekil'
   yururluk_tarihi:   string | null
   ise_baslama_tarihi: string | null
   ayrilis_tarihi:    string | null
@@ -66,6 +68,25 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
     })
   }, [hareketler, arama, tipFiltre, yilFiltre])
 
+  function satirAcYeniSekme(h: HareketSatir) {
+    const href = `/personel-hareketleri/${h.sicil_no}/goruntule?kadro_id=${h.kadro_id}&rol=${h.kadro_rol}&popup=1`
+    const w = window.open(href, '_blank')
+    if (!w) router.push(href)
+  }
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const ok =
+        typeof e.data === 'object' &&
+        e.data != null &&
+        (e.data as { source?: string; type?: string }).source === 'intrada-personel-hareketleri' &&
+        (e.data as { type?: string }).type === 'refresh'
+      if (ok) router.refresh()
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [router])
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -116,7 +137,7 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
             {filtreli.map((h, idx) => (
               <tr
                 key={h.id}
-                onClick={() => router.push(`/personel-hareketleri/${h.sicil_no}/goruntule`)}
+                onClick={() => satirAcYeniSekme(h)}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <td className="px-4 py-3 text-center text-xs text-slate-400">{idx + 1}</td>

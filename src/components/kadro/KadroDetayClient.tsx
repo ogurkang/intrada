@@ -25,6 +25,7 @@ const DURUM_RENK: Record<string, string> = {
   Dolu:  'bg-green-100 text-green-700',
   Vekil: 'bg-amber-100 text-amber-700',
   Boş:   'bg-slate-100 text-slate-500',
+  İptal: 'bg-black text-white',
 }
 
 interface Props {
@@ -42,12 +43,16 @@ interface Props {
 export default function KadroDetayClient({
   row, adMap,
 }: Props) {
+  const kadroBaslik =
+    [row.kadro_sira_no, row.kadro_unvani ?? row.gorev_unvani]
+      .filter(Boolean)
+      .join(' – ') || `#${row.id}`
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
-            Kadro — {row.kadro_unvani ?? row.kadro_sira_no ?? `#${row.id}`}
+            Kadro — {kadroBaslik}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
             {row.statu && <span className="mr-2">{row.statu}</span>}

@@ -7,100 +7,67 @@ import type { Tables } from '@/types/database'
 
 type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
-type PH = Tables<'personel_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
-
-const SINIFLAR = ['GİH', 'TH', 'SHS', 'AH', 'EH', 'DH', 'YH', 'ZB']
 
 interface Props {
   personel: Calisan
   ogrenimDurumu?: string | null
-  kadrolar: KH[]
-  sonKayit: PH | null
+  seciliKadro: KH | null
+  seciliKadroRol: 'asil' | 'vekil'
+  bosKadrolar: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'>[]
   mudurlukler: string[]
   unvanlar: { id: number; ad: string; sinif: string | null }[]
   onaylayan: string
   yardimcilar: { sicil: string; ad: string }[]
   terfiSon: TH | null
+  popup?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
 
 export default function PersonelHareketiDegistirClient({
   personel,
   ogrenimDurumu = null,
-  kadrolar,
-  sonKayit,
+  seciliKadro,
+  seciliKadroRol,
+  bosKadrolar,
   mudurlukler,
   unvanlar,
   onaylayan,
   yardimcilar,
   terfiSon,
+  popup = false,
   onKaydet,
 }: Props) {
   const router = useRouter()
-  const [seciliKadroIdx, setSeciliKadroIdx] = useState(0)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
-
-  const seciliKadro = kadrolar[seciliKadroIdx] ?? null
+  const [kadroSecModalAcik, setKadroSecModalAcik] = useState(false)
+  const [kadroArama, setKadroArama] = useState('')
 
   const { eski, yeni } = useMemo(() => {
     const k = seciliKadro
-    const sk = sonKayit
-    const memuriyet = k?.memuriyet_tarihi ?? k?.kuruma_giris_tarihi ?? ''
-    const kidemYili = memuriyet ? (() => {
-      const d = new Date(memuriyet)
-      if (isNaN(d.getTime())) return ''
-      const y = new Date().getFullYear() - d.getFullYear()
-      return y < 0 ? '' : String(y)
-    })() : ''
 
     const mud = k?.gorev_mudurlugu ?? k?.kadro_mudurlugu ?? ''
     const unvan = k?.gorev_unvani ?? k?.kadro_unvani ?? ''
     const sinif = unvanlar.find(u => u.ad === (k?.kadro_unvani ?? k?.gorev_unvani ?? ''))?.sinif ?? ''
     const derece = k?.kadro_derecesi ?? ''
-
-    if (terfiSon) {
-      return {
-        eski: {
-          gorev_yeri: mud,
-          unvan,
-          sinif,
-          kadro_derecesi: derece,
-          kha_derece: terfiSon.kha_derece ?? '',
-          kha_kademe: terfiSon.kha_kademe ?? '',
-          ekea_derece: terfiSon.ekea_derece ?? '',
-          ekea_kademe: terfiSon.ekea_kademe ?? '',
-          kidem_yili: terfiSon.kidem_yili ?? '',
-          kha_tarihi: terfiSon.kha_tarihi ?? '',
-          ekea_tarihi: terfiSon.ekea_tarihi ?? '',
-          kidem_tarihi: terfiSon.kidem_tarihi ?? '',
-          iyi_hal_terfi_tarihi: terfiSon.iyi_hal_terfi_tarihi ?? '',
-          oht: terfiSon.oht ?? '',
-          igz: sk?.yeni_igz ?? '',
-          ek_odeme: terfiSon.ek_odeme ?? '',
-          ek_gosterge: terfiSon.ek_gosterge ?? '',
-        },
-        yeni: {
-          gorev_yeri: mud,
-          unvan,
-          sinif,
-          kadro_derecesi: derece,
-          kha_derece: terfiSon.kha_derece ?? '',
-          kha_kademe: terfiSon.kha_kademe ?? '',
-          ekea_derece: terfiSon.ekea_derece ?? '',
-          ekea_kademe: terfiSon.ekea_kademe ?? '',
-          kidem_yili: terfiSon.kidem_yili ?? '',
-          kha_tarihi: terfiSon.kha_tarihi ?? '',
-          ekea_tarihi: terfiSon.ekea_tarihi ?? '',
-          kidem_tarihi: terfiSon.kidem_tarihi ?? '',
-          iyi_hal_terfi_tarihi: terfiSon.iyi_hal_terfi_tarihi ?? '',
-          oht: terfiSon.oht ?? '',
-          igz: sk?.yeni_igz ?? '',
-          ek_odeme: terfiSon.ek_odeme ?? '',
-          ek_gosterge: terfiSon.ek_gosterge ?? '',
-        },
-      }
+    const siraNo = k?.kadro_sira_no ?? ''
+    const kadroDurumu = k?.durumu ?? ''
+    const terfi = {
+      kha_derece: terfiSon?.kha_derece ?? '',
+      kha_kademe: terfiSon?.kha_kademe ?? '',
+      kha_tarihi: terfiSon?.kha_tarihi ?? '',
+      ekea_derece: terfiSon?.ekea_derece ?? '',
+      ekea_kademe: terfiSon?.ekea_kademe ?? '',
+      ekea_tarihi: terfiSon?.ekea_tarihi ?? '',
+      kidem_yili: terfiSon?.kidem_yili ?? '',
+      kidem_tarihi: terfiSon?.kidem_tarihi ?? '',
+      iyi_hal_terfi_tarihi: terfiSon?.iyi_hal_terfi_tarihi ?? '',
+      ek_gosterge: terfiSon?.ek_gosterge ?? '',
+      ek_odeme: terfiSon?.ek_odeme ?? '',
+      oht: terfiSon?.oht ?? '',
+      igz: terfiSon?.yan_odeme ?? '',
+      sds_orani: terfiSon?.sds_orani ?? '',
     }
 
     return {
@@ -109,56 +76,104 @@ export default function PersonelHareketiDegistirClient({
         unvan,
         sinif,
         kadro_derecesi: derece,
-        kha_derece: '',
-        kha_kademe: '',
-        ekea_derece: '',
-        ekea_kademe: '',
-        kidem_yili: kidemYili,
-        kha_tarihi: '',
-        ekea_tarihi: '',
-        kidem_tarihi: '',
-        iyi_hal_terfi_tarihi: '',
-        oht: '',
-        igz: '',
-        ek_odeme: '',
-        ek_gosterge: '',
+        kadro_sira_no: siraNo,
+        kadro_durumu: kadroDurumu,
+        ...terfi,
       },
       yeni: {
         gorev_yeri: mud,
         unvan,
         sinif,
         kadro_derecesi: derece,
-        kha_derece: '',
-        kha_kademe: '',
-        ekea_derece: '',
-        ekea_kademe: '',
-        kidem_yili: kidemYili,
-        kha_tarihi: '',
-        ekea_tarihi: '',
-        kidem_tarihi: '',
-        iyi_hal_terfi_tarihi: '',
-        oht: '',
-        igz: '',
-        ek_odeme: '',
-        ek_gosterge: '',
+        kadro_sira_no: siraNo,
+        kadro_durumu: kadroDurumu,
+        ...terfi,
       },
     }
-  }, [seciliKadro, sonKayit, unvanlar, terfiSon])
+  }, [seciliKadro, unvanlar, terfiSon])
 
   const dogumTarihiFmt = personel.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : ''
   const dogumYeriTarihi = [personel.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ')
+  const [yeniGorevYeriState, setYeniGorevYeriState] = useState(yeni.gorev_yeri ?? '')
+  const [yeniKadroIdState, setYeniKadroIdState] = useState<number | null>(seciliKadro?.id ?? null)
+  const [yeniKadroSiraNoState, setYeniKadroSiraNoState] = useState(yeniKadroIdState ? (seciliKadro?.kadro_sira_no ?? '') : '')
+  const [yeniKadroDurumuState, setYeniKadroDurumuState] = useState(seciliKadro?.durumu ?? '')
+  const [yeniUnvanState, setYeniUnvanState] = useState(yeni.unvan ?? '')
+  const [yeniSinifState, setYeniSinifState] = useState(yeni.sinif ?? '')
+  const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeni.kadro_derecesi ?? '')
+  const bosKadrolarSirali = useMemo(() => {
+    return [...bosKadrolar].sort((a, b) => {
+      const aNo = Number.parseInt(String(a.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
+      const bNo = Number.parseInt(String(b.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
+      const aOk = Number.isFinite(aNo)
+      const bOk = Number.isFinite(bNo)
+      if (aOk && bOk) return aNo - bNo
+      if (aOk) return -1
+      if (bOk) return 1
+      return String(a.kadro_sira_no ?? '').localeCompare(String(b.kadro_sira_no ?? ''), 'tr')
+    })
+  }, [bosKadrolar])
+  const bosKadrolarFiltreli = useMemo(() => {
+    const q = kadroArama.trim().toLocaleLowerCase('tr-TR')
+    if (!q) return bosKadrolarSirali
+    return bosKadrolarSirali.filter(k => {
+      const sira = String(k.kadro_sira_no ?? '').toLocaleLowerCase('tr-TR')
+      const derece = String(k.kadro_derecesi ?? '').toLocaleLowerCase('tr-TR')
+      const unvan = String(k.kadro_unvani ?? k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')
+      return sira.includes(q) || derece.includes(q) || unvan.includes(q)
+    })
+  }, [bosKadrolarSirali, kadroArama])
+
+  function kadroSec(kadro: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
+    const unvan = kadro.kadro_unvani ?? kadro.gorev_unvani ?? ''
+    const sinif = unvanlar.find(u => u.ad === unvan)?.sinif ?? ''
+    setYeniKadroIdState(kadro.id)
+    setYeniKadroSiraNoState(kadro.kadro_sira_no ?? '')
+    setYeniKadroDurumuState(kadro.durumu ?? '')
+    setYeniUnvanState(unvan)
+    setYeniSinifState(sinif)
+    setYeniKadroDerecesiState(kadro.kadro_derecesi ?? '')
+    setYeniGorevYeriState(kadro.gorev_mudurlugu ?? kadro.kadro_mudurlugu ?? '')
+    setKadroSecModalAcik(false)
+  }
+
+  function kadroyuBosalt() {
+    setYeniKadroIdState(null)
+    setYeniKadroSiraNoState('')
+    setYeniKadroDurumuState('')
+    setYeniUnvanState('')
+    setYeniSinifState('')
+    setYeniKadroDerecesiState('')
+    setYeniGorevYeriState('')
+    setKadroSecModalAcik(false)
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setHata(null)
-    setIsPending(true)
     const fd = new FormData(e.currentTarget)
+    const hareketTipi = String(fd.get('hareket_tipi') ?? '').trim()
+    if (!hareketTipi) {
+      setHata('Hareket Tipi seçimini tamamlayınız.')
+      return
+    }
+    setIsPending(true)
     fd.set('sicil_no', personel.sicil_no)
-    fd.set('kadro_sira_no', seciliKadro?.kadro_sira_no ?? '')
+    fd.set('kadro_sira_no', yeniKadroSiraNoState)
     onKaydet(fd).then(res => {
       setIsPending(false)
       if (res.hata) setHata(res.hata)
-      else router.push('/personel-hareketleri')
+      else if (popup && typeof window !== 'undefined' && window.opener) {
+        try {
+          window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, window.location.origin)
+        } catch {
+          window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, '*')
+        }
+        window.close()
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') router.push('/personel-hareketleri')
+        }, 300)
+      } else router.push('/personel-hareketleri')
     })
   }
 
@@ -183,7 +198,7 @@ export default function PersonelHareketiDegistirClient({
               { v: 'Yukselme', l: 'Yükselme' },
             ].map(({ v, l }) => (
               <label key={v} className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="hareket_tipi" value={v} defaultChecked={v === 'Yukselme'}
+                <input type="radio" name="hareket_tipi" value={v}
                   className="rounded border-slate-300 text-slate-600 focus:ring-slate-500" />
                 <span className="text-sm text-slate-700">{l}</span>
               </label>
@@ -234,155 +249,176 @@ export default function PersonelHareketiDegistirClient({
           </div>
         </div>
 
-        {/* İşlem yapılacak kadro */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">İşlem yapılacak kadro</h2>
-          <select value={kadrolar.length ? seciliKadroIdx : -1} onChange={e => setSeciliKadroIdx(parseInt(e.target.value, 10))}
-            className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-            {kadrolar.length === 0 ? (
-              <option value={-1}>Bu personel için kadro kaydı yok</option>
-            ) : (
-            kadrolar.map((k, i) => {
-              const no = k.kadro_sira_no ?? ''
-              const unvan = k.kadro_unvani ?? k.gorev_unvani ?? ''
-              const mud = k.kadro_mudurlugu ?? k.gorev_mudurlugu ?? ''
-              const rol = (k.asil ?? '').trim() === personel.sicil_no ? 'Asil' : 'Vekil'
-              return (
-                <option key={k.id} value={i}>{no} – {unvan} ({mud}) – {rol}</option>
-              )
-            }))}
-          </select>
-        </div>
-
         {/* Durum Bilgileri ESKİ / YENİ */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">Durum Bilgileri</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-slate-50 rounded-lg p-4">
               <h3 className="text-xs font-semibold text-slate-500 uppercase mb-3">ESKİ</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {[
-                  { l: 'Görev Yeri', v: eski.gorev_yeri },
-                  { l: 'Unvanı', v: eski.unvan },
-                  { l: 'Sınıfı', v: eski.sinif },
-                  { l: 'Kadro derecesi', v: eski.kadro_derecesi },
-                  { l: 'KHA Derece', v: eski.kha_derece },
-                  { l: 'KHA Kademe', v: eski.kha_kademe },
-                  { l: 'KHA Tarihi', v: eski.kha_tarihi ? new Date(eski.kha_tarihi).toLocaleDateString('tr-TR') : '' },
-                  { l: 'EKEA Derece', v: eski.ekea_derece },
-                  { l: 'EKEA Kademe', v: eski.ekea_kademe },
-                  { l: 'EKEA Tarihi', v: eski.ekea_tarihi ? new Date(eski.ekea_tarihi).toLocaleDateString('tr-TR') : '' },
-                  { l: 'Kıdem Yılı', v: eski.kidem_yili },
-                  { l: 'Kıdem Tarihi', v: eski.kidem_tarihi ? new Date(eski.kidem_tarihi).toLocaleDateString('tr-TR') : '' },
-                  { l: 'İyi Hal Tarihi', v: eski.iyi_hal_terfi_tarihi ? new Date(eski.iyi_hal_terfi_tarihi).toLocaleDateString('tr-TR') : '' },
-                  { l: 'ÖHT', v: eski.oht },
-                  { l: 'Yan Ödeme', v: eski.igz },
-                  { l: 'Ek Ödeme', v: eski.ek_odeme },
-                  { l: 'Ek Gösterge', v: eski.ek_gosterge },
-                ].map(({ l, v }) => (
-                  <div key={l}>
-                    <span className="text-slate-400 text-xs block">{l}</span>
-                    <span className="text-slate-700">{v || '—'}</span>
-                  </div>
-                ))}
+              <div className="space-y-2 text-sm">
+                <div className="border border-slate-200 rounded bg-white px-2 py-1.5">
+                  <span className="text-slate-400 text-xs block">Görev Müdürlüğü</span>
+                  <span className="text-slate-700">{eski.gorev_yeri || '—'}</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Unvanı</span><span className="text-slate-700">{eski.unvan || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Sınıfı</span><span className="text-slate-700">{eski.sinif || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Kadro Derecesi</span><span className="text-slate-700">{eski.kadro_derecesi || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Kadro Sıra No</span><span className="text-slate-700">{eski.kadro_sira_no || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Durumu</span><span className="text-slate-700">{eski.kadro_durumu || '—'}</span></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">KHA D/K</span><span className="text-slate-700">{[eski.kha_derece, eski.kha_kademe].filter(Boolean).join('/') || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">KHA Tarihi</span><span className="text-slate-700">{eski.kha_tarihi ? new Date(eski.kha_tarihi).toLocaleDateString('tr-TR') : '—'}</span></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">EKEA D/K</span><span className="text-slate-700">{[eski.ekea_derece, eski.ekea_kademe].filter(Boolean).join('/') || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">EKEA Tarihi</span><span className="text-slate-700">{eski.ekea_tarihi ? new Date(eski.ekea_tarihi).toLocaleDateString('tr-TR') : '—'}</span></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Kıdem Yılı</span><span className="text-slate-700">{eski.kidem_yili || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Kıdem Tarihi</span><span className="text-slate-700">{eski.kidem_tarihi ? new Date(eski.kidem_tarihi).toLocaleDateString('tr-TR') : '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">İyi Hal Tarihi</span><span className="text-slate-700">{eski.iyi_hal_terfi_tarihi ? new Date(eski.iyi_hal_terfi_tarihi).toLocaleDateString('tr-TR') : '—'}</span></div>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Ek Gösterge</span><span className="text-slate-700">{eski.ek_gosterge || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Ek Ödeme</span><span className="text-slate-700">{eski.ek_odeme || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">ÖHT</span><span className="text-slate-700">{eski.oht || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">Yan Ödeme</span><span className="text-slate-700">{eski.igz || '—'}</span></div>
+                  <div className="border border-slate-200 rounded bg-white px-2 py-1.5"><span className="text-slate-400 text-xs block">SDS</span><span className="text-slate-700">{eski.sds_orani || '—'}</span></div>
+                </div>
               </div>
             </div>
             <div>
               <h3 className="text-xs font-semibold text-indigo-600 uppercase mb-3">YENİ</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Görev Yeri</label>
-                  <select name="yeni_gorev_yeri" defaultValue={yeni.gorev_yeri}
+                  <label className="block text-xs text-slate-500 mb-0.5">Görev Müdürlüğü</label>
+                  <select name="yeni_gorev_yeri" value={yeniGorevYeriState} onChange={(e) => setYeniGorevYeriState(e.target.value)}
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
                     <option value="">Seçiniz</option>
                     {mudurlukler.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Unvanı</label>
-                  <input name="yeni_unvan" defaultValue={yeni.unvan}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" list="unvan-list" />
-                  <datalist id="unvan-list">
-                    {unvanlar.map(u => <option key={u.id} value={u.ad} />)}
-                  </datalist>
+                <div className="grid grid-cols-5 gap-2">
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="block text-xs text-slate-500">Unvanı</label>
+                      <span className="text-xs font-medium text-indigo-600 whitespace-nowrap">Seçim Yap</span>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setKadroSecModalAcik(true)}
+                        className="w-full text-left px-2 py-1.5 border border-slate-300 rounded text-sm bg-white hover:bg-slate-50"
+                      >
+                        {yeniUnvanState || 'Kadro Seç (açılır pencereden)'}
+                      </button>
+                    </div>
+                    <input type="hidden" name="yeni_unvan" value={yeniUnvanState} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Sınıfı</label>
+                    <input name="yeni_sinif" value={yeniSinifState} readOnly
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Kadro Derecesi</label>
+                    <input name="yeni_kadro_derecesi" type="text" value={yeniKadroDerecesiState} readOnly
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Kadro Sıra No</label>
+                    <input type="text" value={yeniKadroSiraNoState} readOnly
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Durumu</label>
+                    <input type="text" value={yeniKadroDurumuState} readOnly
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Sınıfı</label>
-                  <select name="yeni_sinif" defaultValue={yeni.sinif}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
-                    <option value="">—</option>
-                    {SINIFLAR.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-0.5">KHA D/K (D)</label>
+                      <input name="yeni_kha_derece" type="text" defaultValue={yeni.kha_derece}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-0.5">KHA D/K (K)</label>
+                      <input name="yeni_kha_kademe" type="text" defaultValue={yeni.kha_kademe}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">KHA Tarihi</label>
+                    <input name="yeni_kha_tarihi" type="date" defaultValue={(yeni.kha_tarihi ?? '').toString().slice(0, 10)}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Kadro derecesi</label>
-                  <input name="yeni_kadro_derecesi" type="text" defaultValue={yeni.kadro_derecesi} readOnly
-                    className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-0.5">EKEA D/K (D)</label>
+                      <input name="yeni_ekea_derece" type="text" defaultValue={yeni.ekea_derece}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-0.5">EKEA D/K (K)</label>
+                      <input name="yeni_ekea_kademe" type="text" defaultValue={yeni.ekea_kademe}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">EKEA Tarihi</label>
+                    <input name="yeni_ekea_tarihi" type="date" defaultValue={(yeni.ekea_tarihi ?? '').toString().slice(0, 10)}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">KHA Derece</label>
-                  <input name="yeni_kha_derece" type="text" defaultValue={yeni.kha_derece}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Kıdem Yılı</label>
+                    <input name="yeni_kidem_yili" type="text" defaultValue={yeni.kidem_yili}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Kıdem Tarihi</label>
+                    <input name="yeni_kidem_tarihi" type="date" defaultValue={(yeni.kidem_tarihi ?? '').toString().slice(0, 10)}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">İyi Hal Tarihi</label>
+                    <input name="yeni_iyi_hal_terfi_tarihi" type="date" defaultValue={(yeni.iyi_hal_terfi_tarihi ?? '').toString().slice(0, 10)}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">KHA Kademe</label>
-                  <input name="yeni_kha_kademe" type="text" defaultValue={yeni.kha_kademe}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">KHA Tarihi</label>
-                  <input name="yeni_kha_tarihi" type="date" defaultValue={(yeni.kha_tarihi ?? '').toString().slice(0, 10)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">EKEA Derece</label>
-                  <input name="yeni_ekea_derece" type="text" defaultValue={yeni.ekea_derece}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">EKEA Kademe</label>
-                  <input name="yeni_ekea_kademe" type="text" defaultValue={yeni.ekea_kademe}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">EKEA Tarihi</label>
-                  <input name="yeni_ekea_tarihi" type="date" defaultValue={(yeni.ekea_tarihi ?? '').toString().slice(0, 10)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Kıdem Yılı</label>
-                  <input name="yeni_kidem_yili" type="text" defaultValue={yeni.kidem_yili}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Kıdem Tarihi</label>
-                  <input name="yeni_kidem_tarihi" type="date" defaultValue={(yeni.kidem_tarihi ?? '').toString().slice(0, 10)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">İyi Hal Tarihi</label>
-                  <input name="yeni_iyi_hal_terfi_tarihi" type="date" defaultValue={(yeni.iyi_hal_terfi_tarihi ?? '').toString().slice(0, 10)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">ÖHT</label>
-                  <input name="yeni_oht" type="text" defaultValue={yeni.oht} placeholder="Örn: 48+10%"
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Yan Ödeme</label>
-                  <input name="yeni_igz" type="text" defaultValue={yeni.igz} placeholder="Örn: 500"
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Ek Ödeme</label>
-                  <input name="yeni_ek_odeme" type="text" defaultValue={yeni.ek_odeme} placeholder="Örn: 85"
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-0.5">Ek Gösterge</label>
-                  <input name="yeni_ek_gosterge" type="text" defaultValue={yeni.ek_gosterge} placeholder="Örn: 0"
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                <div className="grid grid-cols-5 gap-2">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Ek Gösterge</label>
+                    <input name="yeni_ek_gosterge" type="text" defaultValue={yeni.ek_gosterge}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Ek Ödeme</label>
+                    <input name="yeni_ek_odeme" type="text" defaultValue={yeni.ek_odeme}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">ÖHT</label>
+                    <input name="yeni_oht" type="text" defaultValue={yeni.oht}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">Yan Ödeme</label>
+                    <input name="yeni_igz" type="text" defaultValue={yeni.igz}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-0.5">SDS</label>
+                    <input name="yeni_sds_orani" type="text" defaultValue={yeni.sds_orani}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -403,6 +439,9 @@ export default function PersonelHareketiDegistirClient({
         <input type="hidden" name="eski_igz" value={eski.igz} />
         <input type="hidden" name="eski_ek_odeme" value={eski.ek_odeme} />
         <input type="hidden" name="eski_ek_gosterge" value={eski.ek_gosterge} />
+        <input type="hidden" name="onceki_kadro_id" value={seciliKadro?.id ?? ''} />
+        <input type="hidden" name="onceki_kadro_rol" value={seciliKadroRol} />
+        <input type="hidden" name="yeni_kadro_id" value={yeniKadroIdState ?? ''} />
 
         {/* Dayanak ve Açıklama */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -443,7 +482,7 @@ export default function PersonelHareketiDegistirClient({
 
         {/* Tarih ve Kayıt */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">İşe başladığı tarih</label>
               <input name="ise_baslama_tarihi" type="date"
@@ -504,6 +543,64 @@ export default function PersonelHareketiDegistirClient({
           </button>
         </div>
       </form>
+
+      {kadroSecModalAcik && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Sadece Durumu Boş Olanlar)</h3>
+              <button type="button" onClick={() => setKadroSecModalAcik(false)} className="text-sm text-slate-500 hover:text-slate-700">Kapat</button>
+            </div>
+            <div className="px-4 py-3 border-b border-slate-100 space-y-2">
+              <button type="button" onClick={kadroyuBosalt} className="px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50">
+                İlişkilendirilen kadroyu boşalt
+              </button>
+              <input
+                type="text"
+                value={kadroArama}
+                onChange={(e) => setKadroArama(e.target.value)}
+                placeholder="Hızlı arama: Kadro Sıra No / Kadro Derecesi / Kadro Unvanı"
+                className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
+              />
+            </div>
+            <div className="overflow-auto max-h-[55vh]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-3 py-2">Kadro Sıra No</th>
+                    <th className="text-left px-3 py-2">Kadro Derecesi</th>
+                    <th className="text-left px-3 py-2">Kadro Unvanı</th>
+                    <th className="text-left px-3 py-2 w-28">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {bosKadrolarFiltreli.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center text-slate-400">Uygun boş kadro bulunamadı.</td>
+                    </tr>
+                  ) : bosKadrolarFiltreli.map(k => (
+                    <tr key={k.id} className="hover:bg-slate-50">
+                      <td className="px-3 py-2">{k.kadro_sira_no ?? '—'}</td>
+                      <td className="px-3 py-2">{k.kadro_derecesi ?? '—'}</td>
+                      <td className="px-3 py-2">{k.kadro_unvani ?? k.gorev_unvani ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <button type="button" onClick={() => kadroSec(k)} className="px-2 py-1 rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+                          Seç
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-end">
+              <button type="button" onClick={() => setKadroSecModalAcik(false)} className="px-3 py-1.5 rounded border border-slate-300 text-slate-700 hover:bg-slate-50">
+                Tamam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

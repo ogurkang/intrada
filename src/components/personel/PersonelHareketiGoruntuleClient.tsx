@@ -33,6 +33,7 @@ interface Props {
   kadroLabel: string
   teklifEdenAd: string
   ogrenimDurumu?: string | null
+  degistirHref: string
 }
 
 export default function PersonelHareketiGoruntuleClient({
@@ -41,6 +42,7 @@ export default function PersonelHareketiGoruntuleClient({
   kadroLabel,
   teklifEdenAd,
   ogrenimDurumu = null,
+  degistirHref,
 }: Props) {
   const dogumYeri = personel.dogum_yeri ?? ''
   const dogumTarihi = toGgAayyyy(personel.dogum_tarihi)
@@ -51,7 +53,7 @@ export default function PersonelHareketiGoruntuleClient({
       <div className="flex items-start justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Personel Hareketi - Görüntüle</h1>
         <div className="flex items-center gap-2">
-          <Link href={`/personel-hareketleri/${personel.sicil_no}/degistir`}
+          <Link href={degistirHref}
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             Değiştir
           </Link>

@@ -668,7 +668,7 @@ export interface Database {
           meslegi: string | null; memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
           gelis_nedeni: string | null; geldigi_yer: string | null; ayrilis_tarihi: string | null
           ayrilis_nedeni: string | null; gittigi_yer: string | null; aciklama: string | null
-          durumu: 'Dolu' | 'Vekil' | 'Boş'; created_at: string; updated_at: string
+          durumu: 'Dolu' | 'Vekil' | 'Boş' | 'İptal'; created_at: string; updated_at: string
         }
         Insert: {
           id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
@@ -679,7 +679,7 @@ export interface Database {
           meslegi?: string | null; memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           gelis_nedeni?: string | null; geldigi_yer?: string | null; ayrilis_tarihi?: string | null
           ayrilis_nedeni?: string | null; gittigi_yer?: string | null; aciklama?: string | null
-          durumu?: 'Dolu' | 'Vekil' | 'Boş'; created_at?: string; updated_at?: string
+          durumu?: 'Dolu' | 'Vekil' | 'Boş' | 'İptal'; created_at?: string; updated_at?: string
         }
         Update: {
           id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
@@ -690,7 +690,7 @@ export interface Database {
           meslegi?: string | null; memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           gelis_nedeni?: string | null; geldigi_yer?: string | null; ayrilis_tarihi?: string | null
           ayrilis_nedeni?: string | null; gittigi_yer?: string | null; aciklama?: string | null
-          durumu?: 'Dolu' | 'Vekil' | 'Boş'; created_at?: string; updated_at?: string
+          durumu?: 'Dolu' | 'Vekil' | 'Boş' | 'İptal'; created_at?: string; updated_at?: string
         }
         Relationships: [
           { foreignKeyName: "kadro_hareketleri_asil_fkey"; columns: ["asil"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] },
@@ -1250,7 +1250,7 @@ export interface Database {
           kadro_sira_no: string | null; kadro_unvani: string | null
           kadro_derecesi: string | null; statu: string | null; gorev_unvani: string | null
           kadro_mudurlugu: string | null; gorev_mudurlugu: string | null
-          kadro_durumu: 'Dolu' | 'Vekil' | 'Boş' | null
+          kadro_durumu: 'Dolu' | 'Vekil' | 'Boş' | 'İptal' | null
           memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
         }
         Relationships: []

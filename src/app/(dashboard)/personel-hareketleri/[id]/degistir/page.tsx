@@ -5,14 +5,19 @@ import { personelHareketiEkle } from '../../actions'
 import type { Tables } from '@/types/database'
 
 type KH = Tables<'kadro_hareketleri'>
-type PH = Tables<'personel_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
+type BosKadroSecenek = Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'>
 
 export default async function PersonelHareketiDegistirPage({
   params,
-}: { params: Promise<{ id: string }> }) {
+  searchParams,
+}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string }> }) {
   const { id: sicil_no } = await params
   if (!sicil_no?.trim()) notFound()
+  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string }))
+  const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
+  const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
+  const popup = String(sp?.popup ?? '').trim() === '1'
 
   const supabase = await createClient()
 
@@ -28,6 +33,14 @@ export default async function PersonelHareketiDegistirPage({
     supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true).order('sira_no'),
     supabase.from('calisan_ogrenim').select('ogrenim_turu').eq('sicil_no', sicil_no).eq('aktif', true).limit(1),
     supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil_no).order('kayit_zamani', { ascending: false }).limit(1),
+    supabase
+      .from('kadro_hareketleri')
+      .select('id, kadro_sira_no, kadro_derecesi, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu')
+      .eq('durumu', 'Boş')
+      .is('iptal_karar_tarihi', null)
+      .is('iptal_karar_no', null)
+      .is('ayrilis_tarihi', null)
+      .order('kadro_sira_no', { ascending: true }),
   ])
 
   const personel = results[0]?.data ?? null
@@ -36,40 +49,32 @@ export default async function PersonelHareketiDegistirPage({
   const unvanRaw = results[3]?.data ?? null
   const ogrenimRaw = results[4]?.data ?? null
   const terfiSon = ((results[5]?.data ?? [])[0] ?? null) as TH | null
+  const tumBosKadrolar = (results[6]?.data ?? []) as BosKadroSecenek[]
 
   if (!personel) notFound()
 
   const kadrolar = (kadroRaw ?? []) as KH[]
   const vekiller = kadrolar.filter(k => (k.vekil ?? '').trim() === sicil_no)
-  const asiller = kadrolar.filter(k => (k.asil ?? '').trim() === sicil_no && (k.durumu ?? '') === 'Dolu')
+  // Liste ekranında asıl satırı "durumu"na bakmadan gösteriyoruz; burada da aynı kuralı kullanmalıyız.
+  const asiller = kadrolar.filter(k => (k.asil ?? '').trim() === sicil_no)
   const kadroListesi = [...vekiller, ...asiller]
   if (kadroListesi.length === 0) kadroListesi.push(...kadrolar)
+  const seciliKadro =
+    (Number.isFinite(seciliKadroId) && seciliKadroId > 0
+      ? kadroListesi.find(k => {
+          if (k.id !== seciliKadroId) return false
+          if (seciliRol === 'vekil') return (k.vekil ?? '').trim() === sicil_no
+          if (seciliRol === 'asil') return (k.asil ?? '').trim() === sicil_no
+          return true
+        })
+      : undefined) ?? kadroListesi[0] ?? null
+  const personelStatu = String(seciliKadro?.statu ?? '').trim()
+  const bosKadrolar = personelStatu
+    ? tumBosKadrolar.filter(k => String(k.statu ?? '').trim() === personelStatu)
+    : tumBosKadrolar
 
   const mudurlukler = (mudurlukRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean)
   const unvanlar = (unvanRaw ?? []).map(u => ({ id: u.id, ad: u.unvan_adi, sinif: u.sinif_adi })).filter(u => u.ad)
-
-  // Personel + kadro için son personel_hareketleri kaydı (ESKİ değerler için)
-  const kadroSiraNolar = kadroListesi.map(k => (k.kadro_sira_no ?? '').trim()).filter(Boolean)
-  let sonKayit: PH | null = null
-  if (kadroSiraNolar.length > 0) {
-    const { data: phRows } = await supabase
-      .from('personel_hareketleri')
-      .select('*')
-      .eq('sicil_no', sicil_no)
-      .in('kadro_sira_no', kadroSiraNolar)
-      .order('kayit_zamani', { ascending: false })
-      .limit(1)
-    sonKayit = (phRows ?? [])[0] as PH | null
-  }
-  if (!sonKayit && kadroSiraNolar.length === 0 && kadroListesi.length > 0) {
-    const { data: phRows } = await supabase
-      .from('personel_hareketleri')
-      .select('*')
-      .eq('sicil_no', sicil_no)
-      .order('kayit_zamani', { ascending: false })
-      .limit(1)
-    sonKayit = (phRows ?? [])[0] as PH | null
-  }
 
   // Belediye Başkanı / Yardımcıları (onaylayan, teklif eden)
   const { data: baskanKadro } = await supabase
@@ -107,13 +112,15 @@ export default async function PersonelHareketiDegistirPage({
     <PersonelHareketiDegistirClient
       personel={personel}
       ogrenimDurumu={ogrenimDurumu}
-      kadrolar={kadroListesi}
-      sonKayit={sonKayit}
+      seciliKadro={seciliKadro}
       mudurlukler={mudurlukler}
       unvanlar={unvanlar}
       onaylayan={onaylayan}
       yardimcilar={yardimcilar}
       terfiSon={terfiSon}
+      seciliKadroRol={seciliRol === 'vekil' ? 'vekil' : 'asil'}
+      bosKadrolar={bosKadrolar}
+      popup={popup}
       onKaydet={personelHareketiEkle}
     />
   )

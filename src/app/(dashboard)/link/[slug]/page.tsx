@@ -84,6 +84,10 @@ export default async function Page({ params }: Props) {
     if (!detail) notFound()
     const { row, ...rest } = detail
     const r = row as Tables<'kadro_hareketleri'>
+    const kadroBaslik =
+      [r.kadro_sira_no, r.kadro_unvani ?? r.gorev_unvani]
+        .filter(Boolean)
+        .join(' – ') || `#${r.id}`
     return (
       <div>
         <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -91,7 +95,7 @@ export default async function Page({ params }: Props) {
             Kadro Hareketleri
           </Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-800 font-medium">{r.kadro_unvani ?? r.kadro_sira_no ?? `#${r.id}`}</span>
+          <span className="text-slate-800 font-medium">{kadroBaslik}</span>
         </nav>
 
         <KadroDetayClient

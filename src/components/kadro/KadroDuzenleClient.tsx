@@ -11,6 +11,7 @@ const KADRO_DURUM_BADGE: Record<string, string> = {
   Dolu:  'bg-green-100 text-green-700',
   Vekil: 'bg-amber-100 text-amber-700',
   Boş:   'bg-slate-100 text-slate-500',
+  İptal: 'bg-black text-white',
 }
 
 type Kadro = Tables<'kadro_hareketleri'>
@@ -169,8 +170,16 @@ export default function KadroDuzenleClient({
     setIptalKararNo(d.iptal_karar_no ?? '')
   }, [d.id, d.asil, d.vekil, d.iptal_karar_tarihi, d.iptal_karar_no])
 
-  const hesaplananDurum = kadroDurumuHesapla(asilSicil, vekilSicil)
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
+  const hesaplananDurum = iptalMi ? 'İptal' : kadroDurumuHesapla(asilSicil, vekilSicil)
+  const kadroUnvanAktifListedeYok = Boolean(
+    d.kadro_unvani &&
+      !unvanlar.some(u => u.id === d.kadro_unvan_id || u.unvan_adi.trim() === String(d.kadro_unvani ?? '').trim()),
+  )
+  const gorevUnvanAktifListedeYok = Boolean(
+    d.gorev_unvani &&
+      !unvanlar.some(u => u.id === d.gorev_unvan_id || u.unvan_adi.trim() === String(d.gorev_unvani ?? '').trim()),
+  )
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -206,6 +215,11 @@ export default function KadroDuzenleClient({
           <hr className="border-slate-100" />
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kadro & Görev Bilgileri</p>
+            {(kadroUnvanAktifListedeYok || gorevUnvanAktifListedeYok) && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mb-3">
+                Mevcut kayıttaki bazı unvanlar aktif unvan listesinde görünmüyor. Kayıt korunur; gerekirse Tanımlar &gt; Ünvanlar'dan tekrar aktifleştirin.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               {sel(d, 'statu', 'Statü', statuler)}
               {input(d, 'kadro_derecesi', 'Kadro Derecesi', { placeholder: '1, 2 ...' })}
@@ -250,7 +264,7 @@ export default function KadroDuzenleClient({
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Kadro durumu</label>
                 <p className="text-[11px] text-slate-500 mb-1.5 leading-snug">
-                  Asil seçiliyse <strong>Dolu</strong>, yalnız vekil seçiliyse <strong>Vekil</strong>, ikisi boşsa <strong>Boş</strong> — kayıtta otomatik atanır.
+                  İptal alanı doluysa <strong>İptal</strong>; değilse asil seçiliyse <strong>Dolu</strong>, yalnız vekil seçiliyse <strong>Vekil</strong>, ikisi boşsa <strong>Boş</strong> — kayıtta otomatik atanır.
                 </p>
                 <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${KADRO_DURUM_BADGE[hesaplananDurum] ?? ''}`}>
                   {hesaplananDurum}

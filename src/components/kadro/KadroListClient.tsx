@@ -41,13 +41,25 @@ interface Props {
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
+function kadroDurumEtiketi(k: Kadro): 'Asil' | 'Vekil' | 'Boş' | 'İptal' {
+  if (k.iptal_karar_tarihi || k.iptal_karar_no) return 'İptal'
+  if (k.durumu === 'Dolu' || Boolean(k.asil)) return 'Asil'
+  if (k.durumu === 'Vekil' || Boolean(k.vekil)) return 'Vekil'
+  return 'Boş'
+}
+
+function txt(v: string | null | undefined): string {
+  return String(v ?? '').trim()
+}
+
 const DURUM_RENK: Record<string, string> = {
   Asil:  'bg-green-100 text-green-700',
   Dolu:  'bg-green-100 text-green-700',
   Vekil: 'bg-amber-100 text-amber-700',
   Boş:   'bg-slate-100 text-slate-500',
+  İptal: 'bg-black text-white',
 }
-const DURUM_FILTRELER = ['Tümü', 'Dolu', 'Asil', 'Vekil', 'Boş'] as const
+const DURUM_FILTRELER = ['Tümü', 'Dolu', 'Asil', 'Vekil', 'Boş', 'İptal'] as const
 type DurumFiltre = (typeof DURUM_FILTRELER)[number]
 
 type ColumnFilterKey =
@@ -168,6 +180,37 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     return m
   }, [personeller])
 
+  const kadroFallbackBySiraNo = useMemo(() => {
+    const m = new Map<string, { unvan: string; gorevUnvan: string; mudurluk: string; gorevMudurluk: string }>()
+    for (const k of data) {
+      const sira = txt(k.kadro_sira_no)
+      if (!sira || m.has(sira)) continue
+      const unvan = txt(k.kadro_unvani)
+      const gorevUnvan = txt(k.gorev_unvani)
+      const mudurluk = txt(k.kadro_mudurlugu)
+      const gorevMudurluk = txt(k.gorev_mudurlugu)
+      if (!unvan && !gorevUnvan && !mudurluk && !gorevMudurluk) continue
+      m.set(sira, { unvan, gorevUnvan, mudurluk, gorevMudurluk })
+    }
+    return m
+  }, [data])
+
+  function kadroUnvanMetni(k: Kadro): { unvan: string; gorevUnvan: string } {
+    const unvan = txt(k.kadro_unvani)
+    const gorevUnvan = txt(k.gorev_unvani)
+    if (unvan || gorevUnvan) return { unvan, gorevUnvan }
+    const fb = kadroFallbackBySiraNo.get(txt(k.kadro_sira_no))
+    return { unvan: fb?.unvan ?? '', gorevUnvan: fb?.gorevUnvan ?? '' }
+  }
+
+  function kadroMudurlukMetni(k: Kadro): { mudurluk: string; gorevMudurluk: string } {
+    const mudurluk = txt(k.kadro_mudurlugu)
+    const gorevMudurluk = txt(k.gorev_mudurlugu)
+    if (mudurluk || gorevMudurluk) return { mudurluk, gorevMudurluk }
+    const fb = kadroFallbackBySiraNo.get(txt(k.kadro_sira_no))
+    return { mudurluk: fb?.mudurluk ?? '', gorevMudurluk: fb?.gorevMudurluk ?? '' }
+  }
+
   const filtreOpsiyonlari = useMemo(() => {
     const degerler = {
       kadro_derecesi: new Set<string>(),
@@ -199,7 +242,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       if (k.statu) degerler.statu.add(k.statu)
       if (k.asil) degerler.asil.add(`${adMap[k.asil] ?? k.asil} (${k.asil})`)
       if (k.vekil) degerler.vekil.add(`${adMap[k.vekil] ?? k.vekil} (${k.vekil})`)
-      if (k.durumu) degerler.durumu.add(k.durumu === 'Dolu' ? 'Asil' : k.durumu)
+      degerler.durumu.add(kadroDurumEtiketi(k))
     }
 
     return {
@@ -229,10 +272,12 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     if (statuSekme !== 'Tümü') list = list.filter(k => k.statu === statuSekme)
     if (durumFiltre !== 'Tümü') {
       list = list.filter(k => {
-        if (durumFiltre === 'Dolu') return Boolean(k.asil || k.vekil)
-        if (durumFiltre === 'Asil') return Boolean(k.asil)
-        if (durumFiltre === 'Vekil') return Boolean(k.vekil)
-        return !k.asil && !k.vekil
+        const etiket = kadroDurumEtiketi(k)
+        if (durumFiltre === 'Dolu') return etiket === 'Asil' || etiket === 'Vekil'
+        if (durumFiltre === 'Asil') return etiket === 'Asil'
+        if (durumFiltre === 'Vekil') return etiket === 'Vekil'
+        if (durumFiltre === 'İptal') return etiket === 'İptal'
+        return etiket === 'Boş'
       })
     }
     if (aramaQ.trim()) {
@@ -280,7 +325,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       list = list.filter(k => kolonFiltre.vekil.includes(k.vekil ? `${adMap[k.vekil] ?? k.vekil} (${k.vekil})` : ''))
     }
     if (kolonFiltre.durumu.length > 0) {
-      list = list.filter(k => kolonFiltre.durumu.includes(k.durumu === 'Dolu' ? 'Asil' : (k.durumu ?? '')))
+      list = list.filter(k => kolonFiltre.durumu.includes(kadroDurumEtiketi(k)))
     }
     if (hizliFiltre === 'mudurler') {
       list = list.filter(k => trNormalize(k.kadro_unvani ?? '').includes('mudur'))
@@ -409,9 +454,9 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
   }
 
   const istatistik = useMemo(() => ({
-    dolu:  data.filter(k => !k.ayrilis_tarihi && k.durumu === 'Dolu').length,
-    vekil: data.filter(k => !k.ayrilis_tarihi && k.durumu === 'Vekil').length,
-    bos:   data.filter(k => !k.ayrilis_tarihi && k.durumu === 'Boş').length,
+    dolu:  data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Asil').length,
+    vekil: data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Vekil').length,
+    bos:   data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Boş').length,
   }), [data])
 
   return (
@@ -618,7 +663,10 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                   {aramaQ ? 'Arama sonucu bulunamadı.' : 'Kadro kaydı yok.'}
                 </td></tr>
               )}
-              {filtreli.map((k, idx) => (
+              {filtreli.map((k, idx) => {
+                const unvan = kadroUnvanMetni(k)
+                const mudurluk = kadroMudurlukMetni(k)
+                return (
                 <tr
                   key={k.id}
                   onClick={() => router.push(kadroDetayHref(k))}
@@ -628,15 +676,15 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.kadro_sira_no ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs tabular-nums">{k.kadro_derecesi ?? '—'}</td>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-800">{k.kadro_unvani ?? '—'}</span>
-                    {k.gorev_unvani && k.gorev_unvani !== k.kadro_unvani && (
-                      <span className="block text-xs text-slate-400">→ {k.gorev_unvani}</span>
+                    <span className="font-medium text-slate-800">{unvan.unvan || '—'}</span>
+                    {unvan.gorevUnvan && unvan.gorevUnvan !== unvan.unvan && (
+                      <span className="block text-xs text-slate-400">→ {unvan.gorevUnvan}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-600 text-xs">
-                    {k.kadro_mudurlugu ?? '—'}
-                    {k.gorev_mudurlugu && k.gorev_mudurlugu !== k.kadro_mudurlugu && (
-                      <span className="block text-slate-400">→ {k.gorev_mudurlugu}</span>
+                    {mudurluk.mudurluk || '—'}
+                    {mudurluk.gorevMudurluk && mudurluk.gorevMudurluk !== mudurluk.mudurluk && (
+                      <span className="block text-slate-400">→ {mudurluk.gorevMudurluk}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{k.statu ?? '—'}</td>
@@ -657,12 +705,13 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                     ) : <span className="text-slate-300">—</span>}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${DURUM_RENK[k.durumu === 'Dolu' ? 'Asil' : (k.durumu ?? '')] ?? ''}`}>
-                      {k.durumu === 'Dolu' ? 'Asil' : k.durumu}
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${DURUM_RENK[kadroDurumEtiketi(k)] ?? ''}`}>
+                      {kadroDurumEtiketi(k)}
                     </span>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

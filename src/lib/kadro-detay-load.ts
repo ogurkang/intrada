@@ -36,6 +36,29 @@ export async function loadKadroDetayPageData(
 
   if (error || !k) return null
   const row = k as Tables<'kadro_hareketleri'>
+  if (
+    row.kadro_sira_no &&
+    !row.kadro_unvani &&
+    !row.gorev_unvani &&
+    !row.kadro_mudurlugu &&
+    !row.gorev_mudurlugu
+  ) {
+    const { data: fallbackRows } = await supabase
+      .from('kadro_hareketleri')
+      .select('kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu')
+      .eq('kadro_sira_no', row.kadro_sira_no)
+      .order('updated_at', { ascending: false })
+      .limit(20)
+    const fb = (fallbackRows ?? []).find((r) =>
+      Boolean(r.kadro_unvani || r.gorev_unvani || r.kadro_mudurlugu || r.gorev_mudurlugu),
+    )
+    if (fb) {
+      row.kadro_unvani = row.kadro_unvani ?? fb.kadro_unvani
+      row.gorev_unvani = row.gorev_unvani ?? fb.gorev_unvani
+      row.kadro_mudurlugu = row.kadro_mudurlugu ?? fb.kadro_mudurlugu
+      row.gorev_mudurlugu = row.gorev_mudurlugu ?? fb.gorev_mudurlugu
+    }
+  }
   const adMap: Record<string, string> = {}
   ;(calisanRaw ?? []).forEach((p: { sicil_no: string; ad_soyad: string }) => {
     adMap[p.sicil_no] = p.ad_soyad

@@ -25,6 +25,7 @@ export default async function PersonelHareketiListPage() {
 
   type Satir = {
     id: number; sicil_no: string; ad_soyad: string; hareket_tipi: string | null;
+    kadro_id: number; kadro_rol: 'asil' | 'vekil';
     yururluk_tarihi: string | null; ise_baslama_tarihi: string | null;
     ayrilis_tarihi: string | null; yeni_gorev_yeri: string | null;
     yeni_unvan: string | null; eski_gorev_yeri: string | null;
@@ -40,6 +41,8 @@ export default async function PersonelHareketiListPage() {
         sicil_no:            k.asil,
         ad_soyad:            adMap[k.asil] ?? k.asil,
         hareket_tipi:        k.gelis_nedeni ?? k.durumu,
+        kadro_id:            k.id,
+        kadro_rol:           'asil',
         yururluk_tarihi:     k.memuriyet_tarihi ?? k.kuruma_giris_tarihi,
         ise_baslama_tarihi:  k.memuriyet_tarihi,
         ayrilis_tarihi:      k.ayrilis_tarihi,
@@ -57,6 +60,8 @@ export default async function PersonelHareketiListPage() {
         sicil_no:            k.vekil,
         ad_soyad:            adMap[k.vekil] ?? k.vekil,
         hareket_tipi:        'Vekalet',
+        kadro_id:            k.id,
+        kadro_rol:           'vekil',
         yururluk_tarihi:     k.memuriyet_tarihi ?? k.kuruma_giris_tarihi,
         ise_baslama_tarihi:  k.memuriyet_tarihi,
         ayrilis_tarihi:      k.ayrilis_tarihi,

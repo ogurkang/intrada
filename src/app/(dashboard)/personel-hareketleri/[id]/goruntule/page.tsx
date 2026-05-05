@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { notFound, redirect } from 'next/navigation'
 import PersonelHareketiGoruntuleClient from '@/components/personel/PersonelHareketiGoruntuleClient'
 import type { Tables } from '@/types/database'
 
@@ -15,9 +14,14 @@ const HAREKET_TIPI_LABEL: Record<string, string> = {
 
 export default async function PersonelHareketiGoruntulePage({
   params,
-}: { params: Promise<{ id: string }> }) {
+  searchParams,
+}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string }> }) {
   const { id: sicil_no } = await params
   if (!sicil_no?.trim()) notFound()
+  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string }))
+  const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
+  const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
+  const popup = String(sp?.popup ?? '').trim()
 
   const supabase = await createClient()
 
@@ -39,25 +43,28 @@ export default async function PersonelHareketiGoruntulePage({
   const hareket = (phRows ?? [])[0] as PH | null
   if (!calisan) notFound()
   if (!hareket) {
-    return (
-      <div className="space-y-4">
-        <Link href="/personel-hareketleri" className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50 inline-block">
-          ← Listeye Dön
-        </Link>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-800">
-          <p className="font-medium">Bu personel için henüz personel hareketi kaydı bulunmuyor.</p>
-          <p className="text-sm mt-1">Değiştir ile yeni kayıt ekleyebilirsiniz.</p>
-          <Link href={`/personel-hareketleri/${sicil_no}/degistir`}
-            className="inline-block mt-4 px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700">
-            Değiştir
-          </Link>
-        </div>
-      </div>
-    )
+    const to = Number.isFinite(seciliKadroId) && seciliKadroId > 0
+      ? `/personel-hareketleri/${sicil_no}/degistir?kadro_id=${seciliKadroId}&rol=${encodeURIComponent(seciliRol || '')}${popup ? '&popup=1' : ''}`
+      : `/personel-hareketleri/${sicil_no}/degistir${popup ? '?popup=1' : ''}`
+    redirect(to)
   }
 
   let kadroLabel = hareket.kadro_sira_no ?? '—'
-  if (hareket.kadro_sira_no) {
+  if (Number.isFinite(seciliKadroId) && seciliKadroId > 0) {
+    const { data: khRows } = await supabase
+      .from('kadro_hareketleri')
+      .select('kadro_sira_no, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil')
+      .eq('id', seciliKadroId)
+      .limit(1)
+    const kh = (khRows ?? [])[0]
+    if (kh) {
+      const unvan = (kh as { gorev_unvani?: string; kadro_unvani?: string }).gorev_unvani ?? (kh as { kadro_unvani?: string }).kadro_unvani ?? ''
+      const mud = (kh as { kadro_mudurlugu?: string; gorev_mudurlugu?: string }).kadro_mudurlugu ?? (kh as { gorev_mudurlugu?: string }).gorev_mudurlugu ?? ''
+      const rol = seciliRol === 'asil' ? 'Asil' : seciliRol === 'vekil' ? 'Vekil' : ''
+      const no = (kh as { kadro_sira_no?: string | null }).kadro_sira_no ?? hareket.kadro_sira_no
+      kadroLabel = `${no ?? '—'} – ${unvan} (${mud})${rol ? ' – ' + rol : ''}`
+    }
+  } else if (hareket.kadro_sira_no) {
     const { data: khRows } = await supabase
       .from('kadro_hareketleri')
       .select('kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil')
@@ -79,6 +86,9 @@ export default async function PersonelHareketiGoruntulePage({
     : ''
 
   const ogrenimDurumu = (ogrenimRows ?? [])[0]?.ogrenim_turu ?? null
+  const degistirHref = Number.isFinite(seciliKadroId) && seciliKadroId > 0
+    ? `/personel-hareketleri/${sicil_no}/degistir?kadro_id=${seciliKadroId}&rol=${encodeURIComponent(seciliRol || '')}${popup ? '&popup=1' : ''}`
+    : `/personel-hareketleri/${sicil_no}/degistir${popup ? '?popup=1' : ''}`
 
   return (
     <PersonelHareketiGoruntuleClient
@@ -87,6 +97,7 @@ export default async function PersonelHareketiGoruntulePage({
       kadroLabel={kadroLabel}
       teklifEdenAd={teklifAd}
       ogrenimDurumu={ogrenimDurumu}
+      degistirHref={degistirHref}
     />
   )
 }

@@ -104,6 +104,11 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   }
 
   const supabase = await createClient()
+  const { data: mevcut } = await supabase
+    .from('kadro_hareketleri')
+    .select('kadro_unvan_id, kadro_unvani, gorev_unvan_id, gorev_unvani')
+    .eq('id', id)
+    .maybeSingle()
   const kadroUn = await unvanFormdan(supabase, formData, 'kadro_unvan_id')
   const gorevUn = await unvanFormdan(supabase, formData, 'gorev_unvan_id')
   const { data: updated, error } = await supabase.from('kadro_hareketleri').update({
@@ -114,11 +119,11 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    kadro_unvan_id:       kadroUn.id,
-    kadro_unvani:         kadroUn.unvan_adi,
+    kadro_unvan_id:       kadroUn.id ?? mevcut?.kadro_unvan_id ?? null,
+    kadro_unvani:         kadroUn.unvan_adi ?? mevcut?.kadro_unvani ?? null,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
-    gorev_unvan_id:       gorevUn.id,
-    gorev_unvani:         gorevUn.unvan_adi,
+    gorev_unvan_id:       gorevUn.id ?? mevcut?.gorev_unvan_id ?? null,
+    gorev_unvani:         gorevUn.unvan_adi ?? mevcut?.gorev_unvani ?? null,
     gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
     asil,
     vekil,
