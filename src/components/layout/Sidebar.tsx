@@ -102,6 +102,16 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'İletişim Yönetimi',
+    icon: '💬',
+    accordion: true,
+    items: [
+      { href: '/iletisim-yonetimi/sms-islemleri', label: 'SMS İşlemleri' },
+      { href: '/iletisim-yonetimi/e-posta-islemleri', label: 'E-posta İşlemleri' },
+      { href: '/iletisim-yonetimi/tanimlar', label: 'Tanımlar' },
+    ],
+  },
+  {
     grup: 'Kesintiler Yönetimi',
     icon: '✂️',
     accordion: true,
