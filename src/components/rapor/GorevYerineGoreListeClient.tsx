@@ -3,8 +3,15 @@
 import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { GorevYerineGoreListeSatir } from '@/lib/rapor-gorev-yerine-gore-liste'
+import {
+  gorevYerineGoreUnvanSatirClass,
+  gorevYerineGoreUnvanVurgu,
+  type GorevYerineGoreListeSatir,
+} from '@/lib/rapor-gorev-yerine-gore-liste'
 import { gorevYeriListeAyarKaydet } from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
+
+const SATIR_RENK_ACIKLAMA =
+  'Satır renkleri: Belediye Başkanı — açık mavi (Unvanı); Belediye Başkan Yardımcısı — açık turuncu (Unvanı); açık yeşil: yalnızca «müdürü» kelimesi — önce Unvanı, yoksa Fiili Görevi. Excel aynı kuralı kullanır.'
 
 interface Props {
   satirlar: GorevYerineGoreListeSatir[]
@@ -163,6 +170,7 @@ export default function GorevYerineGoreListeClient({
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Görev Yerine Göre Personel Listesi</h1>
           <p className="text-sm text-slate-600 mt-1 leading-relaxed">{aciklama}</p>
+          <p className="text-sm text-slate-600 mt-2 leading-relaxed">{SATIR_RENK_ACIKLAMA}</p>
           <p className="text-xs text-slate-500 mt-2">Anlık görüntü: {anlikTarihEtiket}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -260,7 +268,7 @@ export default function GorevYerineGoreListeClient({
                       setSuruklenenKayitKey(null)
                       setDropHedefKayitKey(null)
                     }}
-                    className="w-full text-left text-sm p-2 hover:bg-slate-50 rounded"
+                    className={`w-full text-left text-sm p-2 rounded border border-transparent ${gorevYerineGoreUnvanSatirClass(gorevYerineGoreUnvanVurgu(r.unvan, r.fiili_gorev)) || 'bg-white'} hover:brightness-[0.97]`}
                   >
                     {r.ad_soyad} <span className="text-slate-500">({r.mudurluk})</span>
                   </button>
@@ -283,6 +291,7 @@ export default function GorevYerineGoreListeClient({
                   const idxGlobal = seciliListKeyler.indexOf(r.kayit_key)
                   const secili = seciliKayitKey === r.kayit_key
                   const dropHedef = dropHedefKayitKey === r.kayit_key
+                  const unvanBg = gorevYerineGoreUnvanSatirClass(gorevYerineGoreUnvanVurgu(r.unvan, r.fiili_gorev)) || 'bg-white'
                   return (
                   <div
                     key={r.kayit_key}
@@ -302,10 +311,10 @@ export default function GorevYerineGoreListeClient({
                     }}
                     className={`w-full text-sm p-2 rounded border cursor-pointer ${
                       dropHedef
-                        ? 'border-indigo-400 bg-indigo-50'
+                        ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-300'
                         : secili
-                          ? 'border-teal-500 bg-teal-50'
-                          : 'border-slate-200 bg-white'
+                          ? `border-teal-600 ring-2 ring-teal-600 ring-inset ${unvanBg}`
+                          : `border-slate-200 ${unvanBg}`
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -382,7 +391,10 @@ export default function GorevYerineGoreListeClient({
                 </tr>
               ) : (
                 numarali.map(r => (
-                  <tr key={`${r.kayit_key}-${r.siraNo}`} className="border-b border-slate-100">
+                  <tr
+                    key={`${r.kayit_key}-${r.siraNo}`}
+                    className={`border-b border-slate-100 ${gorevYerineGoreUnvanSatirClass(gorevYerineGoreUnvanVurgu(r.unvan, r.fiili_gorev))}`}
+                  >
                     <td className="px-3 py-2.5 tabular-nums text-slate-600">{r.siraNo}</td>
                     <td className="px-3 py-2.5 text-slate-900 font-medium">{r.ad_soyad}</td>
                     <td className="px-3 py-2.5 text-slate-800">{r.konum}</td>

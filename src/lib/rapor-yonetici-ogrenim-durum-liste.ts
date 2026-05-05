@@ -57,6 +57,9 @@ function sicilSirala(a: string, b: string): number {
   return a.localeCompare(b, 'tr', { numeric: true })
 }
 
+const ONLISANS_SIRA = ogrenimTuruSiraIndex('Önlisans')
+const DOKTORA_SIRA = ogrenimTuruSiraIndex('Doktora')
+
 export function yoneticiOgrenimDurumListeSatirlari(input: {
   D: string
   calisanlar: YoneticiOgrenimCalisanRow[]
@@ -111,6 +114,8 @@ export function yoneticiOgrenimDurumListeSatirlari(input: {
   for (const o of ogrenimRows ?? []) {
     const sicil = txt(o.sicil_no)
     if (!sicil || !yoneticiSiciller.has(sicil)) continue
+    const sira = ogrenimTuruSiraIndex(o.ogrenim_turu)
+    if (sira < ONLISANS_SIRA || sira > DOKTORA_SIRA) continue
     const list = ogrenimBySicil.get(sicil) ?? []
     list.push(o)
     ogrenimBySicil.set(sicil, list)

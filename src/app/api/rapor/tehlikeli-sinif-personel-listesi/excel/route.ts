@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 export async function GET(req: Request) {
   try {
@@ -36,18 +36,15 @@ export async function GET(req: Request) {
           a.mudurluk.localeCompare(b.mudurluk, 'tr') ||
           a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }),
       )
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['Tehlike Sınıfına Göre Personel Listesi'],
-      [`Yıl: ${yil} · Sekme: ${label}`],
-      [],
-      ['Sıra No', 'Tehlike Sınıfı', 'Sicil No', 'Adı Soyadı', 'Müdürlük'],
-      ...satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.sicil_no, r.ad_soyad, r.mudurluk]),
-    ])
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Tehlike Personel')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, { headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="Tehlike_Sinifina_Gore_Personel_Listesi.xlsx"` } })
+    return raporExcelStandartResponse({
+      baslik: 'Tehlike Sınıfına Göre Personel Listesi',
+      donemEtiket: `Yıl: ${yil} · Sekme: ${label}`,
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Tehlike Sınıfı', 'Sicil No', 'Adı Soyadı', 'Müdürlük'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.sicil_no, r.ad_soyad, r.mudurluk]),
+      sheetName: 'Tehlike Personel',
+      downloadFileName: 'Tehlike_Sinifina_Gore_Personel_Listesi.xlsx',
+    })
   } catch (err) {
     console.error('TEHLIKELI_PERSONEL_EXCEL_HATA', err)
     return NextResponse.json({ error: 'Excel olusturulamadi.' }, { status: 500 })

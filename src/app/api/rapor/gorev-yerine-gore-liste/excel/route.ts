@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { FIRMA_STATU_ETIKET, TANIMSIZ_STATU_ETIKET, hazirlaStatuSirali, karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
-import { gorevYerineGoreListeSatirUret, mudurlukKonumMetniHaritasi, type KadroGenis } from '@/lib/rapor-gorev-yerine-gore-liste'
+import {
+  gorevYerineGoreListeSatirUret,
+  gorevYerineGoreUnvanExcelRgb,
+  gorevYerineGoreUnvanVurgu,
+  mudurlukKonumMetniHaritasi,
+  type KadroGenis,
+} from '@/lib/rapor-gorev-yerine-gore-liste'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
@@ -74,7 +80,16 @@ export async function GET(req: Request) {
     const kadroSatirlarRaw = kadroCalisan.map(c => {
       const sec = secilenKadroSatirAsil(kadroByAsil.get(c.sicil_no) ?? [], D)
       const k = sec ?? bosKadro(c.sicil_no)
-      return { kayit_key: `kadro:${c.sicil_no}`, kind: 'kadro' as const, statuEtiket: etiketAnahtari(etiketler, sec?.statu) || TANIMSIZ_STATU_ETIKET, sicil_no: c.sicil_no, ad_soyad: c.ad_soyad, cinsiyet: c.cinsiyet, gorev_yeri: c.gorev_yeri, kadro: k }
+      return {
+        kayit_key: `kadro:${c.sicil_no}`,
+        kind: 'kadro' as const,
+        statuEtiket: etiketAnahtari(etiketler, sec?.statu) || TANIMSIZ_STATU_ETIKET,
+        sicil_no: c.sicil_no,
+        ad_soyad: c.ad_soyad,
+        cinsiyet: c.cinsiyet,
+        gorev_yeri: c.gorev_yeri,
+        kadro: k,
+      }
     })
     const { data: firmaRaw } = await supabase.from('firma_calisanlar').select('id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet').order('ad_soyad')
     const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
@@ -106,24 +121,16 @@ export async function GET(req: Request) {
       const set = new Set(mudurlukFilterler)
       satirlar = satirlar.filter(r => set.has(r.mudurluk))
     }
-    const rows: (string | number)[][] = [
-      ['Görev Yerine Göre Personel Listesi'],
-      [`Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`],
-      [],
-      ['Sıra No', 'Adı Soyadı', 'Konum', 'Cinsiyet', 'Unvanı', 'Statü', 'Fiili Görevi'],
-      ...satirlar.map((r, i) => [i + 1, r.ad_soyad, r.konum, r.cinsiyet, r.unvan, r.statu, r.fiili_gorev]),
-    ]
-    const ws = XLSX.utils.aoa_to_sheet(rows)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }]
-    ws['!cols'] = [{ wch: 8 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 24 }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Görev Yerine Göre')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Gorev_Yerine_Gore_Personel_Listesi.xlsx"`,
-      },
+    const satirDolguRgb = satirlar.map(r => gorevYerineGoreUnvanExcelRgb(gorevYerineGoreUnvanVurgu(r.unvan, r.fiili_gorev)))
+    return raporExcelStandartResponse({
+      baslik: 'Görev Yerine Göre Personel Listesi',
+      donemEtiket: 'Sekme: YILLIK',
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Adı Soyadı', 'Konum', 'Cinsiyet', 'Unvanı', 'Statü', 'Fiili Görevi'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.ad_soyad, r.konum, r.cinsiyet, r.unvan, r.statu, r.fiili_gorev]),
+      satirDolguRgb,
+      sheetName: 'Gorev Yerine Gore',
+      downloadFileName: 'Gorev_Yerine_Gore_Personel_Listesi.xlsx',
     })
   } catch (err) {
     console.error('GOREV_YERI_EXCEL_HATA', err)

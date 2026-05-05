@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: '/personel/gorev-bilgileri', destination: '/personel', permanent: true }]
+  },
   turbopack: {
     resolveAlias: {
       /** unzipper 0.12+ optional S3 path — not used by ExcelJS xlsx read (relative path for Turbopack on Windows). */

@@ -1,4 +1,58 @@
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { trNormalize } from '@/lib/turkce-search'
+
+/** Unvan metnine göre satır vurgusu (UI + Excel aynı sıra önceliği). */
+export type GorevYerineGoreUnvanVurgu = 'belediye_baskani' | 'baskan_yardimci' | 'mudur' | null
+
+/** trNormalize sonrası «müdürü» eşlemesi (sadece bu kelimeye göre yeşil). */
+const MUDURU_NORM = 'muduru'
+
+/**
+ * Öncelik: Başkan yardımcısı (unvan) → turuncu; Belediye Başkanı (unvan) → mavi.
+ * Yeşil: yalnızca «müdürü» — önce Unvanı, yoksa Fiili Görevi (normalize metinde `muduru` alt dizisi).
+ */
+export function gorevYerineGoreUnvanVurgu(
+  unvan: string | null | undefined,
+  fiiliGorev?: string | null | undefined,
+): GorevYerineGoreUnvanVurgu {
+  const u = String(unvan ?? '').trim()
+  if (u && u !== '—') {
+    const n = trNormalize(u)
+    if (n.includes('yardimci') && n.includes('baskan')) return 'baskan_yardimci'
+    if (n.includes('belediye') && n.includes('baskan')) return 'belediye_baskani'
+    if (n.includes(MUDURU_NORM)) return 'mudur'
+  }
+  const f = String(fiiliGorev ?? '').trim()
+  if (f && f !== '—' && trNormalize(f).includes(MUDURU_NORM)) return 'mudur'
+  return null
+}
+
+export function gorevYerineGoreUnvanSatirClass(v: GorevYerineGoreUnvanVurgu): string {
+  switch (v) {
+    case 'belediye_baskani':
+      return 'bg-sky-100'
+    case 'baskan_yardimci':
+      return 'bg-orange-100'
+    case 'mudur':
+      return 'bg-emerald-100'
+    default:
+      return ''
+  }
+}
+
+/** xlsx-js-style fgColor.rgb (FF yok). */
+export function gorevYerineGoreUnvanExcelRgb(v: GorevYerineGoreUnvanVurgu): string | null {
+  switch (v) {
+    case 'belediye_baskani':
+      return 'DBEAFE'
+    case 'baskan_yardimci':
+      return 'FFEDD5'
+    case 'mudur':
+      return 'D1FAE5'
+    default:
+      return null
+  }
+}
 
 export type GorevYerineGoreKaynak = 'kadro' | 'firma'
 

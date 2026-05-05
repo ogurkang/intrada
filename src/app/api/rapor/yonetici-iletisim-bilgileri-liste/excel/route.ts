@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { trNormalize } from '@/lib/turkce-search'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 function unvanOncelik(unvan: string): number | null {
   const n = trNormalize(unvan)
@@ -84,26 +84,14 @@ export async function GET() {
       .map((k: string) => satirByKey.get(k))
       .filter((x): x is (typeof tumSatirlar)[number] => !!x)
 
-    const rows: (string | number)[][] = [
-      ['Yönetici İletişim Bilgileri Listesi'],
-      [`Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`],
-      [],
-      ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kadro Unvanı', 'Telefon Numarası', 'E-Posta Adresi'],
-      ...satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.kadro_unvani, r.telefon, r.e_posta]),
-    ]
-
-    const ws = XLSX.utils.aoa_to_sheet(rows)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }]
-    ws['!cols'] = [{ wch: 8 }, { wch: 14 }, { wch: 24 }, { wch: 30 }, { wch: 20 }, { wch: 28 }]
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Yönetici İletişim')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': 'attachment; filename="Yonetici_Iletisim_Bilgileri_Listesi.xlsx"',
-      },
+    return raporExcelStandartResponse({
+      baslik: 'Yönetici İletişim Bilgileri Listesi',
+      donemEtiket: 'Sekme: YILLIK',
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kadro Unvanı', 'Telefon Numarası', 'E-Posta Adresi'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.kadro_unvani, r.telefon, r.e_posta]),
+      sheetName: 'Yonetici Iletisim',
+      downloadFileName: 'Yonetici_Iletisim_Bilgileri_Listesi.xlsx',
     })
   } catch (err) {
     console.error('YONETICI_ILETISIM_EXCEL_HATA', err)

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 export async function GET(req: Request) {
   try {
@@ -25,25 +25,15 @@ export async function GET(req: Request) {
       mudurluk_sayisi: tehlikeSayilari.get(sinif) ?? 0,
     }))
     const toplam = satirlar.reduce((a, b) => a + b.mudurluk_sayisi, 0)
-    const rows: (string | number)[][] = [
-      ['Tehlike Sınıflarına Göre Müdürlük Raporu'],
-      [`Yıl: ${yil} · Sekme: ${label}`],
-      [],
-      ['Sıra No', 'Tehlike Sınıfı', 'Müdürlük Sayısı'],
-      ...satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.mudurluk_sayisi]),
-      ['', 'Toplam', toplam],
-    ]
-    const ws = XLSX.utils.aoa_to_sheet(rows)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }]
-    ws['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 18 }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Tehlike Müdürlük')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Tehlike_Siniflarina_Gore_Mudurluk.xlsx"`,
-      },
+    return raporExcelStandartResponse({
+      baslik: 'Tehlike Sınıflarına Göre Müdürlük Raporu',
+      donemEtiket: `Yıl: ${yil} · Sekme: ${label}`,
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Tehlike Sınıfı', 'Müdürlük Sayısı'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.mudurluk_sayisi]),
+      sheetName: 'Tehlike Mudurluk',
+      downloadFileName: 'Tehlike_Siniflarina_Gore_Mudurluk.xlsx',
+      totalValue: toplam,
     })
   } catch (err) {
     console.error('TEHLIKE_MUDURLUK_EXCEL_HATA', err)

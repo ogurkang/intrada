@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { personelDetayHref } from '@/lib/personel-link'
 
 export interface GorevHatirlaticiItem {
   sicil_no: string
@@ -30,11 +31,8 @@ export default function GorevHatirlaticiWidget({ items }: Props) {
           )}
         </h2>
         {items.length > 0 && (
-          <Link
-            href="/personel/gorev-bilgileri"
-            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            Tümünü gör →
+          <Link href="/personel" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+            Çalışanlar →
           </Link>
         )}
       </div>
@@ -58,7 +56,7 @@ export default function GorevHatirlaticiWidget({ items }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Link
-                      href="/personel/gorev-bilgileri"
+                      href={personelDetayHref({ sicil_no: item.sicil_no })}
                       className="font-medium text-slate-800 text-sm hover:text-blue-700 hover:underline truncate"
                     >
                       {item.ad_soyad}

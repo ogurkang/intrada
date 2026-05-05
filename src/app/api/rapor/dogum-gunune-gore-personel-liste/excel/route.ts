@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
@@ -64,32 +64,14 @@ export async function GET(req: Request) {
     const kutlamaMesaji =
       'Dogum gununuzu kutlar yeni yasinizin saglik, mutluluk ve huzur getirmesini dilerim. Adapazari Belediye Baskani Mutlu ISIKSU'
 
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['Dogum Gunune Gore Personel Listesi'],
-      [`Yil: ${yil} | Ay: ${AYLAR[ay - 1]}`],
-      [],
-      ['Sira No', 'Sicil No', 'Adi Soyadi', 'Cep Telefonu', 'Dogum Gunu', 'Mesaj'],
-      ...satirlar.map((r, i) => [
-        i + 1,
-        r.sicil_no,
-        r.ad_soyad,
-        r.telefon ?? '-',
-        formatDogumGunu(r.dogum_tarihi),
-        kutlamaMesaji,
-      ]),
-    ])
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }]
-    ws['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 34 }, { wch: 18 }, { wch: 14 }, { wch: 105 }]
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Dogum Gunu')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Dogum_Gunune_Gore_Personel_Listesi.xlsx"`,
-      },
+    return raporExcelStandartResponse({
+      baslik: 'Doğum Gününe Göre Personel Listesi',
+      donemEtiket: `Yıl: ${yil} · Ay: ${AYLAR[ay - 1]}`,
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Cep Telefonu', 'Doğum Günü', 'Mesaj'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.telefon ?? '-', formatDogumGunu(r.dogum_tarihi), kutlamaMesaji]),
+      sheetName: 'Dogum Gunu',
+      downloadFileName: 'Dogum_Gunune_Gore_Personel_Listesi.xlsx',
     })
   } catch (err) {
     console.error('DOGUM_GUNU_LISTE_EXCEL_HATA', err)

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { periyotSonGunu, type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 export async function GET(req: Request) {
   try {
@@ -42,18 +42,16 @@ export async function GET(req: Request) {
       ad_soyad: string
       kan_grubu: string
     }[]
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['Kan Grubuna Göre Personel Listesi'],
-      [`Yıl: ${yil}`],
-      [],
-      ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kan Grubu'],
-      ...satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.kan_grubu]),
-    ])
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }]
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Kan Grubu')
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, { headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="Kan_Grubuna_Gore_Personel_Listesi.xlsx"` } })
+    const periodLabel = periyot === 'yillik' ? 'YILLIK' : String(periyot)
+    return raporExcelStandartResponse({
+      baslik: 'Kan Grubuna Göre Personel Listesi',
+      donemEtiket: `Yıl: ${yil} · Sekme: ${periodLabel}`,
+      anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
+      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kan Grubu'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.kan_grubu]),
+      sheetName: 'Kan Grubu',
+      downloadFileName: 'Kan_Grubuna_Gore_Personel_Listesi.xlsx',
+    })
   } catch (err) {
     console.error('KAN_GRUBU_RAPOR_EXCEL_HATA', err)
     return NextResponse.json({ error: 'Excel olusturulamadi.' }, { status: 500 })

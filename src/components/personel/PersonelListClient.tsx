@@ -159,10 +159,8 @@ export default function PersonelListClient({ data }: Props) {
       </div>
 
       <p className="mt-6 text-sm text-slate-500">
-        <Link href="/personel/gorev-bilgileri" className="text-slate-700 font-medium hover:underline">
-          Görev bilgileri listesi
-        </Link>{' '}
-        için ayrı sayfayı kullanın.
+        Görev bilgileri personel kartında <strong className="text-slate-700">Kişisel Bilgiler</strong> sekmesinde; düzenleme için karttaki{' '}
+        <strong className="text-slate-700">Değiştir</strong> ile açılan formu kullanın.
       </p>
     </div>
   )

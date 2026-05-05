@@ -19,7 +19,7 @@ function childPathActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + '/')
 }
 
-/** Alt rota eşleşiyorsa üst (Çalışanlar) vurgusu kapalı; örn. /personel/gorev-bilgileri */
+/** Alt rota eşleşiyorsa üst (Çalışanlar) vurgusu kapalı (children varsa). */
 function itemPathActive(pathname: string, item: MenuItem): boolean {
   if (item.children?.length) {
     if (item.children.some(c => childPathActive(pathname, c.href))) return false
@@ -35,13 +35,7 @@ function itemOrSubtreeActive(pathname: string, item: MenuItem): boolean {
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? {
-          href: '/personel',
-          label: 'Çalışanlar',
-          children: [
-            { href: '/personel/gorev-bilgileri', label: 'Görev Bilgileri' },
-          ],
-        }
+      ? { href: '/personel', label: 'Çalışanlar' }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
   return [
