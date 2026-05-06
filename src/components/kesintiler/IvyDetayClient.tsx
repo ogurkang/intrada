@@ -113,7 +113,8 @@ function IzinTablo({
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
             <th className="w-12 px-3 py-2.5" />
-            <ThSutun sutun="sira_no"  label="Sıra No"    />
+            <th className="text-center px-3 py-2.5 font-semibold text-slate-600 w-10">No</th>
+            <ThSutun sutun="sira_no"  label="Kayıt No"   />
             <ThSutun sutun="sicil_no" label="Sicil No"   />
             <ThSutun sutun="ad_soyad" label="Adı Soyadı" />
             <ThSutun sutun="tur"      label="Tür"        />
@@ -125,12 +126,12 @@ function IzinTablo({
         <tbody className="divide-y divide-slate-100">
           {siraliIzinler.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">
+              <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">
                 {yon === 'aday' ? 'Aday izin yok.' : 'Henüz izin aktarılmadı.'}
               </td>
             </tr>
           ) : (
-            siraliIzinler.map(iz => (
+            siraliIzinler.map((iz, idx) => (
               <tr key={iz.sira_no} className="hover:bg-slate-50 transition-colors">
                 <td className="px-3 py-2 text-center">
                   {yon === 'aday' && onSagaAl && (
@@ -158,6 +159,7 @@ function IzinTablo({
                     </button>
                   )}
                 </td>
+                <td className="px-3 py-2 text-center tabular-nums text-xs text-slate-400">{idx + 1}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sira_no}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sicil_no}</td>
                 <td className="px-4 py-2 font-medium text-slate-800">{iz.ad_soyad}</td>
