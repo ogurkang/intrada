@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import IzinHakYonetimClient from '@/components/izin/IzinHakYonetimClient'
-import { izinHakiKaydet, topluHakOlustur } from './actions'
-import { izinHaklariKullanilanTopluGuncelle, izinDevamAyrilisTopluGuncelle } from '../actions'
+import { izinHakiKaydet } from './actions'
 import { getAppAccess } from '@/lib/app-access'
 import type { Tables, Views } from '@/types/database'
 
@@ -55,9 +54,6 @@ export default async function IzinHaklarPage({ searchParams }: Props) {
       satirlar={satirlar}
       tumYillar={tumYillar}
       onKaydet={izinHakiKaydet}
-      onTopluOlustur={topluHakOlustur}
-      onKullanilanGuncelle={izinHaklariKullanilanTopluGuncelle}
-      onDevamAyrilisGuncelle={izinDevamAyrilisTopluGuncelle}
       odakSicilNo={sicil_no ?? null}
       returnTo={return_to ?? null}
       canEdit={canEdit}
