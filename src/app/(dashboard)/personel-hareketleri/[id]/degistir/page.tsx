@@ -31,7 +31,14 @@ export default async function PersonelHareketiDegistirPage({
       .eq('statu', 'Memur'),
     supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
     supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true).order('sira_no'),
-    supabase.from('calisan_ogrenim').select('ogrenim_turu').eq('sicil_no', sicil_no).eq('aktif', true).limit(1),
+    supabase
+      .from('calisan_ogrenim')
+      .select('ogrenim_turu, okul_adi, varsayilan, kayit_zamani')
+      .eq('sicil_no', sicil_no)
+      .eq('aktif', true)
+      .order('varsayilan', { ascending: false })
+      .order('kayit_zamani', { ascending: false })
+      .limit(1),
     supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil_no).order('kayit_zamani', { ascending: false }).limit(1),
     supabase
       .from('kadro_hareketleri')
@@ -106,7 +113,10 @@ export default async function PersonelHareketiDegistirPage({
   const onaylayan = adMap[baskanSicil] ?? baskanSicil
   const yardimcilar = yardimciSiciller.map(sicil => ({ sicil, ad: adMap[sicil] ?? sicil }))
 
-  const ogrenimDurumu = (ogrenimRaw ?? [])[0]?.ogrenim_turu ?? null
+  const ogrenim = (ogrenimRaw ?? [])[0] as { ogrenim_turu?: string | null; okul_adi?: string | null } | undefined
+  const ogrenimDurumu = ogrenim?.ogrenim_turu
+    ? `${ogrenim.ogrenim_turu}${ogrenim.okul_adi ? ` - ${ogrenim.okul_adi}` : ''}`
+    : null
 
   return (
     <PersonelHareketiDegistirClient

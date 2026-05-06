@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
@@ -39,6 +39,7 @@ export default function PersonelHareketiDegistirClient({
   onKaydet,
 }: Props) {
   const router = useRouter()
+  const formRef = useRef<HTMLFormElement | null>(null)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [kadroSecModalAcik, setKadroSecModalAcik] = useState(false)
@@ -177,6 +178,142 @@ export default function PersonelHareketiDegistirClient({
     })
   }
 
+  async function handleExcelIndir() {
+    if (!formRef.current) return
+    const fd = new FormData(formRef.current)
+    const dagitim = (fd.getAll('dagitim_mudurlukleri') as string[]).filter(Boolean).join('; ')
+    const hareketTipiSecim = String(fd.get('hareket_tipi') ?? '')
+    const hareketTipiText =
+      hareketTipiSecim === 'IlkAtanma'
+        ? 'İlk Atanma'
+        : hareketTipiSecim === 'YerDegistirme'
+          ? 'Yer Değiştirme'
+          : hareketTipiSecim === 'Yukselme'
+            ? 'Yükselme'
+            : ''
+
+    const teklifSicil = String(fd.get('teklif_eden') ?? '')
+    const teklifEdenAd = yardimcilar.find(y => y.sicil === teklifSicil)?.ad ?? ''
+    const fmtDate = (v: string) => {
+      const s = String(v ?? '').trim()
+      if (!s) return ''
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split('-')
+        return `${d}.${m}.${y}`
+      }
+      return s
+    }
+    const yeniKhaDK = `${String(fd.get('yeni_kha_derece') ?? '')}/${String(fd.get('yeni_kha_kademe') ?? '')}`.replace(/^\/|\/$/g, '')
+    const yeniEkeaDK = `${String(fd.get('yeni_ekea_derece') ?? '')}/${String(fd.get('yeni_ekea_kademe') ?? '')}`.replace(/^\/|\/$/g, '')
+
+    const XLSX = await import('xlsx-js-style')
+    const resp = await fetch('/templates/personel_hareketler_formu.xls')
+    if (!resp.ok) {
+      setHata('Excel şablonu bulunamadı: public/templates/personel_hareketler_formu.xls')
+      return
+    }
+    const buffer = await resp.arrayBuffer()
+    const wb = XLSX.read(buffer, { type: 'array', cellStyles: true })
+    const ws = wb.Sheets[wb.SheetNames[0]]
+    const refStyleFromNearestCell = (addr: string) => {
+      // Template files sometimes don't store "blank but styled" cells. If we need to create a
+      // new cell, copy style from nearest existing cell to keep borders/formatting intact.
+      try {
+        const base = XLSX.utils.decode_cell(addr)
+        const candidates: { r: number; c: number }[] = []
+        for (let d = 1; d <= 10; d++) {
+          candidates.push({ r: base.r - d, c: base.c })
+          candidates.push({ r: base.r + d, c: base.c })
+          candidates.push({ r: base.r, c: base.c - d })
+          candidates.push({ r: base.r, c: base.c + d })
+        }
+        for (const p of candidates) {
+          if (p.r < 0 || p.c < 0) continue
+          const a = XLSX.utils.encode_cell(p)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const cell = ws[a] as any
+          if (cell && cell.s) return cell.s
+        }
+      } catch {
+        // ignore
+      }
+      return undefined
+    }
+
+    const setCell = (addr: string, value: string) => {
+      if (!value) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cur = ws[addr] as any
+      if (cur) {
+        cur.v = value
+        cur.t = 's'
+        ws[addr] = cur
+        return
+      }
+      const s = refStyleFromNearestCell(addr)
+      ws[addr] = s ? ({ t: 's', v: value, s } as never) : ({ t: 's', v: value } as never)
+    }
+    const mark = (addr: string, on: boolean) => setCell(addr, on ? '*' : '')
+
+    mark('B5', hareketTipiSecim === 'IlkAtanma')
+    mark('F5', hareketTipiSecim === 'YerDegistirme')
+    mark('J5', hareketTipiSecim === 'Yukselme')
+
+    // 1. görsel: başlık üst / bilgi alt
+    setCell('A8', personel.ad_soyad ?? '')
+    setCell('F8', personel.sicil_no)
+    setCell('J8', dogumYeriTarihi)
+    setCell('A10', fmtDate(String(fd.get('yururluk_tarihi') ?? '')))
+    setCell('F10', String(fd.get('adaylik_suresi') ?? ''))
+    setCell('J10', fmtDate(String(fd.get('asli_memuriyete_atanma_tarihi') ?? '')))
+    setCell('A12', ogrenimDurumu ?? '')
+    setCell('J12', personel.askerlik_durumu ?? '')
+
+    // 2. görsel: 9-10-11
+    setCell('A14', eski.sinif || '')
+    setCell('H14', yeniSinifState || '')
+    setCell('A15', eski.gorev_yeri || '')
+    setCell('H15', yeniGorevYeriState || '')
+    setCell('A16', eski.unvan || '')
+    setCell('H16', yeniUnvanState || '')
+
+    // 12. kısım: satır 17 başlık, satır 18 değer
+    setCell('A18', eski.kadro_derecesi || '')
+    setCell('B18', [eski.kha_derece, eski.kha_kademe].filter(Boolean).join('/') || '')
+    setCell('C18', [eski.ekea_derece, eski.ekea_kademe].filter(Boolean).join('/') || '')
+    setCell('D18', `${fmtDate(eski.kha_tarihi ?? '')} / ${fmtDate(eski.ekea_tarihi ?? '')}`.replace(/^ \/ | \/ $/g, ''))
+    setCell('E18', `${eski.kidem_yili || ''} / ${fmtDate(eski.kidem_tarihi ?? '')} / ${fmtDate(eski.iyi_hal_terfi_tarihi ?? '')}`)
+    setCell('H18', yeniKadroDerecesiState || '')
+    setCell('I18', yeniKhaDK)
+    setCell('J18', yeniEkeaDK)
+    setCell('K18', `${fmtDate(String(fd.get('yeni_kha_tarihi') ?? ''))} / ${fmtDate(String(fd.get('yeni_ekea_tarihi') ?? ''))}`.replace(/^ \/ | \/ $/g, ''))
+    setCell('L18', `${String(fd.get('yeni_kidem_yili') ?? '')} / ${fmtDate(String(fd.get('yeni_kidem_tarihi') ?? ''))} / ${fmtDate(String(fd.get('yeni_iyi_hal_terfi_tarihi') ?? ''))}`)
+
+    // 13. kısım: satır 19 başlık, satır 20 değer
+    setCell('A20', eski.ek_gosterge || '')
+    setCell('B20', eski.ek_odeme || '')
+    setCell('C20', eski.oht || '')
+    setCell('D20', eski.igz || '')
+    setCell('E20', eski.sds_orani || '')
+    setCell('H20', String(fd.get('yeni_ek_gosterge') ?? ''))
+    setCell('I20', String(fd.get('yeni_ek_odeme') ?? ''))
+    setCell('J20', String(fd.get('yeni_oht') ?? ''))
+    setCell('K20', String(fd.get('yeni_igz') ?? ''))
+    setCell('L20', String(fd.get('yeni_sds_orani') ?? ''))
+
+    // 3. görsel alanları
+    setCell('A22', String(fd.get('dayanak') ?? ''))
+    setCell('A25', String(fd.get('aciklama') ?? ''))
+    setCell('A30', teklifEdenAd)
+    setCell('A37', onaylayan || '')
+    setCell('G27', fmtDate(String(fd.get('ise_baslama_tarihi') ?? '')))
+    setCell('J27', fmtDate(String(fd.get('ayrilis_tarihi') ?? '')))
+    setCell('G31', `${fmtDate(String(fd.get('kayit_tarihi') ?? ''))} ${String(fd.get('kayit_no') ?? '').trim()}`.trim())
+    if (dagitim) setCell('G34', dagitim)
+
+    XLSX.writeFile(wb, `personel-hareketi-${personel.sicil_no}.xls`)
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
@@ -187,7 +324,7 @@ export default function PersonelHareketiDegistirClient({
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         {/* Hareket Tipi */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Hareket Tipi</h2>
@@ -540,6 +677,13 @@ export default function PersonelHareketiDegistirClient({
           <button type="submit" disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExcelIndir}
+            className="px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50"
+          >
+            Excel İndir
           </button>
         </div>
       </form>

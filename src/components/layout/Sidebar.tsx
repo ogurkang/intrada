@@ -47,9 +47,9 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       calisanlarItem,
       { href: '/personel/ayrilanlar', label: 'Ayrılanlar'          },
       { href: '/firma-calisanlar',    label: 'ADABEL Personeli'      },
-      { href: '/kadro',               label: 'Kadro Hareketleri'   },
       { href: '/personel-hareketleri', label: 'Personel Hareketleri'},
       { href: terfiMenuHref,          label: 'Terfi Hareketleri'   },
+      { href: '/kadro',               label: 'Kadro Hareketleri'   },
     ],
   },
   {
