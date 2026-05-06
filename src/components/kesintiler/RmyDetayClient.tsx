@@ -101,7 +101,7 @@ function IzinTablo({
     label: string
     sag?: boolean
   }) {
-    const aktif = sortable && sortSutun === sutun
+    const aktif = !!sortable && sortSutun === sutun
     return (
       <th
         className={`px-4 py-2.5 font-semibold text-slate-600 ${sag ? 'text-right' : 'text-left'} ${
