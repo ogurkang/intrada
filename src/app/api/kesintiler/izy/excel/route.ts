@@ -12,7 +12,7 @@ function tarih(t: string | null) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const donemIdParam = searchParams.get('donem_id')
-  const tip = searchParams.get('tip') ?? 'kategorik'
+  const tip = searchParams.get('tip') ?? 'detay'
   const donemId = parseInt(donemIdParam ?? '0', 10)
   if (!donemId || isNaN(donemId)) {
     return NextResponse.json({ error: 'donem_id gerekli' }, { status: 400 })
@@ -107,6 +107,87 @@ export async function GET(request: NextRequest) {
       }))
   }
 
+  /* ── Detay tipi: sadece bu döneme ait seçili izinler ────────────── */
+  if (tip === 'detay') {
+    const { data: buDonemSecimDetay } = await supabase
+      .from('izinli_zabitalar_yeni_secim')
+      .select('izin_sira_no, dahil')
+      .eq('donem_id', donemId)
+    const seciliSiraNoList = (buDonemSecimDetay ?? [])
+      .filter(s => s.dahil && s.izin_sira_no)
+      .map(s => s.izin_sira_no as string)
+
+    type DetayRow = { sira_no: string; sicil_no: string; ad_soyad: string; tur: string; ayrilis: string; baslama: string; gun: number }
+    let detayIzinler: DetayRow[] = []
+    if (seciliSiraNoList.length > 0) {
+      const { data: izinRaw } = await supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .in('sira_no', seciliSiraNoList)
+        .neq('durum', 'İptal Edildi')
+      const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+      const adMap: Record<string, string> = {}
+      if (siciller.length > 0) {
+        const { data: calisanlar } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
+        ;(calisanlar ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
+      }
+      detayIzinler = (izinRaw ?? [])
+        .filter(iz => iz.sira_no && iz.ayrilis && iz.baslama)
+        .map(iz => ({
+          sira_no:  iz.sira_no!,
+          sicil_no: iz.sicil_no ?? '',
+          ad_soyad: adMap[iz.sicil_no] ?? iz.sicil_no ?? '',
+          tur:      iz.tur ?? '',
+          ayrilis:  iz.ayrilis ?? '',
+          baslama:  iz.baslama ?? '',
+          gun:      iz.gun ?? 0,
+        }))
+        .sort((a, b) => {
+          const an = parseInt(a.sira_no, 10)
+          const bn = parseInt(b.sira_no, 10)
+          return isNaN(an) || isNaN(bn) ? a.sira_no.localeCompare(b.sira_no, 'tr') : an - bn
+        })
+    }
+
+    const detayHeaders = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Tür', 'Ayrılış', 'Başlama', 'Süre (Gün)']
+    const colCount = detayHeaders.length
+    const rows: (string | number | XLSX.CellObject)[][] = []
+    const mergeRows: number[] = []
+
+    rows.push(mergeSatir('İzinli Zabıtalar — Döneme Aktarılan İzinler', colCount, { bold: true }))
+    mergeRows.push(rows.length - 1)
+    rows.push(mergeSatir(donemMetin, colCount))
+    mergeRows.push(rows.length - 1)
+    rows.push(detayHeaders)
+    if (detayIzinler.length === 0) {
+      rows.push(['', '', 'Kayıt Yok', '', '', '', ''])
+    } else {
+      detayIzinler.forEach(iz =>
+        rows.push([iz.sira_no, iz.sicil_no, iz.ad_soyad, iz.tur, tarih(iz.ayrilis), tarih(iz.baslama), iz.gun])
+      )
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+    ws['!merges'] = mergeRows.map(r => ({ s: { r, c: 0 }, e: { r, c: colCount - 1 } }))
+    ws['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 28 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+    applyGridBorders(ws, rows.length, colCount)
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Döneme Aktarılan İzinler')
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
+
+    const safeName = (`Izinli_Zabitalar_Detay_${donem.donem_adi ?? 'Donem'}`).replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Izinli_Zabitalar_Detay'
+    const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
+    const encodedFilename = encodeURIComponent(`${safeName}.xlsx`)
+    return new NextResponse(buf, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${fallbackName}.xlsx"; filename*=UTF-8''${encodedFilename}`,
+      },
+    })
+  }
+
+  /* ── Özet tipi ──────────────────────────────────────────────────── */
   const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
   const tatiller = (tatilRaw ?? []).map(t => ({ tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
   const sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
@@ -122,46 +203,15 @@ export async function GET(request: NextRequest) {
   const mergeRows: number[] = []
   const bosSatir = Array(colCount).fill('')
 
-  if (tip === 'ozet') {
-    rows.push(mergeSatir('İzinli Zabıtalar — Genel Özet', colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(mergeSatir(donemMetin, colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(headers)
-    if (sonuc.personeller.length === 0) {
-      rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
-    } else {
-      sonuc.personeller.forEach(p => rows.push(satir(p)))
-    }
+  rows.push(mergeSatir('İzinli Zabıtalar — Genel Özet', colCount))
+  mergeRows.push(rows.length - 1)
+  rows.push(mergeSatir(donemMetin, colCount))
+  mergeRows.push(rows.length - 1)
+  rows.push(headers)
+  if (sonuc.personeller.length === 0) {
+    rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
   } else {
-    rows.push(mergeSatir('İzinli Zabıtalar', colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(mergeSatir(donemMetin, colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(mergeSatir('Takipteki İzinler', colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(headers)
-    if (sonuc.takipteki.length === 0) {
-      rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
-    } else {
-      sonuc.takipteki.forEach(p => rows.push(satir(p)))
-    }
-    rows.push(mergeSatir('Dönemdeki İzinler', colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(headers)
-    if (sonuc.donemdeki.length === 0) {
-      rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
-    } else {
-      sonuc.donemdeki.forEach(p => rows.push(satir(p)))
-    }
-    rows.push(mergeSatir('Askıdaki İzinler', colCount))
-    mergeRows.push(rows.length - 1)
-    rows.push(headers)
-    if (sonuc.askidaki.length === 0) {
-      rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
-    } else {
-      sonuc.askidaki.forEach(p => rows.push(satir(p)))
-    }
+    sonuc.personeller.forEach(p => rows.push(satir(p)))
   }
 
   const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -172,7 +222,7 @@ export async function GET(request: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, 'Izinli Zabitalar')
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
 
-  const safeName = (`Izinli_Zabitalar_${donem.donem_adi ?? 'Donem'}`).replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Izinli_Zabitalar_Donem'
+  const safeName = (`Izinli_Zabitalar_Ozet_${donem.donem_adi ?? 'Donem'}`).replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Izinli_Zabitalar_Ozet'
   const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
   const encodedFilename = encodeURIComponent(`${safeName}.xlsx`)
 
