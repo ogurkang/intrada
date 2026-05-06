@@ -238,7 +238,7 @@ export default function RmyDetayClient({ donemId }: Props) {
     })
   }
 
-  async function excelIndir(tip: 'ozet' | 'kategorik') {
+  async function excelIndir(tip: 'ozet' | 'detay') {
     try {
       const res = await fetch(`/api/kesintiler/rmy/excel?donem_id=${donemId}&tip=${tip}`)
       if (!res.ok) {
@@ -250,7 +250,7 @@ export default function RmyDetayClient({ donemId }: Props) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Raporlu_Memurlar_${data?.donem.donem_adi ?? 'Donem'}${tip === 'ozet' ? '_Ozet' : '_Kategorik'}.xlsx`.replace(/[:\*\?\/\\]/g, ' ')
+      a.download = `Raporlu_Memurlar_${data?.donem.donem_adi ?? 'Donem'}${tip === 'ozet' ? '_Ozet' : '_Detay'}.xlsx`.replace(/[:\*\?\/\\]/g, ' ')
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -433,8 +433,8 @@ export default function RmyDetayClient({ donemId }: Props) {
                   <button type="button" onClick={() => { excelIndir('ozet'); setExcelMenuAcik(false) }} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                     Özet
                   </button>
-                  <button type="button" onClick={() => { excelIndir('kategorik'); setExcelMenuAcik(false) }} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                    Kategorik
+                  <button type="button" onClick={() => { excelIndir('detay'); setExcelMenuAcik(false) }} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    Detay
                   </button>
                 </div>
               </>
