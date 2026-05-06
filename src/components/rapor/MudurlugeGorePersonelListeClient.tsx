@@ -153,19 +153,22 @@ export default function MudurlugeGorePersonelListeClient({
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[640px]">
+              <table className="w-full text-sm border-collapse min-w-[1100px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-20">Sıra No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 w-32">Sicil No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[220px]">Adı Soyadı</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-700 w-32">Statü</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[220px]">Kadro Unvanı</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-700 w-40">Öğretim Türü</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[260px]">Müdürlük</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {gorunenSatirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
@@ -175,6 +178,9 @@ export default function MudurlugeGorePersonelListeClient({
                         <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                         <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{row.statu}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{row.kadro_unvani}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{row.ogretim_turu}</td>
                         <td className="px-4 py-2.5 text-slate-700">{row.mudurluk}</td>
                       </tr>
                     ))

@@ -11,6 +11,9 @@ import {
 export interface MudurlugeGorePersonelSatir {
   sicil_no: string
   ad_soyad: string
+  statu: string
+  kadro_unvani: string
+  ogretim_turu: string
   mudurluk: string
 }
 
@@ -19,6 +22,7 @@ export interface MudurlugeGorePersonelSnapshotInput {
   tanimStatuler: TanimStatuRow[]
   kadro: KadroRaporRow[]
   calisanBySicil: Map<string, CalisanRaporRow>
+  varsayilanOgrenimBySicil: Map<string, string>
 }
 
 function sameText(a: string, b: string) {
@@ -28,7 +32,7 @@ function sameText(a: string, b: string) {
 export function mudurlugeGorePersonelListeSnapshot(
   input: MudurlugeGorePersonelSnapshotInput,
 ): MudurlugeGorePersonelSatir[] {
-  const { D, tanimStatuler, kadro, calisanBySicil } = input
+  const { D, tanimStatuler, kadro, calisanBySicil, varsayilanOgrenimBySicil } = input
   const etiketler = new Set((tanimStatuler ?? []).map(t => t.statu_adi))
   const byAsil = new Map<string, KadroRaporRow[]>()
 
@@ -55,9 +59,18 @@ export function mudurlugeGorePersonelListeSnapshot(
 
     const calisan = calisanBySicil.get(sicil)
     if (!calisan) continue
+    const gorevUnvani = String((secilen as KadroRaporRow & { gorev_unvani?: string | null }).gorev_unvani ?? '').trim()
+    const kadroUnvani = String((secilen as KadroRaporRow & { kadro_unvani?: string | null }).kadro_unvani ?? '').trim()
+    const kadroUnvaniLower = kadroUnvani.toLocaleLowerCase('tr-TR')
+    const kadroUnvaniGoster = kadroUnvaniLower.includes('müdürü')
+      ? kadroUnvani
+      : (gorevUnvani || kadroUnvani || '—')
     out.push({
       sicil_no: sicil,
       ad_soyad: calisan.ad_soyad,
+      statu: statuEtiketi || '—',
+      kadro_unvani: kadroUnvaniGoster,
+      ogretim_turu: varsayilanOgrenimBySicil.get(sicil) ?? '—',
       mudurluk,
     })
   }

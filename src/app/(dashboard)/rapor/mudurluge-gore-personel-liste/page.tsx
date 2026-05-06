@@ -51,13 +51,14 @@ export default async function MudurlugeGorePersonelListePage({
     .filter(Boolean)
 
   const supabase = await createClient()
-  const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
+  const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
     supabase
       .from('kadro_hareketleri')
-      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu')
+      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, kadro_unvani, gorev_unvani')
       .not('asil', 'is', null),
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
+    supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, varsayilan'),
   ])
 
   const tanimStatuler: TanimStatuRow[] = (tanimStatuRaw ?? []).map(r => ({
@@ -73,6 +74,14 @@ export default async function MudurlugeGorePersonelListePage({
       cinsiyet: c.cinsiyet,
     })
   }
+  const varsayilanOgrenimBySicil = new Map<string, string>()
+  for (const o of ogrenimRaw ?? []) {
+    if (!o?.varsayilan) continue
+    const sicil = String(o.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const ogrenimTuru = String(o.ogrenim_turu ?? '').trim()
+    varsayilanOgrenimBySicil.set(sicil, ogrenimTuru || '—')
+  }
 
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   const tabs: MudurlugeGorePersonelTabVerisi[] = periyotlar.map(p => {
@@ -82,6 +91,7 @@ export default async function MudurlugeGorePersonelListePage({
       tanimStatuler,
       kadro,
       calisanBySicil,
+      varsayilanOgrenimBySicil,
     })
     const label = p === 'yillik' ? 'YILLIK' : AYLAR_TR[(p as number) - 1]
     return {
