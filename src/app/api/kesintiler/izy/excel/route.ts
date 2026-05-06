@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
     const detaySatirlar = sonuc.satirlar
       .filter(s => buDonemSeciliSet.has(s.sira_no))
       .sort((a, b) => {
-        const an = parseInt(a.sira_no, 10)
-        const bn = parseInt(b.sira_no, 10)
-        return isNaN(an) || isNaN(bn) ? a.sira_no.localeCompare(b.sira_no, 'tr') : an - bn
+        const an = parseInt(a.sicil_no, 10)
+        const bn = parseInt(b.sicil_no, 10)
+        return isNaN(an) || isNaN(bn) ? a.sicil_no.localeCompare(b.sicil_no, 'tr') : an - bn
       })
 
     const detayHeaders = ['Sıra No', 'Kayıt No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'İzin Süresi', 'Kesilen', 'Sonraki Döneme']
