@@ -142,11 +142,11 @@ export function makeDonemActions(
     if (options?.zabitaFilter) {
       const { data: kadroRaw } = await supabase
         .from('kadro_hareketleri')
-        .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi')
+        .select('asil, vekil, gorev_mudurlugu, ayrilis_tarihi')
         .is('ayrilis_tarihi', null)
       ozelSiciller = new Set<string>()
       for (const k of kadroRaw ?? []) {
-        const mud = (k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '').trim()
+        const mud = (k.gorev_mudurlugu ?? '').trim()
         if (mud !== ZABITA_MUDURLUGU) continue
         const sicil = (k.asil ?? k.vekil ?? '').trim()
         if (sicil) ozelSiciller.add(sicil)
