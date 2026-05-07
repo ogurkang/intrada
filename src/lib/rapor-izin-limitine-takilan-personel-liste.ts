@@ -3,7 +3,6 @@ import {
   etiketAnahtari,
   kadroBaslangic,
   kadroSatirAktifMi,
-  sliceD,
   type CalisanRaporRow,
   type KadroRaporRow,
   type TanimStatuRow,
@@ -32,6 +31,11 @@ export interface IzinLimitineTakilanSnapshotInput {
 
 function sameText(a: string, b: string) {
   return a.toLocaleLowerCase('tr-TR') === b.toLocaleLowerCase('tr-TR')
+}
+
+function sliceD(s: string | null | undefined): string | null {
+  if (!s) return null
+  return String(s).slice(0, 10)
 }
 
 export function izinLimitineTakilanPersonelListeSnapshot(
