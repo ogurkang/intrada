@@ -78,6 +78,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/belediye-geneli-personel-liste', label: 'Belediye Geneli Personel Listesi' },
       { href: '/rapor/yonetici-iletisim-bilgileri-liste', label: 'Yönetici İletişim Bilgileri Listesi' },
       { href: '/rapor/yonetici-ogrenim-durum-liste', label: 'Yönetici Öğrenim Durum Listesi' },
+      { href: '/rapor/ogrenim-durumuna-gore-personel-liste', label: 'Öğrenim Durumuna Göre Personel Listesi' },
       { href: '/rapor/adrese-gore-personel-liste', label: 'Adrese Göre Personel Listesi' },
     ],
   },

@@ -150,6 +150,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'YILLIK ve Ocak–Aralık sekmeleriyle aktif personelin sicil, ad soyad, statü ve adres bilgisi listesi.',
     renk: 'border-emerald-200 bg-emerald-50 text-emerald-900',
   },
+  {
+    kod: 'ODP',
+    href: '/rapor/ogrenim-durumuna-gore-personel-liste',
+    baslik: 'Öğrenim Durumuna Göre Personel Listesi',
+    aciklama: 'Lisans + lisansüstü/doktora kaydı olan personelde kimlik sütunları birleştirilmiş öğrenim satırlarıyla listelenir.',
+    renk: 'border-blue-200 bg-blue-50 text-blue-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {

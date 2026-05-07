@@ -73,11 +73,9 @@ export async function GET(request: NextRequest) {
     .from('izinli_vekiller_yeni_secim')
     .select('izin_sira_no, dahil')
     .eq('donem_id', donemId)
-  const buDonemSeciliSet = new Set<string>()
   for (const s of buDonemSecim ?? []) {
     if (s.dahil && s.izin_sira_no) {
       ilkDonemIdBySiraNo[s.izin_sira_no] = donemId
-      buDonemSeciliSet.add(s.izin_sira_no)
     }
   }
 
@@ -126,7 +124,6 @@ export async function GET(request: NextRequest) {
   /* ── Detay tipi: bu dönemin izinleri — izin başına satır ────────── */
   if (tip === 'detay') {
     const detaySatirlar = sonuc.satirlar
-      .filter(s => buDonemSeciliSet.has(s.sira_no))
       .sort((a, b) => {
         const an = parseInt(a.sicil_no, 10)
         const bn = parseInt(b.sicil_no, 10)
@@ -138,7 +135,7 @@ export async function GET(request: NextRequest) {
     const rows: (string | number | XLSX.CellObject)[][] = []
     const mergeRows: number[] = []
 
-    rows.push(mergeSatir('İzinli Vekiller — Döneme Aktarılan İzinler', colCount, { bold: true }))
+    rows.push(mergeSatir('İzinli Vekiller — Dönem İçindeki İzinler', colCount, { bold: true }))
     mergeRows.push(rows.length - 1)
     rows.push(mergeSatir(donemMetin, colCount))
     mergeRows.push(rows.length - 1)
@@ -158,7 +155,7 @@ export async function GET(request: NextRequest) {
     applyGridBorders(ws, rows.length, colCount)
 
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Döneme Aktarılan İzinler')
+    XLSX.utils.book_append_sheet(wb, ws, 'Dönem İçindeki İzinler')
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
 
     const safeName = (`Izinli_Vekiller_Detay_${donem.donem_adi ?? 'Donem'}`).replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Izinli_Vekiller_Detay'
