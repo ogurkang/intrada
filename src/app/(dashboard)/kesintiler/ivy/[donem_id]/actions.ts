@@ -32,12 +32,20 @@ export async function ivyDetayYukle(donem_id: number): Promise<IvyDetayData | { 
   // Kadro Hareketlerinde vekil olarak yer alan personel (ayrılış boş)
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
-    .select('vekil, ayrilis_tarihi')
+    .select('asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
     .is('ayrilis_tarihi', null)
   const vekilSiciller = new Set<string>()
+  const asilMuduruSiciller = new Set<string>()
   for (const k of kadroRaw ?? []) {
     const sicil = (k.vekil ?? '').trim()
     if (sicil) vekilSiciller.add(sicil)
+    const asil = (k.asil ?? '').trim()
+    if (!asil) continue
+    const unvan = `${String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')} ${String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')}`
+    if (unvan.includes('müdürü')) asilMuduruSiciller.add(asil)
+  }
+  for (const sicil of asilMuduruSiciller) {
+    vekilSiciller.delete(sicil)
   }
   if (vekilSiciller.size === 0) {
     return {

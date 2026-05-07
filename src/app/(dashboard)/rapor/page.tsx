@@ -157,6 +157,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Lisans + lisansüstü/doktora kaydı olan personelde kimlik sütunları birleştirilmiş öğrenim satırlarıyla listelenir.',
     renk: 'border-blue-200 bg-blue-50 text-blue-900',
   },
+  {
+    kod: 'ILT',
+    href: '/rapor/izin-limitine-takilan-personel-liste',
+    baslik: 'İzin Limitine Takılan Personel Listesi',
+    aciklama: 'Kullanılan izin toplamı yükseldikçe satır rengi kırmızı tona yaklaşan, filtrelenebilir yıllık/aylık personel listesi.',
+    renk: 'border-red-200 bg-red-50 text-red-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {
