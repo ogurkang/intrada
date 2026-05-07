@@ -34,11 +34,11 @@ export async function izyDetayYukle(donem_id: number): Promise<IzyDetayData | { 
   // Zabıta Müdürlüğü siciller
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
-    .select('asil, vekil, gorev_mudurlugu, ayrilis_tarihi')
+    .select('asil, vekil, kadro_mudurlugu, ayrilis_tarihi')
     .is('ayrilis_tarihi', null)
   const zabitaSiciller = new Set<string>()
   for (const k of kadroRaw ?? []) {
-    const mud = (k.gorev_mudurlugu ?? '').trim()
+    const mud = (k.kadro_mudurlugu ?? '').trim()
     if (mud !== ZABITA_MUDURLUGU) continue
     const sicil = (k.asil ?? k.vekil ?? '').trim()
     if (sicil) zabitaSiciller.add(sicil)
