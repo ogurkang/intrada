@@ -117,6 +117,7 @@ export async function GET(req: Request) {
       { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
       { s: { r: 2, c: 0 }, e: { r: 2, c: COLS - 1 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: COLS - 1 } },
       { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } },
     ]
 
@@ -142,7 +143,7 @@ export async function GET(req: Request) {
         if (!ws[addr]) continue
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cell = ws[addr] as any
-        const isTitle = r <= 2
+        const isTitle = r <= 3
         const isHead = r === headerRow
         const isTotal = r === totalRow
         const inData = r >= headerRow && r <= totalRow

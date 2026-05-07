@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
   const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
   const tatiller = (tatilRaw ?? []).map(t => ({ tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
   const sonuc = kesintimHesapla({ modul: 'rmy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+  const izinBySiraNo = new Map(izinler.map(i => [i.sira_no, i]))
 
   /* ── Detay tipi: bu dönemin izinleri — izin başına satır ────────── */
   if (tip === 'detay') {
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
         return isNaN(an) || isNaN(bn) ? a.sicil_no.localeCompare(b.sicil_no, 'tr') : an - bn
       })
 
-    const detayHeaders = ['Sıra No', 'Kayıt No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Rapor', 'Refakatçi Raporu', 'Kesilen', 'Sonraki Döneme']
+    const detayHeaders = ['Sıra No', 'Kayıt No', 'Sicil No', 'Adı Soyadı', 'Tür', 'Ayrılış', 'Başlama', 'Süre']
     const colCount = detayHeaders.length
     const rows: (string | number | XLSX.CellObject)[][] = []
     const mergeRows: number[] = []
@@ -138,14 +139,15 @@ export async function GET(request: NextRequest) {
     if (detaySatirlar.length === 0) {
       rows.push(Array(colCount).fill('').map((_, i) => (i === 2 ? 'Kayıt Yok' : '')))
     } else {
-      detaySatirlar.forEach((s, i) =>
-        rows.push([i + 1, s.sira_no, s.sicil_no, s.ad_soyad, s.unvan, s.OD, s.R, s.RR, s.K, s.SD])
-      )
+      detaySatirlar.forEach((s, i) => {
+        const izin = izinBySiraNo.get(s.sira_no)
+        rows.push([i + 1, s.sira_no, s.sicil_no, s.ad_soyad, s.tur, tarih(izin?.ayrilis ?? null), tarih(izin?.baslama ?? null), izin?.gun ?? 0])
+      })
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     ws['!merges'] = mergeRows.map(r => ({ s: { r, c: 0 }, e: { r, c: colCount - 1 } }))
-    ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 20 }, { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 14 }]
+    ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 10 }]
     applyGridBorders(ws, rows.length, colCount)
 
     const wb = XLSX.utils.book_new()
