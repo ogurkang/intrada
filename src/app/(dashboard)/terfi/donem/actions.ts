@@ -80,6 +80,7 @@ export type TerfiEttirKayitSatir = {
   ekea_tarihi: string | null
   kidem_tarihi: string | null
   kidem_yili: string | null
+  iyi_hal_terfi_tarihi: string | null
   ek_gosterge: string | null
   ek_odeme: string | null
   oht: string | null
@@ -96,6 +97,7 @@ type TerfiAlanSnapshot = {
   ekea_tarihi: string | null
   kidem_tarihi: string | null
   kidem_yili: string | null
+  iyi_hal_terfi_tarihi: string | null
   ek_gosterge: string | null
   ek_odeme: string | null
   oht: string | null
@@ -113,6 +115,7 @@ function terfiPayload(s: TerfiEttirKayitSatir): TerfiAlanSnapshot {
     ekea_tarihi: s.ekea_tarihi,
     kidem_tarihi: s.kidem_tarihi,
     kidem_yili: s.kidem_yili,
+    iyi_hal_terfi_tarihi: s.iyi_hal_terfi_tarihi,
     ek_gosterge: s.ek_gosterge,
     ek_odeme: s.ek_odeme,
     oht: s.oht,
@@ -131,6 +134,7 @@ function terfiSnapshotFromRow(row: Tables<'terfi_hareketleri'>): TerfiAlanSnapsh
     ekea_tarihi: row.ekea_tarihi,
     kidem_tarihi: row.kidem_tarihi,
     kidem_yili: row.kidem_yili,
+    iyi_hal_terfi_tarihi: row.iyi_hal_terfi_tarihi,
     ek_gosterge: row.ek_gosterge,
     ek_odeme: row.ek_odeme,
     oht: row.oht,

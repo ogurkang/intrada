@@ -7,6 +7,7 @@ export type TerfiEttirDurumEtiket =
   | 'Tavan Kademe'
   | 'Eğitim Sınırında'
   | 'Kıdem Yılı İlerledi'
+  | 'İyi Hal İlerlemesi'
   | '—'
 
 /** Lise → min 3; Ön Lisans / Lisans → min 1 */
@@ -146,6 +147,7 @@ export type TerfiKaynak = {
   ekea_tarihi: string | null
   kidem_yili: string | null
   kidem_tarihi: string | null
+  iyi_hal_terfi_tarihi: string | null
   ek_gosterge: string | null
   ek_odeme: string | null
   oht: string | null
@@ -164,6 +166,8 @@ export type TerfiEttirOnizlemeSatir = {
   ekea_tarihi: string | null
   kidem_tarihi_eski: string
   kidem_tarihi_yeni: string
+  iyi_hal_tarihi_eski: string
+  iyi_hal_tarihi_yeni: string
   kidem_yili_eski: string
   kidem_yili_yeni: string
   dk_kha_eski: string
@@ -191,6 +195,7 @@ export type TerfiEttirOnizlemeSatir = {
     ekea_tarihi: string | null
     kidem_tarihi: string | null
     kidem_yili: string | null
+    iyi_hal_terfi_tarihi: string | null
     ek_gosterge: string | null
     ek_odeme: string | null
     oht: string | null
@@ -234,11 +239,14 @@ export function buildTerfiEttirOnizleme(
     const khaIn = tarihDahilAralikta(r.kha_tarihi, terfiBas, terfiBit)
     const ekeaIn = tarihDahilAralikta(r.ekea_tarihi, terfiBas, terfiBit)
     const kidemIn = tarihDahilAralikta(r.kidem_tarihi, terfiBas, terfiBit)
+    const iyiHalIn = tarihDahilAralikta(r.iyi_hal_terfi_tarihi, terfiBas, terfiBit)
     const khaInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.kha_tarihi, sonrakiYilBas, sonrakiYilBit)
     const ekeaInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.ekea_tarihi, sonrakiYilBas, sonrakiYilBit)
     const kidemInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.kidem_tarihi, sonrakiYilBas, sonrakiYilBit)
+    const iyiHalInSonrakiYil =
+      !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.iyi_hal_terfi_tarihi, sonrakiYilBas, sonrakiYilBit)
     const donemKapsaminda =
-      khaIn || ekeaIn || kidemIn || khaInSonrakiYil || ekeaInSonrakiYil || kidemInSonrakiYil
+      khaIn || ekeaIn || kidemIn || iyiHalIn || khaInSonrakiYil || ekeaInSonrakiYil || kidemInSonrakiYil || iyiHalInSonrakiYil
     if (!donemKapsaminda) continue
 
     const kd = parseNum(r.kha_derece)
@@ -270,6 +278,7 @@ export function buildTerfiEttirOnizleme(
     const newKhaTarih = khaIn ? birYilIleri(r.kha_tarihi) : (r.kha_tarihi ?? null)
     const newEkeaTarih = ekeaIn ? birYilIleri(r.ekea_tarihi) : (r.ekea_tarihi ?? null)
     const newKidemTarih = kidemIn ? birYilIleri(r.kidem_tarihi) : (r.kidem_tarihi ?? null)
+    const newIyiHalTarih = iyiHalIn ? birYilIleri(r.iyi_hal_terfi_tarihi) : (r.iyi_hal_terfi_tarihi ?? null)
     const kidemYiliIlerledi = Boolean(kidemIn && kidem != null && kidem < 25)
     const newKidemYili =
       kidem == null ? (r.kidem_yili ?? null) : String(Math.min(25, kidemIn ? kidem + 1 : kidem))
@@ -309,6 +318,21 @@ export function buildTerfiEttirOnizleme(
     if (kidemYiliIlerledi) {
       durum = birlesDurum(durum, 'Kıdem Yılı İlerledi')
     }
+    if (iyiHalIn) {
+      const sonK = hesaplaDkIlerleme(newKd, newKk, minD)
+      newKd = sonK.yeniDerece
+      newKk = sonK.yeniKademe
+      if (sonK.dereceDegisti) {
+        puanSon = { ...puanSon, ...lookup(newKd) }
+      }
+      const sonE = hesaplaDkIlerleme(newEd, newEk, minD)
+      newEd = sonE.yeniDerece
+      newEk = sonE.yeniKademe
+      if (sonE.dereceDegisti) {
+        puanSon = { ...puanSon, ...lookup(newEd) }
+      }
+      if (durum === '—') durum = 'İyi Hal İlerlemesi'
+    }
 
     out.push({
       sicil_no: r.sicil_no,
@@ -320,6 +344,8 @@ export function buildTerfiEttirOnizleme(
       ekea_tarihi: r.ekea_tarihi,
       kidem_tarihi_eski: r.kidem_tarihi ?? '—',
       kidem_tarihi_yeni: newKidemTarih ?? '—',
+      iyi_hal_tarihi_eski: r.iyi_hal_terfi_tarihi ?? '—',
+      iyi_hal_tarihi_yeni: newIyiHalTarih ?? '—',
       kidem_yili_eski: r.kidem_yili ?? '—',
       kidem_yili_yeni: newKidemYili ?? '—',
       dk_kha_eski: dkString(kd, kk),
@@ -347,6 +373,7 @@ export function buildTerfiEttirOnizleme(
         ekea_tarihi: newEkeaTarih,
         kidem_tarihi: newKidemTarih,
         kidem_yili: newKidemYili,
+        iyi_hal_terfi_tarihi: newIyiHalTarih,
         ek_gosterge: puanSon.ek_gosterge,
         ek_odeme: puanSon.ek_odeme,
         oht: puanSon.oht,

@@ -340,8 +340,8 @@ export default function IvyDetayClient({ donemId }: Props) {
           gun: iz.gun ?? 0,
         }))
     }
-    const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
-    const tatiller = (tatilRaw ?? []).map(t => ({ tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
+    const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
+    const tatiller = (tatilRaw ?? []).map(t => ({ tatil_adi: t.tatil_adi, tatil_turu: t.tatil_turu, tatil_yapisi: t.tatil_yapisi, tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
     const sonuc = kesintimHesapla({ modul: 'ivy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
     setOzetData({ donem: { ...data.donem, donem_adi: data.donem.donem_adi, durum: 'Açık' as const, yil: new Date().getFullYear() }, sonuc })
     setOzetAcik(true)

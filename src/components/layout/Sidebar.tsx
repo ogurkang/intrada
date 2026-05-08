@@ -90,6 +90,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       { href: '/izin',        label: 'İzin Hareketleri' },
       { href: '/izin/haklar', label: 'İzin Hakları'      },
+      { href: '/izin/gecmis-izinler', label: 'Geçmiş İzinler' },
     ],
   },
   {

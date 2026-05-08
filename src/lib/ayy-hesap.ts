@@ -123,12 +123,19 @@ function izinSonGun(baslama: string | null): Date | null {
 
 interface TatilRange { basMs: number; bitMs: number; isMehil: boolean }
 
-function buildTatilRanges(tatiller: { tatil_adi: string; tatil_turu: string | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[]): TatilRange[] {
+function buildTatilRanges(
+  tatiller: { tatil_adi: string; tatil_turu: string | null; tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[],
+  hedefYil: number
+): TatilRange[] {
   return tatiller
     .filter(t => t.durum)
     .map(t => {
-      const bas = parseDate(t.tatil_baslangici)
-      const bit = parseDate(t.tatil_bitisi)
+      const basSrc = parseDate(t.tatil_baslangici)
+      const bitSrc = parseDate(t.tatil_bitisi)
+      if (!basSrc || !bitSrc) return null
+      const yapisi = t.tatil_yapisi ?? (t.tatil_turu ?? '').toLowerCase().includes('dini') ? 'Yıllık Tatil' : 'Sabit Tatil'
+      const bas = yapisi === 'Sabit Tatil' ? new Date(hedefYil, basSrc.getMonth(), basSrc.getDate()) : basSrc
+      const bit = yapisi === 'Sabit Tatil' ? new Date(hedefYil, bitSrc.getMonth(), bitSrc.getDate()) : bitSrc
       if (!bas || !bit) return null
       const isMehil = t.tatil_adi.toLowerCase().includes('mehil') || (t.tatil_turu ?? '').toLowerCase().includes('mehil')
       return {
@@ -347,10 +354,11 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
 
   const bas = parseDate(donemBas)!
   const bit = parseDate(donemBit)!
+  const hedefYil = bas.getFullYear()
   const basMs = startOfDay(bas)
   const bitMs = startOfDay(bit)
 
-  const tatilRanges = buildTatilRanges(tatiller)
+  const tatilRanges = buildTatilRanges(tatiller, hedefYil)
 
   // Dönem aktif gün sayısı (mehil hariç tutularak yemek hesabı)
   const donemAktifGun = calismaGunSayisi(bas, bit, tatilRanges, true)

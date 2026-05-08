@@ -48,6 +48,33 @@ function donemIcerisinde(dateStr: string, baslangic: string, bitis: string): boo
   return dateStr >= baslangic && dateStr <= bitis
 }
 
+function yilAraligi(baslangic: string, bitis: string): number[] {
+  const b = new Date(baslangic)
+  const s = new Date(bitis)
+  if (isNaN(b.getTime()) || isNaN(s.getTime())) return []
+  const yillar: number[] = []
+  for (let y = b.getFullYear(); y <= s.getFullYear(); y++) yillar.push(y)
+  return yillar
+}
+
+function tatilleriDonemeUydur(
+  tatiller: Array<{ tatil_baslangici: string | null; tatil_bitisi: string | null; tatil_yapisi?: string | null }>,
+  baslangic: string,
+  bitis: string,
+) {
+  const yillar = yilAraligi(baslangic, bitis)
+  return tatiller.flatMap(t => {
+    const bas = String(t.tatil_baslangici ?? '').slice(0, 10)
+    const son = String(t.tatil_bitisi ?? '').slice(0, 10)
+    if (!bas || !son) return []
+    const yapi = String(t.tatil_yapisi ?? '').trim()
+    if (yapi !== 'Sabit Tatil') return [{ baslangic: bas, bitis: son }]
+    const mmddBas = bas.slice(5, 10)
+    const mmddSon = son.slice(5, 10)
+    return yillar.map(y => ({ baslangic: `${y}-${mmddBas}`, bitis: `${y}-${mmddSon}` }))
+  })
+}
+
 // HT=Gri, B=Turuncu; diğer tüm kodlar (X, S, R, …) açık yeşil
 const RENK_HT = 'E0E0E0'
 const RENK_B = 'FFE4CC'
@@ -162,16 +189,15 @@ export async function GET(request: NextRequest) {
 
     const { data: tatilRaw } = await supabase
       .from('tanim_izin_tatil')
-      .select('tatil_baslangici, tatil_bitisi')
+      .select('tatil_baslangici, tatil_bitisi, tatil_yapisi')
       .eq('durum', true)
-      .lte('tatil_baslangici', donem.bitis_tarihi)
-      .gte('tatil_bitisi', donem.baslangic_tarihi)
 
     const tatilSet = new Set<string>()
-    ;(tatilRaw ?? []).forEach(t => {
-      if (!t.tatil_baslangici || !t.tatil_bitisi) return
-      const d = new Date(t.tatil_baslangici)
-      const son = new Date(t.tatil_bitisi)
+    tatilleriDonemeUydur(tatilRaw ?? [], donem.baslangic_tarihi, donem.bitis_tarihi)
+      .filter(t => t.baslangic <= donem.bitis_tarihi && t.bitis >= donem.baslangic_tarihi)
+      .forEach(t => {
+      const d = new Date(t.baslangic)
+      const son = new Date(t.bitis)
       while (d <= son) {
         tatilSet.add(tarihYerelISO(d))
         d.setDate(d.getDate() + 1)

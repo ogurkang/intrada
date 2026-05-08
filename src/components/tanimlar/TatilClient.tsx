@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import type { Tables } from '@/types/database'
+import { tatilYapisiHesapla } from '@/lib/tatil-yapisi'
 
 type Tatil = Tables<'tanim_izin_tatil'>
 
@@ -18,6 +19,15 @@ function tarihFormatla(t: string) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
+function yilDegeri(t: string) {
+  const y = Number.parseInt(String(t ?? '').slice(0, 4), 10)
+  return Number.isFinite(y) ? y : null
+}
+
+function tatilYapisi(t: Tatil): 'Yıllık Tatil' | 'Sabit Tatil' {
+  return (t.tatil_yapisi as 'Yıllık Tatil' | 'Sabit Tatil' | null) ?? tatilYapisiHesapla(t.tatil_adi, t.tatil_turu)
+}
+
 interface Props {
   data: Tatil[]
   /** Tanımlar > Tatil Tür Tanımları kaynaklı seçenekler; tabloda kullanımda olup tanımda olmayan türler sona eklenir. */
@@ -29,6 +39,18 @@ interface Props {
 
 export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate, onToggle }: Props) {
   const saltOkunur = useTanimlarSaltOkunur()
+  const thisYear = new Date().getFullYear()
+  const yilSecenekleri = Array.from(
+    new Set(
+      [
+        ...data.map(d => yilDegeri(d.tatil_baslangici)).filter((y): y is number => y != null),
+        thisYear - 1,
+        thisYear,
+        thisYear + 1,
+      ].sort((a, b) => a - b),
+    ),
+  )
+  const [aktifYil, setAktifYil] = useState<number>(thisYear)
   const [modalAcik, setModalAcik]    = useState(false)
   const [secili, setSecili]          = useState<Tatil | null>(null)
   const [sunuciHata, setSunuciHata]  = useState<string | null>(null)
@@ -56,6 +78,8 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
     })
   }
 
+  const gorunenData = data.filter(t => yilDegeri(t.tatil_baslangici) === aktifYil)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -78,28 +102,48 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
 
       {sunuciHata && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{sunuciHata}</div>}
 
+      <div className="mb-4 border-b border-slate-200 overflow-x-auto">
+        <nav className="flex min-w-max">
+          {yilSecenekleri.map(y => (
+            <button
+              key={y}
+              type="button"
+              onClick={() => setAktifYil(y)}
+              className={`px-3 py-2 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                aktifYil === y ? 'border-teal-600 text-teal-800 bg-teal-50/50' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              {y}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-12">#</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Tatil Adı</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Tatil Yapısı</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Tür</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Başlangıç</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Bitiş</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Süre</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Tatil Yapısı</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
               <th className="text-right px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {data.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-12 text-slate-400">Henüz tatil kaydı yok.</td></tr>
+            {gorunenData.length === 0 && (
+              <tr><td colSpan={9} className="text-center py-12 text-slate-400">Seçili yıl için tatil kaydı yok.</td></tr>
             )}
-            {data.map((t, i) => (
+            {gorunenData.map((t, i) => (
               <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 text-slate-400 tabular-nums">{i + 1}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">{t.tatil_adi}</td>
+                <td className="px-4 py-3 text-slate-700 text-xs font-medium">{tatilYapisi(t)}</td>
                 <td className="px-4 py-3 text-slate-600 text-xs">{t.tatil_turu ?? '—'}</td>
                 <td className="px-4 py-3 text-center text-slate-600 text-xs tabular-nums">{tarihFormatla(t.tatil_baslangici)}</td>
                 <td className="px-4 py-3 text-center text-slate-600 text-xs tabular-nums">{tarihFormatla(t.tatil_bitisi)}</td>
@@ -124,7 +168,7 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
             ))}
           </tbody>
         </table>
-        {data.length > 0 && <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400">Toplam {data.length} kayıt</div>}
+        {gorunenData.length > 0 && <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400">{aktifYil} yılı için toplam {gorunenData.length} kayıt</div>}
       </div>
 
       <Modal open={modalAcik} onClose={kapat} title={secili ? 'Tatil Düzenle' : 'Yeni Tatil Ekle'} size="md">
@@ -148,12 +192,12 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç <span className="text-red-500">*</span></label>
-              <input name="tatil_baslangici" type="date" required defaultValue={secili?.tatil_baslangici ?? ''}
+              <input name="tatil_baslangici" type="date" required defaultValue={secili?.tatil_baslangici ?? `${aktifYil}-01-01`}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Bitiş <span className="text-red-500">*</span></label>
-              <input name="tatil_bitisi" type="date" required defaultValue={secili?.tatil_bitisi ?? ''}
+              <input name="tatil_bitisi" type="date" required defaultValue={secili?.tatil_bitisi ?? `${aktifYil}-01-01`}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
           </div>

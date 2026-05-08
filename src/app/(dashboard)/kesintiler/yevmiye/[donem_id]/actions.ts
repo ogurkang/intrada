@@ -22,6 +22,40 @@ function tarihParse(str: string): Date | null {
   return d
 }
 
+function yilAraligi(baslangic: string, bitis: string): number[] {
+  const b = new Date(baslangic)
+  const s = new Date(bitis)
+  if (isNaN(b.getTime()) || isNaN(s.getTime())) return []
+  const yillar: number[] = []
+  for (let y = b.getFullYear(); y <= s.getFullYear(); y++) yillar.push(y)
+  return yillar
+}
+
+function tatilleriDonemeUydur(
+  tatiller: Array<{ tatil_baslangici: string | null; tatil_bitisi: string | null; tatil_turu?: string | null; tatil_adi?: string | null; tatil_yapisi?: string | null }>,
+  baslangic: string,
+  bitis: string,
+) {
+  const yillar = yilAraligi(baslangic, bitis)
+  return tatiller.flatMap(t => {
+    const bas = String(t.tatil_baslangici ?? '').slice(0, 10)
+    const son = String(t.tatil_bitisi ?? '').slice(0, 10)
+    if (!bas || !son) return []
+    const yapi = String(t.tatil_yapisi ?? '').trim()
+    if (yapi !== 'Sabit Tatil') {
+      return [{ baslangic: bas, bitis: son, tatil_turu: t.tatil_turu, tatil_adi: t.tatil_adi }]
+    }
+    const mmddBas = bas.slice(5, 10)
+    const mmddSon = son.slice(5, 10)
+    return yillar.map(y => ({
+      baslangic: `${y}-${mmddBas}`,
+      bitis: `${y}-${mmddSon}`,
+      tatil_turu: t.tatil_turu,
+      tatil_adi: t.tatil_adi,
+    }))
+  })
+}
+
 /** Dönem içindeki tüm günleri üretir */
 function gunlerUret(baslangic: string, bitis: string): { tarih: string; gun: number; isHaftaTatil: boolean; isResmiTatil: boolean; tatilKod: string }[] {
   const result: { tarih: string; gun: number; isHaftaTatil: boolean; isResmiTatil: boolean; tatilKod: string }[] = []
@@ -142,16 +176,15 @@ export async function yevmiyePuantajYukle(
   // Tatil aralıkları (B=Bayram, RT=Resmi Tatil)
   const { data: tatilRaw } = await supabase
     .from('tanim_izin_tatil')
-    .select('tatil_baslangici, tatil_bitisi, tatil_turu, tatil_adi')
+    .select('tatil_baslangici, tatil_bitisi, tatil_turu, tatil_adi, tatil_yapisi')
     .eq('durum', true)
-    .lte('tatil_baslangici', bitis)
-    .gte('tatil_bitisi', baslangic)
 
   const tatilRanges: { baslangic: Date; bitis: Date; kod: string }[] = []
-  ;(tatilRaw ?? []).forEach(t => {
-    if (!t.tatil_baslangici || !t.tatil_bitisi) return
-    const b = tarihParse(t.tatil_baslangici)
-    const e = tarihParse(t.tatil_bitisi)
+  const tatiller = tatilleriDonemeUydur(tatilRaw ?? [], baslangic, bitis)
+    .filter(t => t.baslangic <= bitis && t.bitis >= baslangic)
+  tatiller.forEach(t => {
+    const b = tarihParse(t.baslangic)
+    const e = tarihParse(t.bitis)
     if (!b || !e) return
     const tur = String(t.tatil_turu ?? '').trim().toLocaleLowerCase('tr-TR')
     const kod = tur.includes('bayram') ? 'B' : 'RT'

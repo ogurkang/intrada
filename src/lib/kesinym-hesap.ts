@@ -92,14 +92,25 @@ export interface KesintimHesapSonucu {
 interface TatilRange { basMs: number; bitMs: number }
 
 export function buildTatilRangesKm(
-  tatiller: { tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[]
+  tatiller: { tatil_adi?: string | null; tatil_turu?: string | null; tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[],
+  yilList: number[]
 ): TatilRange[] {
+  const years = Array.from(new Set((yilList ?? []).filter(y => Number.isFinite(y)))).sort((a, b) => a - b)
   return tatiller
     .filter(t => t.durum)
-    .map(t => {
-      const b = new Date(t.tatil_baslangici)
-      const e = new Date(t.tatil_bitisi)
-      return { basMs: sod(b), bitMs: new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999).getTime() }
+    .flatMap(t => {
+      const bSrc = new Date(t.tatil_baslangici)
+      const eSrc = new Date(t.tatil_bitisi)
+      const yapisi = t.tatil_yapisi ?? ((t.tatil_turu ?? '').toLowerCase().includes('dini') ? 'Yıllık Tatil' : 'Sabit Tatil')
+      if (yapisi === 'Yıllık Tatil') {
+        return [{ basMs: sod(bSrc), bitMs: new Date(eSrc.getFullYear(), eSrc.getMonth(), eSrc.getDate(), 23, 59, 59, 999).getTime() }]
+      }
+      // Sabit tatil: ilgili dönem yıllarına kopyala
+      return years.map(y => {
+        const b = new Date(y, bSrc.getMonth(), bSrc.getDate())
+        const e = new Date(y, eSrc.getMonth(), eSrc.getDate())
+        return { basMs: sod(b), bitMs: new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999).getTime() }
+      })
     })
 }
 
@@ -238,7 +249,12 @@ function kisiOzetTopla(
 export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonucu {
   const { modul, curId, donemler, ilkDonemIdBySiraNo, izinler, tatiller } = params
   const fns = GUN_FNS[modul]
-  const tatilRanges = buildTatilRangesKm(tatiller)
+  const yilList = donemler.flatMap(d => {
+    const y1 = Number.parseInt(String(d.baslangic_tarihi ?? '').slice(0, 4), 10)
+    const y2 = Number.parseInt(String(d.bitis_tarihi ?? '').slice(0, 4), 10)
+    return [y1, y2].filter(n => Number.isFinite(n))
+  })
+  const tatilRanges = buildTatilRangesKm(tatiller, yilList)
 
   // Dönem id → index haritası
   const idxById = new Map(donemler.map(d => [d.id, d.idx]))

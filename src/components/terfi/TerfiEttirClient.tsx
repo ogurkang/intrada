@@ -48,6 +48,7 @@ function durumHucreClass(durum: string): string {
   if (durum === 'Derece İlerledi') return 'bg-green-100 text-green-800'
   if (durum === 'Sadece Kademe') return 'bg-slate-100 text-slate-700'
   if (durum === 'Kıdem Yılı İlerledi') return 'bg-blue-100 text-blue-700'
+  if (durum === 'İyi Hal İlerlemesi') return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
   if (durum === 'Eğitim Sınırında') return 'bg-red-100 text-red-800'
   return 'bg-slate-50 text-slate-600'
@@ -60,6 +61,8 @@ function durumExcelStyle(durum: string): Partial<ExcelJS.Style> {
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, font: { color: { argb: 'FF334155' } } }
   if (durum === 'Kıdem Yılı İlerledi')
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }, font: { color: { argb: 'FF1D4ED8' } } }
+  if (durum === 'İyi Hal İlerlemesi')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }, font: { color: { argb: 'FF4338CA' } } }
   if (durum.includes('Tavan'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }, font: { color: { argb: 'FF78350F' } } }
   if (durum === 'Eğitim Sınırında')
@@ -231,6 +234,8 @@ export default function TerfiEttirClient({
       const ekeaYeni = fmtTarihGGAA(r.payload.ekea_tarihi)
       const kidemEski = fmtTarihGGAA(r.kidem_tarihi_eski === '—' ? null : r.kidem_tarihi_eski)
       const kidemYeni = fmtTarihGGAA(r.kidem_tarihi_yeni === '—' ? null : r.kidem_tarihi_yeni)
+      const iyiHalEski = fmtTarihGGAA(r.iyi_hal_tarihi_eski === '—' ? null : r.iyi_hal_tarihi_eski)
+      const iyiHalYeni = fmtTarihGGAA(r.iyi_hal_tarihi_yeni === '—' ? null : r.iyi_hal_tarihi_yeni)
 
       const cells: { v: number | string | ExcelJS.CellRichTextValue; style?: Partial<ExcelJS.Style> }[] = [
         { v: idx + 1 },
@@ -244,7 +249,7 @@ export default function TerfiEttirClient({
         { v: richOk(r.dk_ekea_eski, r.dk_ekea_yeni) },
         { v: richOk(ekeaEski, ekeaYeni) },
         { v: richOk(String(r.kidem_yili_eski), String(r.kidem_yili_yeni)) },
-        { v: richOk(kidemEski, kidemYeni) },
+        { v: richOk(`${kidemEski} / ${iyiHalEski}`, `${kidemYeni} / ${iyiHalYeni}`) },
         { v: richOk(r.ek_gosterge_eski, r.ek_gosterge_yeni) },
         { v: richOk(r.ek_odeme_eski, r.ek_odeme_yeni) },
         { v: richOk(r.oht_eski, r.oht_yeni) },
@@ -466,6 +471,9 @@ export default function TerfiEttirClient({
                   </div>
                   <div className="mt-0.5">
                     <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.kidem_tarihi_yeni)}
+                  </div>
+                  <div className="mt-0.5">
+                    <span className="text-slate-400">İyi Hal:</span> {fmtTarih(r.iyi_hal_tarihi_eski)} → {fmtTarih(r.iyi_hal_tarihi_yeni)}
                   </div>
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums whitespace-nowrap">

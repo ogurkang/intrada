@@ -10,6 +10,7 @@ import {
   zabitaUnvaniMi,
   type IzinGunSonuc,
 } from '@/lib/izin-gun'
+import { tatilYapisiHesapla } from '@/lib/tatil-yapisi'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 type Durum = 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
@@ -409,17 +410,27 @@ export async function izinGunHesapla(
     : null
 
   const { ggAayyyyToIso } = await import('@/lib/tarih')
+  const hedefYil = new Date(ayrilisGuncel).getFullYear()
   const { data: tatiller } = await supabase
     .from('tanim_izin_tatil')
-    .select('tatil_adi, tatil_baslangici, tatil_bitisi')
+    .select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi')
     .eq('durum', true)
   const tatilRanges = (tatiller ?? []).map((t: { tatil_adi?: string; tatil_baslangici?: string; tatil_bitisi?: string }) => {
     const bStr = (t.tatil_baslangici ?? '').trim()
     const eStr = (t.tatil_bitisi ?? '').trim()
     const bIso = bStr.includes('.') ? ggAayyyyToIso(bStr) : bStr
     const eIso = eStr.includes('.') ? ggAayyyyToIso(eStr) : eStr
-    const b = new Date(bIso ?? bStr)
-    const e = new Date(eIso ?? eStr)
+    const yapisi =
+      (t as { tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null }).tatil_yapisi ??
+      tatilYapisiHesapla((t as { tatil_adi?: string | null }).tatil_adi, (t as { tatil_turu?: string | null }).tatil_turu)
+    const bSrc = new Date(bIso ?? bStr)
+    const eSrc = new Date(eIso ?? eStr)
+    const b = yapisi === 'Sabit Tatil'
+      ? new Date(hedefYil, bSrc.getMonth(), bSrc.getDate())
+      : bSrc
+    const e = yapisi === 'Sabit Tatil'
+      ? new Date(hedefYil, eSrc.getMonth(), eSrc.getDate())
+      : eSrc
     return {
       baslangic: b,
       bitis: e,

@@ -135,6 +135,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       ekea_tarihi: t.ekea_tarihi,
         kidem_yili: t.kidem_yili,
         kidem_tarihi: t.kidem_tarihi,
+      iyi_hal_terfi_tarihi: t.iyi_hal_terfi_tarihi,
       ek_gosterge: t.ek_gosterge,
       ek_odeme: t.ek_odeme,
       oht: t.oht,

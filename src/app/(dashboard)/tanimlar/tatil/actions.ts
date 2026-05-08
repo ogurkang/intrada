@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
+import { tatilYapisiHesapla } from '@/lib/tatil-yapisi'
 
 const SAYFA = '/tanimlar/tatil'
 
@@ -16,11 +17,13 @@ export async function tatilEkle(formData: FormData): Promise<{ hata?: string }> 
   if (!tatil_baslangici) return { hata: 'Başlangıç tarihi zorunludur.' }
   if (!tatil_bitisi)     return { hata: 'Bitiş tarihi zorunludur.' }
   if (tatil_bitisi < tatil_baslangici) return { hata: 'Bitiş tarihi başlangıçtan önce olamaz.' }
+  const tatil_turu = String(formData.get('tatil_turu') ?? '').trim() || null
 
   const supabase = await createClient()
   const { error } = await supabase.from('tanim_izin_tatil').insert({
     tatil_adi,
-    tatil_turu:      String(formData.get('tatil_turu') ?? '').trim() || null,
+    tatil_turu,
+    tatil_yapisi: tatilYapisiHesapla(tatil_adi, tatil_turu),
     tatil_baslangici,
     tatil_bitisi,
     durum: true,
@@ -38,11 +41,13 @@ export async function tatilGuncelle(id: number, formData: FormData): Promise<{ h
   if (!tatil_baslangici) return { hata: 'Başlangıç tarihi zorunludur.' }
   if (!tatil_bitisi)     return { hata: 'Bitiş tarihi zorunludur.' }
   if (tatil_bitisi < tatil_baslangici) return { hata: 'Bitiş tarihi başlangıçtan önce olamaz.' }
+  const tatil_turu = String(formData.get('tatil_turu') ?? '').trim() || null
 
   const supabase = await createClient()
   const { error } = await supabase.from('tanim_izin_tatil').update({
     tatil_adi,
-    tatil_turu:      String(formData.get('tatil_turu') ?? '').trim() || null,
+    tatil_turu,
+    tatil_yapisi: tatilYapisiHesapla(tatil_adi, tatil_turu),
     tatil_baslangici,
     tatil_bitisi,
   }).eq('id', id)

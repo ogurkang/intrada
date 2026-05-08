@@ -299,11 +299,12 @@ export async function ayyLoadTatiller(
 ): Promise<Parameters<typeof ayyHesapla>[0]['tatiller']> {
   const { data: tatilRaw } = await supabase
     .from('tanim_izin_tatil')
-    .select('tatil_adi, tatil_turu, tatil_baslangici, tatil_bitisi, durum')
+    .select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi, durum')
     .eq('durum', true)
   return (tatilRaw ?? []).map(t => ({
     tatil_adi:        t.tatil_adi,
     tatil_turu:       t.tatil_turu,
+    tatil_yapisi:     t.tatil_yapisi,
     tatil_baslangici: t.tatil_baslangici,
     tatil_bitisi:     t.tatil_bitisi,
     durum:            t.durum ?? true,

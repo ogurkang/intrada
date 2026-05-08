@@ -564,14 +564,17 @@ export interface Database {
       tanim_izin_tatil: {
         Row: {
           id: number; sira_no: number | null; tatil_adi: string; tatil_turu: string | null
+          tatil_yapisi: 'Yıllık Tatil' | 'Sabit Tatil' | null
           tatil_baslangici: string; tatil_bitisi: string; durum: boolean; created_at: string
         }
         Insert: {
           id?: number; sira_no?: number | null; tatil_adi: string; tatil_turu?: string | null
+          tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null
           tatil_baslangici: string; tatil_bitisi: string; durum?: boolean; created_at?: string
         }
         Update: {
           id?: number; sira_no?: number | null; tatil_adi?: string; tatil_turu?: string | null
+          tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null
           tatil_baslangici?: string; tatil_bitisi?: string; durum?: boolean; created_at?: string
         }
         Relationships: []

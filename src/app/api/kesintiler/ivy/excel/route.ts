@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
       }))
   }
 
-  const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
-  const tatiller = (tatilRaw ?? []).map(t => ({ tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
+  const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
+  const tatiller = (tatilRaw ?? []).map(t => ({ tatil_adi: t.tatil_adi, tatil_turu: t.tatil_turu, tatil_yapisi: t.tatil_yapisi, tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
   const sonuc = kesintimHesapla({ modul: 'ivy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
   const izinBySiraNo = new Map(izinler.map(i => [i.sira_no, i]))
 
