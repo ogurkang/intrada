@@ -34,6 +34,10 @@ function sameText(a: string, b: string) {
   return a.toLocaleLowerCase('tr-TR') === b.toLocaleLowerCase('tr-TR')
 }
 
+function memurStatuMu(statu: string) {
+  return sameText(statu, 'Memur')
+}
+
 function yillikIzinMi(tur: string | null | undefined) {
   return String(tur ?? '')
     .trim()
@@ -80,6 +84,7 @@ export function izinLimitineTakilanPersonelListeSnapshot(
     const rawStatu = String(secilen.statu ?? '').trim()
     const statuEtiketi = etiketAnahtari(etiketler, rawStatu) || rawStatu
     if (statuEtiketi && sameText(statuEtiketi, FIRMA_STATU_ETIKET)) continue
+    if (!memurStatuMu(statuEtiketi)) continue
     const mudurluk = String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim()
     if (!mudurluk) continue
     const calisan = calisanBySicil.get(sicil)
