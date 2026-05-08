@@ -83,12 +83,8 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
     .eq('donem_id', id)
     .order('islem_tarihi', { ascending: false })
   const aktifLogSicilleri = new Set((logRows ?? []).filter(x => !x.geri_alindi).map(x => x.sicil_no))
-  const mevcutSiciller = new Set(initialRows.map(r => r.sicil_no))
-  const ekSatirlar = kaynaklar
-    .filter(k => aktifLogSicilleri.has(k.sicil_no) && !mevcutSiciller.has(k.sicil_no))
-    .map(satirKaynaktan)
-    .filter((x): x is TerfiEttirOnizlemeSatir => x != null)
-  const initialRowsFinal = [...initialRows, ...ekSatirlar]
+  // Aktif log'u olan (terfi ettirilmiş) personeli önizlemeden çıkar
+  const initialRowsFinal = initialRows.filter(r => !aktifLogSicilleri.has(r.sicil_no))
 
   function fmt(iso: string) {
     return new Date(iso + 'T12:00:00').toLocaleDateString('tr-TR')
