@@ -211,14 +211,18 @@ function birlesDurum(a: TerfiEttirDurumEtiket, b: TerfiEttirDurumEtiket): TerfiE
   return b
 }
 
-function birYilIleri(t: string | null | undefined): string | null {
+function yilIleri(t: string | null | undefined, yil: number): string | null {
   if (t == null || !String(t).trim()) return null
   const iso = String(t).slice(0, 10)
   const d = new Date(iso + 'T12:00:00')
   if (Number.isNaN(d.getTime())) return iso
-  d.setFullYear(d.getFullYear() + 1)
+  d.setFullYear(d.getFullYear() + yil)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function birYilIleri(t: string | null | undefined): string | null {
+  return yilIleri(t, 1)
 }
 
 /**
@@ -278,7 +282,8 @@ export function buildTerfiEttirOnizleme(
     const newKhaTarih = khaIn ? birYilIleri(r.kha_tarihi) : (r.kha_tarihi ?? null)
     const newEkeaTarih = ekeaIn ? birYilIleri(r.ekea_tarihi) : (r.ekea_tarihi ?? null)
     const newKidemTarih = kidemIn ? birYilIleri(r.kidem_tarihi) : (r.kidem_tarihi ?? null)
-    const newIyiHalTarih = iyiHalIn ? birYilIleri(r.iyi_hal_terfi_tarihi) : (r.iyi_hal_terfi_tarihi ?? null)
+    // İyi Hal: bir sonraki hak 8 yıl sonra
+    const newIyiHalTarih = iyiHalIn ? yilIleri(r.iyi_hal_terfi_tarihi, 8) : (r.iyi_hal_terfi_tarihi ?? null)
     const kidemYiliIlerledi = Boolean(kidemIn && kidem != null && kidem < 25)
     const newKidemYili =
       kidem == null ? (r.kidem_yili ?? null) : String(Math.min(25, kidemIn ? kidem + 1 : kidem))
