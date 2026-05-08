@@ -319,19 +319,20 @@ export function buildTerfiEttirOnizleme(
       durum = birlesDurum(durum, 'Kıdem Yılı İlerledi')
     }
     if (iyiHalIn) {
-      const sonK = hesaplaDkIlerleme(newKd, newKk, minD)
-      newKd = sonK.yeniDerece
-      newKk = sonK.yeniKademe
-      if (sonK.dereceDegisti) {
+      // İyi Hal: KHA ve EKEA her ikisine de bağımsız olarak 1 kademe ilerlet
+      const sonKH = hesaplaDkIlerleme(newKd, newKk, minD)
+      newKd = sonKH.yeniDerece
+      newKk = sonKH.yeniKademe
+      if (sonKH.dereceDegisti) {
         puanSon = { ...puanSon, ...lookup(newKd) }
       }
-      const sonE = hesaplaDkIlerleme(newEd, newEk, minD)
-      newEd = sonE.yeniDerece
-      newEk = sonE.yeniKademe
-      if (sonE.dereceDegisti) {
+      const sonEK = hesaplaDkIlerleme(newEd, newEk, minD)
+      newEd = sonEK.yeniDerece
+      newEk = sonEK.yeniKademe
+      if (sonEK.dereceDegisti) {
         puanSon = { ...puanSon, ...lookup(newEd) }
       }
-      if (durum === '—') durum = 'İyi Hal İlerlemesi'
+      durum = birlesDurum(durum, 'İyi Hal İlerlemesi')
     }
 
     out.push({
