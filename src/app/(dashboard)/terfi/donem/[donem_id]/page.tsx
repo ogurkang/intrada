@@ -51,6 +51,7 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
       ekea_tarihi: k.ekea_tarihi,
       kidem_tarihi: k.kidem_tarihi,
       kidem_yili: k.kidem_yili,
+      iyi_hal_terfi_tarihi: k.iyi_hal_terfi_tarihi,
       ek_gosterge: k.ek_gosterge,
       ek_odeme: k.ek_odeme,
       oht: k.oht,
