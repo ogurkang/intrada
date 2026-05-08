@@ -24,6 +24,8 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
     ekea_tarihi: k.ekea_tarihi,
     kidem_tarihi_eski: k.kidem_tarihi ?? '—',
     kidem_tarihi_yeni: k.kidem_tarihi ?? '—',
+    iyi_hal_tarihi_eski: k.iyi_hal_terfi_tarihi ?? '—',
+    iyi_hal_tarihi_yeni: k.iyi_hal_terfi_tarihi ?? '—',
     kidem_yili_eski: k.kidem_yili ?? '—',
     kidem_yili_yeni: k.kidem_yili ?? '—',
     dk_kha_eski: `${kd}/${kk}`,
