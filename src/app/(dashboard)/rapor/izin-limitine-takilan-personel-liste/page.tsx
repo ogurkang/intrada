@@ -46,7 +46,7 @@ export default async function IzinLimitineTakilanPersonelListePage({
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
     supabase
       .from('izin_hareketleri')
-      .select('sicil_no, ayrilis, gun')
+      .select('sicil_no, ayrilis, gun, tur')
       .neq('durum', 'İptal Edildi')
       .gte('ayrilis', `${yil}-01-01`)
       .lte('ayrilis', `${yil}-12-31`),
@@ -70,7 +70,7 @@ export default async function IzinLimitineTakilanPersonelListePage({
       tanimStatuler,
       kadro,
       calisanBySicil,
-      izinRows: (izinRaw ?? []) as Array<{ sicil_no: string | null; ayrilis: string | null; gun: number | null }>,
+      izinRows: (izinRaw ?? []) as Array<{ sicil_no: string | null; ayrilis: string | null; gun: number | null; tur: string | null }>,
     })
     const label = p === 'yillik' ? 'YILLIK' : AYLAR_TR[(p as number) - 1]
     return { periyot: p, label, sonGunuEtiket: sonGunuMetin(D), satirlar }

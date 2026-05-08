@@ -26,11 +26,18 @@ export interface IzinLimitineTakilanSnapshotInput {
     sicil_no: string | null
     ayrilis: string | null
     gun: number | null
+    tur: string | null
   }>
 }
 
 function sameText(a: string, b: string) {
   return a.toLocaleLowerCase('tr-TR') === b.toLocaleLowerCase('tr-TR')
+}
+
+function yillikIzinMi(tur: string | null | undefined) {
+  return String(tur ?? '')
+    .trim()
+    .toLocaleLowerCase('tr-TR') === 'yıllık izin'
 }
 
 function sliceD(s: string | null | undefined): string | null {
@@ -57,6 +64,7 @@ export function izinLimitineTakilanPersonelListeSnapshot(
   for (const iz of izinRows ?? []) {
     const sicil = String(iz.sicil_no ?? '').trim()
     if (!sicil) continue
+    if (!yillikIzinMi(iz.tur)) continue
     const ayrilis = sliceD(iz.ayrilis)
     if (!ayrilis || ayrilis < bas || ayrilis > bit) continue
     const gun = Number(iz.gun ?? 0)

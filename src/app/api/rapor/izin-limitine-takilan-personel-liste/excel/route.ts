@@ -75,7 +75,7 @@ export async function GET(req: Request) {
       supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
       supabase
         .from('izin_hareketleri')
-        .select('sicil_no, ayrilis, gun')
+        .select('sicil_no, ayrilis, gun, tur')
         .neq('durum', 'İptal Edildi')
         .gte('ayrilis', `${yil}-01-01`)
         .lte('ayrilis', `${yil}-12-31`),
@@ -98,7 +98,7 @@ export async function GET(req: Request) {
       tanimStatuler,
       kadro,
       calisanBySicil,
-      izinRows: (izinRaw ?? []) as Array<{ sicil_no: string | null; ayrilis: string | null; gun: number | null }>,
+      izinRows: (izinRaw ?? []) as Array<{ sicil_no: string | null; ayrilis: string | null; gun: number | null; tur: string | null }>,
     })
     if (mudurlukFilterler.length) {
       const set = new Set(mudurlukFilterler)
