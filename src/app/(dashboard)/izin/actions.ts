@@ -410,7 +410,7 @@ export async function izinGunHesapla(
     : null
 
   const { ggAayyyyToIso } = await import('@/lib/tarih')
-  const hedefYil = new Date(ayrilisGuncel).getFullYear()
+  const hedefYil = new Date(ayrilis).getFullYear()
   const { data: tatiller } = await supabase
     .from('tanim_izin_tatil')
     .select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi')
