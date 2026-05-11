@@ -81,6 +81,7 @@ export async function GET(req: Request) {
     const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
     const secili = (izinRaw ?? [])
       .filter(r => {
+        if (r.durum === 'İptal Edildi') return false
         if (izinIdsFromLog && izinIdsFromLog.length > 0) return izinIdsFromLog.includes(r.id)
         const s = parsePozitifInt(r.sira_no)
         return s != null && s >= alt! && s <= ust!

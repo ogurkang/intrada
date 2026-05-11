@@ -62,6 +62,7 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
 
   const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
   const seciliSayisi = (izinRaw ?? []).filter(r => {
+    if (r.durum === 'İptal Edildi') return false
     if (!aralikGecerli || aralikBas == null || aralikBit == null) return false
     const sira = parsePozitifInt(r.sira_no ?? undefined)
     if (sira == null) return false
