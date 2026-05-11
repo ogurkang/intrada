@@ -34,6 +34,29 @@ function pick(map: Record<string, string>, ...keys: string[]): string {
   return ''
 }
 
+/** "dd.mm.yyyy" veya "yyyy-mm-dd" gibi metin tarihi Date'e çevirir. */
+function parseTarih(s: string): Date | null {
+  const t = s.trim()
+  if (!t) return null
+  // dd.mm.yyyy
+  const tr = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (tr) return new Date(Number(tr[3]), Number(tr[2]) - 1, Number(tr[1]))
+  // yyyy-mm-dd
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+  const d = new Date(t)
+  return isNaN(d.getTime()) ? null : d
+}
+
+/** Ayrılış ve başlama tarihinden takvim günü hesapla (başlama − ayrılış). */
+function gunHesapla(ayrilis: string, baslama: string): string {
+  const a = parseTarih(ayrilis)
+  const b = parseTarih(baslama)
+  if (!a || !b) return ''
+  const fark = Math.round((b.getTime() - a.getTime()) / 86_400_000)
+  return fark > 0 ? String(fark) : ''
+}
+
 export default function GecmisIzinlerClient() {
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [seciliDosya, setSeciliDosya] = useState('')
@@ -99,13 +122,19 @@ export default function GecmisIzinlerClient() {
         tur: iTur >= 0 ? String(r[iTur] ?? '').trim() : pick(asMap, 'tür', 'tur'),
         ayrilis: iAyrilis >= 0 ? String(r[iAyrilis] ?? '').trim() : pick(asMap, 'ayrılış', 'ayrilis'),
         baslama: iBaslama >= 0 ? String(r[iBaslama] ?? '').trim() : pick(asMap, 'başlama', 'baslama'),
-        gun: iGun >= 0 ? String(r[iGun] ?? '').trim() : pick(asMap, 'gün', 'gun'),
+        gun: (() => {
+          const excelGun = iGun >= 0 ? String(r[iGun] ?? '').trim() : pick(asMap, 'gün', 'gun')
+          if (excelGun) return excelGun
+          const ay = iAyrilis >= 0 ? String(r[iAyrilis] ?? '').trim() : pick(asMap, 'ayrılış', 'ayrilis')
+          const bas = iBaslama >= 0 ? String(r[iBaslama] ?? '').trim() : pick(asMap, 'başlama', 'baslama')
+          return gunHesapla(ay, bas)
+        })(),
         durum: iDurum >= 0 ? String(r[iDurum] ?? '').trim() : pick(asMap, 'durum'),
       }
     })
 
     const dolu = out.filter(r =>
-      [r.siraNo, r.islemYapan, r.tarih, r.sicilNo, r.adSoyad, r.tur, r.ayrilis, r.baslama, r.gun, r.durum].some(Boolean),
+      [r.siraNo, r.islemYapan, r.tarih, r.sicilNo, r.adSoyad, r.tur, r.ayrilis, r.baslama, r.durum].some(Boolean),
     )
     setRows(dolu)
     setHata('')
@@ -165,6 +194,9 @@ export default function GecmisIzinlerClient() {
         <p className="text-xs text-amber-700 mt-1">
           Bu ekran sadece ön izleme/kontrol amaçlıdır. Kayıtlar henüz sisteme işlenmez.
         </p>
+        <p className="text-xs text-slate-500 mt-1">
+          * Gün: Excel'de sütun yoksa ayrılış – başlama farkından takvim günü olarak hesaplanır.
+        </p>
         {hata ? <p className="text-xs text-red-600 mt-1">{hata}</p> : null}
       </div>
 
@@ -185,7 +217,7 @@ export default function GecmisIzinlerClient() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Tür</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Ayrılış</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Başlama</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Gün</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Gün *</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Durum</th>
               </tr>
             </thead>
