@@ -51,8 +51,8 @@ export async function izyDetayYukle(donem_id: number): Promise<IzyDetayData | { 
     }
   }
 
-  // Zabıta Müdürlüğü'ne ait TÜM izinler — İptal hariç; tür: Yıllık, Ölüm, Evlilik, Babalık, Mehil, Mazeret, İdari, DÖÇ, DSÇ
-  const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%'
+  // Zabıta Müdürlüğü'ne ait TÜM izinler — İptal hariç; tür: Yıllık, Ölüm, Evlilik, Babalık, Mehil, Mazeret, İdari, DÖÇ, DSÇ, Refakatçi İzni
+  const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%,tur.ilike.%Refakatçi%'
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')

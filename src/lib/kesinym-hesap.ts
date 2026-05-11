@@ -57,10 +57,14 @@ export interface KesintimHesapSatir {
   OD:       number
   /** RMY: Rapor günü; IVY/IZY: toplam izin günü */
   R:        number
-  /** RMY: Refakatçi Raporu günü; IVY/IZY: 0 */
+  /** RMY: Refakatçi İzni günü; IVY/IZY: 0 */
   RR:       number
+  /** RMY: Heyet Raporu günü; diğer: 0 */
+  HR:       number
   K:        number
   SD:       number
+  /** RMY: Yıllık kümülatif R+HR (Rapor Bakiyesi); diğer: 0 */
+  RB:       number
   kategori: KesintimKategori
 }
 
@@ -72,9 +76,12 @@ export interface KesintimPersonelOzet {
   OD:       number
   R:        number
   RR:       number
-  IZ:       number  // R + RR (veya IVY/IZY için sadece R)
+  HR:       number  // RMY: Heyet Raporu toplam; diğer: 0
+  IZ:       number  // R + RR + HR (veya IVY/IZY için sadece R)
   K:        number
   SD:       number
+  /** RMY: Yıllık kümülatif R+HR (kişi bazında son bakiye); diğer: 0 */
+  RB:       number
 }
 
 export type KesintimKategori = 'Takipteki İzinler' | 'Dönemdeki İzinler' | 'Askıdaki İzinler'
@@ -212,16 +219,19 @@ function kisiOzetTopla(
     const ex = map.get(s.sicil_no)
     if (!ex) {
       map.set(s.sicil_no, {
-        p: { sicil_no: s.sicil_no, ad_soyad: s.ad_soyad, unvan: s.unvan, OD: s.OD, R: s.R, RR: s.RR, IZ: s.R + s.RR, K: s.K, SD: s.SD },
+        p: { sicil_no: s.sicil_no, ad_soyad: s.ad_soyad, unvan: s.unvan, OD: s.OD, R: s.R, RR: s.RR, HR: s.HR, IZ: s.R + s.RR + s.HR, K: s.K, SD: s.SD, RB: s.RB },
         kapasite: curKapasite,
       })
     } else {
       ex.p.OD += s.OD
       ex.p.R  += s.R
       ex.p.RR += s.RR
-      ex.p.IZ += s.R + s.RR
+      ex.p.HR += s.HR
+      ex.p.IZ += s.R + s.RR + s.HR
       ex.p.K  += s.K
       ex.p.SD += s.SD
+      // RB: son (maksimum) bakiye değerini göster
+      if (s.RB > ex.p.RB) ex.p.RB = s.RB
     }
   }
 
@@ -246,6 +256,11 @@ function kisiOzetTopla(
   return arr
 }
 
+/** Refakatçi İzni ile eski Refakatçi Raporu tur değerleri — eşanlamlı */
+function isRefakatci(tur: string): boolean {
+  return tur === 'Refakatçi Raporu' || tur === 'Refakatçi İzni'
+}
+
 export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonucu {
   const { modul, curId, donemler, ilkDonemIdBySiraNo, izinler, tatiller } = params
   const fns = GUN_FNS[modul]
@@ -262,6 +277,28 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
   const curIdx  = idxById.get(curId) ?? -1
   const curDonem = byIdx.get(curIdx)
   if (curIdx < 0 || !curDonem) return { satirlar: [], personeller: [], takipteki: [], donemdeki: [], askidaki: [] }
+
+  // ─── Yıllık Rapor Bakiyesi ön-işleme (sadece RMY) ────────────────────────
+  // Her R / HR kaydı için: o izin işlenmeden önceki yıllık kümülatif bakiye
+  const annualBakiyeBeforeSiraNo = new Map<string, number>()
+  if (modul === 'rmy') {
+    const annualBySicilYear = new Map<string, number>()
+    const rhLeaves = [...izinler]
+      .filter(iv => iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+      .sort((a, b) => {
+        const sc = a.sicil_no.localeCompare(b.sicil_no)
+        if (sc !== 0) return sc
+        return (a.ayrilis ?? '').localeCompare(b.ayrilis ?? '')
+      })
+    for (const iv of rhLeaves) {
+      const year = (iv.ayrilis ?? '').slice(0, 4)
+      const key  = `${iv.sicil_no}:${year}`
+      const before = annualBySicilYear.get(key) ?? 0
+      annualBakiyeBeforeSiraNo.set(iv.sira_no, before)
+      annualBySicilYear.set(key, before + iv.gun)
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const izinBySiraNo = new Map(izinler.map(iz => [iz.sira_no, iz]))
   const satirlar: KesintimHesapSatir[] = []
@@ -286,49 +323,78 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
     const toplam = fns.toplam(startMs, lastMs, iv.gun, tatilRanges)
     if (toplam <= 0) continue
 
+    // RMY için yıllık bakiye hesabı (R ve HR türleri)
+    const isRH = modul === 'rmy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    const bakiyeBefore  = isRH ? (annualBakiyeBeforeSiraNo.get(siraNo) ?? 0) : 0
+    const freeAmount    = isRH ? Math.max(0, 30 - bakiyeBefore) : 0
+    const deductAmount  = isRH ? Math.max(0, toplam - freeAmount) : toplam
+    const annualRBValue = isRH ? bakiyeBefore + toplam : 0  // Rapor Bakiyesi bu izin dahil
+
     let prevSD = 0
-    let curRow: { OD: number; R: number; RR: number; K: number; SD: number } | null = null
+    let curRow: { OD: number; R: number; RR: number; HR: number; K: number; SD: number; RB: number } | null = null
 
     for (let pi = firstIdx; pi <= curIdx; pi++) {
       const p = byIdx.get(pi)!
       const kapasite = fns.kapasite(p.takvimGun)
-      let od = 0, rBilgi = 0, rrBilgi = 0, kes = 0, sd = 0
+      let od = 0, rBilgi = 0, rrBilgi = 0, hrBilgi = 0, kes = 0, sd = 0
 
       if (pi === firstIdx) {
-        if (startMs > p.bitis_tarihi_ms) {
-          // f) ileri tarihli — henüz gelmemiş
-          od = 0; kes = 0; sd = toplam
-        } else if (startMs >= p.baslangic_tarihi_ms) {
-          // a/b) dönem içinde başlayan
-          const kesisim = fns.overlap(startMs, lastMs, p.baslangic_tarihi_ms, p.bitis_tarihi_ms, tatilRanges)
-          kes = Math.min(kesisim, kapasite)
-          sd  = Math.max(0, toplam - kes)
-        } else {
-          // c/d/e) dönemden önce başlayan
-          od = toplam
-          if (lastMs > p.bitis_tarihi_ms) {
-            // c) dönem sonrasına sarkan
-            kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
-          } else if (lastMs >= p.baslangic_tarihi_ms) {
-            // d) dönem içinde biten
-            kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
+        if (isRH) {
+          // ── R / HR: yıllık bakiye kuralına göre K/SD hesabı ──────────────
+          if (startMs > p.bitis_tarihi_ms) {
+            // f) ileri tarihli
+            kes = 0; sd = deductAmount
+          } else if (startMs >= p.baslangic_tarihi_ms) {
+            // a/b) dönem içinde başlayan
+            const kesisim = fns.overlap(startMs, lastMs, p.baslangic_tarihi_ms, p.bitis_tarihi_ms, tatilRanges)
+            // Dönemdeki deductable günler: kesisim'in freeAmount'u aşan kısmı
+            const deductableThisPeriod = Math.max(0, kesisim - freeAmount)
+            kes = Math.min(deductableThisPeriod, kapasite)
+            sd  = Math.max(0, deductAmount - kes)
           } else {
-            // e) dönem öncesinde bitmiş (gecikmiş rapor)
-            kes = od; sd = 0
+            // c/d/e) dönemden önce başlayan — deductAmount'u od olarak kullan
+            od = deductAmount
+            if (lastMs < p.baslangic_tarihi_ms) {
+              // e) gecikmiş: dönem öncesinde bitti
+              kes = od; sd = 0
+            } else {
+              kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
+            }
           }
-        }
-        if (modul === 'rmy') {
-          rBilgi  = iv.tur === 'Rapor'                 ? ((od > 0 ? od : toplam)) : 0
-          rrBilgi = iv.tur === 'Refakatçi Raporu'      ? ((od > 0 ? od : toplam)) : 0
+          // Bilgi sütunları (R / HR): aktarılan toplam gün göster
+          if (iv.tur === 'Rapor') rBilgi = od > 0 ? od : toplam
+          else hrBilgi = od > 0 ? od : toplam
         } else {
-          rBilgi = (od > 0 ? od : toplam)
+          // ── Refakatçi İzni (RR) ve diğer türler: mevcut mantık ──────────
+          if (startMs > p.bitis_tarihi_ms) {
+            od = 0; kes = 0; sd = toplam
+          } else if (startMs >= p.baslangic_tarihi_ms) {
+            const kesisim = fns.overlap(startMs, lastMs, p.baslangic_tarihi_ms, p.bitis_tarihi_ms, tatilRanges)
+            kes = Math.min(kesisim, kapasite)
+            sd  = Math.max(0, toplam - kes)
+          } else {
+            od = toplam
+            if (lastMs > p.bitis_tarihi_ms) {
+              kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
+            } else if (lastMs >= p.baslangic_tarihi_ms) {
+              kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
+            } else {
+              kes = od; sd = 0
+            }
+          }
+          if (modul === 'rmy') {
+            rrBilgi = isRefakatci(iv.tur) ? (od > 0 ? od : toplam) : 0
+          } else {
+            rBilgi = od > 0 ? od : toplam
+          }
         }
       } else {
         od = prevSD
         if (od <= 0) { curRow = null; break }
         if (modul === 'rmy') {
-          rBilgi  = iv.tur === 'Rapor'            ? od : 0
-          rrBilgi = iv.tur === 'Refakatçi Raporu' ? od : 0
+          if (iv.tur === 'Rapor')            rBilgi  = od
+          else if (iv.tur === 'Heyet Raporu') hrBilgi = od
+          else if (isRefakatci(iv.tur))       rrBilgi = od
         } else {
           rBilgi = od
         }
@@ -337,7 +403,7 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
       }
 
       prevSD = sd
-      if (pi === curIdx) curRow = { OD: od, R: rBilgi, RR: rrBilgi, K: kes, SD: sd }
+      if (pi === curIdx) curRow = { OD: od, R: rBilgi, RR: rrBilgi, HR: hrBilgi, K: kes, SD: sd, RB: annualRBValue }
     }
 
     if (!curRow) continue
@@ -356,8 +422,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
       OD: curRow.OD,
       R:  curRow.R,
       RR: curRow.RR,
+      HR: curRow.HR,
       K:  curRow.K,
       SD: curRow.SD,
+      RB: curRow.RB,
       kategori,
     })
   }

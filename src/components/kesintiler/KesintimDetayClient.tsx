@@ -46,6 +46,7 @@ function PersonelTablosu({ modul, satirlar, etiket }: TabloProps) {
   const toplamOD = satirlar.reduce((s, p) => s + p.OD, 0)
   const toplamR  = satirlar.reduce((s, p) => s + p.R,  0)
   const toplamRR = satirlar.reduce((s, p) => s + p.RR, 0)
+  const toplamHR = satirlar.reduce((s, p) => s + p.HR, 0)
   const toplamIZ = satirlar.reduce((s, p) => s + p.IZ, 0)
 
   if (satirlar.length === 0) {
@@ -88,8 +89,16 @@ function PersonelTablosu({ modul, satirlar, etiket }: TabloProps) {
                   >R</th>
                   <th
                     className="text-center px-3 py-3 font-semibold w-16 bg-orange-50/60 text-orange-600"
-                    title="Refakatçi Raporu Günü"
+                    title="Heyet Raporu Günü"
+                  >HR</th>
+                  <th
+                    className="text-center px-3 py-3 font-semibold w-16 bg-orange-50/40 text-orange-500"
+                    title="Refakatçi İzni Günü"
                   >RR</th>
+                  <th
+                    className="text-center px-3 py-3 font-semibold w-20 bg-purple-50 text-purple-700"
+                    title="Yıllık Rapor Bakiyesi (R+HR kümülatif)"
+                  >Rap.Bak.</th>
                 </>
               ) : (
                 <th
@@ -123,7 +132,13 @@ function PersonelTablosu({ modul, satirlar, etiket }: TabloProps) {
                       {p.R > 0 ? p.R : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-600">
+                      {p.HR > 0 ? p.HR : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-500">
                       {p.RR > 0 ? p.RR : '—'}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center tabular-nums text-sm font-semibold ${p.RB > 30 ? 'text-red-700 bg-red-50' : 'text-purple-700'}`}>
+                      {p.RB > 0 ? p.RB : '—'}
                     </td>
                   </>
                 ) : (
@@ -140,7 +155,7 @@ function PersonelTablosu({ modul, satirlar, etiket }: TabloProps) {
           </tbody>
           <tfoot>
             <tr className="bg-slate-50 border-t border-slate-200">
-              <td colSpan={4} className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Toplam</td>
+              <td colSpan={modul === 'rmy' ? 4 : 4} className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Toplam</td>
               <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-blue-700">
                 {toplamOD > 0 ? toplamOD : '—'}
               </td>
@@ -150,8 +165,12 @@ function PersonelTablosu({ modul, satirlar, etiket }: TabloProps) {
                     {toplamR > 0 ? toplamR : '—'}
                   </td>
                   <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-orange-600">
+                    {toplamHR > 0 ? toplamHR : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-orange-500">
                     {toplamRR > 0 ? toplamRR : '—'}
                   </td>
+                  <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-purple-700">—</td>
                 </>
               ) : (
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-orange-700">
@@ -215,11 +234,13 @@ export default function KesintimDetayClient({ modul, donem, sonuc }: Props) {
 
   const sutunAciklamalari = modul === 'rmy'
     ? [
-        { kod: 'OD', ad: 'Önceki Dönemden Devreden', renk: 'bg-blue-100 text-blue-700' },
-        { kod: 'R',  ad: 'Rapor Günü',                renk: 'bg-orange-100 text-orange-700' },
-        { kod: 'RR', ad: 'Refakatçi Raporu',          renk: 'bg-orange-50 text-orange-600 border border-orange-200' },
-        { kod: 'K',  ad: 'Kesinti',                   renk: 'bg-red-100 text-red-700' },
-        { kod: 'SD', ad: 'Sonraki Döneme Devreden',   renk: 'bg-amber-100 text-amber-700' },
+        { kod: 'OD',       ad: 'Önceki Dönemden Devreden',       renk: 'bg-blue-100 text-blue-700' },
+        { kod: 'R',        ad: 'Rapor Günü',                      renk: 'bg-orange-100 text-orange-700' },
+        { kod: 'HR',       ad: 'Heyet Raporu Günü',               renk: 'bg-orange-50 text-orange-600 border border-orange-200' },
+        { kod: 'RR',       ad: 'Refakatçi İzni Günü',             renk: 'bg-orange-50 text-orange-500 border border-orange-100' },
+        { kod: 'Rap.Bak.', ad: 'Yıllık R+HR Kümülatif (>30 = K)', renk: 'bg-purple-100 text-purple-700' },
+        { kod: 'K',        ad: 'Kesinti',                         renk: 'bg-red-100 text-red-700' },
+        { kod: 'SD',       ad: 'Sonraki Döneme Devreden',         renk: 'bg-amber-100 text-amber-700' },
       ]
     : [
         { kod: 'OD', ad: 'Önceki Dönemden Devreden', renk: 'bg-blue-100 text-blue-700' },

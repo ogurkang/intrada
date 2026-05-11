@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       .from('izin_hareketleri')
       .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
       .in('sira_no', siraNoList)
-      .in('tur', ['Rapor', 'Refakatçi Raporu'])
+      .in('tur', ['Rapor', 'Heyet Raporu', 'Refakatçi Raporu', 'Refakatçi İzni'])
       .neq('durum', 'İptal Edildi')
     const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
     const adMap: Record<string, string> = {}
@@ -166,11 +166,11 @@ export async function GET(request: NextRequest) {
   }
 
   /* ── Özet tipi ──────────────────────────────────────────────────── */
-  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Rapor', 'Refakatçi Raporu', 'Kesilen', 'Sonraki Döneme']
+  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Rapor', 'Heyet Raporu', 'Refakatçi İzni', 'Rap. Bakiyesi', 'Kesilen', 'Sonraki Döneme']
   const colCount = headers.length
 
-  function satir(p: { seq: number; sicil_no: string; ad_soyad: string; unvan: string; OD: number; R: number; RR: number; K: number; SD: number }) {
-    return [p.seq, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.R, p.RR, p.K, p.SD]
+  function satir(p: { seq: number; sicil_no: string; ad_soyad: string; unvan: string; OD: number; R: number; RR: number; HR: number; K: number; SD: number; RB: number }) {
+    return [p.seq, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.R, p.HR, p.RR, p.RB, p.K, p.SD]
   }
 
   const rows: (string | number | XLSX.CellObject)[][] = []
