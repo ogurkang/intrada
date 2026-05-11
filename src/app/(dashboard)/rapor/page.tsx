@@ -164,6 +164,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Kullanılan izin toplamı yükseldikçe satır rengi kırmızı tona yaklaşan, filtrelenebilir yıllık/aylık personel listesi.',
     renk: 'border-red-200 bg-red-50 text-red-900',
   },
+  {
+    kod: 'PGI',
+    href: '/rapor/personele-gore-kullanilan-izin-listesi',
+    baslik: 'Personele Göre Kullanılan İzin Listesi',
+    aciklama: 'Müdürlük, sicil ve türe göre filtrelenebilir, başlıklarda sıralanabilir izin kayıt listesi; Excel destekli.',
+    renk: 'border-teal-200 bg-teal-50 text-teal-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {
