@@ -73,7 +73,7 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
       </nav>
 
       <PersonelKisiselDuzenleClient
-        calisan={c}
+        calisan={calisan as Tables<'calisan'> & { gorev_turu_bitis_tarihi?: string | null }}
         kaynak={kaynak || undefined}
         hizmetKaynagi={hizmetKaynagi}
         onGuncelle={calisanGuncelle}

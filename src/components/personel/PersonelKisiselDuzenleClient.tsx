@@ -9,13 +9,17 @@ import {
   GOREV_DURUMU_OPTIONS,
   GOREV_TURU_OPTIONS,
   gorevTuruAciklamaGoster,
+  gorevTuruBitisGoster,
   gorevTuruTarihZorunlu,
 } from '@/lib/gorev-bilgileri'
 
 type Calisan = Tables<'calisan'>
+type CalisanGenisletilmis = Calisan & {
+  gorev_turu_bitis_tarihi?: string | null
+}
 
 interface Props {
-  calisan: Calisan
+  calisan: CalisanGenisletilmis
   kaynak?: string
   /** Görüntülenen / düzenlenen değerler: tarihler önce ana kadro, yoksa calisan. */
   hizmetKaynagi: {
@@ -37,6 +41,7 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
   const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
   const gorevTarihGoster = gorevTuruTarihZorunlu(gorevTuru)
+  const gorevBitisGoster = gorevTuruBitisGoster(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -199,6 +204,22 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                 )}
                 {!gorevTarihGoster && (
                   <p className="text-[11px] text-slate-400 mt-1">Çalışan seçiliyken tarih girilmez.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü bitiş tarihi</label>
+                {!gorevBitisGoster && <input type="hidden" name="gorev_turu_bitis_tarihi" value="" />}
+                {gorevBitisGoster ? (
+                  <input
+                    name="gorev_turu_bitis_tarihi"
+                    type="date"
+                    defaultValue={(calisan.gorev_turu_bitis_tarihi ?? '').toString().slice(0, 10)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">
+                    —
+                  </p>
                 )}
               </div>
               <div className="col-span-2">
