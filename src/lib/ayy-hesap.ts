@@ -386,11 +386,16 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     const mevcutDonemGun = izinAralikGunSayisi(iv, bas, bit, tatilRanges)
 
     // Sonraki dönem gün sayısı (izin bitis tarihi dönem dışına taşıyorsa)
+    // Not: sonrakiBas, izin başlangıç tarihiyle kırpılır; aksi takdirde "Askıdaki" kayıtlarda
+    // (ayrilis > bitMs) sonraki dönem günü dönem bitişinden itibaren sayılır ve yanlış SD/OD üretir.
     let sonrakiDonemGun = 0
     if (sonGunMs !== null && sonGunMs > bitMs) {
-      const sonrakiBas = new Date(bitMs + 86_400_000)
+      const rawSonrakiBas = bitMs + 86_400_000
+      const sonrakiBas = new Date(Math.max(rawSonrakiBas, startMs))
       const sonrakiBit = new Date(sonGunMs)
-      sonrakiDonemGun = izinKesintiGunSayisi(iv, sonrakiBas, sonrakiBit, tatilRanges)
+      if (sonrakiBas.getTime() <= sonrakiBit.getTime()) {
+        sonrakiDonemGun = izinKesintiGunSayisi(iv, sonrakiBas, sonrakiBit, tatilRanges)
+      }
     }
 
     const od = odYazildi.has(iv.sira_no) ? 0 : (odBySiraNo[iv.sira_no] ?? 0)
