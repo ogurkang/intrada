@@ -171,6 +171,13 @@ const RAPOR_KARTLARI = [
     aciklama: 'Müdürlük, sicil ve türe göre filtrelenebilir, başlıklarda sıralanabilir izin kayıt listesi; Excel destekli.',
     renk: 'border-teal-200 bg-teal-50 text-teal-900',
   },
+  {
+    kod: 'BGI',
+    href: '/rapor/belirli-gunde-izinli-personel',
+    baslik: 'Belirli Günde İzinli Olan Personel Listesi',
+    aciklama: 'Seçilen tarihte aktif izni devam eden personeli müdürlük, konum (İç/Dış) ve türe göre filtreli listeler; Excel destekli.',
+    renk: 'border-violet-200 bg-violet-50 text-violet-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {

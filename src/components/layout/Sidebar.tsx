@@ -81,6 +81,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/ogrenim-durumuna-gore-personel-liste', label: 'Öğrenim Durumuna Göre Personel Listesi' },
       { href: '/rapor/izin-limitine-takilan-personel-liste', label: 'İzin Limitine Takılan Personel Listesi' },
       { href: '/rapor/adrese-gore-personel-liste', label: 'Adrese Göre Personel Listesi' },
+      { href: '/rapor/belirli-gunde-izinli-personel', label: 'Belirli Günde İzinli Olan Personel Listesi' },
     ],
   },
   {
