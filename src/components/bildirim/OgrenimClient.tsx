@@ -50,16 +50,16 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     const filtered = kayitlar.filter(
       (k) =>
         !q ||
-        (k.ad_soyad ?? '').toLowerCase().includes(q) ||
-        (k.tckn ?? '').toLowerCase().includes(q) ||
-        k.sicil_no.toLowerCase().includes(q) ||
-        (k.ogrenim_turu ?? '').toLowerCase().includes(q) ||
-        (k.okul_adi ?? '').toLowerCase().includes(q) ||
-        (k.meslegi ?? '').toLowerCase().includes(q)
+        (k.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (k.tckn ?? '').includes(q) ||
+        k.sicil_no.toLocaleLowerCase('tr-TR').includes(q) ||
+        (k.ogrenim_turu ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (k.okul_adi ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (k.meslegi ?? '').toLocaleLowerCase('tr-TR').includes(q)
     )
     return sortBildirimOgrenimList(filtered)
   }, [kayitlar, arama])

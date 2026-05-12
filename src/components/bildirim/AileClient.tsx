@@ -40,11 +40,11 @@ export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: P
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     return kayitlar.filter(k =>
       !q ||
-      (k.ad_soyad ?? '').toLowerCase().includes(q) ||
-      k.sicil_no.toLowerCase().includes(q),
+      (k.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+      k.sicil_no.toLocaleLowerCase('tr-TR').includes(q),
     )
   }, [kayitlar, arama])
 

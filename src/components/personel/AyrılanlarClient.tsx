@@ -40,9 +40,9 @@ export default function AyrılanlarClient({ ayrilanlar, onAktifEt }: Props) {
   }, [ayrilanlar])
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     return ayrilanlar.filter(a =>
-      (!q || a.ad_soyad.toLowerCase().includes(q) || a.sicil_no.toLowerCase().includes(q)) &&
+      (!q || a.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) || a.sicil_no.toLocaleLowerCase('tr-TR').includes(q)) &&
       (!mudFiltre || (a.gorev_mudurlugu ?? 'Belirtilmemiş') === mudFiltre) &&
       (!yilFiltre || a.ayrilis_tarihi?.startsWith(yilFiltre))
     )

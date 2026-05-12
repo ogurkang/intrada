@@ -48,11 +48,11 @@ export default function IzinHakYonetimClient({
     let list = satirlar
     if (sadeceTanimsiz) list = list.filter(s => !s.hak)
     if (aramaQ.trim()) {
-      const q = aramaQ.toLowerCase()
+      const q = aramaQ.toLocaleLowerCase('tr-TR')
       list = list.filter(s =>
-        s.sicil_no.toLowerCase().includes(q) ||
-        (s.ad_soyad ?? '').toLowerCase().includes(q) ||
-        (s.statu ?? '').toLowerCase().includes(q)
+        s.sicil_no.toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.statu ?? '').toLocaleLowerCase('tr-TR').includes(q)
       )
     }
     return list

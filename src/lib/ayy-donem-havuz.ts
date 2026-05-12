@@ -336,8 +336,8 @@ export async function ayyIzinDbToAyyIzinRow(
       .in('asil', siciller)
       .is('ayrilis_tarihi', null)
     for (const k of kh ?? []) {
-      const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
-      const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
+      const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLocaleLowerCase('tr-TR')
+      const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLocaleLowerCase('tr-TR')
       const isZabita = unvan.includes('zabıta') || unvan.includes('zabita') ||
                       mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')
       if (isZabita && k.asil) zabitaSet.add(k.asil)
@@ -427,8 +427,8 @@ export async function ayyLoadStatuBazliPersonel(
       .in('asil', part)
       .is('ayrilis_tarihi', null)
     for (const k of kh ?? []) {
-      const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
-      const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
+      const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLocaleLowerCase('tr-TR')
+      const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLocaleLowerCase('tr-TR')
       const isZabita = unvan.includes('zabıta') || unvan.includes('zabita') ||
                       mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')
       if (isZabita && k.asil) zabitaSet.add(k.asil)

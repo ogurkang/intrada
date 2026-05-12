@@ -54,10 +54,10 @@ function PersonelSecici({
     onSeciliChange?.(secili)
   }, [secili, onSeciliChange])
   const filtreli = useMemo(() => {
-    const lower = q.toLowerCase()
+    const lower = q.toLocaleLowerCase('tr-TR')
     if (!lower) return personeller.slice(0, 6)
     return personeller.filter(p =>
-      p.sicil_no.toLowerCase().includes(lower) || p.ad_soyad.toLowerCase().includes(lower)
+      p.sicil_no.toLocaleLowerCase('tr-TR').includes(lower) || p.ad_soyad.toLocaleLowerCase('tr-TR').includes(lower)
     ).slice(0, 6)
   }, [q, personeller])
   return (

@@ -49,13 +49,13 @@ export default function PersonelAramaSecim({
   }
 
   const filtre = useMemo(() => {
-    const t = q.trim().toLowerCase()
+    const t = q.trim().toLocaleLowerCase('tr-TR')
     if (!t) return personeller.slice(0, 80)
     return personeller
       .filter(
         p =>
-          p.sicil_no.toLowerCase().includes(t) ||
-          (p.ad_soyad ?? '').toLowerCase().includes(t),
+          p.sicil_no.toLocaleLowerCase('tr-TR').includes(t) ||
+          (p.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(t),
       )
       .slice(0, 80)
   }, [personeller, q])

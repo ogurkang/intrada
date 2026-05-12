@@ -117,11 +117,11 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi }: Props) {
   const zabitaSayisi  = useMemo(() => sonuc.personeller.filter(p => p.isZabita).length, [sonuc])
 
   function filtreUygula(list: AyyPersonelOzet[]) {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     if (!q) return list
     return list.filter(p =>
-      p.ad_soyad.toLowerCase().includes(q) ||
-      p.sicil_no.toLowerCase().includes(q)
+      p.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) ||
+      p.sicil_no.toLocaleLowerCase('tr-TR').includes(q)
     )
   }
 

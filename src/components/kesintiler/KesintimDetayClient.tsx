@@ -211,11 +211,11 @@ export default function KesintimDetayClient({ modul, donem, sonuc }: Props) {
   const takvimGun = Math.floor((bitMs - basMs) / 86_400_000) + 1
 
   function filtrele(list: KesintimPersonelOzet[]) {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     if (!q) return list
     return list.filter(p =>
-      p.ad_soyad.toLowerCase().includes(q) ||
-      p.sicil_no.toLowerCase().includes(q)
+      p.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) ||
+      p.sicil_no.toLocaleLowerCase('tr-TR').includes(q)
     )
   }
 

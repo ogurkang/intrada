@@ -11,8 +11,8 @@ function kadroSatiriZabitaMi(k: {
   gorev_mudurlugu?: string | null
   kadro_mudurlugu?: string | null
 }): boolean {
-  const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLowerCase()
-  const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLowerCase()
+  const unvan = ((k.gorev_unvani ?? '') + ' ' + (k.kadro_unvani ?? '')).toLocaleLowerCase('tr-TR')
+  const mud   = ((k.gorev_mudurlugu ?? '') + ' ' + (k.kadro_mudurlugu ?? '')).toLocaleLowerCase('tr-TR')
   return (
     unvan.includes('zabıta') || unvan.includes('zabita') ||
     mud.includes('zabıta müdürlüğü') || mud.includes('zabita mudurlugu')

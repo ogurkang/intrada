@@ -69,11 +69,11 @@ export default function IzinListClient({
     let list = siraliHareketler
     if (durumFiltre !== 'Tümü') list = list.filter(h => h.durum === durumFiltre)
     if (aramaQ.trim()) {
-      const q = aramaQ.toLowerCase()
+      const q = aramaQ.toLocaleLowerCase('tr-TR')
       list = list.filter(h =>
-        h.sicil_no.toLowerCase().includes(q) ||
-        (adMap[h.sicil_no] ?? '').toLowerCase().includes(q) ||
-        h.tur.toLowerCase().includes(q) ||
+        h.sicil_no.toLocaleLowerCase('tr-TR').includes(q) ||
+        (adMap[h.sicil_no] ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        h.tur.toLocaleLowerCase('tr-TR').includes(q) ||
         (h.sira_no ?? '').includes(q)
       )
     }

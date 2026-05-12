@@ -68,10 +68,10 @@ export default function EgitimIstatistikClient({
   , [personeller])
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     return personeller.filter(p =>
       (!mudFiltre || (p.mudurluk ?? 'Belirtilmemiş') === mudFiltre) &&
-      (!q || (p.ad_soyad ?? '').toLowerCase().includes(q) || p.sicil_no.toLowerCase().includes(q))
+      (!q || (p.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) || p.sicil_no.toLocaleLowerCase('tr-TR').includes(q))
     )
   }, [personeller, mudFiltre, arama])
 

@@ -110,14 +110,14 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
   }, [veriImza, satirlar])
 
   const filtreliSatirlar = useMemo(() => {
-    const q = arama.trim().toLowerCase()
+    const q = arama.trim().toLocaleLowerCase('tr-TR')
     if (!q) return satirlar
     return satirlar.filter(
       s =>
-        s.sicil_no.toLowerCase().includes(q) ||
-        (s.ad_soyad ?? '').toLowerCase().includes(q) ||
-        (s.gorev_unvani ?? '').toLowerCase().includes(q) ||
-        (s.gorev_mudurlugu ?? '').toLowerCase().includes(q),
+        s.sicil_no.toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.gorev_unvani ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (s.gorev_mudurlugu ?? '').toLocaleLowerCase('tr-TR').includes(q),
     )
   }, [satirlar, arama])
 

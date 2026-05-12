@@ -38,7 +38,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
       (p) =>
         !sicilArama.trim() ||
         p.sicil_no.includes(sicilArama) ||
-        p.ad_soyad.toLowerCase().includes(sicilArama.toLowerCase())
+        p.ad_soyad.toLocaleLowerCase('tr-TR').includes(sicilArama.toLocaleLowerCase('tr-TR'))
     )
     .slice(0, 8)
 

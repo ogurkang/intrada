@@ -59,10 +59,10 @@ export default function IzinYeniClient({
   }, [ayrilis, baslama, tur, secilenSicil, isYillikIzin])
 
   const filtreliPersonel = useMemo(() => {
-    const q = sicilArama.toLowerCase()
+    const q = sicilArama.toLocaleLowerCase('tr-TR')
     if (!q) return personeller.slice(0, 8)
     return personeller
-      .filter(p => p.sicil_no.toLowerCase().includes(q) || p.ad_soyad.toLowerCase().includes(q))
+      .filter(p => p.sicil_no.toLocaleLowerCase('tr-TR').includes(q) || p.ad_soyad.toLocaleLowerCase('tr-TR').includes(q))
       .slice(0, 8)
   }, [personeller, sicilArama])
 

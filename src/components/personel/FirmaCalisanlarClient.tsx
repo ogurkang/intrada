@@ -70,12 +70,12 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
   const liste = sekme === 'calisanlar' ? calisanlarList : ayrilanlarList
 
   const filtreli = useMemo(() => {
-    const q = arama.toLowerCase()
+    const q = arama.toLocaleLowerCase('tr-TR')
     return liste.filter(k => {
       if (mudFiltre && (k.gorev_mudurlugu ?? '') !== mudFiltre) return false
       if (q && !(
-        (k.ad_soyad ?? '').toLowerCase().includes(q) ||
-        (k.sicil_no ?? '').toLowerCase().includes(q) ||
+        (k.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        (k.sicil_no ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
         (k.tckn ?? '').includes(q)
       )) return false
       return true
