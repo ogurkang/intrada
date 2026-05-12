@@ -165,11 +165,11 @@ export async function GET(request: NextRequest) {
   }
 
   /* ── Özet tipi ──────────────────────────────────────────────────── */
-  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'İzin Süresi', 'Kesilen', 'Sonraki Döneme']
+  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'İzin Süresi', 'Rap. Bakiyesi', 'Kesilen', 'Sonraki Döneme']
   const colCount = headers.length
 
-  function satir(p: { seq: number; sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; K: number; SD: number }) {
-    return [p.seq, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.IZ, p.K, p.SD]
+  function satir(p: { seq: number; sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; RB: number; K: number; SD: number }) {
+    return [p.seq, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.IZ, p.RB || '', p.K, p.SD]
   }
 
   const rows: (string | number | XLSX.CellObject)[][] = []

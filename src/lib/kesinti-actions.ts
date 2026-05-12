@@ -225,7 +225,7 @@ export function makeDonemActions(
     } else if (options?.memurFilter) {
       izinQuery = izinQuery
         .neq('durum', 'İptal Edildi')
-        .in('tur', ['Rapor', 'Heyet Raporu', 'Refakatçi Raporu', 'Refakatçi İzni'])
+        .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
         .limit(500)
       if (ozelSiciller && ozelSiciller.size > 0) {
         izinQuery = izinQuery.in('sicil_no', [...ozelSiciller])

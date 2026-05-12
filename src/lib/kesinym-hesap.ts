@@ -278,10 +278,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
   const curDonem = byIdx.get(curIdx)
   if (curIdx < 0 || !curDonem) return { satirlar: [], personeller: [], takipteki: [], donemdeki: [], askidaki: [] }
 
-  // ─── Yıllık Rapor Bakiyesi ön-işleme (sadece RMY) ────────────────────────
+  // ─── Yıllık Rapor Bakiyesi ön-işleme (sadece IZY) ────────────────────────
   // Her R / HR kaydı için: o izin işlenmeden önceki yıllık kümülatif bakiye
   const annualBakiyeBeforeSiraNo = new Map<string, number>()
-  if (modul === 'rmy') {
+  if (modul === 'izy') {
     const annualBySicilYear = new Map<string, number>()
     const rhLeaves = [...izinler]
       .filter(iv => iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
@@ -323,8 +323,8 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
     const toplam = fns.toplam(startMs, lastMs, iv.gun, tatilRanges)
     if (toplam <= 0) continue
 
-    // RMY için yıllık bakiye hesabı (R ve HR türleri)
-    const isRH = modul === 'rmy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    // IZY için yıllık bakiye hesabı (R ve HR türleri)
+    const isRH = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
     const bakiyeBefore  = isRH ? (annualBakiyeBeforeSiraNo.get(siraNo) ?? 0) : 0
     const freeAmount    = isRH ? Math.max(0, 30 - bakiyeBefore) : 0
     const deductAmount  = isRH ? Math.max(0, toplam - freeAmount) : toplam
@@ -340,7 +340,7 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
 
       if (pi === firstIdx) {
         if (isRH) {
-          // ── R / HR: yıllık bakiye kuralına göre K/SD hesabı ──────────────
+          // ── IZY: R / HR yıllık bakiye kuralına göre K/SD hesabı ──────────
           if (startMs > p.bitis_tarihi_ms) {
             // f) ileri tarihli
             kes = 0; sd = deductAmount
@@ -361,11 +361,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
               kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
             }
           }
-          // Bilgi sütunları (R / HR): aktarılan toplam gün göster
-          if (iv.tur === 'Rapor') rBilgi = od > 0 ? od : toplam
-          else hrBilgi = od > 0 ? od : toplam
+          // R/HR için İZ sütununa aktar (hrBilgi ayrı gösterilmez, İZ'e eklenir)
+          rBilgi = od > 0 ? od : toplam
         } else {
-          // ── Refakatçi İzni (RR) ve diğer türler: mevcut mantık ──────────
+          // ── Tüm modüller için standart mantık ──────────────────────────
           if (startMs > p.bitis_tarihi_ms) {
             od = 0; kes = 0; sd = toplam
           } else if (startMs >= p.baslangic_tarihi_ms) {
@@ -383,7 +382,8 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
             }
           }
           if (modul === 'rmy') {
-            rrBilgi = isRefakatci(iv.tur) ? (od > 0 ? od : toplam) : 0
+            rBilgi  = iv.tur === 'Rapor'      ? (od > 0 ? od : toplam) : 0
+            rrBilgi = isRefakatci(iv.tur)     ? (od > 0 ? od : toplam) : 0
           } else {
             rBilgi = od > 0 ? od : toplam
           }
@@ -392,9 +392,8 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
         od = prevSD
         if (od <= 0) { curRow = null; break }
         if (modul === 'rmy') {
-          if (iv.tur === 'Rapor')            rBilgi  = od
-          else if (iv.tur === 'Heyet Raporu') hrBilgi = od
-          else if (isRefakatci(iv.tur))       rrBilgi = od
+          rBilgi  = iv.tur === 'Rapor'  ? od : 0
+          rrBilgi = isRefakatci(iv.tur) ? od : 0
         } else {
           rBilgi = od
         }

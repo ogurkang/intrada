@@ -48,12 +48,12 @@ export async function rmyDetayYukle(donem_id: number): Promise<RmyDetayData | { 
     }
   }
 
-  // Memur personelin Rapor, Heyet Raporu ve Refakatçi İzni izinleri — İptal hariç
+  // Memur personelin Rapor ve Refakatçi izinleri — İptal hariç
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .neq('durum', 'İptal Edildi')
-    .in('tur', ['Rapor', 'Heyet Raporu', 'Refakatçi Raporu', 'Refakatçi İzni'])
+    .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
     .in('sicil_no', Array.from(memurSiciller))
     .order('baslama')
     .limit(500)
