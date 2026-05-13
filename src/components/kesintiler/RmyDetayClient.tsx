@@ -61,18 +61,33 @@ function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
   )
 }
 
+function TipBadge({ tip }: { tip: string }) {
+  const renkler: Record<string, string> = {
+    'Raporlu Memur': 'bg-orange-100 text-orange-700',
+    'İzinli Vekil':  'bg-blue-100 text-blue-700',
+    'İzinli Zabıta': 'bg-purple-100 text-purple-700',
+  }
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${renkler[tip] ?? 'bg-slate-100 text-slate-600'}`}>
+      {tip}
+    </span>
+  )
+}
+
 function IzinTablo({
   izinler,
   onSagaAl,
   onSolaAl,
   yon,
   sortable,
+  tip,
 }: {
   izinler: RmyDetayIzin[]
   onSagaAl?: (sira_no: string) => void
   onSolaAl?: (sira_no: string) => void
   yon: 'aday' | 'islenecek'
   sortable?: boolean
+  tip: string
 }) {
   const [sortSutun, setSortSutun] = useState<SortSutun>('baslama')
   const [sortYon, setSortYon] = useState<SortYon>('asc')
@@ -125,6 +140,7 @@ function IzinTablo({
             <ThSutun sutun="sira_no"  label="Kayıt No"   />
             <ThSutun sutun="sicil_no" label="Sicil No"   />
             <ThSutun sutun="ad_soyad" label="Adı Soyadı" />
+            <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Tip</th>
             <ThSutun sutun="tur"      label="Tür"        />
             <ThSutun sutun="ayrilis"  label="Ayrılış"    />
             <ThSutun sutun="baslama"  label="Başlama"    />
@@ -134,7 +150,7 @@ function IzinTablo({
         <tbody className="divide-y divide-slate-100">
           {siraliIzinler.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">
+              <td colSpan={10} className="px-4 py-8 text-center text-slate-400 text-sm">
                 {yon === 'aday' ? 'Aday rapor yok.' : 'Henüz rapor aktarılmadı.'}
               </td>
             </tr>
@@ -171,6 +187,7 @@ function IzinTablo({
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sira_no}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sicil_no}</td>
                 <td className="px-4 py-2 font-medium text-slate-800">{iz.ad_soyad}</td>
+                <td className="px-4 py-2"><TipBadge tip={tip} /></td>
                 <td className="px-4 py-2 text-slate-600">{iz.tur}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.ayrilis)}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.baslama)}</td>
@@ -378,13 +395,13 @@ export default function RmyDetayClient({ donemId }: Props) {
       {/* Aday İzinler */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-2">Aday İzinler</h3>
-        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" />
+        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" tip="Raporlu Memur" />
       </div>
 
       {/* Döneme Aktarılan İzinler */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-2">Döneme Aktarılan İzinler</h3>
-        <IzinTablo izinler={data.islenecek} onSolaAl={solaAl} yon="islenecek" sortable />
+        <IzinTablo izinler={data.islenecek} onSolaAl={solaAl} yon="islenecek" sortable tip="Raporlu Memur" />
       </div>
 
       {/* Açıklama ve butonlar */}
