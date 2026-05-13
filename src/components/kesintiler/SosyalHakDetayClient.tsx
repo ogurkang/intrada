@@ -41,19 +41,32 @@ function TipBadge({ tip }: { tip: SosyalHakTip }) {
   )
 }
 
+/** Rakam ve metin parçalarına bölerek doğal sıralama yapar (1 < 2 < 10 < 20). */
+function naturalCompare(a: string, b: string): number {
+  const re = /(\d+)|(\D+)/g
+  const ap = a.match(re) ?? []
+  const bp = b.match(re) ?? []
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    const x = ap[i] ?? ''
+    const y = bp[i] ?? ''
+    if (x === y) continue
+    const nx = parseInt(x, 10)
+    const ny = parseInt(y, 10)
+    if (!isNaN(nx) && !isNaN(ny)) return nx - ny
+    return x.localeCompare(y, 'tr')
+  }
+  return 0
+}
+
 function izinSirala(izinler: SosyalHakIzin[], sutun: SortSutun, yon: SortYon): SosyalHakIzin[] {
   return [...izinler].sort((a, b) => {
     let fark = 0
     if (sutun === 'gun') {
       fark = a.gun - b.gun
-    } else if (sutun === 'sira_no' || sutun === 'sicil_no') {
-      const an = parseInt(a[sutun], 10)
-      const bn = parseInt(b[sutun], 10)
-      fark = isNaN(an) || isNaN(bn) ? a[sutun].localeCompare(b[sutun], 'tr') : an - bn
     } else if (sutun === 'tip') {
       fark = TIP_LABEL[a.tip].localeCompare(TIP_LABEL[b.tip], 'tr')
     } else {
-      fark = (a[sutun] ?? '').localeCompare(b[sutun] ?? '', 'tr')
+      fark = naturalCompare(String(a[sutun] ?? ''), String(b[sutun] ?? ''))
     }
     return yon === 'asc' ? fark : -fark
   })
@@ -139,7 +152,7 @@ function IzinTablo({
           {siraliIzinler.length === 0 ? (
             <tr>
               <td colSpan={10} className="px-4 py-8 text-center text-slate-400 text-sm">
-                {yon === 'aday' ? 'Aday izin yok.' : 'Henüz izin aktarılmadı.'}
+                {yon === 'aday' ? 'Aday izin yok.' : 'Döneme aktarılmış izin yok.'}
               </td>
             </tr>
           ) : (
@@ -209,9 +222,10 @@ function OzetSatir({ tip, izinler }: { tip: SosyalHakTip; izinler: SosyalHakIzin
 }
 
 export default function SosyalHakDetayClient({ donemId }: Props) {
-  const [data, setData]          = useState<SosyalHakDetayData | null>(null)
-  const [hata, setHata]          = useState<string | null>(null)
-  const [yukleniyor, setYukleniyor] = useState(true)
+  const [data, setData]              = useState<SosyalHakDetayData | null>(null)
+  const [hata, setHata]              = useState<string | null>(null)
+  const [yukleniyor, setYukleniyor]  = useState(true)
+  const [excelYukleniyor, setExcelYukleniyor] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   async function yukle() {
@@ -270,6 +284,33 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     })
   }
 
+  async function excelIndir() {
+    if (!data || data.islenecek.length === 0) {
+      alert('İndirilecek işlenecek izin bulunamadı.')
+      return
+    }
+    setExcelYukleniyor(true)
+    try {
+      const res = await fetch(`/api/kesintiler/sosyal-hak/excel?donem_id=${donemId}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert((err as { error?: string }).error ?? 'Excel indirilemedi.')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Sosyal_Hak_Kesintileri_${data.donem.donem_adi ?? 'Donem'}.xlsx`.replace(/[:\*\?\/\\]/g, ' ')
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Excel indirilemedi.')
+    } finally {
+      setExcelYukleniyor(false)
+    }
+  }
+
   if (yukleniyor) {
     return (
       <div className="flex items-center justify-center py-20 text-slate-400">
@@ -326,6 +367,18 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
           >
             {isPending ? 'Kaydediliyor…' : 'Seçimleri Kaydet'}
           </button>
+          <button
+            type="button"
+            onClick={excelIndir}
+            disabled={excelYukleniyor || toplamIslenecek === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+            title={toplamIslenecek === 0 ? 'Önce izin aktarın' : 'Excel indir'}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {excelYukleniyor ? 'Hazırlanıyor…' : 'Excel İndir'}
+          </button>
         </div>
       </div>
 
@@ -341,22 +394,22 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
         </div>
       )}
 
-      {/* İşlenecek (islenecek) */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <h3 className="font-semibold text-slate-700">İşlenecek İzinler</h3>
-          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">{toplamIslenecek}</span>
-        </div>
-        <IzinTablo izinler={data.islenecek} onSolaAl={solaAl} yon="islenecek" sortable />
-      </section>
-
-      {/* Aday (aday) */}
+      {/* Aday izinler — üstte */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <h3 className="font-semibold text-slate-700">Aday İzinler</h3>
           <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">{toplamAday}</span>
         </div>
         <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" sortable />
+      </section>
+
+      {/* Döneme aktarılan izinler — altta */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <h3 className="font-semibold text-slate-700">Döneme Aktarılan İzinler</h3>
+          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">{toplamIslenecek}</span>
+        </div>
+        <IzinTablo izinler={data.islenecek} onSolaAl={solaAl} yon="islenecek" sortable />
       </section>
     </div>
   )
