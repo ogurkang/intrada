@@ -117,6 +117,40 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
 
   // Terfi ettirilmiş kişilerden Excel için satır üret (onceki → sonraki snapshot)
   const kaynakBySicil = new Map(kaynaklar.map(k => [k.sicil_no, k]))
+
+  // Orijinal terfi sebebini (durum) yeniden türet: onceki snapshot değerleriyle
+  // buildTerfiEttirOnizleme'yi çalıştır — hangi tarih [bas,bit] aralığına düşüyorsa aynı durum hesaplanır
+  const oncekiKaynaklar: TerfiKaynak[] = aktifLoglar.map(log => {
+    const kaynak = kaynakBySicil.get(log.sicil_no)
+    const onc: LogSnap = (log.onceki ?? {}) as LogSnap
+    return {
+      sicil_no: log.sicil_no,
+      ad_soyad: kaynak?.ad_soyad ?? null,
+      unvan_adi: kaynak?.unvan_adi ?? null,
+      kadro_derecesi: kaynak?.kadro_derecesi ?? null,
+      ogrenim_turu: kaynak?.ogrenim_turu ?? null,
+      ogrenim_id: kaynak?.ogrenim_id ?? null,
+      unvan_id: kaynak?.unvan_id ?? null,
+      kha_derece: onc.kha_derece ?? null,
+      kha_kademe: onc.kha_kademe ?? null,
+      kha_tarihi: onc.kha_tarihi ?? null,
+      ekea_derece: onc.ekea_derece ?? null,
+      ekea_kademe: onc.ekea_kademe ?? null,
+      ekea_tarihi: onc.ekea_tarihi ?? null,
+      kidem_yili: onc.kidem_yili ?? null,
+      kidem_tarihi: onc.kidem_tarihi ?? null,
+      iyi_hal_terfi_tarihi: onc.iyi_hal_terfi_tarihi ?? null,
+      ek_gosterge: onc.ek_gosterge ?? null,
+      ek_odeme: onc.ek_odeme ?? null,
+      oht: onc.oht ?? null,
+      yan_odeme: onc.yan_odeme ?? null,
+      sds_orani: onc.sds_orani ?? null,
+      terfi_id: log.terfi_id ?? null,
+    }
+  })
+  const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup)
+  const durumBySicil = new Map(oncekiOnizleme.map(r => [r.sicil_no, r.durum]))
+
   const terfiEttirilenSatirlar: TerfiEttirOnizlemeSatir[] = aktifLoglar.map(log => {
     const kaynak = kaynakBySicil.get(log.sicil_no)
     const onc: LogSnap = (log.onceki ?? {}) as LogSnap
@@ -149,7 +183,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       yan_odeme_yeni: ds(son.yan_odeme),
       sds_eski: ds(onc.sds_orani),
       sds_yeni: ds(son.sds_orani),
-      durum: 'Terfi Ettirildi',
+      durum: durumBySicil.get(log.sicil_no) ?? '—',
       terfi_id: log.terfi_id ?? null,
       payload: {
         kha_derece: son.kha_derece ?? null,

@@ -53,7 +53,6 @@ function durumHucreClass(durum: string): string {
   if (durum === 'İyi Hal İlerlemesi') return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
   if (durum === 'Eğitim Sınırında') return 'bg-red-100 text-red-800'
-  if (durum === 'Terfi Ettirildi') return 'bg-teal-100 text-teal-800'
   return 'bg-slate-50 text-slate-600'
 }
 
@@ -70,8 +69,6 @@ function durumExcelStyle(durum: string): Partial<ExcelJS.Style> {
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }, font: { color: { argb: 'FF78350F' } } }
   if (durum === 'Eğitim Sınırında')
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE2E2' } }, font: { color: { argb: 'FF991B1B' } } }
-  if (durum === 'Terfi Ettirildi')
-    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAF0' } }, font: { color: { argb: 'FF0D7055' } } }
   return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF475569' } } }
 }
 
