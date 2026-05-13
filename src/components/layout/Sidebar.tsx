@@ -229,6 +229,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/tatil-tur-tanimlari', label: 'Tatil Tür Tanımları' },
       { href: '/tanimlar/izin-kural', label: 'Yıllık İzin Kuralları' },
       { href: '/tanimlar/gosterge',  label: 'Gösterge Tanımları' },
+      { href: '/tanimlar/sirket',    label: 'Şirket'             },
     ],
   },
   {

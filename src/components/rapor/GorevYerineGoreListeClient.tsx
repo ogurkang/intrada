@@ -84,7 +84,8 @@ export default function GorevYerineGoreListeClient({
       if (!q) return true
       return (
         r.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) ||
-        String(r.sicil_no ?? '').toLocaleLowerCase('tr-TR').includes(q)
+        String(r.sicil_no ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        r.mudurluk.toLocaleLowerCase('tr-TR').includes(q)
       )
     })
   }, [tumSatirlar, seciliSet, kayitArama, seciliMudurlukler])
@@ -99,7 +100,8 @@ export default function GorevYerineGoreListeClient({
     return sagSecili.filter(
       r =>
         r.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) ||
-        String(r.sicil_no ?? '').toLocaleLowerCase('tr-TR').includes(q),
+        String(r.sicil_no ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        r.mudurluk.toLocaleLowerCase('tr-TR').includes(q),
     )
   }, [sagSecili, secilenArama])
 
@@ -252,7 +254,7 @@ export default function GorevYerineGoreListeClient({
                   type="search"
                   value={kayitArama}
                   onChange={e => setKayitArama(e.target.value)}
-                  placeholder="Ad veya sicil ara…"
+                  placeholder="Ad, sicil veya müdürlük ara…"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                 />
               </div>
@@ -282,7 +284,7 @@ export default function GorevYerineGoreListeClient({
                   type="search"
                   value={secilenArama}
                   onChange={e => setSecilenArama(e.target.value)}
-                  placeholder="Ad veya sicil ara…"
+                  placeholder="Ad, sicil veya müdürlük ara…"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                 />
               </div>

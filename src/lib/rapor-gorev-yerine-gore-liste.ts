@@ -146,13 +146,14 @@ export function gorevYerineGoreListeSatirUret(
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
     const mudurluk = String(row.kadro.kadro_mudurlugu ?? '').trim() || '—'
+    const konumMudurluk = String(row.kadro.gorev_mudurlugu ?? '').trim() || String(row.kadro.kadro_mudurlugu ?? '').trim()
     return {
       kayit_key: row.kayit_key,
       kaynak: 'kadro',
       sicil_no: row.sicil_no,
       ad_soyad: row.ad_soyad,
       mudurluk,
-      konum: mudurlukKonumGoster(mudKonum, row.kadro.kadro_mudurlugu),
+      konum: mudurlukKonumGoster(mudKonum, konumMudurluk),
       cinsiyet: cinsiyetGoster(row.cinsiyet),
       unvan: String(row.kadro.gorev_unvani ?? '').trim() || '—',
       statu: row.statuEtiket,
