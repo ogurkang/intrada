@@ -59,7 +59,7 @@ export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_cali
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">İş Bilgileri</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="Kuruma Giriş Tarihi" deger={tarihFmt(row.kuruma_giris_tarihi)} />
-              <Alan etiket="Görev Müdürlüğü" deger={row.gorev_mudurlugu} />
+              <Alan etiket="Görev Yeri" deger={row.gorev_mudurlugu} />
               <Alan etiket="Görevi" deger={row.gorevi} />
               <Alan etiket="Mesleği" deger={row.meslegi} />
             </div>

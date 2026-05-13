@@ -25,24 +25,27 @@ export default async function FirmaPersonelDuzenlePage({
 
   if (error || !row) notFound()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
   const [
     { data: kayitlar },
-    { data: tanimMud },
+    { data: tanimSirket },
     { data: tanimOgr },
     { data: fcAyrilis },
     { data: khAyrilis },
   ] = await Promise.all([
     supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
-    supabase.from('tanim_mudurluk').select('mudurluk_adi').order('mudurluk_adi'),
+    sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
     supabase.from('firma_calisanlar').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
     supabase.from('kadro_hareketleri').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
   ])
 
-  const tanimMudList = (tanimMud ?? []).map(m => m.mudurluk_adi)
+  const tanimSirketList = (tanimSirket ?? []).map((s: { sirket_adi: string }) => s.sirket_adi)
   const fcMudList = (kayitlar ?? []).map(k => k.gorev_mudurlugu ?? '').filter(Boolean)
   const mevcutMud = (row as { gorev_mudurlugu?: string | null }).gorev_mudurlugu ?? ''
-  const mudurluler = [...new Set([...tanimMudList, ...fcMudList, mevcutMud].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+  const mudurluler = [...new Set([...tanimSirketList, ...fcMudList, mevcutMud].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 
   const ogrenimler = sortOgrenimIsimListesi((tanimOgr ?? []).map(o => o.isim))
 

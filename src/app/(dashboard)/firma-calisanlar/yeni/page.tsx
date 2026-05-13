@@ -6,24 +6,27 @@ import { firmaEkle } from '../actions'
 export default async function FirmaPersonelYeniPage() {
   const supabase = await createClient()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
   const [
     { data: kayitlar },
-    { data: tanimMud },
+    { data: tanimSirket },
     { data: tanimOgr },
     { data: fcAyrilis },
     { data: khAyrilis },
   ] = await Promise.all([
     supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
-    supabase.from('tanim_mudurluk').select('mudurluk_adi').order('mudurluk_adi'),
+    sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
     supabase.from('firma_calisanlar').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
     supabase.from('kadro_hareketleri').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
   ])
 
-  // Müdürlük tanımlarından (tanim_mudurluk) öncelikli
-  const tanimMudList = (tanimMud ?? []).map(m => m.mudurluk_adi)
+  // Şirket tanımlarından öncelikli, mevcut kayıtlar fallback olarak eklenir
+  const tanimSirketList = (tanimSirket ?? []).map((s: { sirket_adi: string }) => s.sirket_adi)
   const fcMudList = (kayitlar ?? []).map(k => k.gorev_mudurlugu ?? '').filter(Boolean)
-  const mudurluler = [...new Set([...tanimMudList, ...fcMudList])].sort((a, b) => a.localeCompare(b, 'tr'))
+  const mudurluler = [...new Set([...tanimSirketList, ...fcMudList])].sort((a, b) => a.localeCompare(b, 'tr'))
 
   const ogrenimler = sortOgrenimIsimListesi((tanimOgr ?? []).map(o => o.isim).filter(Boolean))
 

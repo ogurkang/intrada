@@ -102,7 +102,7 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev Müdürlüğü</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev Yeri</label>
               {mudurluler.length ? (
                 <select name="gorev_mudurlugu" defaultValue={k.gorev_mudurlugu ?? ''}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">

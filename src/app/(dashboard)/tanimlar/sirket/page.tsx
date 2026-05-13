@@ -6,6 +6,7 @@ interface SirketRow {
   id: number
   sirket_adi: string
   aktif: boolean
+  [key: string]: unknown
 }
 
 export default async function SirketPage() {
