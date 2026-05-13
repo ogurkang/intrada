@@ -89,6 +89,19 @@ export function mudurlukKonumMetniHaritasi(
   return m
 }
 
+/** Tanımlar > Şirket: şirket adı (normalize) → konum metni */
+export function sirketKonumMetniHaritasi(
+  tanimlar: { sirket_adi: string; konum: string }[],
+): Map<string, string> {
+  const m = new Map<string, string>()
+  for (const r of tanimlar) {
+    const k = String(r.konum ?? '').trim()
+    if (!k) continue
+    m.set(normMudStr(r.sirket_adi), k)
+  }
+  return m
+}
+
 export function mudurlukKonumGoster(harita: Map<string, string>, mudRaw: string | null | undefined): string {
   const mud = String(mudRaw ?? '').trim()
   if (!mud) return '—'
@@ -142,6 +155,7 @@ export type GorevYerineGoreListeKayit =
 
 export function gorevYerineGoreListeSatirUret(
   mudKonum: Map<string, string>,
+  sirketKonum: Map<string, string>,
   row: GorevYerineGoreListeKayit,
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
@@ -167,7 +181,7 @@ export function gorevYerineGoreListeSatirUret(
     sicil_no: row.sicil_no,
     ad_soyad: row.ad_soyad,
     mudurluk,
-    konum: mudurlukKonumGoster(mudKonum, row.gorev_mudurlugu),
+    konum: mudurlukKonumGoster(sirketKonum, row.gorev_mudurlugu),
     cinsiyet: cinsiyetGoster(row.cinsiyet),
     unvan: String(row.gorevi ?? '').trim() || '—',
     statu: row.statuEtiket,

@@ -5,6 +5,7 @@ import { sirketEkle, sirketGuncelle, sirketToggleAktif } from './actions'
 interface SirketRow {
   id: number
   sirket_adi: string
+  konum: string
   aktif: boolean
   [key: string]: unknown
 }
@@ -14,7 +15,7 @@ export default async function SirketPage() {
   const sb = (await createClient()) as any
   const { data, error } = await sb
     .from('tanim_sirket')
-    .select('id, sirket_adi, aktif')
+    .select('id, sirket_adi, konum, aktif')
     .order('sirket_adi')
 
   const kayitlar: SirketRow[] = data ?? []
@@ -31,6 +32,17 @@ export default async function SirketPage() {
         data={kayitlar}
         nameField="sirket_adi"
         nameLabel="Şirket Adı"
+        extraSelectFields={[
+          {
+            key: 'konum',
+            label: 'Konum',
+            required: true,
+            options: [
+              { value: 'Dış', label: 'Dış' },
+              { value: 'İç', label: 'İç' },
+            ],
+          },
+        ]}
         onAdd={sirketEkle}
         onUpdate={sirketGuncelle}
         onToggle={sirketToggleAktif}

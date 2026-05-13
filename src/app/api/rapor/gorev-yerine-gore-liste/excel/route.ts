@@ -9,6 +9,7 @@ import {
   gorevYerineGoreUnvanExcelRgb,
   gorevYerineGoreUnvanVurgu,
   mudurlukKonumMetniHaritasi,
+  sirketKonumMetniHaritasi,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
 import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
@@ -46,11 +47,12 @@ export async function GET(req: Request) {
     const D = new Date().toISOString().slice(0, 10)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calisanQuery = (supabase as any).from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri').order('ad_soyad')
-    const [calisanResult, { data: phRaw }, { data: tanimStatuRaw }, { data: mudTanimRaw }] = await Promise.all([
+    const [calisanResult, { data: phRaw }, { data: tanimStatuRaw }, { data: mudTanimRaw }, { data: sirketTanimRaw }] = await Promise.all([
       calisanQuery as Promise<{ data: any[] | null }>,
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
       supabase.from('tanim_mudurluk').select('mudurluk_adi, konum').eq('aktif', true),
+      sb.from('tanim_sirket').select('sirket_adi, konum').eq('aktif', true),
     ])
     const calisanRaw = calisanResult.data ?? []
     const sonAyrilisPerSicil = new Map<string, string | null>()
@@ -64,6 +66,7 @@ export async function GET(req: Request) {
     const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
     const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
     const mudKonum = mudurlukKonumMetniHaritasi(mudTanimRaw ?? [])
+    const sirKonum = sirketKonumMetniHaritasi(sirketTanimRaw ?? [])
     const kadroByAsil = new Map<string, KadroGenis[]>()
     for (const part of chunk([...aktifSiciller], 120)) {
       const { data: kRows } = await supabase
@@ -100,6 +103,7 @@ export async function GET(req: Request) {
     let satirlar = sirali.map(row =>
       gorevYerineGoreListeSatirUret(
         mudKonum,
+        sirKonum,
         row.kind === 'kadro'
           ? { kayit_key: row.kayit_key, kind: 'kadro', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_yeri: row.gorev_yeri, statuEtiket: row.statuEtiket, kadro: row.kadro }
           : { kayit_key: row.kayit_key, kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },

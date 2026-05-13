@@ -11,10 +11,12 @@ export async function sirketEkle(formData: FormData): Promise<{ hata?: string }>
   if (!g.ok) return { hata: g.hata }
   const sirket_adi = String(formData.get('sirket_adi') ?? '').trim()
   if (!sirket_adi) return { hata: 'Şirket adı boş bırakılamaz.' }
+  const konum = String(formData.get('konum') ?? 'Dış').trim()
+  if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = (await createClient()) as any
-  const { error } = await sb.from('tanim_sirket').insert({ sirket_adi, aktif: true })
+  const { error } = await sb.from('tanim_sirket').insert({ sirket_adi, konum, aktif: true })
   if (error) return { hata: error.message }
   revalidatePath(SAYFA)
   return {}
@@ -25,10 +27,12 @@ export async function sirketGuncelle(id: number, formData: FormData): Promise<{ 
   if (!g.ok) return { hata: g.hata }
   const sirket_adi = String(formData.get('sirket_adi') ?? '').trim()
   if (!sirket_adi) return { hata: 'Şirket adı boş bırakılamaz.' }
+  const konum = String(formData.get('konum') ?? 'Dış').trim()
+  if (konum !== 'İç' && konum !== 'Dış') return { hata: 'Konum İç veya Dış olmalıdır.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = (await createClient()) as any
-  const { error } = await sb.from('tanim_sirket').update({ sirket_adi }).eq('id', id)
+  const { error } = await sb.from('tanim_sirket').update({ sirket_adi, konum }).eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath(SAYFA)
   return {}
