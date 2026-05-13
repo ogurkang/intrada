@@ -11,6 +11,8 @@ interface Props {
   terfiBas: string
   terfiBit: string
   initialRows: TerfiEttirOnizlemeSatir[]
+  /** Dönem içinde terfi ettirilmiş kişilerin onceki→sonraki snapshot satırları */
+  terfiEttirilenRows?: TerfiEttirOnizlemeSatir[]
   islemLoglari: { id: number; sicil_no: string; islem_tarihi: string; geri_alindi: boolean }[]
   onGeriAlTek: (donemId: number, logId: number) => Promise<{ hata?: string }>
   onGeriAlToplu: (donemId: number, logIds: number[]) => Promise<{ hata?: string; geriAlinan?: number }>
@@ -51,6 +53,7 @@ function durumHucreClass(durum: string): string {
   if (durum === 'İyi Hal İlerlemesi') return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
   if (durum === 'Eğitim Sınırında') return 'bg-red-100 text-red-800'
+  if (durum === 'Terfi Ettirildi') return 'bg-teal-100 text-teal-800'
   return 'bg-slate-50 text-slate-600'
 }
 
@@ -67,6 +70,8 @@ function durumExcelStyle(durum: string): Partial<ExcelJS.Style> {
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }, font: { color: { argb: 'FF78350F' } } }
   if (durum === 'Eğitim Sınırında')
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE2E2' } }, font: { color: { argb: 'FF991B1B' } } }
+  if (durum === 'Terfi Ettirildi')
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAF0' } }, font: { color: { argb: 'FF0D7055' } } }
   return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF475569' } } }
 }
 
@@ -85,6 +90,7 @@ export default function TerfiEttirClient({
   terfiBas,
   terfiBit,
   initialRows,
+  terfiEttirilenRows = [],
   islemLoglari,
   onGeriAlTek,
   onGeriAlToplu,
@@ -141,6 +147,9 @@ export default function TerfiEttirClient({
   }
 
   async function excelIndir() {
+    // Hem henüz terfi ettirilmemiş (önizleme) hem de bu dönemde terfi ettirilmiş satırları birleştir
+    const tumSatirlar = [...satirlar, ...terfiEttirilenRows]
+
     const wb = new ExcelJS.Workbook()
     const ws = wb.addWorksheet('Çalışanlar', {
       views: [{ showGridLines: true }],
@@ -226,7 +235,7 @@ export default function TerfiEttirClient({
     })
     headerRow.height = 60
 
-    satirlar.forEach((r, idx) => {
+    tumSatirlar.forEach((r, idx) => {
       const row = ws.getRow(6 + idx)
       const khaEski = fmtTarihGGAA(r.kha_tarihi)
       const khaYeni = fmtTarihGGAA(r.payload.kha_tarihi)

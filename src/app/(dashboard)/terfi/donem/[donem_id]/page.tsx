@@ -8,6 +8,33 @@ import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import TerfiEttirClient from '@/components/terfi/TerfiEttirClient'
 import { terfiGeriAlTek, terfiGeriAlToplu } from '@/app/(dashboard)/terfi/donem/actions'
 
+type LogSnap = {
+  kha_derece?: string | null
+  kha_kademe?: string | null
+  ekea_derece?: string | null
+  ekea_kademe?: string | null
+  kha_tarihi?: string | null
+  ekea_tarihi?: string | null
+  kidem_tarihi?: string | null
+  kidem_yili?: string | null
+  iyi_hal_terfi_tarihi?: string | null
+  ek_gosterge?: string | null
+  ek_odeme?: string | null
+  oht?: string | null
+  yan_odeme?: string | null
+  sds_orani?: string | null
+}
+
+function snapDK(snap: LogSnap, tip: 'kha' | 'ekea'): string {
+  const d = tip === 'kha' ? snap.kha_derece : snap.ekea_derece
+  const k = tip === 'kha' ? snap.kha_kademe : snap.ekea_kademe
+  return `${d ?? '—'}/${k ?? '—'}`
+}
+
+function ds(v: string | null | undefined): string {
+  return v ?? '—'
+}
+
 function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
   if (!k.terfi_id) return null
   const kd = k.kha_derece ?? '—'
@@ -79,12 +106,69 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
   const initialRows = buildTerfiEttirOnizleme(kaynaklar, bas, bit, kazancLookup)
   const { data: logRows } = await supabase
     .from('terfi_donem_islem_log')
-    .select('id, sicil_no, islem_tarihi, geri_alindi')
+    .select('id, sicil_no, islem_tarihi, geri_alindi, onceki, sonraki, terfi_id')
     .eq('donem_id', id)
     .order('islem_tarihi', { ascending: false })
-  const aktifLogSicilleri = new Set((logRows ?? []).filter(x => !x.geri_alindi).map(x => x.sicil_no))
+
+  const aktifLoglar = (logRows ?? []).filter(x => !x.geri_alindi)
+  const aktifLogSicilleri = new Set(aktifLoglar.map(x => x.sicil_no))
   // Aktif log'u olan (terfi ettirilmiş) personeli önizlemeden çıkar
   const initialRowsFinal = initialRows.filter(r => !aktifLogSicilleri.has(r.sicil_no))
+
+  // Terfi ettirilmiş kişilerden Excel için satır üret (onceki → sonraki snapshot)
+  const kaynakBySicil = new Map(kaynaklar.map(k => [k.sicil_no, k]))
+  const terfiEttirilenSatirlar: TerfiEttirOnizlemeSatir[] = aktifLoglar.map(log => {
+    const kaynak = kaynakBySicil.get(log.sicil_no)
+    const onc: LogSnap = (log.onceki ?? {}) as LogSnap
+    const son: LogSnap = (log.sonraki ?? {}) as LogSnap
+    return {
+      sicil_no: log.sicil_no,
+      ad_soyad: kaynak?.ad_soyad ?? log.sicil_no,
+      unvan_adi: kaynak?.unvan_adi ?? null,
+      kadro_derecesi: kaynak?.kadro_derecesi ?? null,
+      ogrenim_turu: kaynak?.ogrenim_turu ?? null,
+      kha_tarihi: onc.kha_tarihi ?? null,
+      ekea_tarihi: onc.ekea_tarihi ?? null,
+      kidem_tarihi_eski: ds(onc.kidem_tarihi),
+      kidem_tarihi_yeni: ds(son.kidem_tarihi),
+      iyi_hal_tarihi_eski: ds(onc.iyi_hal_terfi_tarihi),
+      iyi_hal_tarihi_yeni: ds(son.iyi_hal_terfi_tarihi),
+      kidem_yili_eski: ds(onc.kidem_yili),
+      kidem_yili_yeni: ds(son.kidem_yili),
+      dk_kha_eski: snapDK(onc, 'kha'),
+      dk_kha_yeni: snapDK(son, 'kha'),
+      dk_ekea_eski: snapDK(onc, 'ekea'),
+      dk_ekea_yeni: snapDK(son, 'ekea'),
+      ek_gosterge_eski: ds(onc.ek_gosterge),
+      ek_gosterge_yeni: ds(son.ek_gosterge),
+      ek_odeme_eski: ds(onc.ek_odeme),
+      ek_odeme_yeni: ds(son.ek_odeme),
+      oht_eski: ds(onc.oht),
+      oht_yeni: ds(son.oht),
+      yan_odeme_eski: ds(onc.yan_odeme),
+      yan_odeme_yeni: ds(son.yan_odeme),
+      sds_eski: ds(onc.sds_orani),
+      sds_yeni: ds(son.sds_orani),
+      durum: 'Terfi Ettirildi',
+      terfi_id: log.terfi_id ?? null,
+      payload: {
+        kha_derece: son.kha_derece ?? null,
+        kha_kademe: son.kha_kademe ?? null,
+        ekea_derece: son.ekea_derece ?? null,
+        ekea_kademe: son.ekea_kademe ?? null,
+        kha_tarihi: son.kha_tarihi ?? null,
+        ekea_tarihi: son.ekea_tarihi ?? null,
+        kidem_tarihi: son.kidem_tarihi ?? null,
+        kidem_yili: son.kidem_yili ?? null,
+        iyi_hal_terfi_tarihi: son.iyi_hal_terfi_tarihi ?? null,
+        ek_gosterge: son.ek_gosterge ?? null,
+        ek_odeme: son.ek_odeme ?? null,
+        oht: son.oht ?? null,
+        yan_odeme: son.yan_odeme ?? null,
+        sds_orani: son.sds_orani ?? null,
+      },
+    }
+  })
 
   function fmt(iso: string) {
     return new Date(iso + 'T12:00:00').toLocaleDateString('tr-TR')
@@ -132,6 +216,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
         terfiBas={bas}
         terfiBit={bit}
         initialRows={initialRowsFinal}
+        terfiEttirilenRows={terfiEttirilenSatirlar}
         islemLoglari={
           (logRows ?? []).map(x => ({
             id: x.id,
