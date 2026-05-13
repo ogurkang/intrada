@@ -13,7 +13,8 @@ export default async function SosyalHakDetayPage({ params }: Props) {
   if (isNaN(id)) notFound()
 
   const supabase = await createClient()
-  const { data: donem } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: donem } = await (supabase as any)
     .from('sosyal_hak_donem')
     .select('id, donem_adi, sira_no')
     .eq('id', id)

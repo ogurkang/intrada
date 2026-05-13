@@ -27,8 +27,10 @@ const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evl
 
 export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDetayData | { hata: string }> {
   const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-  const { data: donem } = await supabase
+  const { data: donem } = await db
     .from('sosyal_hak_donem')
     .select('id, donem_adi, sira_no, baslangic_tarihi, bitis_tarihi')
     .eq('id', donem_id)
@@ -36,22 +38,22 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
   // Bu dönemin mevcut seçimleri
-  const { data: secimRaw } = await supabase
+  const { data: secimRaw } = await db
     .from('sosyal_hak_secim')
     .select('izin_sira_no, tip, dahil')
     .eq('donem_id', donem_id)
 
   const buDonemSecili = new Map<string, SosyalHakTip>()
-  ;(secimRaw ?? []).forEach(s => {
+  ;(secimRaw ?? []).forEach((s: { dahil: boolean; izin_sira_no: string | null; tip: string }) => {
     if (s.dahil && s.izin_sira_no) buDonemSecili.set(s.izin_sira_no, s.tip as SosyalHakTip)
   })
 
   // Diğer dönemlerde seçili izinler (aday listesinden çıkarılacak)
-  const { data: tumSecimRaw } = await supabase
+  const { data: tumSecimRaw } = await db
     .from('sosyal_hak_secim')
     .select('donem_id, izin_sira_no, dahil')
   const digerDonemSecili = new Set<string>()
-  ;(tumSecimRaw ?? []).forEach(s => {
+  ;(tumSecimRaw ?? []).forEach((s: { dahil: boolean; izin_sira_no: string | null; donem_id: number }) => {
     if (s.dahil && s.izin_sira_no && s.donem_id !== donem_id) digerDonemSecili.add(s.izin_sira_no)
   })
 
@@ -190,19 +192,21 @@ export async function sosyalHakSecimleriKaydet(
   siraNoList: { sira_no: string; tip: SosyalHakTip }[]
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-  await supabase.from('sosyal_hak_secim').delete().eq('donem_id', donem_id)
+  await db.from('sosyal_hak_secim').delete().eq('donem_id', donem_id)
 
   if (siraNoList.length > 0) {
-    const { error } = await supabase.from('sosyal_hak_secim').insert(
+    const { error } = await db.from('sosyal_hak_secim').insert(
       siraNoList.map(({ sira_no, tip }) => ({
         donem_id,
         izin_sira_no: sira_no,
         tip,
         dahil: true,
-      })) as never[]
+      }))
     )
-    if (error) return { hata: error.message }
+    if (error) return { hata: (error as { message: string }).message }
   }
 
   revalidatePath(`/kesintiler/sosyal-hak/${donem_id}`)

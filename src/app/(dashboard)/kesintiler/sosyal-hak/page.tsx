@@ -4,7 +4,8 @@ import { donemEkle, donemGuncelle, donemKapat, donemAc, secimGetir, secimKaydet 
 
 export default async function SosyalHakPage() {
   const supabase = await createClient()
-  const { data: raw } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: raw } = await (supabase as any)
     .from('sosyal_hak_donem')
     .select('*')
     .order('id', { ascending: false })
