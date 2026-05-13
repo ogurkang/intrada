@@ -155,7 +155,6 @@ export type GorevYerineGoreListeKayit =
 
 export function gorevYerineGoreListeSatirUret(
   mudKonum: Map<string, string>,
-  sirketKonum: Map<string, string>,
   row: GorevYerineGoreListeKayit,
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
@@ -181,7 +180,7 @@ export function gorevYerineGoreListeSatirUret(
     sicil_no: row.sicil_no,
     ad_soyad: row.ad_soyad,
     mudurluk,
-    konum: mudurlukKonumGoster(sirketKonum, row.gorev_mudurlugu),
+    konum: mudurlukKonumGoster(mudKonum, row.gorev_mudurlugu),
     cinsiyet: cinsiyetGoster(row.cinsiyet),
     unvan: String(row.gorevi ?? '').trim() || '—',
     statu: row.statuEtiket,

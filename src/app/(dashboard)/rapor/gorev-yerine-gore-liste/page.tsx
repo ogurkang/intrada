@@ -12,7 +12,6 @@ import {
 import {
   gorevYerineGoreListeSatirUret,
   mudurlukKonumMetniHaritasi,
-  sirketKonumMetniHaritasi,
   type GorevYerineGoreListeSatir,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
@@ -69,7 +68,6 @@ export default async function GorevYerineGoreListePage() {
     { data: phRaw },
     { data: tanimStatuRaw },
     { data: mudTanimRaw },
-    { data: sirketTanimRaw },
   ] = await Promise.all([
     calisanQuery as Promise<{ data: CalisanRow[] | null; error: { message: string } | null }>,
     supabase
@@ -78,8 +76,6 @@ export default async function GorevYerineGoreListePage() {
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
     supabase.from('tanim_mudurluk').select('mudurluk_adi, konum').eq('aktif', true),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from('tanim_sirket').select('sirket_adi, konum').eq('aktif', true),
   ])
 
   const { data: calisanRaw, error } = calisanResult
@@ -102,7 +98,6 @@ export default async function GorevYerineGoreListePage() {
 
   const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
   const mudKonum = mudurlukKonumMetniHaritasi(mudTanimRaw ?? [])
-  const sirKonum = sirketKonumMetniHaritasi(sirketTanimRaw ?? [])
 
   const sicilList = [...aktifSiciller]
   const kadroByAsil = new Map<string, KadroGenis[]>()
@@ -179,7 +174,6 @@ export default async function GorevYerineGoreListePage() {
   const satirlar: GorevYerineGoreListeSatir[] = siralı.map(row =>
     gorevYerineGoreListeSatirUret(
       mudKonum,
-      sirKonum,
       row.kind === 'kadro'
         ? {
             kayit_key: row.kayit_key,
