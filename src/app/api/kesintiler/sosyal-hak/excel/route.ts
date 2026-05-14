@@ -16,6 +16,7 @@ const TIP_LABEL: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   const donemIdParam = request.nextUrl.searchParams.get('donem_id')
+  const tipParam = request.nextUrl.searchParams.get('tip') ?? 'detay' // 'ozet' | 'detay'
   const donemId = parseInt(donemIdParam ?? '0', 10)
   if (!donemId || isNaN(donemId)) {
     return NextResponse.json({ error: 'donem_id gerekli' }, { status: 400 })
@@ -148,7 +149,8 @@ export async function GET(request: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, 'Döneme Aktarılan İzinler')
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true })
 
-  const safeName = `Sosyal_Hak_Kesintileri_${donemAdi}`.replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Sosyal_Hak_Kesintileri'
+  const tipSuffix = tipParam === 'ozet' ? '_Ozet' : '_Detay'
+  const safeName = `Sosyal_Hak_Kesintileri_${donemAdi}${tipSuffix}`.replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Sosyal_Hak_Kesintileri'
   const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
   const encodedFilename = encodeURIComponent(`${safeName}.xlsx`)
 
