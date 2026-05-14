@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       .filter(Boolean)
     const D = new Date().toISOString().slice(0, 10)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const calisanQuery = (supabase as any).from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri').order('ad_soyad')
+    const calisanQuery = (supabase as any).from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu').order('ad_soyad')
     const [calisanResult, { data: phRaw }, { data: tanimStatuRaw }, { data: mudTanimRaw }] = await Promise.all([
       calisanQuery as Promise<{ data: any[] | null }>,
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
@@ -97,14 +97,23 @@ export async function GET(req: Request) {
     const sirali = [...kadroSatirlarRaw, ...firmaSatirlarRaw].sort((a, b) =>
       karsilastirStatuSonraSicilAd({ statuEtiket: a.statuEtiket, sicil_no: a.sicil_no, ad_soyad: a.ad_soyad }, { statuEtiket: b.statuEtiket, sicil_no: b.sicil_no, ad_soyad: b.ad_soyad }, statuSirali),
     )
-    let satirlar = sirali.map(row =>
-      gorevYerineGoreListeSatirUret(
+    const gorevTuruBySicil = new Map<string, string>()
+    for (const c of kadroCalisan) {
+      if (c.gorev_turu) gorevTuruBySicil.set(c.sicil_no, c.gorev_turu)
+    }
+
+    let satirlar = sirali.map(row => {
+      const s = gorevYerineGoreListeSatirUret(
         mudKonum,
         row.kind === 'kadro'
           ? { kayit_key: row.kayit_key, kind: 'kadro', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_yeri: row.gorev_yeri, statuEtiket: row.statuEtiket, kadro: row.kadro }
           : { kayit_key: row.kayit_key, kind: 'firma', sicil_no: row.sicil_no, ad_soyad: row.ad_soyad, cinsiyet: row.cinsiyet, gorev_mudurlugu: row.gorev_mudurlugu, gorevi: row.gorevi, statuEtiket: row.statuEtiket },
-      ),
-    )
+      )
+      if (row.kind === 'kadro' && gorevTuruBySicil.get(row.sicil_no) === 'Kurum Görevlendirme') {
+        s.konum = 'Dış'
+      }
+      return s
+    })
     const { data: ayarRaw } = await sb
       .from('rapor_gorev_yeri_liste_ayar')
       .select('kayit_key, sira_no')

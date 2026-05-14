@@ -55,12 +55,13 @@ export default async function GorevYerineGoreListePage() {
     ad_soyad: string
     cinsiyet: string | null
     gorev_yeri: string | null
+    gorev_turu: string | null
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calisanQuery = (supabase as any)
     .from('calisan')
-    .select('sicil_no, ad_soyad, cinsiyet, gorev_yeri')
+    .select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu')
     .order('ad_soyad')
 
   const [
@@ -171,8 +172,13 @@ export default async function GorevYerineGoreListePage() {
     ),
   )
 
-  const satirlar: GorevYerineGoreListeSatir[] = siralı.map(row =>
-    gorevYerineGoreListeSatirUret(
+  const gorevTuruBySicil = new Map<string, string>()
+  for (const c of kadroCalisan) {
+    if (c.gorev_turu) gorevTuruBySicil.set(c.sicil_no, c.gorev_turu)
+  }
+
+  const satirlar: GorevYerineGoreListeSatir[] = siralı.map(row => {
+    const s = gorevYerineGoreListeSatirUret(
       mudKonum,
       row.kind === 'kadro'
         ? {
@@ -195,8 +201,12 @@ export default async function GorevYerineGoreListePage() {
             gorevi: row.gorevi,
             statuEtiket: row.statuEtiket,
           },
-    ),
-  )
+    )
+    if (row.kind === 'kadro' && gorevTuruBySicil.get(row.sicil_no) === 'Kurum Görevlendirme') {
+      s.konum = 'Dış'
+    }
+    return s
+  })
 
   const { data: ayarRaw } = await sb
     .from('rapor_gorev_yeri_liste_ayar')
