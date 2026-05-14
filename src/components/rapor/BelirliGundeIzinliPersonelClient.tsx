@@ -7,15 +7,16 @@ import { useRouter } from 'next/navigation'
 export interface BelirliGundeIzinliSatir {
   sicil_no: string
   ad_soyad: string
+  statu: string
   mudurluk: string
+  gorevlendirilen_kurum: string
   konum: string
   tur: string
   ayrilis: string
   baslama: string
-  gun: number
 }
 
-type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'konum' | 'tur' | 'ayrilis' | 'baslama' | 'gun'
+type SortKey = 'sicil_no' | 'ad_soyad' | 'statu' | 'mudurluk' | 'gorevlendirilen_kurum' | 'konum' | 'tur' | 'ayrilis' | 'baslama'
 type SortDir = 'asc' | 'desc'
 
 interface Props {
@@ -88,7 +89,6 @@ export default function BelirliGundeIzinliPersonelClient({
     }
     const dir = sortDir === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => {
-      if (sortKey === 'gun') return (a.gun - b.gun) * dir
       return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
     })
   }, [satirlar, konumFiltre, mudurlukFiltreler, turFiltre, sicilFiltre, sortKey, sortDir])
@@ -259,7 +259,7 @@ export default function BelirliGundeIzinliPersonelClient({
           <span className="text-xs text-slate-400">{satirlar.length} toplam kayıt</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse min-w-[900px]">
+          <table className="w-full text-sm border-collapse min-w-[1100px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-left">
                 <th className="px-3 py-3 font-semibold text-slate-600 w-12 text-center">No</th>
@@ -270,16 +270,28 @@ export default function BelirliGundeIzinliPersonelClient({
                   Sicil No <SortIcon dir={sortKey === 'sicil_no' ? sortDir : null} />
                 </th>
                 <th
-                  className={`${thClass('ad_soyad')} min-w-[200px]`}
+                  className={`${thClass('ad_soyad')} min-w-[180px]`}
                   onClick={() => handleSort('ad_soyad')}
                 >
                   Adı Soyadı <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
                 </th>
                 <th
-                  className={`${thClass('mudurluk')} min-w-[180px]`}
+                  className={`${thClass('statu')} w-28`}
+                  onClick={() => handleSort('statu')}
+                >
+                  Statü <SortIcon dir={sortKey === 'statu' ? sortDir : null} />
+                </th>
+                <th
+                  className={`${thClass('mudurluk')} min-w-[160px]`}
                   onClick={() => handleSort('mudurluk')}
                 >
                   Müdürlük <SortIcon dir={sortKey === 'mudurluk' ? sortDir : null} />
+                </th>
+                <th
+                  className={`${thClass('gorevlendirilen_kurum')} min-w-[140px]`}
+                  onClick={() => handleSort('gorevlendirilen_kurum')}
+                >
+                  Görevlendirildiği Kurum <SortIcon dir={sortKey === 'gorevlendirilen_kurum' ? sortDir : null} />
                 </th>
                 <th
                   className={`${thClass('konum')} w-20 text-center`}
@@ -305,18 +317,12 @@ export default function BelirliGundeIzinliPersonelClient({
                 >
                   Başlama <SortIcon dir={sortKey === 'baslama' ? sortDir : null} />
                 </th>
-                <th
-                  className={`${thClass('gun')} w-16 text-right`}
-                  onClick={() => handleSort('gun')}
-                >
-                  Gün <SortIcon dir={sortKey === 'gun' ? sortDir : null} />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {gorunenSatirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={10} className="px-4 py-12 text-center text-slate-400">
                     {tarih ? `${formatTarihGoster(tarih)} tarihinde izinli personel bulunamadı.` : 'Tarih seçiniz.'}
                   </td>
                 </tr>
@@ -326,12 +332,13 @@ export default function BelirliGundeIzinliPersonelClient({
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-500 text-xs">{i + 1}</td>
                     <td className="px-3 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                     <td className="px-3 py-2.5 text-slate-800 font-medium">{row.ad_soyad}</td>
+                    <td className="px-3 py-2.5 text-slate-600 text-xs">{row.statu || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700 text-xs">{row.mudurluk || '—'}</td>
+                    <td className="px-3 py-2.5 text-slate-700 text-xs">{row.gorevlendirilen_kurum || '—'}</td>
                     <td className="px-3 py-2.5 text-center">{konumBadge(row.konum)}</td>
                     <td className="px-3 py-2.5 text-slate-700">{row.tur}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.ayrilis}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.baslama}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">{row.gun}</td>
                   </tr>
                 ))
               )}
@@ -339,11 +346,8 @@ export default function BelirliGundeIzinliPersonelClient({
             {gorunenSatirlar.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 border-t-2 border-slate-200 font-semibold">
-                  <td colSpan={8} className="px-3 py-2.5 text-slate-700">
+                  <td colSpan={10} className="px-3 py-2.5 text-slate-700">
                     Toplam ({gorunenSatirlar.length} kayıt)
-                  </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
-                    {gorunenSatirlar.reduce((s, r) => s + r.gun, 0)}
                   </td>
                 </tr>
               </tfoot>

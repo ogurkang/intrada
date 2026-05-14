@@ -30,7 +30,11 @@ export async function calisanEkle(
   const gorev_turu_tarihi =
     gorev_turu === 'Çalışan' ? null : str('gorev_turu_tarihi')
   const gorev_turu_aciklama =
-    gorev_turu === 'Geçici Görevlendirme' ? str('gorev_turu_aciklama') : null
+    (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
+      ? str('gorev_turu_aciklama')
+      : null
+  const gorevlendirilen_kurum =
+    gorev_turu === 'Kurum Görevlendirme' ? str('gorevlendirilen_kurum') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
@@ -65,7 +69,9 @@ export async function calisanEkle(
       gorev_turu_tarihi,
       gorev_turu_aciklama,
       gorev_durumu: String(formData.get('gorev_durumu') ?? '').trim() || 'Diğer',
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      gorevlendirilen_kurum,
+    } as any)
     .select('sicil_no, public_id')
     .single()
 

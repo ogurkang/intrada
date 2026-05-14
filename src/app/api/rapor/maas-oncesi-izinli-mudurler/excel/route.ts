@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       const satirlar = satirlariHesapla(m)
       if (satirlar.length === 0) continue
       herhangi = true
-      rows.push(mergeSatir(`${AY_TAM[m - 1]} ${yil}`, colCount, { italic: true }))
+      rows.push(mergeSatir(`${AY_TAM[m - 1]} ${yil}`, colCount, { gri: true }))
       mergeRows.push(rows.length - 1)
       rows.push(yillikBasliklar)
       satirlar.forEach((s, i) => {
