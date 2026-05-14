@@ -61,18 +61,6 @@ function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
   )
 }
 
-function TipBadge({ tip }: { tip: string }) {
-  const renkler: Record<string, string> = {
-    'Raporlu Memur': 'bg-orange-100 text-orange-700',
-    'İzinli Vekil':  'bg-blue-100 text-blue-700',
-    'İzinli Zabıta': 'bg-purple-100 text-purple-700',
-  }
-  return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${renkler[tip] ?? 'bg-slate-100 text-slate-600'}`}>
-      {tip}
-    </span>
-  )
-}
 
 function IzinTablo({
   izinler,
@@ -132,7 +120,6 @@ function IzinTablo({
             <ThSutun sutun="sira_no"  label="Kayıt No"   />
             <ThSutun sutun="sicil_no" label="Sicil No"   />
             <ThSutun sutun="ad_soyad" label="Adı Soyadı" />
-            <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Tip</th>
             <ThSutun sutun="tur"      label="Tür"        />
             <ThSutun sutun="ayrilis"  label="Ayrılış"    />
             <ThSutun sutun="baslama"  label="Başlama"    />
@@ -179,7 +166,6 @@ function IzinTablo({
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sira_no}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sicil_no}</td>
                 <td className="px-4 py-2 font-medium text-slate-800">{iz.ad_soyad}</td>
-                <td className="px-4 py-2"><TipBadge tip={tip} /></td>
                 <td className="px-4 py-2 text-slate-600">{iz.tur}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.ayrilis)}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.baslama)}</td>
