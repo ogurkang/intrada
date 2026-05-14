@@ -10,6 +10,7 @@ import {
   GOREV_TURU_OPTIONS,
   gorevTuruAciklamaGoster,
   gorevTuruTarihZorunlu,
+  gorevTuruBitisGoster,
 } from '@/lib/gorev-bilgileri'
 
 const CINSIYET = ['Erkek', 'Kadın']
@@ -21,7 +22,8 @@ export default function PersonelYeniClient() {
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [gorevTuru, setGorevTuru] = useState('Çalışan')
-  const gorevTarihGoster = gorevTuruTarihZorunlu(gorevTuru)
+  const gorevTarihGoster = gorevTuruBitisGoster(gorevTuru)
+  const gorevTarihZorunlu = gorevTuruTarihZorunlu(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
 
@@ -206,7 +208,9 @@ export default function PersonelYeniClient() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü tarihi</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Görev türü tarihi{gorevTarihZorunlu && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
                 {!gorevTarihGoster && <input type="hidden" name="gorev_turu_tarihi" value="" />}
                 {gorevTarihGoster ? (
                   <input name="gorev_turu_tarihi" type="date"

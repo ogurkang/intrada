@@ -178,6 +178,20 @@ const RAPOR_KARTLARI = [
     aciklama: 'Seçilen tarihte aktif izni devam eden personeli müdürlük, konum (İç/Dış) ve türe göre filtreli listeler; Excel destekli.',
     renk: 'border-violet-200 bg-violet-50 text-violet-900',
   },
+  {
+    kod: 'MIM',
+    href: '/rapor/maas-oncesi-izinli-mudurler',
+    baslik: 'Maaş Öncesi İzinli Müdürler Raporu',
+    aciklama: 'Her ayın 10–14. günlerinde izinli olan müdür unvanlı personeli sicil numarasına göre listeler; Yıllık/Aylık sekmesi ve Excel destekli.',
+    renk: 'border-orange-200 bg-orange-50 text-orange-900',
+  },
+  {
+    kod: 'GTC',
+    href: '/rapor/gorev-turune-gore-calisan',
+    baslik: 'Görev Türüne Göre Çalışan Bilgisi',
+    aciklama: 'Geçici Görevlendirme ve Kurum Görevlendirme türündeki personeli başlangıç/bitiş/süre bilgisiyle listeler; müdürlük ve tür filtresi, Excel destekli.',
+    renk: 'border-amber-200 bg-amber-50 text-amber-900',
+  },
 ] as const
 
 export default async function RaporYonetimiPage() {

@@ -82,6 +82,8 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/izin-limitine-takilan-personel-liste', label: 'İzin Limitine Takılan Personel Listesi' },
       { href: '/rapor/adrese-gore-personel-liste', label: 'Adrese Göre Personel Listesi' },
       { href: '/rapor/belirli-gunde-izinli-personel', label: 'Belirli Günde İzinli Olan Personel Listesi' },
+      { href: '/rapor/maas-oncesi-izinli-mudurler', label: 'Maaş Öncesi İzinli Müdürler Raporu' },
+      { href: '/rapor/gorev-turune-gore-calisan', label: 'Görev Türüne Göre Çalışan Bilgisi' },
     ],
   },
   {

@@ -1,0 +1,284 @@
+'use client'
+
+import Link from 'next/link'
+import { useCallback, useMemo, useState } from 'react'
+
+export interface GorevTuruSatir {
+  sicil_no:   string
+  ad_soyad:   string
+  mudurluk:   string
+  gorev_turu: string
+  aciklama:   string
+  baslangic:  string
+  bitis:      string
+  sure_gun:   number
+}
+
+type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'gorev_turu' | 'baslangic' | 'bitis' | 'sure_gun'
+type SortDir = 'asc' | 'desc'
+
+interface Props {
+  satirlar:       GorevTuruSatir[]
+  tumMudurlukler: string[]
+  raporBasePath:  string
+  excelBasePath:  string
+}
+
+function SortIcon({ dir }: { dir: SortDir | null }) {
+  if (!dir) return <span className="ml-1 text-slate-400 text-xs">↕</span>
+  return <span className="ml-1 text-teal-700 text-xs">{dir === 'asc' ? '↑' : '↓'}</span>
+}
+
+function turBadge(tur: string) {
+  if (tur === 'Geçici Görevlendirme')
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Geçici</span>
+  if (tur === 'Kurum Görevlendirme')
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Kurum</span>
+  return <span className="text-slate-500 text-xs">{tur}</span>
+}
+
+export default function GorevTuruneGoreCalisanClient({
+  satirlar,
+  tumMudurlukler,
+  raporBasePath: _raporBasePath,
+  excelBasePath,
+}: Props) {
+  const [turFiltre, setTurFiltre]           = useState('')
+  const [mudurlukFiltreler, setMudurlukFiltreler] = useState<string[]>([])
+  const [sicilFiltre, setSicilFiltre]       = useState('')
+  const [sortKey, setSortKey]               = useState<SortKey>('sicil_no')
+  const [sortDir, setSortDir]               = useState<SortDir>('asc')
+  const [excelYukleniyor, setExcelYukleniyor] = useState(false)
+
+  const handleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }, [sortKey])
+
+  const gorunenSatirlar = useMemo(() => {
+    let rows = satirlar
+    if (turFiltre) rows = rows.filter(r => r.gorev_turu === turFiltre)
+    if (mudurlukFiltreler.length > 0) {
+      const set = new Set(mudurlukFiltreler)
+      rows = rows.filter(r => set.has(r.mudurluk))
+    }
+    const trim = sicilFiltre.trim().toLocaleLowerCase('tr-TR')
+    if (trim) {
+      rows = rows.filter(r =>
+        r.sicil_no.toLocaleLowerCase('tr-TR').includes(trim) ||
+        r.ad_soyad.toLocaleLowerCase('tr-TR').includes(trim) ||
+        r.mudurluk.toLocaleLowerCase('tr-TR').includes(trim),
+      )
+    }
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...rows].sort((a, b) => {
+      if (sortKey === 'sure_gun') return (a.sure_gun - b.sure_gun) * dir
+      return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
+    })
+  }, [satirlar, turFiltre, mudurlukFiltreler, sicilFiltre, sortKey, sortDir])
+
+  const excelParams = useMemo(() => {
+    const p = new URLSearchParams()
+    if (turFiltre) p.set('t', turFiltre)
+    if (mudurlukFiltreler.length) p.set('m', mudurlukFiltreler.join(','))
+    if (sicilFiltre.trim()) p.set('s', sicilFiltre.trim())
+    return p.toString()
+  }, [turFiltre, mudurlukFiltreler, sicilFiltre])
+
+  async function excelIndir() {
+    setExcelYukleniyor(true)
+    try {
+      const url = excelParams ? `${excelBasePath}?${excelParams}` : excelBasePath
+      const res = await fetch(url)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert((err as { error?: string }).error ?? 'Excel indirilemedi.')
+        return
+      }
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'Gorev_Turune_Gore_Calisan.xlsx'
+      a.click()
+    } catch {
+      alert('Excel indirilemedi.')
+    } finally {
+      setExcelYukleniyor(false)
+    }
+  }
+
+  const thClass = (key: SortKey) =>
+    `px-3 py-3 font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-100 transition-colors whitespace-nowrap ${
+      sortKey === key ? 'text-teal-800' : ''
+    }`
+
+  return (
+    <div className="space-y-6">
+      {/* Başlık */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
+            ← Rapor Yönetimi
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-800">Görev Türüne Göre Çalışan Bilgisi</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Geçici Görevlendirme ve Kurum Görevlendirme türündeki personel listesi
+          </p>
+        </div>
+        <div className="shrink-0">
+          <button
+            onClick={excelIndir}
+            disabled={excelYukleniyor || gorunenSatirlar.length === 0}
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 transition-colors gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {excelYukleniyor ? 'Hazırlanıyor…' : 'Excel İndir'}
+          </button>
+        </div>
+      </div>
+
+      {/* Filtreler */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-center gap-4">
+        {/* Görev Türü */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600 whitespace-nowrap font-medium">Görev Türü</label>
+          <select
+            value={turFiltre}
+            onChange={e => setTurFiltre(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">Tümü</option>
+            <option value="Geçici Görevlendirme">Geçici Görevlendirme</option>
+            <option value="Kurum Görevlendirme">Kurum Görevlendirme</option>
+          </select>
+        </div>
+
+        {/* Müdürlük */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600 whitespace-nowrap">Müdürlük</label>
+          <details className="relative">
+            <summary className="list-none cursor-pointer min-w-[200px] max-w-[280px] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-700">
+              {mudurlukFiltreler.length ? `${mudurlukFiltreler.length} müdürlük seçili` : 'Tümü'}
+            </summary>
+            <div className="absolute left-0 z-10 mt-1 w-80 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs text-slate-500">Birden fazla seçilebilir</p>
+                <button type="button" onClick={() => setMudurlukFiltreler([])} className="text-xs text-slate-500 hover:text-slate-700">
+                  Temizle
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {tumMudurlukler.map(m => (
+                  <label key={m} className="inline-flex items-center gap-2 text-xs text-slate-700 w-full">
+                    <input
+                      type="checkbox"
+                      checked={mudurlukFiltreler.includes(m)}
+                      onChange={e =>
+                        setMudurlukFiltreler(prev =>
+                          e.target.checked ? Array.from(new Set([...prev, m])) : prev.filter(x => x !== m),
+                        )
+                      }
+                    />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </details>
+        </div>
+
+        {/* Sicil / Ad */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600 whitespace-nowrap">Sicil / Ad</label>
+          <input
+            type="text"
+            value={sicilFiltre}
+            onChange={e => setSicilFiltre(e.target.value)}
+            placeholder="Ara…"
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 w-40"
+          />
+        </div>
+
+        <span className="ml-auto text-sm text-slate-500">
+          <span className="font-semibold text-slate-700">{gorunenSatirlar.length}</span> personel
+        </span>
+      </div>
+
+      {/* Tablo */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-700">Görevlendirme Listesi</span>
+          <span className="text-xs text-slate-400">{satirlar.length} toplam kayıt</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse min-w-[900px]">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                <th className="px-3 py-3 font-semibold text-slate-600 w-12 text-center">No</th>
+                <th className={`${thClass('sicil_no')} w-28`} onClick={() => handleSort('sicil_no')}>
+                  Sicil No <SortIcon dir={sortKey === 'sicil_no' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('ad_soyad')} min-w-[200px]`} onClick={() => handleSort('ad_soyad')}>
+                  Adı Soyadı <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('mudurluk')} min-w-[180px]`} onClick={() => handleSort('mudurluk')}>
+                  Müdürlük <SortIcon dir={sortKey === 'mudurluk' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('gorev_turu')} w-40`} onClick={() => handleSort('gorev_turu')}>
+                  Görevlendirme Türü <SortIcon dir={sortKey === 'gorev_turu' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('baslangic')} w-28 text-center`} onClick={() => handleSort('baslangic')}>
+                  Başlangıç <SortIcon dir={sortKey === 'baslangic' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('bitis')} w-28 text-center`} onClick={() => handleSort('bitis')}>
+                  Bitiş <SortIcon dir={sortKey === 'bitis' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('sure_gun')} w-20 text-right`} onClick={() => handleSort('sure_gun')}>
+                  Süre (Gün) <SortIcon dir={sortKey === 'sure_gun' ? sortDir : null} />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {gorunenSatirlar.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                    Filtrelere uygun kayıt bulunamadı.
+                  </td>
+                </tr>
+              ) : (
+                gorunenSatirlar.map((row, i) => (
+                  <tr key={`${row.sicil_no}-${i}`} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-500 text-xs">{i + 1}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
+                    <td className="px-3 py-2.5 text-slate-800 font-medium">{row.ad_soyad}</td>
+                    <td className="px-3 py-2.5 text-slate-700 text-xs">{row.mudurluk || '—'}</td>
+                    <td className="px-3 py-2.5">{turBadge(row.gorev_turu)}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.baslangic}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.bitis}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">
+                      {row.sure_gun > 0 ? row.sure_gun : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {gorunenSatirlar.length > 0 && (
+              <tfoot>
+                <tr className="bg-slate-50 border-t-2 border-slate-200 font-semibold">
+                  <td colSpan={7} className="px-3 py-2.5 text-slate-700">
+                    Toplam ({gorunenSatirlar.length} kayıt)
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
+                    {gorunenSatirlar.reduce((s, r) => s + r.sure_gun, 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

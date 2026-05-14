@@ -40,7 +40,10 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
 
   const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
-  const gorevTarihGoster = gorevTuruTarihZorunlu(gorevTuru)
+  // Gösterme: tüm görevlendirme türlerinde (Kurum dahil) tarih alanları görünür
+  const gorevTarihGoster = gorevTuruBitisGoster(gorevTuru)
+  // Zorunluluk: yalnızca Aylıksız İzin, Geçici Görevlendirme, Yarı Zamanlı
+  const gorevTarihZorunlu = gorevTuruTarihZorunlu(gorevTuru)
   const gorevBitisGoster = gorevTuruBitisGoster(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
 
@@ -188,7 +191,9 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü tarihi</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Görev türü tarihi{gorevTarihZorunlu && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
                 {!gorevTarihGoster && <input type="hidden" name="gorev_turu_tarihi" value="" />}
                 {gorevTarihGoster ? (
                   <input

@@ -1,28 +1,32 @@
 /** Personel görev bilgileri — kadro normundan bağımsız; sicil ile taşınır. */
 
-export const GOREV_TURU_OPTIONS = ['Çalışan', 'Aylıksız İzin', 'Geçici Görevlendirme', 'Yarı Zamanlı'] as const
+export const GOREV_TURU_OPTIONS = ['Çalışan', 'Aylıksız İzin', 'Geçici Görevlendirme', 'Kurum Görevlendirme', 'Yarı Zamanlı'] as const
 export type GorevTuru = (typeof GOREV_TURU_OPTIONS)[number]
 
 export const GOREV_DURUMU_OPTIONS = ['Diğer', 'Engelli', 'Eski Hükümlü'] as const
 export type GorevDurumu = (typeof GOREV_DURUMU_OPTIONS)[number]
 
+/** Başlangıç tarihi zorunlu türler (Kurum Görevlendirme hariç — isteğe bağlı). */
 export function gorevTuruTarihZorunlu(tur: string | null | undefined): boolean {
   const t = (tur ?? '').trim()
   return t === 'Aylıksız İzin' || t === 'Geçici Görevlendirme' || t === 'Yarı Zamanlı'
 }
 
 export function gorevTuruAciklamaGoster(tur: string | null | undefined): boolean {
-  return (tur ?? '').trim() === 'Geçici Görevlendirme'
+  const t = (tur ?? '').trim()
+  return t === 'Geçici Görevlendirme' || t === 'Kurum Görevlendirme'
 }
 
-/** Bitiş tarihi gösterilecek türler (aylıksız, geçici, yarı zamanlı). */
+/** Tarih alanlarının gösterileceği türler (zorunluluktan bağımsız). */
 export function gorevTuruBitisGoster(tur: string | null | undefined): boolean {
-  return gorevTuruTarihZorunlu(tur)
+  const t = (tur ?? '').trim()
+  return t === 'Aylıksız İzin' || t === 'Geçici Görevlendirme' || t === 'Kurum Görevlendirme' || t === 'Yarı Zamanlı'
 }
 
-/** Yemek hakkı seçeneği sadece Geçici Görevlendirmede gösterilir. */
+/** Yemek hakkı seçeneği Geçici ve Kurum Görevlendirmede gösterilir. */
 export function gorevTuruYemekHakkiGoster(tur: string | null | undefined): boolean {
-  return (tur ?? '').trim() === 'Geçici Görevlendirme'
+  const t = (tur ?? '').trim()
+  return t === 'Geçici Görevlendirme' || t === 'Kurum Görevlendirme'
 }
 
 /** Engelli detay alanları (oran, başlangıç, bitiş) Engelli durumunda gösterilir. */
