@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
-import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster } from '@/lib/gorev-bilgileri'
+import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 
 type Calisan   = Tables<'calisan'>
@@ -154,6 +154,17 @@ function KisiselTab({
           <Alan etiket="Görevlendirme açıklaması" deger={
             gorevTuruAciklamaGoster(calisan.gorev_turu)
               ? (calisan.gorev_turu_aciklama ?? '—')
+              : '—'
+          } />
+          <Alan etiket="Yemek hakkı" deger={
+            gorevTuruYemekHakkiGoster(calisan.gorev_turu)
+              ? (
+                  (calisan as typeof calisan & { gorev_turu_yemek_hakki?: boolean | null }).gorev_turu_yemek_hakki === true
+                    ? 'Evet'
+                    : (calisan as typeof calisan & { gorev_turu_yemek_hakki?: boolean | null }).gorev_turu_yemek_hakki === false
+                      ? 'Hayır'
+                      : '—'
+                )
               : '—'
           } />
           <Alan etiket="Görev durumu" deger={calisan.gorev_durumu ?? 'Diğer'} />

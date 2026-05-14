@@ -32,6 +32,11 @@ export async function calisanGuncelle(
     (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
       ? str(formData, 'gorev_turu_aciklama')
       : null
+  const yemekHakkiRaw = str(formData, 'gorev_turu_yemek_hakki')
+  const gorev_turu_yemek_hakki =
+    (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
+      ? (yemekHakkiRaw === 'evet' ? true : yemekHakkiRaw === 'hayir' ? false : null)
+      : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
@@ -63,6 +68,7 @@ export async function calisanGuncelle(
     gorev_turu_tarihi,
     gorev_turu_bitis_tarihi,
     gorev_turu_aciklama,
+    gorev_turu_yemek_hakki,
     gorev_durumu:           str(formData, 'gorev_durumu') ?? 'Diğer',
   }
   if (!hizmetDondur) {

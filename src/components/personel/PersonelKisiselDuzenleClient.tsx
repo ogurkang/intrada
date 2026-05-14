@@ -11,11 +11,13 @@ import {
   gorevTuruAciklamaGoster,
   gorevTuruBitisGoster,
   gorevTuruTarihZorunlu,
+  gorevTuruYemekHakkiGoster,
 } from '@/lib/gorev-bilgileri'
 
 type Calisan = Tables<'calisan'>
 type CalisanGenisletilmis = Calisan & {
   gorev_turu_bitis_tarihi?: string | null
+  gorev_turu_yemek_hakki?: boolean | null
 }
 
 interface Props {
@@ -46,6 +48,7 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
   const gorevTarihZorunlu = gorevTuruTarihZorunlu(gorevTuru)
   const gorevBitisGoster = gorevTuruBitisGoster(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
+  const gorevYemekHakkiGoster = gorevTuruYemekHakkiGoster(gorevTuru)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -244,6 +247,25 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                   </p>
                 )}
               </div>
+              {!gorevYemekHakkiGoster && <input type="hidden" name="gorev_turu_yemek_hakki" value="" />}
+              {gorevYemekHakkiGoster && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Yemek hakkı var mı?</label>
+                  <select
+                    name="gorev_turu_yemek_hakki"
+                    defaultValue={
+                      calisan.gorev_turu_yemek_hakki === true  ? 'evet'
+                      : calisan.gorev_turu_yemek_hakki === false ? 'hayir'
+                      : ''
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">— Seçin —</option>
+                    <option value="evet">Evet</option>
+                    <option value="hayir">Hayır</option>
+                  </select>
+                </div>
+              )}
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev durumu</label>
                 <select
