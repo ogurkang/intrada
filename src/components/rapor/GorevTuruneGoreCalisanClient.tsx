@@ -6,15 +6,15 @@ import { useCallback, useMemo, useState } from 'react'
 export interface GorevTuruSatir {
   sicil_no:   string
   ad_soyad:   string
+  statu:      string
   mudurluk:   string
   gorev_turu: string
   aciklama:   string
   baslangic:  string
   bitis:      string
-  sure_gun:   number
 }
 
-type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'gorev_turu' | 'baslangic' | 'bitis' | 'sure_gun'
+type SortKey = 'sicil_no' | 'ad_soyad' | 'statu' | 'mudurluk' | 'gorev_turu' | 'aciklama' | 'baslangic' | 'bitis'
 type SortDir = 'asc' | 'desc'
 
 interface Props {
@@ -71,10 +71,9 @@ export default function GorevTuruneGoreCalisanClient({
       )
     }
     const dir = sortDir === 'asc' ? 1 : -1
-    return [...rows].sort((a, b) => {
-      if (sortKey === 'sure_gun') return (a.sure_gun - b.sure_gun) * dir
-      return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
-    })
+    return [...rows].sort((a, b) =>
+      a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
+    )
   }, [satirlar, turFiltre, mudurlukFiltreler, sicilFiltre, sortKey, sortDir])
 
   const excelParams = useMemo(() => {
@@ -213,21 +212,27 @@ export default function GorevTuruneGoreCalisanClient({
           <span className="text-xs text-slate-400">{satirlar.length} toplam kayıt</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse min-w-[900px]">
+          <table className="w-full text-sm border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-left">
                 <th className="px-3 py-3 font-semibold text-slate-600 w-12 text-center">No</th>
                 <th className={`${thClass('sicil_no')} w-28`} onClick={() => handleSort('sicil_no')}>
                   Sicil No <SortIcon dir={sortKey === 'sicil_no' ? sortDir : null} />
                 </th>
-                <th className={`${thClass('ad_soyad')} min-w-[200px]`} onClick={() => handleSort('ad_soyad')}>
+                <th className={`${thClass('ad_soyad')} min-w-[180px]`} onClick={() => handleSort('ad_soyad')}>
                   Adı Soyadı <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
                 </th>
-                <th className={`${thClass('mudurluk')} min-w-[180px]`} onClick={() => handleSort('mudurluk')}>
+                <th className={`${thClass('statu')} w-28`} onClick={() => handleSort('statu')}>
+                  Statü <SortIcon dir={sortKey === 'statu' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('mudurluk')} min-w-[160px]`} onClick={() => handleSort('mudurluk')}>
                   Müdürlük <SortIcon dir={sortKey === 'mudurluk' ? sortDir : null} />
                 </th>
-                <th className={`${thClass('gorev_turu')} w-40`} onClick={() => handleSort('gorev_turu')}>
+                <th className={`${thClass('gorev_turu')} w-36`} onClick={() => handleSort('gorev_turu')}>
                   Görevlendirme Türü <SortIcon dir={sortKey === 'gorev_turu' ? sortDir : null} />
+                </th>
+                <th className={`${thClass('aciklama')} min-w-[160px]`} onClick={() => handleSort('aciklama')}>
+                  Görevlendirildiği Kurum <SortIcon dir={sortKey === 'aciklama' ? sortDir : null} />
                 </th>
                 <th className={`${thClass('baslangic')} w-28 text-center`} onClick={() => handleSort('baslangic')}>
                   Başlangıç <SortIcon dir={sortKey === 'baslangic' ? sortDir : null} />
@@ -235,15 +240,12 @@ export default function GorevTuruneGoreCalisanClient({
                 <th className={`${thClass('bitis')} w-28 text-center`} onClick={() => handleSort('bitis')}>
                   Bitiş <SortIcon dir={sortKey === 'bitis' ? sortDir : null} />
                 </th>
-                <th className={`${thClass('sure_gun')} w-20 text-right`} onClick={() => handleSort('sure_gun')}>
-                  Süre (Gün) <SortIcon dir={sortKey === 'sure_gun' ? sortDir : null} />
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {gorunenSatirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                     Filtrelere uygun kayıt bulunamadı.
                   </td>
                 </tr>
@@ -253,13 +255,12 @@ export default function GorevTuruneGoreCalisanClient({
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-500 text-xs">{i + 1}</td>
                     <td className="px-3 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                     <td className="px-3 py-2.5 text-slate-800 font-medium">{row.ad_soyad}</td>
+                    <td className="px-3 py-2.5 text-slate-600 text-xs">{row.statu || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700 text-xs">{row.mudurluk || '—'}</td>
                     <td className="px-3 py-2.5">{turBadge(row.gorev_turu)}</td>
+                    <td className="px-3 py-2.5 text-slate-700 text-xs">{row.aciklama || '—'}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.baslangic}</td>
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600 text-xs">{row.bitis}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">
-                      {row.sure_gun > 0 ? row.sure_gun : '—'}
-                    </td>
                   </tr>
                 ))
               )}
@@ -267,11 +268,8 @@ export default function GorevTuruneGoreCalisanClient({
             {gorunenSatirlar.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 border-t-2 border-slate-200 font-semibold">
-                  <td colSpan={7} className="px-3 py-2.5 text-slate-700">
+                  <td colSpan={9} className="px-3 py-2.5 text-slate-700">
                     Toplam ({gorunenSatirlar.length} kayıt)
-                  </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-800">
-                    {gorunenSatirlar.reduce((s, r) => s + r.sure_gun, 0)}
                   </td>
                 </tr>
               </tfoot>

@@ -32,8 +32,6 @@ export async function calisanGuncelle(
     (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
       ? str(formData, 'gorev_turu_aciklama')
       : null
-  const gorevlendirilen_kurum =
-    gorev_turu === 'Kurum Görevlendirme' ? str(formData, 'gorevlendirilen_kurum') : null
   if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
     return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
   }
@@ -73,9 +71,7 @@ export async function calisanGuncelle(
     temel.hizmet_suresi_gun = hs.gun
   }
 
-  ;(temel as Record<string, unknown>).gorevlendirilen_kurum = gorevlendirilen_kurum
-
-  const { error } = await supabase.from('calisan').update(temel as any).eq('sicil_no', sicil_no)
+  const { error } = await supabase.from('calisan').update(temel).eq('sicil_no', sicil_no)
 
   if (error) return { hata: error.message }
 

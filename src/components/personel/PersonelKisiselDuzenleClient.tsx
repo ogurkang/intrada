@@ -244,21 +244,6 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                   </p>
                 )}
               </div>
-              {gorevTuru === 'Kurum Görevlendirme' && (
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Görevlendirildiği Kurum</label>
-                  <input
-                    name="gorevlendirilen_kurum"
-                    type="text"
-                    defaultValue={(calisan as any).gorevlendirilen_kurum ?? ''}
-                    placeholder="Kurum adı"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                  />
-                </div>
-              )}
-              {gorevTuru !== 'Kurum Görevlendirme' && (
-                <input type="hidden" name="gorevlendirilen_kurum" value="" />
-              )}
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev durumu</label>
                 <select

@@ -43,7 +43,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
         .lte('ayrilis', tarih)
         .gt('baslama', tarih)
         .order('sicil_no'),
-      supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorevlendirilen_kurum') as any,
+      supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorev_turu_aciklama'),
       supabase
         .from('kadro_hareketleri')
         .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
@@ -51,14 +51,13 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
       supabase.from('tanim_mudurluk').select('mudurluk_adi, konum, sira_no').eq('aktif', true),
     ])
 
-  const calisanArr: { sicil_no: string; ad_soyad: string | null; gorev_turu: string | null; gorevlendirilen_kurum: string | null }[] =
-    (calisanRaw ?? []) as any
+  const calisanArr = (calisanRaw ?? []) as { sicil_no: string; ad_soyad: string | null; gorev_turu: string | null; gorev_turu_aciklama: string | null }[]
 
   const adMap = new Map(calisanArr.map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
   const kurumMap = new Map(
     calisanArr
-      .filter(c => c.gorev_turu === 'Kurum Görevlendirme' && c.gorevlendirilen_kurum)
-      .map(c => [c.sicil_no, c.gorevlendirilen_kurum ?? '']),
+      .filter(c => c.gorev_turu === 'Kurum Görevlendirme' && c.gorev_turu_aciklama)
+      .map(c => [c.sicil_no, c.gorev_turu_aciklama ?? '']),
   )
 
   const mudurlukKonum = mudurlukKonumHaritasi((mudRaw ?? []) as TanimMudurlukKonumRow[])

@@ -9,15 +9,6 @@ import {
 
 const HEDEF_TURLER = ['Geçici Görevlendirme', 'Kurum Görevlendirme']
 
-function suresiGunHesapla(baslangic: string | null, bitis: string | null): number {
-  if (!baslangic) return 0
-  const s = new Date(baslangic)
-  const b = bitis ? new Date(bitis) : new Date()
-  if (isNaN(s.getTime()) || isNaN(b.getTime())) return 0
-  const fark = Math.round((b.getTime() - s.getTime()) / (1000 * 60 * 60 * 24))
-  return Math.max(0, fark)
-}
-
 function formatTarih(s: string | null | undefined): string {
   if (!s) return '—'
   const d = String(s).slice(0, 10)
@@ -38,7 +29,7 @@ export default async function GorevTuruneGoreCalisanPage() {
       .in('gorev_turu', HEDEF_TURLER),
     supabase
       .from('kadro_hareketleri')
-      .select('asil, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+      .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
       .not('asil', 'is', null),
   ])
 
@@ -56,31 +47,31 @@ export default async function GorevTuruneGoreCalisanPage() {
   }
 
   const mudurlukBySicil = new Map<string, string>()
+  const statuBySicil = new Map<string, string>()
   for (const [sicil, rows] of byAsil) {
     const aktif = rows.filter(r => kadroSatirAktifMi(r, today))
-    if (aktif.length === 0) {
-      const sorted = [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))
-      const latest = sorted[0]
-      if (latest) mudurlukBySicil.set(sicil, String(latest.kadro_mudurlugu ?? latest.gorev_mudurlugu ?? '').trim())
-      continue
+    const hedef =
+      aktif.length > 0
+        ? aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
+        : [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
+    if (hedef) {
+      mudurlukBySicil.set(sicil, String(hedef.kadro_mudurlugu ?? hedef.gorev_mudurlugu ?? '').trim())
+      statuBySicil.set(sicil, String((hedef as any).statu ?? '').trim())
     }
-    const secilen = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
-    mudurlukBySicil.set(sicil, String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim())
   }
 
   const satirlar: GorevTuruSatir[] = (calisanlar ?? []).map(c => {
     const sicil = String(c.sicil_no ?? '').trim()
     const bitisTarihi: string | null = c.gorev_turu_bitis_tarihi ?? null
-    const sure = suresiGunHesapla(c.gorev_turu_tarihi ?? null, bitisTarihi)
     return {
       sicil_no:     sicil,
       ad_soyad:     c.ad_soyad ?? sicil,
+      statu:        statuBySicil.get(sicil) ?? '',
       mudurluk:     mudurlukBySicil.get(sicil) ?? '',
       gorev_turu:   c.gorev_turu ?? '',
       aciklama:     c.gorev_turu_aciklama ?? '',
       baslangic:    formatTarih(c.gorev_turu_tarihi),
       bitis:        formatTarih(bitisTarihi),
-      sure_gun:     sure,
     }
   })
 

@@ -18,14 +18,6 @@ function formatTarih(s: string | null | undefined): string {
   return `${g}.${m}.${y}`
 }
 
-function suresiGunHesapla(baslangic: string | null, bitis: string | null): number {
-  if (!baslangic) return 0
-  const s = new Date(baslangic)
-  const b = bitis ? new Date(bitis) : new Date()
-  if (isNaN(s.getTime()) || isNaN(b.getTime())) return 0
-  return Math.max(0, Math.round((b.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)))
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const turFiltre = searchParams.get('t') ?? ''
@@ -43,11 +35,10 @@ export async function GET(request: NextRequest) {
       .in('gorev_turu', HEDEF_TURLER),
     supabase
       .from('kadro_hareketleri')
-      .select('asil, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+      .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
       .not('asil', 'is', null),
   ])
 
-  // Müdürlük haritası
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadroRaw ?? []) {
     const asil = String(r.asil ?? '').trim()
@@ -57,36 +48,40 @@ export async function GET(request: NextRequest) {
     byAsil.set(asil, list)
   }
   const mudurlukBySicil = new Map<string, string>()
+  const statuBySicil = new Map<string, string>()
   for (const [sicil, rows] of byAsil) {
     const aktif = rows.filter(r => kadroSatirAktifMi(r, today))
-    if (aktif.length === 0) {
-      const sorted = [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))
-      const latest = sorted[0]
-      if (latest) mudurlukBySicil.set(sicil, String(latest.kadro_mudurlugu ?? latest.gorev_mudurlugu ?? '').trim())
-      continue
+    const hedef =
+      aktif.length > 0
+        ? aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
+        : [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
+    if (hedef) {
+      mudurlukBySicil.set(sicil, String(hedef.kadro_mudurlugu ?? hedef.gorev_mudurlugu ?? '').trim())
+      statuBySicil.set(sicil, String((hedef as any).statu ?? '').trim())
     }
-    const secilen = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
-    mudurlukBySicil.set(sicil, String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim())
   }
 
-  type Satir = { sicil_no: string; ad_soyad: string; mudurluk: string; gorev_turu: string; baslangic: string; bitis: string; sure_gun: number }
+  type Satir = {
+    sicil_no: string; ad_soyad: string; statu: string
+    mudurluk: string; gorev_turu: string; aciklama: string
+    baslangic: string; bitis: string
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let satirlar: Satir[] = ((calisanRaw ?? []) as any[]).map((c: any) => {
     const sicil = String(c.sicil_no ?? '').trim()
-    const bitisTarihi: string | null = c.gorev_turu_bitis_tarihi ?? null
     return {
       sicil_no:   sicil,
       ad_soyad:   c.ad_soyad ?? sicil,
+      statu:      statuBySicil.get(sicil) ?? '',
       mudurluk:   mudurlukBySicil.get(sicil) ?? '',
       gorev_turu: c.gorev_turu ?? '',
+      aciklama:   c.gorev_turu_aciklama ?? '',
       baslangic:  formatTarih(c.gorev_turu_tarihi ?? null),
-      bitis:      formatTarih(bitisTarihi),
-      sure_gun:   suresiGunHesapla(c.gorev_turu_tarihi ?? null, bitisTarihi),
+      bitis:      formatTarih(c.gorev_turu_bitis_tarihi ?? null),
     }
   })
 
-  // Filtreler
   if (turFiltre) satirlar = satirlar.filter(r => r.gorev_turu === turFiltre)
   if (mudFiltreler.length > 0) {
     const set = new Set(mudFiltreler)
@@ -102,7 +97,7 @@ export async function GET(request: NextRequest) {
   satirlar.sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }))
 
   const baslik = turFiltre ? `Görev Türüne Göre Çalışan — ${turFiltre}` : 'Görev Türüne Göre Çalışan Bilgisi'
-  const headers = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Müdürlük', 'Görevlendirme Türü', 'Başlangıç', 'Bitiş', 'Süre (Gün)']
+  const headers = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Statü', 'Müdürlük', 'Görevlendirme Türü', 'Görevlendirildiği Kurum', 'Başlangıç', 'Bitiş']
   const colCount = headers.length
 
   const rows: (string | number | XLSX.CellObject)[][] = []
@@ -116,16 +111,17 @@ export async function GET(request: NextRequest) {
     rows.push(Array(colCount).fill('').map((_, i) => i === 2 ? 'Kayıt Yok' : ''))
   } else {
     satirlar.forEach((s, i) => {
-      rows.push([i + 1, s.sicil_no, s.ad_soyad, s.mudurluk || '—', s.gorev_turu, s.baslangic, s.bitis, s.sure_gun > 0 ? s.sure_gun : '—'])
+      rows.push([i + 1, s.sicil_no, s.ad_soyad, s.statu || '—', s.mudurluk || '—', s.gorev_turu, s.aciklama || '—', s.baslangic, s.bitis])
     })
-    // Toplam satırı
-    const toplamGun = satirlar.reduce((sum, r) => sum + r.sure_gun, 0)
-    rows.push(['Toplam', '', `${satirlar.length} kayıt`, '', '', '', '', toplamGun > 0 ? toplamGun : '—'])
+    rows.push(['Toplam', '', `${satirlar.length} kayıt`, '', '', '', '', '', ''])
   }
 
   const ws = XLSX.utils.aoa_to_sheet(rows)
   ws['!merges'] = mergeRows.map(r => ({ s: { r, c: 0 }, e: { r, c: colCount - 1 } }))
-  ws['!cols'] = [{ wch: 8 }, { wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+  ws['!cols'] = [
+    { wch: 8 }, { wch: 12 }, { wch: 28 }, { wch: 14 },
+    { wch: 28 }, { wch: 22 }, { wch: 24 }, { wch: 12 }, { wch: 12 },
+  ]
   applyGridBorders(ws, rows.length, colCount)
 
   const wb = XLSX.utils.book_new()

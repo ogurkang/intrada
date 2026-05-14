@@ -156,11 +156,6 @@ function KisiselTab({
               ? (calisan.gorev_turu_aciklama ?? '—')
               : '—'
           } />
-          {calisan.gorev_turu === 'Kurum Görevlendirme' && (
-            <Alan etiket="Görevlendirildiği Kurum" deger={
-              (calisan as any).gorevlendirilen_kurum ?? '—'
-            } />
-          )}
           <Alan etiket="Görev durumu" deger={calisan.gorev_durumu ?? 'Diğer'} />
         </div>
       </div>

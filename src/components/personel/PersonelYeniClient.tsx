@@ -230,17 +230,6 @@ export default function PersonelYeniClient() {
                   <p className="text-sm text-slate-400 py-2 border border-dashed border-slate-200 rounded-lg px-3 bg-slate-50">—</p>
                 )}
               </div>
-              {gorevTuru === 'Kurum Görevlendirme' && (
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Görevlendirildiği Kurum</label>
-                  <input name="gorevlendirilen_kurum" type="text"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                    placeholder="Kurum adı" />
-                </div>
-              )}
-              {gorevTuru !== 'Kurum Görevlendirme' && (
-                <input type="hidden" name="gorevlendirilen_kurum" value="" />
-              )}
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev durumu</label>
                 <select name="gorev_durumu" defaultValue="Diğer"
