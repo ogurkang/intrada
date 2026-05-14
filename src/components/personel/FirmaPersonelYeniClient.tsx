@@ -7,11 +7,10 @@ import Link from 'next/link'
 interface Props {
   mudurluler: string[]
   ogrenimler: string[]
-  ayrilisNedenleri: string[]
   onEkle: (fd: FormData) => Promise<{ hata?: string; id?: number; public_id?: string }>
 }
 
-export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrilisNedenleri, onEkle }: Props) {
+export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, onEkle }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -51,11 +50,6 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
             <div className="col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Ad Soyad *</label>
               <input name="ad_soyad" required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sicil No</label>
-              <input name="sicil_no" placeholder="Firma içi sicil"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
@@ -127,30 +121,6 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, ayrili
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Mesleği</label>
               <input name="meslegi"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">Ayrılış (doldurun = ayrıldı)</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ayrılış Tarihi</label>
-                <input name="ayrilis_tarihi" type="date"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ayrılış Nedeni</label>
-                {ayrilisNedenleri.length ? (
-                  <select name="ayrilis_nedeni"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
-                    <option value="">— Seçin —</option>
-                    {ayrilisNedenleri.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                ) : (
-                  <input name="ayrilis_nedeni"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-                )}
-              </div>
             </div>
           </div>
 

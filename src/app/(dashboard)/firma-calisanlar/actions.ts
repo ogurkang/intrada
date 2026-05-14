@@ -42,17 +42,35 @@ function tarih(fd: FormData, key: string): string | null {
   return str(fd, key)
 }
 
+/** Mevcut firma_calisanlar kayıtlarından bir sonraki ardışık sicil no'yu üretir. */
+async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
+  const { data: rows } = await supabase
+    .from('firma_calisanlar')
+    .select('sicil_no')
+    .not('sicil_no', 'is', null)
+
+  let maks = 0
+  for (const r of rows ?? []) {
+    const n = parseInt(String(r.sicil_no ?? '').replace(/\D/g, ''), 10)
+    if (!isNaN(n) && n > maks) maks = n
+  }
+  return String(maks + 1)
+}
+
 export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string }> {
   const ad_soyad = str(fd, 'ad_soyad')
   if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
 
   const supabase = await createClient()
+
+  const sicil_no = await sonrakiSicilNo(supabase)
+
   const { data: inserted, error } = await supabase
     .from('firma_calisanlar')
     .insert({
       ad_soyad,
       sira_no:             str(fd, 'sira_no'),
-      sicil_no:            str(fd, 'sicil_no'),
+      sicil_no,
       tckn:                str(fd, 'tckn'),
       cinsiyet:            str(fd, 'cinsiyet'),
       dogum_tarihi:        tarih(fd, 'dogum_tarihi'),
@@ -63,8 +81,6 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
       gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
       gorevi:              str(fd, 'gorevi'),
       meslegi:             str(fd, 'meslegi'),
-      ayrilis_tarihi:      tarih(fd, 'ayrilis_tarihi'),
-      ayrilis_nedeni:      str(fd, 'ayrilis_nedeni'),
     })
     .select('id, public_id')
     .single()
