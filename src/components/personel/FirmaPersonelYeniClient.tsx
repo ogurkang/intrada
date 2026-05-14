@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 interface Props {
   mudurluler: string[]
@@ -25,12 +26,11 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, onEkle
       setHata(res.hata)
       setIsPending(false)
     } else {
-      if (typeof window !== 'undefined' && window.opener) {
-        window.opener.postMessage('refresh', '*')
-        window.close()
-      } else {
-        router.push('/firma-calisanlar')
-      }
+      broadcastIntradaRefresh('firma-calisanlar')
+      window.close()
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') router.push('/firma-calisanlar')
+      }, 300)
     }
   }
 

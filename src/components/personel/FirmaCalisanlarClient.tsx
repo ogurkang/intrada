@@ -94,7 +94,22 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
       if (e.data === 'refresh') window.location.reload()
     }
     window.addEventListener('message', handler)
-    return () => window.removeEventListener('message', handler)
+
+    // rel="noopener noreferrer" ile açılan sekmelerden gelen yenileme sinyali
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel('intrada')
+      bc.onmessage = (e: MessageEvent<{ type?: string; scope?: string }>) => {
+        if (e.data?.type === 'router-refresh' && e.data?.scope === 'firma-calisanlar') {
+          window.location.reload()
+        }
+      }
+    } catch { /* ignore */ }
+
+    return () => {
+      window.removeEventListener('message', handler)
+      try { bc?.close() } catch { /* ignore */ }
+    }
   }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
