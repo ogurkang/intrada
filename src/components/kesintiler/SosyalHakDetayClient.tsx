@@ -294,7 +294,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     })
   }
 
-  async function excelIndir(tip: 'ozet' | 'detay') {
+  async function excelIndir(tip: 'ozet' | 'detay' | 'genel') {
     if (!data) return
     setExcelYukleniyor(true)
     try {
@@ -308,7 +308,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const suffix = tip === 'ozet' ? '_Ozet' : '_Detay'
+      const suffix = tip === 'ozet' ? '_Ozet' : tip === 'genel' ? '_Genel' : '_Detay'
       a.download = `Sosyal_Hak_Kesintileri_${data.donem.donem_adi ?? 'Donem'}${suffix}.xlsx`.replace(/[:\*\?\/\\]/g, ' ')
       a.click()
       URL.revokeObjectURL(url)
@@ -545,6 +545,13 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
                     className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
                     Detay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { excelIndir('genel'); setExcelMenuAcik(false) }}
+                    className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Genel
                   </button>
                 </div>
               </>
