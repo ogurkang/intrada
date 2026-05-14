@@ -157,7 +157,7 @@ function IzinTablo({
             </tr>
           ) : (
             siraliIzinler.map((iz, idx) => (
-              <tr key={iz.sira_no} className="hover:bg-slate-50 transition-colors">
+              <tr key={`${iz.tip}-${iz.sira_no}-${idx}`} className="hover:bg-slate-50 transition-colors">
                 <td className="px-3 py-2 text-center">
                   {yon === 'aday' && onSagaAl && (
                     <button
