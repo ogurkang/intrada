@@ -56,7 +56,11 @@ function sortle(arr: LeafRow[]) {
  * Her modül için, verilen sira_no listesini o modülün donem/secim tabloları kullanarak
  * `kesintimHesapla` ile hesaplar ve sonuçları sira_no → KesintimHesapSatir haritası olarak döner.
  *
- * curId: sira_nolar'ın en son dahil edildiği modül dönemi (en büyük idx).
+ * globalCurId: Sosyal Hak döneminin başlangıç tarihine karşılık gelen (ya da hemen öncesindeki)
+ * modül dönemi. Bu sayede tüm izinler aynı referans dönemine göre hesaplanır; OD tutarlılığı sağlanır.
+ *
+ * Dönem zinciri kırılan (önceki modül döneminde tam işlenmiş, SD=0) izinler için fallback:
+ * globalCurId döneminin perspektifinden OD/K/SD hesaplanır.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function hesaplaModul(
@@ -65,6 +69,8 @@ async function hesaplaModul(
   siraNoList: string[],
   izinlerByTip: LeafRow[],
   tatiller: { tatil_adi?: string | null; tatil_turu?: string | null; tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[],
+  /** Sosyal Hak döneminin başlangıç tarihi (globalCurId seçimi için) */
+  shakBasTarihi: string,
 ): Promise<Map<string, KesintimHesapSatir>> {
   if (siraNoList.length === 0) return new Map()
 
@@ -92,44 +98,35 @@ async function hesaplaModul(
   })
   const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
-  /* ── Modül seçim tablosundan ilk dönem + kendi dönemi haritasını kur ── */
+  /* ── globalCurId: Sosyal Hak başlangıcına karşılık gelen modül dönemi ── */
+  // Sosyal Hak döneminin baslangic_tarihi'nin düştüğü (ya da hemen öncesindeki son) modül dönemini seç.
+  const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
+  let globalCurDonem = tumDonemler[tumDonemler.length - 1]
+  for (const p of tumDonemler) {
+    if (p.baslangic_tarihi_ms <= shakBasMs) globalCurDonem = p
+    // sorted ascending; dönemler shakBasMs'yi geçtikten sonra durabilir ama hepsi kontrol edilmeli
+  }
+  const globalCurId = globalCurDonem.id
+
+  /* ── ilkDonemIdBySiraNo: her iznin modül secim tablosundaki ilk dönemi ── */
   const { data: secimRaw } = await db
     .from(secimTablo)
     .select('donem_id, izin_sira_no, dahil')
     .in('izin_sira_no', siraNoList) as { data: { donem_id: number; izin_sira_no: string; dahil: boolean }[] | null }
 
-  const ilkDonemIdBySiraNo: Record<string, number>       = {}
-  // Her sira_no'nun "kendi" dönemi: en son dahil edildiği dönem (o dönem hesabında gösterilmesi gerekir)
-  const curDonemBySiraNo  = new Map<string, number>()
-
+  const ilkDonemIdBySiraNo: Record<string, number> = {}
   for (const s of secimRaw ?? []) {
     if (!s.dahil || !s.izin_sira_no) continue
     const idx = idxById.get(s.donem_id) ?? -1
     if (idx < 0) continue
-
-    // ilk dönem = en erken
-    const prevIlk = ilkDonemIdBySiraNo[s.izin_sira_no]
-    if (prevIlk === undefined || idx < (idxById.get(prevIlk) ?? 9999)) {
+    const prev = ilkDonemIdBySiraNo[s.izin_sira_no]
+    if (prev === undefined || idx < (idxById.get(prev) ?? 9999)) {
       ilkDonemIdBySiraNo[s.izin_sira_no] = s.donem_id
     }
-
-    // kendi dönemi = en son
-    const prevCur = curDonemBySiraNo.get(s.izin_sira_no)
-    if (prevCur === undefined || idx > (idxById.get(prevCur) ?? -1)) {
-      curDonemBySiraNo.set(s.izin_sira_no, s.donem_id)
-    }
   }
-
-  // Secimde olmayan sira_nolar → son döneme ata
-  const lastDonem = tumDonemler[tumDonemler.length - 1]
-  if (!lastDonem) return new Map()
+  // Modül secim tablosunda hiç kaydı olmayan sira_nolar → globalCurId'e ata
   for (const sn of siraNoList) {
-    if (!curDonemBySiraNo.has(sn)) {
-      curDonemBySiraNo.set(sn, lastDonem.id)
-      ilkDonemIdBySiraNo[sn] = lastDonem.id
-    } else if (!(sn in ilkDonemIdBySiraNo)) {
-      ilkDonemIdBySiraNo[sn] = curDonemBySiraNo.get(sn)!
-    }
+    if (!(sn in ilkDonemIdBySiraNo)) ilkDonemIdBySiraNo[sn] = globalCurId
   }
 
   /* ── İzin verileri (modülün tur filtresine göre) ─────────────────── */
@@ -141,9 +138,7 @@ async function hesaplaModul(
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .in('sira_no', siraNoList)
     .neq('durum', 'İptal Edildi')
-  if (turFiltre) {
-    izinQuery = izinQuery.in('tur', turFiltre)
-  }
+  if (turFiltre) izinQuery = izinQuery.in('tur', turFiltre)
   const { data: izinRawAny } = await izinQuery
   const izinRaw = (izinRawAny ?? []) as IzinDbRow[]
 
@@ -156,8 +151,6 @@ async function hesaplaModul(
     const { data: kad } = await db.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', siciller)
     ;(kad ?? []).forEach((k: { sicil_no: string | null; kadro_unvani: string | null }) => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
   }
-
-  // Leaf satırlarından unvan bilgisini de doldur (izin_hareketleri'nde olmayan izinler için)
   for (const r of izinlerByTip) {
     if (!adMap[r.sicil_no]    && r.ad_soyad) adMap[r.sicil_no]    = r.ad_soyad
     if (!unvanMap[r.sicil_no] && r.unvan)    unvanMap[r.sicil_no] = r.unvan
@@ -176,53 +169,93 @@ async function hesaplaModul(
       gun:      i.gun ?? 0,
     }))
 
-  // IZY için yıllık Rapor Bakiyesi'ni doğru hesaplamak amacıyla seçili olmayan
-  // R/HR izinleri de dahil edilir. Sadece annualBakiyeBeforeSiraNo'ya katkı sağlar;
-  // ilkDonemIdBySiraNo'da olmadıklarından satirlar'a eklenmezler.
-  if (modul === 'izy' && siciller.length > 0) {
-    const existingSiraNoSet = new Set(izinler.map(i => i.sira_no))
-    const { data: tumRHRaw } = await db
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-      .in('sicil_no', siciller)
-      .in('tur', ['Rapor', 'Heyet Raporu'])
-      .neq('durum', 'İptal Edildi') as { data: IzinDbRow[] | null }
-    for (const r of tumRHRaw ?? []) {
-      if (!r.sira_no || !r.ayrilis || !r.baslama) continue
-      if (existingSiraNoSet.has(r.sira_no)) continue
-      izinler.push({
-        sira_no:  r.sira_no,
-        sicil_no: r.sicil_no ?? '',
-        ad_soyad: adMap[r.sicil_no ?? ''] ?? r.sicil_no ?? '',
-        unvan:    unvanMap[r.sicil_no ?? ''] ?? '',
-        tur:      r.tur ?? '',
-        ayrilis:  r.ayrilis,
-        baslama:  r.baslama,
-        gun:      r.gun ?? 0,
-      })
-    }
-  }
+  /* ── kesintimHesapla: globalCurId ile tek çalıştırma ─────────────── */
+  const sonuc = kesintimHesapla({ modul, curId: globalCurId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+  const resultMap = new Map<string, KesintimHesapSatir>(sonuc.satirlar.map(s => [s.sira_no, s]))
 
-  /* ── Her benzersiz "kendi dönemi" için ayrı hesap çalıştır ──────── */
-  // Neden ayrı ayrı? Çünkü kesintimHesapla bir curId ile çalışır; farklı dönemlere
-  // ait sira_nolar aynı curId'le çalıştırılırsa, geçmiş dönem izinleri "zincirde SD=0"
-  // nedeniyle curRow=null dönüp eksik görünür.
-  const uniqueCurIds = new Set(curDonemBySiraNo.values())
-  const resultMap    = new Map<string, KesintimHesapSatir>()
+  /* ── Fallback: dönem zinciri kırılan izinler ─────────────────────── */
+  // kesintimHesapla'da firstIdx < curIdx olup ara dönemde SD=0 olan izinler curRow=null döner.
+  // Bu izinler globalCurId dönem perspektifinden hesaplanır:
+  //   - Dönem öncesi (Takipteki): OD=miktarı, K=min(OD,kapasite), SD=kalan
+  //   - Dönem içi  (Dönemdeki) : K=overlap, SD=taşan
+  //   - Dönem sonrası(Askıdaki): SD=miktar
+  const izinBySiraNo = new Map(izinler.map(i => [i.sira_no, i]))
+  function sod2(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() }
 
-  for (const curId of uniqueCurIds) {
-    const groupSet = new Set(
-      [...curDonemBySiraNo.entries()]
-        .filter(([, dId]) => dId === curId)
-        .map(([sn]) => sn)
-    )
-    const sonuc = kesintimHesapla({ modul, curId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
-    for (const s of sonuc.satirlar) {
-      if (groupSet.has(s.sira_no) && !resultMap.has(s.sira_no)) {
-        resultMap.set(s.sira_no, s)
+  for (const sn of siraNoList) {
+    if (resultMap.has(sn)) continue
+    const iv = izinBySiraNo.get(sn)
+    if (!iv || !iv.ayrilis || !iv.baslama) continue
+
+    const aD = new Date(iv.ayrilis)
+    const bD = new Date(iv.baslama)
+    if (isNaN(aD.getTime()) || isNaN(bD.getTime())) continue
+    const startMs  = sod2(aD)
+    const lastDate = new Date(bD); lastDate.setDate(lastDate.getDate() - 1)
+    const lastMs   = sod2(lastDate)
+    if (lastMs < startMs) continue
+
+    const toplam = iv.gun > 0 ? iv.gun : Math.floor((lastMs - startMs) / 86_400_000) + 1
+    if (toplam <= 0) continue
+
+    const kapasite = globalCurDonem.kapasite
+
+    // IZY R/HR: 30 günlük yıllık serbest kotaya göre kesilecek miktar
+    const isRH       = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    const freeAmount = isRH ? 30 : 0  // bakiyeBefore=0 (bağımsız fallback)
+    const deductAmt  = isRH ? Math.max(0, toplam - freeAmount) : toplam
+    const annualRB   = isRH ? toplam : 0
+
+    let od = 0, r = 0, rr = 0, kes = 0, sd = 0
+
+    if (startMs < globalCurDonem.baslangic_tarihi_ms) {
+      // Takipteki: izin dönem başından önce başlıyor
+      od  = deductAmt
+      kes = Math.min(od, kapasite)
+      sd  = Math.max(0, od - kes)
+    } else if (startMs > globalCurDonem.bitis_tarihi_ms) {
+      // Askıdaki: izin henüz başlamamış
+      sd = deductAmt
+    } else {
+      // Dönemdeki: izin dönem içinde başlıyor
+      const oS = Math.max(startMs, globalCurDonem.baslangic_tarihi_ms)
+      const oE = Math.min(lastMs,  globalCurDonem.bitis_tarihi_ms)
+      const overlapGun = oE >= oS ? Math.floor((oE - oS) / 86_400_000) + 1 : 0
+      if (isRH) {
+        const deductableThisPeriod = Math.max(0, overlapGun - freeAmount)
+        kes = Math.min(deductableThisPeriod, kapasite)
+        sd  = Math.max(0, deductAmt - kes)
+      } else {
+        kes = Math.min(overlapGun, kapasite)
+        sd  = Math.max(0, toplam - kes)
       }
     }
+
+    // R / RR ayrımı (RMY)
+    const base = od > 0 ? od : toplam
+    if (modul === 'rmy') {
+      r  = iv.tur === 'Rapor'      ? base : 0
+      rr = (iv.tur === 'Refakatçi Raporu' || iv.tur === 'Refakatçi İzni') ? base : 0
+    } else {
+      r = base
+    }
+
+    const kategori: KesintimKategori =
+      startMs > globalCurDonem.bitis_tarihi_ms   ? 'Askıdaki İzinler'
+      : startMs >= globalCurDonem.baslangic_tarihi_ms ? 'Dönemdeki İzinler'
+      : 'Takipteki İzinler'
+
+    resultMap.set(sn, {
+      sira_no:  iv.sira_no,
+      sicil_no: iv.sicil_no,
+      ad_soyad: iv.ad_soyad,
+      unvan:    iv.unvan,
+      tur:      iv.tur,
+      OD: od, R: r, RR: rr, HR: 0, K: kes, SD: sd, RB: annualRB,
+      kategori,
+    })
   }
+
   return resultMap
 }
 
@@ -322,9 +355,9 @@ export async function GET(request: NextRequest) {
     const izyLeaf = leafRows.filter(r => r.tip === 'izy')
 
     ;[rmySatirMap, ivySatirMap, izySatirMap] = await Promise.all([
-      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller),
-      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller),
-      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller),
+      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller, donem.baslangic_tarihi),
+      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller, donem.baslangic_tarihi),
+      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller, donem.baslangic_tarihi),
     ])
   }
 
