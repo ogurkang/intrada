@@ -1,6 +1,13 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import {
+  buildMemurSiciller,
+  buildVekilSiciller,
+  buildZabitaSiciller,
+  RMY_IZIN_TURLERI,
+  IZY_IZIN_TURLERI_OR,
+} from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
 
 export type SosyalHakTip = 'rmy' | 'ivy' | 'izy'
@@ -21,9 +28,6 @@ export interface SosyalHakDetayData {
   aday:      SosyalHakIzin[]
   islenecek: SosyalHakIzin[]
 }
-
-const ZABITA_MUDURLUGU = 'Zabıta Müdürlüğü'
-const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%,tur.ilike.%Refakatçi%,tur.eq.Rapor,tur.eq.Heyet Raporu'
 
 export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDetayData | { hata: string }> {
   const supabase = await createClient()
@@ -57,52 +61,12 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     if (s.dahil && s.izin_sira_no && s.donem_id !== donem_id) digerDonemSecili.add(s.izin_sira_no)
   })
 
-  // Kadro bilgileri: RMY (Memur), IVY (Vekil), IZY (Zabıta Müdürlüğü)
-  // Tek sorguda tüm kadro çekilirse PostgREST varsayılan 1000 satır sınırına takılır (1037+ kayıt);
-  // bazı personel (ör. sicil 465) listede görünmez. Modül bazlı filtreli sorgular kullanılır.
-  const [{ data: memurKadro }, { data: vekilKadro }, { data: zabitaKadro }] = await Promise.all([
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, vekil')
-      .is('ayrilis_tarihi', null)
-      .eq('statu', 'Memur'),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, vekil, kadro_unvani, gorev_unvani')
-      .is('ayrilis_tarihi', null)
-      .not('vekil', 'is', null),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, vekil')
-      .is('ayrilis_tarihi', null)
-      .eq('kadro_mudurlugu', ZABITA_MUDURLUGU),
+  // Kadro: RMY / IVY / IZY ekranlarıyla aynı kurallar (kesintiler-kadro.ts)
+  const [memurSiciller, vekilSiciller, zabitaSiciller] = await Promise.all([
+    buildMemurSiciller(supabase),
+    buildVekilSiciller(supabase),
+    buildZabitaSiciller(supabase),
   ])
-
-  const memurSiciller  = new Set<string>()
-  const vekilSiciller  = new Set<string>()
-  const zabitaSiciller = new Set<string>()
-  const asilMuduruSiciller = new Set<string>()
-
-  for (const k of memurKadro ?? []) {
-    const sicil = (k.asil ?? k.vekil ?? '').trim()
-    if (sicil) memurSiciller.add(sicil)
-  }
-
-  for (const k of vekilKadro ?? []) {
-    const vekilSicil = (k.vekil ?? '').trim()
-    if (vekilSicil) vekilSiciller.add(vekilSicil)
-    const asil = (k.asil ?? '').trim()
-    if (asil) {
-      const unvan = `${String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')} ${String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')}`
-      if (unvan.includes('müdürü')) asilMuduruSiciller.add(asil)
-    }
-  }
-  for (const s of asilMuduruSiciller) vekilSiciller.delete(s)
-
-  for (const k of zabitaKadro ?? []) {
-    const sicil = (k.asil ?? k.vekil ?? '').trim()
-    if (sicil) zabitaSiciller.add(sicil)
-  }
 
   type RawIzin = { sira_no: string | null; sicil_no: string | null; tur: string | null; ayrilis: string | null; baslama: string | null; gun: number | null }
 
@@ -113,7 +77,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       .from('izin_hareketleri')
       .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
       .neq('durum', 'İptal Edildi')
-      .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
+      .in('tur', [...RMY_IZIN_TURLERI])
       .in('sicil_no', Array.from(memurSiciller))
       .order('baslama')
       .limit(500)
@@ -140,7 +104,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       .from('izin_hareketleri')
       .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
       .neq('durum', 'İptal Edildi')
-      .or(IZY_IZIN_TURLERI)
+      .or(IZY_IZIN_TURLERI_OR)
       .in('sicil_no', Array.from(zabitaSiciller))
       .order('baslama')
       .limit(500)

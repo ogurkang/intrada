@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { buildVekilSiciller } from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
 
 export interface IvyDetayIzin {
@@ -29,24 +30,7 @@ export async function ivyDetayYukle(donem_id: number): Promise<IvyDetayData | { 
     .single()
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
-  // Kadro Hareketlerinde vekil olarak yer alan personel (ayrılış boş)
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-  const vekilSiciller = new Set<string>()
-  const asilMuduruSiciller = new Set<string>()
-  for (const k of kadroRaw ?? []) {
-    const sicil = (k.vekil ?? '').trim()
-    if (sicil) vekilSiciller.add(sicil)
-    const asil = (k.asil ?? '').trim()
-    if (!asil) continue
-    const unvan = `${String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')} ${String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')}`
-    if (unvan.includes('müdürü')) asilMuduruSiciller.add(asil)
-  }
-  for (const sicil of asilMuduruSiciller) {
-    vekilSiciller.delete(sicil)
-  }
+  const vekilSiciller = await buildVekilSiciller(supabase)
   if (vekilSiciller.size === 0) {
     return {
       donem: { id: donem.id, donem_adi: donem.donem_adi ?? donem.sira_no, baslangic_tarihi: donem.baslangic_tarihi, bitis_tarihi: donem.bitis_tarihi },

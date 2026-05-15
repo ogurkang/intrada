@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { kesintimHesapla, type KesintimDonemRow, type KesintimIzinRow, type KesintimHesapSatir } from '@/lib/kesinym-hesap'
+import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
 function tarih(t: string | null | undefined) {
   if (!t) return '—'
@@ -23,7 +24,7 @@ const MODUL_TABLOLAR = {
 
 /** Modülün izin türü filtresi (null = filtre yok) */
 const MODUL_TUR_FILTRE: Record<string, string[] | null> = {
-  rmy: ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'],
+  rmy: [...RMY_IZIN_TURLERI],
   ivy: null,
   izy: null,
 }

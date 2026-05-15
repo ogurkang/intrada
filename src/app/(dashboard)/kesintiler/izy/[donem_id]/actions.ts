@@ -1,9 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { buildZabitaSiciller, IZY_IZIN_TURLERI_OR } from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
-
-const ZABITA_MUDURLUGU = 'Zabıta Müdürlüğü'
 
 export interface IzyDetayIzin {
   sira_no:  string
@@ -31,18 +30,7 @@ export async function izyDetayYukle(donem_id: number): Promise<IzyDetayData | { 
     .single()
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
-  // Zabıta Müdürlüğü siciller
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, kadro_mudurlugu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-  const zabitaSiciller = new Set<string>()
-  for (const k of kadroRaw ?? []) {
-    const mud = (k.kadro_mudurlugu ?? '').trim()
-    if (mud !== ZABITA_MUDURLUGU) continue
-    const sicil = (k.asil ?? k.vekil ?? '').trim()
-    if (sicil) zabitaSiciller.add(sicil)
-  }
+  const zabitaSiciller = await buildZabitaSiciller(supabase)
   if (zabitaSiciller.size === 0) {
     return {
       donem: { id: donem.id, donem_adi: donem.donem_adi ?? donem.sira_no, baslangic_tarihi: donem.baslangic_tarihi, bitis_tarihi: donem.bitis_tarihi },
@@ -51,13 +39,11 @@ export async function izyDetayYukle(donem_id: number): Promise<IzyDetayData | { 
     }
   }
 
-  // Zabıta Müdürlüğü'ne ait TÜM izinler — İptal hariç; tür: Yıllık, Ölüm, Evlilik, Babalık, Mehil, Mazeret, İdari, DÖÇ, DSÇ, Refakatçi İzni, Rapor, Heyet Raporu
-  const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%,tur.ilike.%Refakatçi%,tur.eq.Rapor,tur.eq.Heyet Raporu'
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .neq('durum', 'İptal Edildi')
-    .or(IZY_IZIN_TURLERI)
+    .or(IZY_IZIN_TURLERI_OR)
     .in('sicil_no', Array.from(zabitaSiciller))
     .order('baslama')
     .limit(500)

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { buildMemurSiciller, RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
 
 export interface RmyDetayIzin {
@@ -29,17 +30,7 @@ export async function rmyDetayYukle(donem_id: number): Promise<RmyDetayData | { 
     .single()
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
-  // Statüsü Memur olan personel (kadro_hareketleri: ayrılış boş, statu = Memur)
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, statu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-    .eq('statu', 'Memur')
-  const memurSiciller = new Set<string>()
-  for (const k of kadroRaw ?? []) {
-    const sicil = (k.asil ?? k.vekil ?? '').trim()
-    if (sicil) memurSiciller.add(sicil)
-  }
+  const memurSiciller = await buildMemurSiciller(supabase)
   if (memurSiciller.size === 0) {
     return {
       donem: { id: donem.id, donem_adi: donem.donem_adi ?? donem.sira_no, baslangic_tarihi: donem.baslangic_tarihi, bitis_tarihi: donem.bitis_tarihi },
@@ -53,7 +44,7 @@ export async function rmyDetayYukle(donem_id: number): Promise<RmyDetayData | { 
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .neq('durum', 'İptal Edildi')
-    .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
+    .in('tur', [...RMY_IZIN_TURLERI])
     .in('sicil_no', Array.from(memurSiciller))
     .order('baslama')
     .limit(500)
