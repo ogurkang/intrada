@@ -3,8 +3,6 @@ import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { kesintimHesapla, type KesintimDonemRow, type KesintimIzinRow, type KesintimHesapSatir } from '@/lib/kesinym-hesap'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
-import type { SupabaseClient } from '@supabase/supabase-js'
-
 function tarih(t: string | null | undefined) {
   if (!t) return '—'
   return new Date(t).toLocaleDateString('tr-TR')
@@ -60,8 +58,9 @@ function sortle(arr: LeafRow[]) {
  *
  * curId: sira_nolar'ın en son dahil edildiği modül dönemi (en büyük idx).
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function hesaplaModul(
-  supabase: SupabaseClient,
+  supabase: any,
   modul: Modul,
   siraNoList: string[],
   izinlerByTip: LeafRow[],
@@ -72,7 +71,9 @@ async function hesaplaModul(
   const { donem: donemTablo, secim: secimTablo } = MODUL_TABLOLAR[modul]
 
   /* ── Modül dönemleri ────────────────────────────────────────────── */
-  const { data: tumDonemlerRaw } = await (supabase as unknown as Record<string, (...args: unknown[]) => unknown>)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data: tumDonemlerRaw } = await db
     .from(donemTablo)
     .select('id, baslangic_tarihi, bitis_tarihi')
     .order('baslangic_tarihi', { ascending: true }) as { data: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[] | null }
@@ -92,7 +93,7 @@ async function hesaplaModul(
   const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
   /* ── Modül seçim tablosundan ilk dönem haritasını kur ───────────── */
-  const { data: secimRaw } = await (supabase as unknown as Record<string, (...args: unknown[]) => unknown>)
+  const { data: secimRaw } = await db
     .from(secimTablo)
     .select('donem_id, izin_sira_no, dahil')
     .in('izin_sira_no', siraNoList) as { data: { donem_id: number; izin_sira_no: string; dahil: boolean }[] | null }
