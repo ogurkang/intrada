@@ -139,18 +139,20 @@ async function hesaplaModul(
 
   /* ── İzin verileri (modülün tur filtresine göre) ─────────────────── */
   const turFiltre = MODUL_TUR_FILTRE[modul]
-  let izinQuery = supabase
+  type IzinDbRow = { sira_no: string | null; sicil_no: string | null; tur: string | null; ayrilis: string | null; baslama: string | null; gun: number | null }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let izinQuery: any = db
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .in('sira_no', siraNoList)
     .neq('durum', 'İptal Edildi')
   if (turFiltre) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    izinQuery = (izinQuery as any).in('tur', turFiltre)
+    izinQuery = izinQuery.in('tur', turFiltre)
   }
-  const { data: izinRaw } = await izinQuery
+  const { data: izinRawAny } = await izinQuery
+  const izinRaw = (izinRawAny ?? []) as IzinDbRow[]
 
-  const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+  const siciller = [...new Set(izinRaw.map(i => i.sicil_no).filter(Boolean))] as string[]
   const adMap:    Record<string, string> = {}
   const unvanMap: Record<string, string> = {}
   if (siciller.length > 0) {
@@ -166,7 +168,7 @@ async function hesaplaModul(
     if (!unvanMap[r.sicil_no] && r.unvan)    unvanMap[r.sicil_no] = r.unvan
   }
 
-  const izinler: KesintimIzinRow[] = (izinRaw ?? [])
+  const izinler: KesintimIzinRow[] = izinRaw
     .filter(i => i.sira_no && i.ayrilis && i.baslama)
     .map(i => ({
       sira_no:  i.sira_no!,
