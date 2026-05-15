@@ -439,19 +439,21 @@ export async function ayliksizIzindenDon(
   const bitis = bitisDate.toISOString().slice(0, 10)
 
   const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
 
-  const { data: mevcut, error: fetchErr } = await supabase
+  const { data: mevcut, error: fetchErr } = await db
     .from('calisan')
     .select('gorev_turu, gorev_turu_bitis_tarihi')
     .eq('sicil_no', sicil_no)
-    .single()
+    .single() as { data: { gorev_turu: string | null; gorev_turu_bitis_tarihi: string | null } | null; error: { message: string } | null }
   if (fetchErr) return { hata: fetchErr.message }
   if (mevcut?.gorev_turu !== 'Aylıksız İzin') return { hata: 'Personelin görevi aylıksız izin değil.' }
 
-  const { error: updErr } = await supabase
+  const { error: updErr } = await db
     .from('calisan')
     .update({ gorev_turu_bitis_tarihi: bitis })
-    .eq('sicil_no', sicil_no)
+    .eq('sicil_no', sicil_no) as { error: { message: string } | null }
   if (updErr) return { hata: updErr.message }
 
   await writePersonelAuditLogSafe(supabase, {
@@ -461,7 +463,7 @@ export async function ayliksizIzindenDon(
     ozet: `Aylıksız izin bitiş tarihi ${bitis} olarak güncellendi (işe dönüş: ${iseDonus}).`,
     ref_table: 'calisan',
     ref_id: sicil_no,
-    onceki: { gorev_turu_bitis_tarihi: mevcut.gorev_turu_bitis_tarihi ?? null },
+    onceki: { gorev_turu_bitis_tarihi: mevcut?.gorev_turu_bitis_tarihi ?? null },
     sonraki: { gorev_turu_bitis_tarihi: bitis },
   })
 
