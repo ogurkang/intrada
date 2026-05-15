@@ -98,11 +98,12 @@ async function hesaplaModul(
       kapasite: modul === 'izy' ? tg : Math.min(tg, 30),
     }
   })
-  const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
   /* ── globalCurId: Sosyal Hak dönemiyle en fazla örtüşen modül dönemi ── */
   // Sosyal Hak [shakBasMs, shakBitMs] aralığıyla maksimum takvim gün örtüşümüne sahip modül dönemini seç.
-  // Örtüşme yoksa (tüm modül dönemleri Sosyal Hak öncesinde/sonrasında), son dönemi kullan.
+  // Hiçbir modül dönemi Sosyal Hak dönemiyle örtüşmüyorsa (örn. IZY son dönem Mayıs 14'te bitip
+  // Sosyal Hak Mayıs 15'te başlıyorsa), Sosyal Hak tarihlerinden SANAL bir dönem oluşturulup
+  // tumDonemler'e eklenir ve globalCurId olarak kullanılır.
   const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
   const shakBitMs = new Date(shakBitTarihi).setHours(23, 59, 59, 999)
   let globalCurDonem = tumDonemler[tumDonemler.length - 1]
@@ -113,13 +114,27 @@ async function hesaplaModul(
     const ov = oE > oS ? oE - oS : -1
     if (ov > maxOverlap) { maxOverlap = ov; globalCurDonem = p }
   }
-  // Hiç örtüşme yoksa: Sosyal Hak başlangıcından önce başlayan en son dönemi kullan
   if (maxOverlap < 0) {
-    for (const p of tumDonemler) {
-      if (p.baslangic_tarihi_ms <= shakBasMs) globalCurDonem = p
+    // Örtüşen modül dönemi yok: Sosyal Hak sınırlarından sanal dönem oluştur.
+    // Böylece hesap zinciri (gerçek dönem → sanal dönem) doğru K/SD üretir.
+    const vTg = Math.floor((shakBitMs - shakBasMs) / 86_400_000) + 1
+    const virtualPeriod: KesintimDonemRow = {
+      id: -999,
+      baslangic_tarihi: shakBasTarihi,
+      bitis_tarihi:     shakBitTarihi,
+      baslangic_tarihi_ms: shakBasMs,
+      bitis_tarihi_ms:     shakBitMs,
+      idx:      tumDonemler.length,  // gerçek dönemlerin hemen ardına ekle
+      takvimGun: vTg,
+      kapasite:  modul === 'izy' ? vTg : Math.min(vTg, 30),
     }
+    tumDonemler.push(virtualPeriod)
+    globalCurDonem = virtualPeriod
   }
   const globalCurId = globalCurDonem.id
+
+  // idxById: sanal dönem de dahil edilmeli → tumDonemler tamamlandıktan sonra kur
+  const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
   /* ── ilkDonemIdBySiraNo: her iznin modül secim tablosundaki ilk dönemi ── */
   const { data: secimRaw } = await db
