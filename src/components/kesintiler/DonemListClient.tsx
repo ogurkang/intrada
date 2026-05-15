@@ -6,6 +6,17 @@ import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
+type DonemSortSutun = 'sira_no' | 'donem_adi' | 'baslangic_tarihi' | 'bitis_tarihi' | 'durum'
+type SortYon = 'asc' | 'desc'
+
+function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
+  return (
+    <span className={`inline-flex ml-1 opacity-${aktif ? '100' : '30'}`}>
+      {aktif && yon === 'desc' ? '▼' : '▲'}
+    </span>
+  )
+}
+
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
 export interface Donem {
@@ -264,14 +275,35 @@ export default function DonemListClient({
   const [seciliDonem, setSeciliDonem] = useState<Donem | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
+  const [sortSutun, setSortSutun]     = useState<DonemSortSutun>('baslangic_tarihi')
+  const [sortYon, setSortYon]         = useState<SortYon>('desc')
   const router = useRouter()
+
+  function handleSutunTikla(sutun: DonemSortSutun) {
+    if (sortSutun === sutun) setSortYon(y => y === 'asc' ? 'desc' : 'asc')
+    else { setSortSutun(sutun); setSortYon('asc') }
+  }
 
   const filtreli = useMemo(() => {
     let list = donemler
     if (durumFiltre !== 'Tümü') list = list.filter(d => d.durum === durumFiltre)
     list = list.filter(d => d.yil === yilFiltre)
-    return list.sort((a, b) => b.id - a.id)
-  }, [donemler, yilFiltre, durumFiltre])
+    return [...list].sort((a, b) => {
+      let fark = 0
+      if (sortSutun === 'sira_no') {
+        fark = (a.sira_no ?? '').localeCompare(b.sira_no ?? '', 'tr', { numeric: true })
+      } else if (sortSutun === 'donem_adi') {
+        fark = (a.donem_adi ?? '').localeCompare(b.donem_adi ?? '', 'tr')
+      } else if (sortSutun === 'baslangic_tarihi') {
+        fark = a.baslangic_tarihi.localeCompare(b.baslangic_tarihi)
+      } else if (sortSutun === 'bitis_tarihi') {
+        fark = a.bitis_tarihi.localeCompare(b.bitis_tarihi)
+      } else if (sortSutun === 'durum') {
+        fark = a.durum.localeCompare(b.durum, 'tr')
+      }
+      return sortYon === 'asc' ? fark : -fark
+    })
+  }, [donemler, yilFiltre, durumFiltre, sortSutun, sortYon])
 
   const tumYillar = useMemo(() => {
     const yillar = new Set(donemler.map(d => d.yil))
@@ -370,13 +402,30 @@ export default function DonemListClient({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Sıra No</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Dönem Adı</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Başlangıç</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Bitiş</th>
-              {!hideSecimColumn && <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Seçim</th>}
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-40">İşlemler</th>
+                {(['sira_no', 'donem_adi', 'baslangic_tarihi', 'bitis_tarihi'] as DonemSortSutun[]).map((s, i) => {
+                  const labels: Record<string, string> = { sira_no: 'Sıra No', donem_adi: 'Dönem Adı', baslangic_tarihi: 'Başlangıç', bitis_tarihi: 'Bitiş' }
+                  const widths: Record<string, string> = { sira_no: 'w-24', baslangic_tarihi: 'w-28', bitis_tarihi: 'w-28' }
+                  const center = i >= 2
+                  const aktif = sortSutun === s
+                  return (
+                    <th key={s}
+                      onClick={() => handleSutunTikla(s)}
+                      className={`px-4 py-3 font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 transition-colors ${center ? 'text-center' : 'text-left'} ${widths[s] ?? ''} ${aktif ? 'text-blue-600 bg-blue-50' : ''}`}>
+                      {labels[s]}<SortIkon aktif={aktif} yon={sortYon} />
+                    </th>
+                  )
+                })}
+                {!hideSecimColumn && <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Seçim</th>}
+                {(() => {
+                  const aktif = sortSutun === 'durum'
+                  return (
+                    <th onClick={() => handleSutunTikla('durum')}
+                      className={`text-center px-4 py-3 font-semibold text-slate-600 w-24 cursor-pointer select-none hover:bg-slate-100 transition-colors ${aktif ? 'text-blue-600 bg-blue-50' : ''}`}>
+                      Durum<SortIkon aktif={aktif} yon={sortYon} />
+                    </th>
+                  )
+                })()}
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-40">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
