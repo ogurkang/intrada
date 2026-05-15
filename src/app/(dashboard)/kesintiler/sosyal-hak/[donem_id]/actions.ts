@@ -58,12 +58,10 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
   })
 
   // Kadro bilgileri: RMY (Memur), IVY (Vekil), IZY (Zabıta Müdürlüğü)
-  // Dönem boyunca aktif olan personeli kapsamak için ayrılmış personel de dahil edilir
-  // (ayrilis_tarihi yok VEYA dönem başından sonra ayrılmış)
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
     .select('asil, vekil, statu, kadro_mudurlugu, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-    .or(`ayrilis_tarihi.is.null,ayrilis_tarihi.gte.${donem.baslangic_tarihi}`)
+    .is('ayrilis_tarihi', null)
 
   const memurSiciller  = new Set<string>()
   const vekilSiciller  = new Set<string>()
@@ -102,7 +100,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
       .in('sicil_no', Array.from(memurSiciller))
       .order('baslama')
-      .limit(2000)
+      .limit(500)
     rmyRaw = (data ?? []) as RawIzin[]
   }
 
@@ -115,7 +113,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       .neq('durum', 'İptal Edildi')
       .in('sicil_no', Array.from(vekilSiciller))
       .order('baslama')
-      .limit(2000)
+      .limit(500)
     ivyRaw = (data ?? []) as RawIzin[]
   }
 
@@ -129,7 +127,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       .or(IZY_IZIN_TURLERI)
       .in('sicil_no', Array.from(zabitaSiciller))
       .order('baslama')
-      .limit(2000)
+      .limit(500)
     izyRaw = (data ?? []) as RawIzin[]
   }
 
