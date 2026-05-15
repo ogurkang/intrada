@@ -156,10 +156,10 @@ async function hesaplaModul(
   const adMap:    Record<string, string> = {}
   const unvanMap: Record<string, string> = {}
   if (siciller.length > 0) {
-    const { data: cal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
-    ;(cal ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
-    const { data: kad } = await supabase.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', siciller)
-    ;(kad ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
+    const { data: cal } = await db.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
+    ;(cal ?? []).forEach((c: { sicil_no: string | null; ad_soyad: string | null }) => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
+    const { data: kad } = await db.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', siciller)
+    ;(kad ?? []).forEach((k: { sicil_no: string | null; kadro_unvani: string | null }) => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
   }
 
   // Leaf satırlarından unvan bilgisini de doldur (izin_hareketleri'nde olmayan izinler için)

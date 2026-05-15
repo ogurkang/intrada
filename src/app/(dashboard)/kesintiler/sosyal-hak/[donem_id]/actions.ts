@@ -158,11 +158,18 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
       }))
   }
 
+  // Bir sira_no birden fazla listede görünebilir (ör. Rapor türü hem RMY hem IZY filtresiyle eşleşir).
+  // Unique kısıtı korumak için sira_no bazında deduplicate et; önce gelen tipin önceliği var.
+  const seenSiraNo = new Set<string>()
   const tumIzinler: SosyalHakIzin[] = [
     ...toIzin(rmyRaw, 'rmy'),
     ...toIzin(ivyRaw, 'ivy'),
     ...toIzin(izyRaw, 'izy'),
-  ]
+  ].filter(iz => {
+    if (seenSiraNo.has(iz.sira_no)) return false
+    seenSiraNo.add(iz.sira_no)
+    return true
+  })
 
   const aday:      SosyalHakIzin[] = []
   const islenecek: SosyalHakIzin[] = []
@@ -198,8 +205,15 @@ export async function sosyalHakSecimleriKaydet(
   await db.from('sosyal_hak_secim').delete().eq('donem_id', donem_id)
 
   if (siraNoList.length > 0) {
+    // Olası çift kayıt (aynı sira_no farklı tipte görünebilir) → unique kısıtı korumak için deduplicate
+    const seen = new Set<string>()
+    const tekSiraNoList = siraNoList.filter(({ sira_no }) => {
+      if (seen.has(sira_no)) return false
+      seen.add(sira_no)
+      return true
+    })
     const { error } = await db.from('sosyal_hak_secim').insert(
-      siraNoList.map(({ sira_no, tip }) => ({
+      tekSiraNoList.map(({ sira_no, tip }) => ({
         donem_id,
         izin_sira_no: sira_no,
         tip,
