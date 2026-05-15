@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { kesintimHesapla, type KesintimDonemRow, type KesintimIzinRow, type KesintimHesapSatir } from '@/lib/kesinym-hesap'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 function tarih(t: string | null | undefined) {
   if (!t) return '—'
@@ -15,7 +16,22 @@ const TIP_LABEL: Record<string, string> = {
   izy: 'İzinli Zabıta',
 }
 
-/** Base leaf record used throughout the route */
+/** Her modül için ilgili Supabase tablo adları */
+const MODUL_TABLOLAR = {
+  rmy: { donem: 'raporlu_memurlar_yeni_donem',  secim: 'raporlu_memurlar_yeni_secim' },
+  ivy: { donem: 'izinli_vekiller_yeni_donem',    secim: 'izinli_vekiller_yeni_secim' },
+  izy: { donem: 'izinli_zabitalar_yeni_donem',   secim: 'izinli_zabitalar_yeni_secim' },
+} as const
+
+/** Modülün izin türü filtresi (null = filtre yok) */
+const MODUL_TUR_FILTRE: Record<string, string[] | null> = {
+  rmy: ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'],
+  ivy: null,
+  izy: null,
+}
+
+type Modul = 'rmy' | 'ivy' | 'izy'
+
 interface LeafRow {
   sira_no:  string
   sicil_no: string
@@ -38,11 +54,140 @@ function sortle(arr: LeafRow[]) {
   })
 }
 
+/**
+ * Her modül için, verilen sira_no listesini o modülün donem/secim tabloları kullanarak
+ * `kesintimHesapla` ile hesaplar ve sonuçları sira_no → KesintimHesapSatir haritası olarak döner.
+ *
+ * curId: sira_nolar'ın en son dahil edildiği modül dönemi (en büyük idx).
+ */
+async function hesaplaModul(
+  supabase: SupabaseClient,
+  modul: Modul,
+  siraNoList: string[],
+  izinlerByTip: LeafRow[],
+  tatiller: { tatil_adi?: string | null; tatil_turu?: string | null; tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[],
+): Promise<Map<string, KesintimHesapSatir>> {
+  if (siraNoList.length === 0) return new Map()
+
+  const { donem: donemTablo, secim: secimTablo } = MODUL_TABLOLAR[modul]
+
+  /* ── Modül dönemleri ────────────────────────────────────────────── */
+  const { data: tumDonemlerRaw } = await (supabase as unknown as Record<string, (...args: unknown[]) => unknown>)
+    .from(donemTablo)
+    .select('id, baslangic_tarihi, bitis_tarihi')
+    .order('baslangic_tarihi', { ascending: true }) as { data: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[] | null }
+
+  if (!tumDonemlerRaw || tumDonemlerRaw.length === 0) return new Map()
+
+  const tumDonemler: KesintimDonemRow[] = tumDonemlerRaw.map((d, i) => {
+    const basMs = new Date(d.baslangic_tarihi).setHours(0, 0, 0, 0)
+    const bitMs = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
+    const tg    = Math.floor((new Date(d.bitis_tarihi).setHours(0, 0, 0, 0) - new Date(d.baslangic_tarihi).setHours(0, 0, 0, 0)) / 86_400_000) + 1
+    return {
+      id: d.id, baslangic_tarihi: d.baslangic_tarihi, bitis_tarihi: d.bitis_tarihi,
+      baslangic_tarihi_ms: basMs, bitis_tarihi_ms: bitMs, idx: i, takvimGun: tg,
+      kapasite: modul === 'izy' ? tg : Math.min(tg, 30),
+    }
+  })
+  const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
+
+  /* ── Modül seçim tablosundan ilk dönem haritasını kur ───────────── */
+  const { data: secimRaw } = await (supabase as unknown as Record<string, (...args: unknown[]) => unknown>)
+    .from(secimTablo)
+    .select('donem_id, izin_sira_no, dahil')
+    .in('izin_sira_no', siraNoList) as { data: { donem_id: number; izin_sira_no: string; dahil: boolean }[] | null }
+
+  const ilkDonemIdBySiraNo: Record<string, number> = {}
+  let curDonemId = -1
+  let curDonemIdx = -1
+
+  for (const s of secimRaw ?? []) {
+    if (!s.dahil || !s.izin_sira_no) continue
+    const idx = idxById.get(s.donem_id) ?? -1
+    if (idx < 0) continue
+
+    // ilk dönem = en erken
+    const prev = ilkDonemIdBySiraNo[s.izin_sira_no]
+    if (prev === undefined || idx < (idxById.get(prev) ?? 9999)) {
+      ilkDonemIdBySiraNo[s.izin_sira_no] = s.donem_id
+    }
+
+    // curId = bu sira_nolar'ın dahil edildiği en son dönem
+    if (idx > curDonemIdx) {
+      curDonemIdx = idx
+      curDonemId  = s.donem_id
+    }
+  }
+
+  // Hiç modül secim kaydı yoksa: sosyal_hak_donem sıralamasını kullanamayız,
+  // bu durumda en son IZY/RMY/IVY dönemini cur olarak kullan
+  if (curDonemId < 0) {
+    const son = tumDonemler[tumDonemler.length - 1]
+    if (!son) return new Map()
+    curDonemId  = son.id
+    curDonemIdx = son.idx
+    for (const sn of siraNoList) {
+      ilkDonemIdBySiraNo[sn] = curDonemId
+    }
+  } else {
+    // Secim'de olmayan ama Sosyal Hak'ta seçili olanları cur dönemine ekle
+    for (const sn of siraNoList) {
+      if (!(sn in ilkDonemIdBySiraNo)) ilkDonemIdBySiraNo[sn] = curDonemId
+    }
+  }
+
+  /* ── İzin verileri (modülün tur filtresine göre) ─────────────────── */
+  const turFiltre = MODUL_TUR_FILTRE[modul]
+  let izinQuery = supabase
+    .from('izin_hareketleri')
+    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+    .in('sira_no', siraNoList)
+    .neq('durum', 'İptal Edildi')
+  if (turFiltre) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    izinQuery = (izinQuery as any).in('tur', turFiltre)
+  }
+  const { data: izinRaw } = await izinQuery
+
+  const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+  const adMap:    Record<string, string> = {}
+  const unvanMap: Record<string, string> = {}
+  if (siciller.length > 0) {
+    const { data: cal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
+    ;(cal ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
+    const { data: kad } = await supabase.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', siciller)
+    ;(kad ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
+  }
+
+  // Leaf satırlarından unvan bilgisini de doldur (izin_hareketleri'nde olmayan izinler için)
+  for (const r of izinlerByTip) {
+    if (!adMap[r.sicil_no]    && r.ad_soyad) adMap[r.sicil_no]    = r.ad_soyad
+    if (!unvanMap[r.sicil_no] && r.unvan)    unvanMap[r.sicil_no] = r.unvan
+  }
+
+  const izinler: KesintimIzinRow[] = (izinRaw ?? [])
+    .filter(i => i.sira_no && i.ayrilis && i.baslama)
+    .map(i => ({
+      sira_no:  i.sira_no!,
+      sicil_no: i.sicil_no ?? '',
+      ad_soyad: adMap[i.sicil_no ?? ''] ?? i.sicil_no ?? '',
+      unvan:    unvanMap[i.sicil_no ?? ''] ?? '',
+      tur:      i.tur ?? '',
+      ayrilis:  i.ayrilis,
+      baslama:  i.baslama,
+      gun:      i.gun ?? 0,
+    }))
+
+  /* ── Hesapla ─────────────────────────────────────────────────────── */
+  const sonuc = kesintimHesapla({ modul, curId: curDonemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+  return new Map(sonuc.satirlar.map(s => [s.sira_no, s]))
+}
+
 export async function GET(request: NextRequest) {
-  const sp        = request.nextUrl.searchParams
-  const donemIdP  = sp.get('donem_id')
-  const tipParam  = sp.get('tip') ?? 'detay'      // 'detay' | 'ozet' | 'genel'
-  const donemId   = parseInt(donemIdP ?? '0', 10)
+  const sp       = request.nextUrl.searchParams
+  const donemIdP = sp.get('donem_id')
+  const tipParam = sp.get('tip') ?? 'detay'   // 'detay' | 'ozet' | 'genel'
+  const donemId  = parseInt(donemIdP ?? '0', 10)
   if (!donemId || isNaN(donemId)) {
     return NextResponse.json({ error: 'donem_id gerekli' }, { status: 400 })
   }
@@ -78,7 +223,7 @@ export async function GET(request: NextRequest) {
   const tipBySiraNo = new Map(secimler.map(s => [s.izin_sira_no, s.tip]))
   const siraNoList  = secimler.map(s => s.izin_sira_no)
 
-  /* ── İzin verileri ─────────────────────────────────────────────── */
+  /* ── Temel izin verileri (tüm tipler) ─────────────────────────── */
   const { data: izinRaw } = await supabase
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
@@ -109,49 +254,35 @@ export async function GET(request: NextRequest) {
       gun:      i.gun ?? 0,
     }))
 
-  /* ── IZY için kesintimHesapla ──────────────────────────────────── */
+  /* ── Tatiller (hesap motorları için ortak) ────────────────────── */
+  const { data: tatilRaw } = await supabase
+    .from('tanim_izin_tatil')
+    .select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi, durum')
+    .eq('durum', true)
+  const tatiller = (tatilRaw ?? []).map(t => ({
+    tatil_adi: t.tatil_adi, tatil_turu: t.tatil_turu, tatil_yapisi: t.tatil_yapisi,
+    tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true,
+  }))
+
+  /* ── Modül bazlı kesintimHesapla (Özet + Genel için) ─────────── */
+  const rmySiraNoList = secimler.filter(s => s.tip === 'rmy').map(s => s.izin_sira_no)
+  const ivySiraNoList = secimler.filter(s => s.tip === 'ivy').map(s => s.izin_sira_no)
   const izySiraNoList = secimler.filter(s => s.tip === 'izy').map(s => s.izin_sira_no)
+
+  let rmySatirMap = new Map<string, KesintimHesapSatir>()
+  let ivySatirMap = new Map<string, KesintimHesapSatir>()
   let izySatirMap = new Map<string, KesintimHesapSatir>()
 
-  if ((tipParam === 'ozet' || tipParam === 'genel') && izySiraNoList.length > 0) {
-    const { data: tumDonemlerRaw } = await supabase
-      .from('izinli_zabitalar_yeni_donem')
-      .select('id, baslangic_tarihi, bitis_tarihi')
-      .order('baslangic_tarihi', { ascending: true })
-    const tumDonemler: KesintimDonemRow[] = (tumDonemlerRaw ?? []).map((d, i) => {
-      const basMs = new Date(d.baslangic_tarihi).setHours(0, 0, 0, 0)
-      const bitMs = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
-      const tg    = Math.floor((new Date(d.bitis_tarihi).setHours(0, 0, 0, 0) - new Date(d.baslangic_tarihi).setHours(0, 0, 0, 0)) / 86_400_000) + 1
-      return { id: d.id, baslangic_tarihi: d.baslangic_tarihi, bitis_tarihi: d.bitis_tarihi, baslangic_tarihi_ms: basMs, bitis_tarihi_ms: bitMs, idx: i, takvimGun: tg, kapasite: tg }
-    })
-    const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
+  if (tipParam === 'ozet' || tipParam === 'genel') {
+    const rmyLeaf = leafRows.filter(r => r.tip === 'rmy')
+    const ivyLeaf = leafRows.filter(r => r.tip === 'ivy')
+    const izyLeaf = leafRows.filter(r => r.tip === 'izy')
 
-    const { data: tumSecimRaw } = await supabase
-      .from('izinli_zabitalar_yeni_secim')
-      .select('donem_id, izin_sira_no, dahil')
-    const ilkDonemIdBySiraNo: Record<string, number> = {}
-    for (const s of tumSecimRaw ?? []) {
-      if (!s.dahil || !s.izin_sira_no) continue
-      if (s.donem_id === donemId) continue
-      const idx  = idxById.get(s.donem_id) ?? 9999
-      const prev = ilkDonemIdBySiraNo[s.izin_sira_no]
-      if (prev === undefined || idx < (idxById.get(prev) ?? 9999)) {
-        ilkDonemIdBySiraNo[s.izin_sira_no] = s.donem_id
-      }
-    }
-    for (const sn of izySiraNoList) {
-      ilkDonemIdBySiraNo[sn] = donemId
-    }
-
-    const izyIzinRows: KesintimIzinRow[] = leafRows
-      .filter(r => r.tip === 'izy')
-      .map(r => ({ sira_no: r.sira_no, sicil_no: r.sicil_no, ad_soyad: r.ad_soyad, unvan: r.unvan, tur: r.tur, ayrilis: r.ayrilis, baslama: r.baslama, gun: r.gun }))
-
-    const { data: tatilRaw } = await supabase.from('tanim_izin_tatil').select('tatil_adi, tatil_turu, tatil_yapisi, tatil_baslangici, tatil_bitisi, durum').eq('durum', true)
-    const tatiller = (tatilRaw ?? []).map(t => ({ tatil_adi: t.tatil_adi, tatil_turu: t.tatil_turu, tatil_yapisi: t.tatil_yapisi, tatil_baslangici: t.tatil_baslangici, tatil_bitisi: t.tatil_bitisi, durum: t.durum ?? true }))
-
-    const sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler: izyIzinRows, tatiller })
-    izySatirMap = new Map(sonuc.satirlar.map(s => [s.sira_no, s]))
+    ;[rmySatirMap, ivySatirMap, izySatirMap] = await Promise.all([
+      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller),
+      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller),
+      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller),
+    ])
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -192,7 +323,7 @@ export async function GET(request: NextRequest) {
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     ÖZET Excel — per-person summary (IZY: Rapor Bakiyesi dahil)
+     ÖZET Excel — per-person summary (modül bazında hesaplarla)
   ═══════════════════════════════════════════════════════════════ */
   if (tipParam === 'ozet') {
     const ozetCols  = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'İzin Süresi', 'Rap. Bakiyesi', 'Kesilen', 'Sonraki Döneme']
@@ -207,57 +338,41 @@ export async function GET(request: NextRequest) {
     rows.push(mergeSatir(donemMetin, colCount))
     mergeRows.push(rows.length - 1)
 
-    const tipSirasi: ('rmy' | 'ivy' | 'izy')[] = ['rmy', 'ivy', 'izy']
-    for (const tip of tipSirasi) {
-      const tipRows = leafRows.filter(r => r.tip === tip)
-      if (tipRows.length === 0) continue
+    const tipSirasi: Modul[] = ['rmy', 'ivy', 'izy']
+    const satirMapByTip: Record<string, Map<string, KesintimHesapSatir>> = { rmy: rmySatirMap, ivy: ivySatirMap, izy: izySatirMap }
 
-      // Tip bölüm başlığı
+    for (const tip of tipSirasi) {
+      const tipLeaf = leafRows.filter(r => r.tip === tip)
+      if (tipLeaf.length === 0) continue
+
       rows.push(mergeSatir(TIP_LABEL[tip] ?? tip, colCount, { gri: true }))
       mergeRows.push(rows.length - 1)
       rows.push(ozetCols)
 
-      if (tip === 'izy') {
-        // IZY: kesintimHesapla'dan gelen kişi özetleri
-        // kisiOzetTopla zaten satirlar içinde; personel listesini satirlardan türet
-        type P = { sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; RB: number; K: number; SD: number }
-        const pMap = new Map<string, P>()
-        for (const s of izySatirMap.values()) {
-          const ex = pMap.get(s.sicil_no)
-          if (!ex) {
-            pMap.set(s.sicil_no, { sicil_no: s.sicil_no, ad_soyad: s.ad_soyad, unvan: s.unvan, OD: s.OD, IZ: s.R + s.RR + s.HR, RB: s.RB, K: s.K, SD: s.SD })
-          } else {
-            ex.OD += s.OD; ex.IZ += s.R + s.RR + s.HR
-            ex.K  += s.K;  ex.SD += s.SD
-            if (s.RB > ex.RB) ex.RB = s.RB
-          }
-        }
-        const pArr = [...pMap.values()].sort((a, b) => {
-          const na = parseInt(a.sicil_no), nb = parseInt(b.sicil_no)
-          return isNaN(na) || isNaN(nb) ? a.sicil_no.localeCompare(b.sicil_no, 'tr') : na - nb
-        })
-        if (pArr.length === 0) {
-          rows.push(Array(colCount).fill('').map((_, i) => i === 2 ? 'Kayıt Yok' : ''))
+      const satirMap = satirMapByTip[tip]
+
+      // Kişi bazı toplama
+      type P = { sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; RB: number; K: number; SD: number }
+      const pMap = new Map<string, P>()
+      for (const s of satirMap.values()) {
+        const ex = pMap.get(s.sicil_no)
+        if (!ex) {
+          pMap.set(s.sicil_no, { sicil_no: s.sicil_no, ad_soyad: s.ad_soyad, unvan: s.unvan, OD: s.OD, IZ: s.R + s.RR + s.HR, RB: s.RB, K: s.K, SD: s.SD })
         } else {
-          pArr.forEach((p, idx) => {
-            rows.push([idx + 1, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.IZ, p.RB || '', p.K, p.SD])
-          })
+          ex.OD += s.OD; ex.IZ += s.R + s.RR + s.HR; ex.K += s.K; ex.SD += s.SD
+          if (s.RB > ex.RB) ex.RB = s.RB
         }
+      }
+      const pArr = [...pMap.values()].sort((a, b) => {
+        const na = parseInt(a.sicil_no), nb = parseInt(b.sicil_no)
+        return isNaN(na) || isNaN(nb) ? a.sicil_no.localeCompare(b.sicil_no, 'tr') : na - nb
+      })
+
+      if (pArr.length === 0) {
+        rows.push(Array(colCount).fill('').map((_, i) => i === 2 ? 'Kayıt Yok' : ''))
       } else {
-        // RMY / IVY: basit kişi bazında toplam
-        type Bp = { sicil_no: string; ad_soyad: string; unvan: string; gun: number }
-        const bMap = new Map<string, Bp>()
-        for (const r of tipRows) {
-          const ex = bMap.get(r.sicil_no)
-          if (!ex) bMap.set(r.sicil_no, { sicil_no: r.sicil_no, ad_soyad: r.ad_soyad, unvan: r.unvan, gun: r.gun })
-          else ex.gun += r.gun
-        }
-        const bArr = [...bMap.values()].sort((a, b) => {
-          const na = parseInt(a.sicil_no), nb = parseInt(b.sicil_no)
-          return isNaN(na) || isNaN(nb) ? a.sicil_no.localeCompare(b.sicil_no, 'tr') : na - nb
-        })
-        bArr.forEach((p, idx) => {
-          rows.push([idx + 1, p.sicil_no, p.ad_soyad, p.unvan, '', p.gun, '', '', ''])
+        pArr.forEach((p, idx) => {
+          rows.push([idx + 1, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.IZ, p.RB || '', p.K, p.SD])
         })
       }
     }
@@ -274,8 +389,8 @@ export async function GET(request: NextRequest) {
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     GENEL Excel — per-leave rows + özet hesap sütunları birleşik
-     Sütun sırası: ..., Ayrılış, Başlama, Süre  →  ÖD, İZ, RB, K, SD
+     GENEL Excel — per-leave rows + tüm modüller için özet sütunları
+     Sıra: Kayıt No, Sicil, Ad, Tip, Tür, Ayrılış, Başlama, Süre → ÖD, İZ, RB, K, SD
   ═══════════════════════════════════════════════════════════════ */
   const genelCols = [
     'Sıra No', 'Kayıt No', 'Sicil No', 'Adı Soyadı', 'Tip', 'Tür',
@@ -293,7 +408,9 @@ export async function GET(request: NextRequest) {
   rows.push(mergeSatir(donemMetin, colCount))
   mergeRows.push(rows.length - 1)
 
-  const tipSirasi: ('rmy' | 'ivy' | 'izy')[] = ['rmy', 'ivy', 'izy']
+  const satirMapByTip: Record<string, Map<string, KesintimHesapSatir>> = { rmy: rmySatirMap, ivy: ivySatirMap, izy: izySatirMap }
+  const tipSirasi: Modul[] = ['rmy', 'ivy', 'izy']
+
   for (const tip of tipSirasi) {
     const tipRows = sortle(leafRows.filter(r => r.tip === tip))
     if (tipRows.length === 0) continue
@@ -302,25 +419,19 @@ export async function GET(request: NextRequest) {
     mergeRows.push(rows.length - 1)
     rows.push(genelCols)
 
+    const satirMap = satirMapByTip[tip]
+
     tipRows.forEach((s, idx) => {
-      let od: string | number = ''
-      let iz: string | number = ''
-      let rb: string | number = ''
-      let k:  string | number = ''
-      let sd: string | number = ''
+      const hs = satirMap.get(s.sira_no)
+      const od: string | number = hs ? hs.OD          : ''
+      const iz: string | number = hs ? (hs.R + hs.RR + hs.HR) : ''
+      const rb: string | number = hs ? (hs.RB || '')  : ''
+      const k:  string | number = hs ? hs.K           : ''
+      const sd: string | number = hs ? hs.SD          : ''
 
-      if (tip === 'izy') {
-        const hs = izySatirMap.get(s.sira_no)
-        if (hs) {
-          od = hs.OD
-          iz = hs.R + hs.RR + hs.HR
-          rb = hs.RB || ''
-          k  = hs.K
-          sd = hs.SD
-        }
-      }
-
-      rows.push([idx + 1, s.sira_no, s.sicil_no, s.ad_soyad, TIP_LABEL[s.tip] ?? s.tip, s.tur, tarih(s.ayrilis), tarih(s.baslama), s.gun, od, iz, rb, k, sd])
+      rows.push([idx + 1, s.sira_no, s.sicil_no, s.ad_soyad, TIP_LABEL[s.tip] ?? s.tip, s.tur,
+        tarih(s.ayrilis), tarih(s.baslama), s.gun,
+        od, iz, rb, k, sd])
     })
   }
 
@@ -340,9 +451,9 @@ export async function GET(request: NextRequest) {
 }
 
 function xlsxResponse(buf: Buffer, name: string) {
-  const safeName      = name.replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Sosyal_Hak'
-  const fallbackName  = safeName.replace(/[^\x20-\x7E]/g, '_')
-  const encodedName   = encodeURIComponent(`${safeName}.xlsx`)
+  const safeName     = name.replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Sosyal_Hak'
+  const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
+  const encodedName  = encodeURIComponent(`${safeName}.xlsx`)
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
