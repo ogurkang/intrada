@@ -58,35 +58,51 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
   })
 
   // Kadro bilgileri: RMY (Memur), IVY (Vekil), IZY (Zabıta Müdürlüğü)
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, statu, kadro_mudurlugu, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
+  // Tek sorguda tüm kadro çekilirse PostgREST varsayılan 1000 satır sınırına takılır (1037+ kayıt);
+  // bazı personel (ör. sicil 465) listede görünmez. Modül bazlı filtreli sorgular kullanılır.
+  const [{ data: memurKadro }, { data: vekilKadro }, { data: zabitaKadro }] = await Promise.all([
+    supabase
+      .from('kadro_hareketleri')
+      .select('asil, vekil')
+      .is('ayrilis_tarihi', null)
+      .eq('statu', 'Memur'),
+    supabase
+      .from('kadro_hareketleri')
+      .select('asil, vekil, kadro_unvani, gorev_unvani')
+      .is('ayrilis_tarihi', null)
+      .not('vekil', 'is', null),
+    supabase
+      .from('kadro_hareketleri')
+      .select('asil, vekil')
+      .is('ayrilis_tarihi', null)
+      .eq('kadro_mudurlugu', ZABITA_MUDURLUGU),
+  ])
 
   const memurSiciller  = new Set<string>()
   const vekilSiciller  = new Set<string>()
   const zabitaSiciller = new Set<string>()
   const asilMuduruSiciller = new Set<string>()
 
-  for (const k of kadroRaw ?? []) {
-    const sicil     = (k.asil ?? k.vekil ?? '').trim()
+  for (const k of memurKadro ?? []) {
+    const sicil = (k.asil ?? k.vekil ?? '').trim()
+    if (sicil) memurSiciller.add(sicil)
+  }
+
+  for (const k of vekilKadro ?? []) {
     const vekilSicil = (k.vekil ?? '').trim()
-    const mud        = (k.kadro_mudurlugu ?? '').trim()
-
-    if (k.statu === 'Memur' && sicil) memurSiciller.add(sicil)
-
-    if (vekilSicil) {
-      vekilSiciller.add(vekilSicil)
-      const asil = (k.asil ?? '').trim()
-      if (asil) {
-        const unvan = `${String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')} ${String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')}`
-        if (unvan.includes('müdürü')) asilMuduruSiciller.add(asil)
-      }
+    if (vekilSicil) vekilSiciller.add(vekilSicil)
+    const asil = (k.asil ?? '').trim()
+    if (asil) {
+      const unvan = `${String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')} ${String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')}`
+      if (unvan.includes('müdürü')) asilMuduruSiciller.add(asil)
     }
-
-    if (mud === ZABITA_MUDURLUGU && sicil) zabitaSiciller.add(sicil)
   }
   for (const s of asilMuduruSiciller) vekilSiciller.delete(s)
+
+  for (const k of zabitaKadro ?? []) {
+    const sicil = (k.asil ?? k.vekil ?? '').trim()
+    if (sicil) zabitaSiciller.add(sicil)
+  }
 
   type RawIzin = { sira_no: string | null; sicil_no: string | null; tur: string | null; ayrilis: string | null; baslama: string | null; gun: number | null }
 
