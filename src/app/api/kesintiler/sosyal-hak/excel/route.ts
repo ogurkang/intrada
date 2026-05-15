@@ -92,15 +92,15 @@ async function hesaplaModul(
   })
   const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
-  /* ── Modül seçim tablosundan ilk dönem haritasını kur ───────────── */
+  /* ── Modül seçim tablosundan ilk dönem + kendi dönemi haritasını kur ── */
   const { data: secimRaw } = await db
     .from(secimTablo)
     .select('donem_id, izin_sira_no, dahil')
     .in('izin_sira_no', siraNoList) as { data: { donem_id: number; izin_sira_no: string; dahil: boolean }[] | null }
 
-  const ilkDonemIdBySiraNo: Record<string, number> = {}
-  let curDonemId = -1
-  let curDonemIdx = -1
+  const ilkDonemIdBySiraNo: Record<string, number>       = {}
+  // Her sira_no'nun "kendi" dönemi: en son dahil edildiği dönem (o dönem hesabında gösterilmesi gerekir)
+  const curDonemBySiraNo  = new Map<string, number>()
 
   for (const s of secimRaw ?? []) {
     if (!s.dahil || !s.izin_sira_no) continue
@@ -108,32 +108,27 @@ async function hesaplaModul(
     if (idx < 0) continue
 
     // ilk dönem = en erken
-    const prev = ilkDonemIdBySiraNo[s.izin_sira_no]
-    if (prev === undefined || idx < (idxById.get(prev) ?? 9999)) {
+    const prevIlk = ilkDonemIdBySiraNo[s.izin_sira_no]
+    if (prevIlk === undefined || idx < (idxById.get(prevIlk) ?? 9999)) {
       ilkDonemIdBySiraNo[s.izin_sira_no] = s.donem_id
     }
 
-    // curId = bu sira_nolar'ın dahil edildiği en son dönem
-    if (idx > curDonemIdx) {
-      curDonemIdx = idx
-      curDonemId  = s.donem_id
+    // kendi dönemi = en son
+    const prevCur = curDonemBySiraNo.get(s.izin_sira_no)
+    if (prevCur === undefined || idx > (idxById.get(prevCur) ?? -1)) {
+      curDonemBySiraNo.set(s.izin_sira_no, s.donem_id)
     }
   }
 
-  // Hiç modül secim kaydı yoksa: sosyal_hak_donem sıralamasını kullanamayız,
-  // bu durumda en son IZY/RMY/IVY dönemini cur olarak kullan
-  if (curDonemId < 0) {
-    const son = tumDonemler[tumDonemler.length - 1]
-    if (!son) return new Map()
-    curDonemId  = son.id
-    curDonemIdx = son.idx
-    for (const sn of siraNoList) {
-      ilkDonemIdBySiraNo[sn] = curDonemId
-    }
-  } else {
-    // Secim'de olmayan ama Sosyal Hak'ta seçili olanları cur dönemine ekle
-    for (const sn of siraNoList) {
-      if (!(sn in ilkDonemIdBySiraNo)) ilkDonemIdBySiraNo[sn] = curDonemId
+  // Secimde olmayan sira_nolar → son döneme ata
+  const lastDonem = tumDonemler[tumDonemler.length - 1]
+  if (!lastDonem) return new Map()
+  for (const sn of siraNoList) {
+    if (!curDonemBySiraNo.has(sn)) {
+      curDonemBySiraNo.set(sn, lastDonem.id)
+      ilkDonemIdBySiraNo[sn] = lastDonem.id
+    } else if (!(sn in ilkDonemIdBySiraNo)) {
+      ilkDonemIdBySiraNo[sn] = curDonemBySiraNo.get(sn)!
     }
   }
 
@@ -181,9 +176,27 @@ async function hesaplaModul(
       gun:      i.gun ?? 0,
     }))
 
-  /* ── Hesapla ─────────────────────────────────────────────────────── */
-  const sonuc = kesintimHesapla({ modul, curId: curDonemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
-  return new Map(sonuc.satirlar.map(s => [s.sira_no, s]))
+  /* ── Her benzersiz "kendi dönemi" için ayrı hesap çalıştır ──────── */
+  // Neden ayrı ayrı? Çünkü kesintimHesapla bir curId ile çalışır; farklı dönemlere
+  // ait sira_nolar aynı curId'le çalıştırılırsa, geçmiş dönem izinleri "zincirde SD=0"
+  // nedeniyle curRow=null dönüp eksik görünür.
+  const uniqueCurIds = new Set(curDonemBySiraNo.values())
+  const resultMap    = new Map<string, KesintimHesapSatir>()
+
+  for (const curId of uniqueCurIds) {
+    const groupSet = new Set(
+      [...curDonemBySiraNo.entries()]
+        .filter(([, dId]) => dId === curId)
+        .map(([sn]) => sn)
+    )
+    const sonuc = kesintimHesapla({ modul, curId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+    for (const s of sonuc.satirlar) {
+      if (groupSet.has(s.sira_no) && !resultMap.has(s.sira_no)) {
+        resultMap.set(s.sira_no, s)
+      }
+    }
+  }
+  return resultMap
 }
 
 export async function GET(request: NextRequest) {
