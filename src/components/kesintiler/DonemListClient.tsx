@@ -10,11 +10,18 @@ type DonemSortSutun = 'sira_no' | 'donem_adi' | 'baslangic_tarihi' | 'bitis_tari
 type SortYon = 'asc' | 'desc'
 
 function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
-  return (
-    <span className={`inline-flex ml-1 opacity-${aktif ? '100' : '30'}`}>
-      {aktif && yon === 'desc' ? '▼' : '▲'}
-    </span>
-  )
+  if (!aktif) {
+    return (
+      <span className="ml-1 text-slate-300">
+        <svg className="inline w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      </span>
+    )
+  }
+  return yon === 'asc'
+    ? <span className="ml-1 text-blue-500">↑</span>
+    : <span className="ml-1 text-blue-500">↓</span>
 }
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
