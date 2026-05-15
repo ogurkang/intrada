@@ -413,7 +413,8 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     }))
 
     const sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
-    setOzetData({ donem: { ...data.donem, donem_adi: data.donem.donem_adi, durum: 'Açık' as const, yil: new Date().getFullYear() }, sonuc })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setOzetData({ donem: { ...data.donem, donem_adi: data.donem.donem_adi, durum: 'Açık' as const, yil: new Date().getFullYear() } as any, sonuc })
     setOzetAcik(true)
   }
 
