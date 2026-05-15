@@ -176,6 +176,33 @@ async function hesaplaModul(
       gun:      i.gun ?? 0,
     }))
 
+  // IZY için yıllık Rapor Bakiyesi'ni doğru hesaplamak amacıyla seçili olmayan
+  // R/HR izinleri de dahil edilir. Sadece annualBakiyeBeforeSiraNo'ya katkı sağlar;
+  // ilkDonemIdBySiraNo'da olmadıklarından satirlar'a eklenmezler.
+  if (modul === 'izy' && siciller.length > 0) {
+    const existingSiraNoSet = new Set(izinler.map(i => i.sira_no))
+    const { data: tumRHRaw } = await db
+      .from('izin_hareketleri')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .in('sicil_no', siciller)
+      .in('tur', ['Rapor', 'Heyet Raporu'])
+      .neq('durum', 'İptal Edildi') as { data: IzinDbRow[] | null }
+    for (const r of tumRHRaw ?? []) {
+      if (!r.sira_no || !r.ayrilis || !r.baslama) continue
+      if (existingSiraNoSet.has(r.sira_no)) continue
+      izinler.push({
+        sira_no:  r.sira_no,
+        sicil_no: r.sicil_no ?? '',
+        ad_soyad: adMap[r.sicil_no ?? ''] ?? r.sicil_no ?? '',
+        unvan:    unvanMap[r.sicil_no ?? ''] ?? '',
+        tur:      r.tur ?? '',
+        ayrilis:  r.ayrilis,
+        baslama:  r.baslama,
+        gun:      r.gun ?? 0,
+      })
+    }
+  }
+
   /* ── Her benzersiz "kendi dönemi" için ayrı hesap çalıştır ──────── */
   // Neden ayrı ayrı? Çünkü kesintimHesapla bir curId ile çalışır; farklı dönemlere
   // ait sira_nolar aynı curId'le çalıştırılırsa, geçmiş dönem izinleri "zincirde SD=0"
