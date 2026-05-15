@@ -381,7 +381,7 @@ export default function RmyDetayClient({ donemId }: Props) {
       {/* Aday İzinler */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-2">Aday İzinler</h3>
-        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" tip="Raporlu Memur" />
+        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" sortable tip="Raporlu Memur" />
       </div>
 
       {/* Döneme Aktarılan İzinler */}

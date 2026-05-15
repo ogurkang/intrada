@@ -382,7 +382,7 @@ export default function IvyDetayClient({ donemId }: Props) {
       {/* Aday İzinler */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-700 mb-2">Aday İzinler</h3>
-        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" tip="İzinli Vekil" />
+        <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" sortable tip="İzinli Vekil" />
       </div>
 
       {/* Döneme Aktarılan İzinler */}
