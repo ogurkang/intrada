@@ -71,6 +71,8 @@ async function hesaplaModul(
   tatiller: { tatil_adi?: string | null; tatil_turu?: string | null; tatil_yapisi?: 'Yıllık Tatil' | 'Sabit Tatil' | null; tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[],
   /** Sosyal Hak döneminin başlangıç tarihi (globalCurId seçimi için) */
   shakBasTarihi: string,
+  /** Sosyal Hak döneminin bitiş tarihi (max-overlap hesabı için) */
+  shakBitTarihi: string,
 ): Promise<Map<string, KesintimHesapSatir>> {
   if (siraNoList.length === 0) return new Map()
 
@@ -98,13 +100,24 @@ async function hesaplaModul(
   })
   const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
-  /* ── globalCurId: Sosyal Hak başlangıcına karşılık gelen modül dönemi ── */
-  // Sosyal Hak döneminin baslangic_tarihi'nin düştüğü (ya da hemen öncesindeki son) modül dönemini seç.
+  /* ── globalCurId: Sosyal Hak dönemiyle en fazla örtüşen modül dönemi ── */
+  // Sosyal Hak [shakBasMs, shakBitMs] aralığıyla maksimum takvim gün örtüşümüne sahip modül dönemini seç.
+  // Örtüşme yoksa (tüm modül dönemleri Sosyal Hak öncesinde/sonrasında), son dönemi kullan.
   const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
+  const shakBitMs = new Date(shakBitTarihi).setHours(23, 59, 59, 999)
   let globalCurDonem = tumDonemler[tumDonemler.length - 1]
+  let maxOverlap = -1
   for (const p of tumDonemler) {
-    if (p.baslangic_tarihi_ms <= shakBasMs) globalCurDonem = p
-    // sorted ascending; dönemler shakBasMs'yi geçtikten sonra durabilir ama hepsi kontrol edilmeli
+    const oS = Math.max(p.baslangic_tarihi_ms, shakBasMs)
+    const oE = Math.min(p.bitis_tarihi_ms,     shakBitMs)
+    const ov = oE > oS ? oE - oS : -1
+    if (ov > maxOverlap) { maxOverlap = ov; globalCurDonem = p }
+  }
+  // Hiç örtüşme yoksa: Sosyal Hak başlangıcından önce başlayan en son dönemi kullan
+  if (maxOverlap < 0) {
+    for (const p of tumDonemler) {
+      if (p.baslangic_tarihi_ms <= shakBasMs) globalCurDonem = p
+    }
   }
   const globalCurId = globalCurDonem.id
 
@@ -355,9 +368,9 @@ export async function GET(request: NextRequest) {
     const izyLeaf = leafRows.filter(r => r.tip === 'izy')
 
     ;[rmySatirMap, ivySatirMap, izySatirMap] = await Promise.all([
-      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller, donem.baslangic_tarihi),
-      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller, donem.baslangic_tarihi),
-      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller, donem.baslangic_tarihi),
+      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
+      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
+      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
     ])
   }
 

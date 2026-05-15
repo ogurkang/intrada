@@ -416,3 +416,55 @@ export async function izinHakiEkleGuncelle(
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
+
+// ─── Aylıksız İzinden Dön ─────────────────────────────────────────────────────
+
+/**
+ * Aylıksız izinden işe dönüş tarihi kaydeder.
+ * `iseDonus` = personelin fiilen işe başladığı gün (YYYY-MM-DD).
+ * `gorev_turu_bitis_tarihi` = iseDonus - 1 gün olarak saklanır.
+ * İşe dönüş günü aylık yemek hakkının ilk günüdür; bir önceki gün aylıksız iznin son günüdür.
+ */
+export async function ayliksizIzindenDon(
+  sicil_no: string,
+  iseDonus: string,
+): Promise<{ hata?: string }> {
+  if (!iseDonus) return { hata: 'İşe dönüş tarihi zorunludur.' }
+
+  const donus = new Date(iseDonus)
+  if (isNaN(donus.getTime())) return { hata: 'Geçersiz tarih.' }
+
+  const bitisDate = new Date(donus)
+  bitisDate.setDate(bitisDate.getDate() - 1)
+  const bitis = bitisDate.toISOString().slice(0, 10)
+
+  const supabase = await createClient()
+
+  const { data: mevcut, error: fetchErr } = await supabase
+    .from('calisan')
+    .select('gorev_turu, gorev_turu_bitis_tarihi')
+    .eq('sicil_no', sicil_no)
+    .single()
+  if (fetchErr) return { hata: fetchErr.message }
+  if (mevcut?.gorev_turu !== 'Aylıksız İzin') return { hata: 'Personelin görevi aylıksız izin değil.' }
+
+  const { error: updErr } = await supabase
+    .from('calisan')
+    .update({ gorev_turu_bitis_tarihi: bitis })
+    .eq('sicil_no', sicil_no)
+  if (updErr) return { hata: updErr.message }
+
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'görev bilgileri',
+    islem: 'Güncelle',
+    ozet: `Aylıksız izin bitiş tarihi ${bitis} olarak güncellendi (işe dönüş: ${iseDonus}).`,
+    ref_table: 'calisan',
+    ref_id: sicil_no,
+    onceki: { gorev_turu_bitis_tarihi: mevcut.gorev_turu_bitis_tarihi ?? null },
+    sonraki: { gorev_turu_bitis_tarihi: bitis },
+  })
+
+  await revalidatePersonelDetayPaths(sicil_no)
+  return {}
+}

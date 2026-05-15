@@ -8,6 +8,7 @@ import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
+import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -106,7 +107,28 @@ function KisiselTab({
   const ha = calisan.hizmet_suresi_ay ?? 0
   const hg = calisan.hizmet_suresi_gun ?? 0
 
+  const [donuModalAcik, setDonuModalAcik] = useState(false)
+  const [iseDonus, setIseDonus] = useState('')
+  const [donuKayit, setDonuKayit] = useState(false)
+  const [donuHata, setDonuHata] = useState<string | null>(null)
+
+  async function iseDon() {
+    if (!iseDonus) { setDonuHata('İşe dönüş tarihi zorunludur.'); return }
+    setDonuKayit(true); setDonuHata(null)
+    const sonuc = await ayliksizIzindenDon(sicil, iseDonus)
+    setDonuKayit(false)
+    if (sonuc.hata) { setDonuHata(sonuc.hata); return }
+    setDonuModalAcik(false)
+    setIseDonus('')
+  }
+
+  // Bitiş tarihi önizlemesi: işe dönüş - 1 gün
+  const onizleBitis = iseDonus
+    ? (() => { const d = new Date(iseDonus); d.setDate(d.getDate() - 1); return d.toLocaleDateString('tr-TR') })()
+    : null
+
   return (
+    <>
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Temel Bilgiler</p>
@@ -173,9 +195,20 @@ function KisiselTab({
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Hizmet Bilgileri</p>
         {(calisan.gorev_turu ?? 'Çalışan') === 'Aylıksız İzin' && (
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
-            Aylıksız izin: hizmet süresi bu kayıt değiştirilene kadar güncellenmez (ilerleme durur).
-          </p>
+          <div className="flex flex-col gap-2 mb-3">
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              Aylıksız izin: hizmet süresi bu kayıt değiştirilene kadar güncellenmez (ilerleme durur).
+            </p>
+            <div>
+              <button
+                type="button"
+                onClick={() => { setDonuModalAcik(true); setDonuHata(null); setIseDonus('') }}
+                className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                İşe Döndü
+              </button>
+            </div>
+          </div>
         )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Alan etiket="Memuriyete giriş" deger={tarihFormatla(memuriyetGoster)} />
@@ -184,6 +217,65 @@ function KisiselTab({
         </div>
       </div>
     </div>
+
+    {/* ── İşe Döndü Modal ─────────────────────────────────────────────────── */}
+    
+    {donuModalAcik && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <h3 className="text-base font-semibold text-slate-800">İşe Dönüş Tarihi</h3>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">İşe başladığı gün</label>
+            <input
+              type="date"
+              value={iseDonus}
+              onChange={e => setIseDonus(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+
+          {onizleBitis && (
+            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              Sisteme kaydedilecek aylıksız izin bitiş tarihi: <span className="font-medium text-slate-700">{onizleBitis}</span>
+            </p>
+          )}
+
+          <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 space-y-1">
+            <p className="font-semibold">Aylık Yemek (+1 Kuralı)</p>
+            <p>
+              Girilen tarih personelin işe başladığı gündür. Sisteme bu tarihten bir önceki gün
+              aylıksız iznin bitiş tarihi olarak kaydedilir. Aylık yemek hakkı, işe dönüş
+              gününden (girilen tarihten) itibaren hesaplanmaya başlar.
+            </p>
+          </div>
+
+          {donuHata && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{donuHata}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setDonuModalAcik(false)}
+              disabled={donuKayit}
+              className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+            >
+              İptal
+            </button>
+            <button
+              type="button"
+              onClick={iseDon}
+              disabled={donuKayit || !iseDonus}
+              className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+            >
+              {donuKayit ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
