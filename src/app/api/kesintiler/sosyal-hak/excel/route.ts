@@ -457,7 +457,7 @@ function xlsxResponse(buf: Buffer, name: string) {
   const safeName     = name.replace(/[:\*\?\/\\]/g, ' ').trim().substring(0, 90) || 'Sosyal_Hak'
   const fallbackName = safeName.replace(/[^\x20-\x7E]/g, '_')
   const encodedName  = encodeURIComponent(`${safeName}.xlsx`)
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="${fallbackName}.xlsx"; filename*=UTF-8''${encodedName}`,
