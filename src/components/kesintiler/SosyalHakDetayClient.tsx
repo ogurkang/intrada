@@ -34,13 +34,31 @@ const TIP_LABEL: Record<SosyalHakTip, string> = {
   izy: 'İzinli Zabıta',
 }
 
+const TIP_SIRASI: SosyalHakTip[] = ['rmy', 'ivy', 'izy']
+
 const TIP_RENK: Record<SosyalHakTip, string> = {
   rmy: 'bg-orange-100 text-orange-700',
   ivy: 'bg-blue-100 text-blue-700',
   izy: 'bg-purple-100 text-purple-700',
 }
 
-function TipBadge({ tip }: { tip: SosyalHakTip }) {
+function tipsEtiket(tips: SosyalHakTip[]): string {
+  return [...tips]
+    .sort((a, b) => TIP_SIRASI.indexOf(a) - TIP_SIRASI.indexOf(b))
+    .map(t => TIP_LABEL[t])
+    .join(' - ')
+}
+
+function TipBadges({ tips }: { tips: SosyalHakTip[] }) {
+  const sirali = [...tips].sort((a, b) => TIP_SIRASI.indexOf(a) - TIP_SIRASI.indexOf(b))
+  if (sirali.length > 1) {
+    return (
+      <span className="text-xs font-medium text-slate-700" title={tipsEtiket(tips)}>
+        {tipsEtiket(tips)}
+      </span>
+    )
+  }
+  const tip = sirali[0]
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TIP_RENK[tip]}`}>
       {TIP_LABEL[tip]}
@@ -71,7 +89,7 @@ function izinSirala(izinler: SosyalHakIzin[], sutun: SortSutun, yon: SortYon): S
     if (sutun === 'gun') {
       fark = a.gun - b.gun
     } else if (sutun === 'tip') {
-      fark = TIP_LABEL[a.tip].localeCompare(TIP_LABEL[b.tip], 'tr')
+      fark = tipsEtiket(a.tips).localeCompare(tipsEtiket(b.tips), 'tr')
     } else {
       fark = naturalCompare(String(a[sutun] ?? ''), String(b[sutun] ?? ''))
     }
@@ -164,7 +182,7 @@ function IzinTablo({
             </tr>
           ) : (
             siraliIzinler.map((iz, idx) => (
-              <tr key={`${iz.tip}-${iz.sira_no}-${idx}`} className="hover:bg-slate-50 transition-colors">
+              <tr key={`${iz.sira_no}-${iz.tips.join('-')}-${idx}`} className="hover:bg-slate-50 transition-colors">
                 <td className="px-3 py-2 text-center">
                   {yon === 'aday' && onSagaAl && (
                     <button
@@ -195,7 +213,7 @@ function IzinTablo({
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sira_no}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sicil_no}</td>
                 <td className="px-4 py-2 font-medium text-slate-800">{iz.ad_soyad}</td>
-                <td className="px-4 py-2"><TipBadge tip={iz.tip} /></td>
+                <td className="px-4 py-2"><TipBadges tips={iz.tips} /></td>
                 <td className="px-4 py-2 text-slate-600">{iz.tur}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.ayrilis)}</td>
                 <td className="px-4 py-2 tabular-nums text-slate-500">{tarih(iz.baslama)}</td>
@@ -210,7 +228,7 @@ function IzinTablo({
 }
 
 function OzetSatir({ tip, izinler }: { tip: SosyalHakTip; izinler: SosyalHakIzin[] }) {
-  const filtered = izinler.filter(i => i.tip === tip)
+  const filtered = izinler.filter(i => i.tips.includes(tip))
   if (filtered.length === 0) return null
   const toplamGun = filtered.reduce((s, i) => s + i.gun, 0)
   return (
@@ -219,7 +237,9 @@ function OzetSatir({ tip, izinler }: { tip: SosyalHakTip; izinler: SosyalHakIzin
       tip === 'ivy' ? 'bg-blue-50 border-blue-200' :
                      'bg-purple-50 border-purple-200'
     }`}>
-      <TipBadge tip={tip} />
+      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TIP_RENK[tip]}`}>
+        {TIP_LABEL[tip]}
+      </span>
       <span className="text-sm text-slate-600">
         <span className="font-semibold">{filtered.length}</span> kayıt —{' '}
         <span className="font-semibold">{toplamGun}</span> gün
@@ -277,7 +297,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
 
   function kaydet() {
     if (!data) return
-    const siraNoList = data.islenecek.map(i => ({ sira_no: i.sira_no, tip: i.tip }))
+    const secimler = data.islenecek.map(i => ({ sira_no: i.sira_no, tips: i.tips }))
     startTransition(async () => {
       const res = await sosyalHakSecimleriKaydet(donemId, siraNoList)
       if (res.hata) setHata(res.hata)
@@ -362,7 +382,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     }
 
     // Sadece IZY izinlerini dahil et
-    const izyIslenecek = data.islenecek.filter(i => i.tip === 'izy')
+    const izyIslenecek = data.islenecek.filter(i => i.tips.includes('izy'))
     for (const iz of izyIslenecek) {
       ilkDonemIdBySiraNo[iz.sira_no] = donemId
     }

@@ -7,6 +7,7 @@ import {
   buildZabitaSiciller,
   RMY_IZIN_TURLERI,
   IZY_IZIN_TURLERI_OR,
+  sosyalHakTipsForIzin,
 } from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
 
@@ -17,7 +18,8 @@ export interface SosyalHakIzin {
   sicil_no: string
   ad_soyad: string
   tur:      string
-  tip:      SosyalHakTip
+  /** Sosyal Hak ekranında geçerli modül(ler); örn. ['rmy','izy'] */
+  tips:     SosyalHakTip[]
   ayrilis:  string
   baslama:  string
   gun:      number
@@ -41,18 +43,19 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     .single()
   if (!donem) return { hata: 'Dönem bulunamadı.' }
 
-  // Bu dönemin mevcut seçimleri
   const { data: secimRaw } = await db
     .from('sosyal_hak_secim')
     .select('izin_sira_no, tip, dahil')
     .eq('donem_id', donem_id)
 
-  const buDonemSecili = new Map<string, SosyalHakTip>()
+  const buDonemSecili = new Map<string, SosyalHakTip[]>()
   ;(secimRaw ?? []).forEach((s: { dahil: boolean; izin_sira_no: string | null; tip: string }) => {
-    if (s.dahil && s.izin_sira_no) buDonemSecili.set(s.izin_sira_no, s.tip as SosyalHakTip)
+    if (!s.dahil || !s.izin_sira_no) return
+    const mevcut = buDonemSecili.get(s.izin_sira_no) ?? []
+    if (!mevcut.includes(s.tip as SosyalHakTip)) mevcut.push(s.tip as SosyalHakTip)
+    buDonemSecili.set(s.izin_sira_no, mevcut)
   })
 
-  // Diğer dönemlerde seçili izinler (aday listesinden çıkarılacak)
   const { data: tumSecimRaw } = await db
     .from('sosyal_hak_secim')
     .select('donem_id, izin_sira_no, dahil')
@@ -61,7 +64,6 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     if (s.dahil && s.izin_sira_no && s.donem_id !== donem_id) digerDonemSecili.add(s.izin_sira_no)
   })
 
-  // Kadro: RMY / IVY / IZY ekranlarıyla aynı kurallar (kesintiler-kadro.ts)
   const [memurSiciller, vekilSiciller, zabitaSiciller] = await Promise.all([
     buildMemurSiciller(supabase),
     buildVekilSiciller(supabase),
@@ -70,7 +72,6 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
 
   type RawIzin = { sira_no: string | null; sicil_no: string | null; tur: string | null; ayrilis: string | null; baslama: string | null; gun: number | null }
 
-  // RMY izinleri
   let rmyRaw: RawIzin[] = []
   if (memurSiciller.size > 0) {
     const { data } = await supabase
@@ -84,7 +85,6 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     rmyRaw = (data ?? []) as RawIzin[]
   }
 
-  // IVY izinleri
   let ivyRaw: RawIzin[] = []
   if (vekilSiciller.size > 0) {
     const { data } = await supabase
@@ -97,7 +97,6 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     ivyRaw = (data ?? []) as RawIzin[]
   }
 
-  // IZY izinleri
   let izyRaw: RawIzin[] = []
   if (zabitaSiciller.size > 0) {
     const { data } = await supabase
@@ -111,9 +110,19 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     izyRaw = (data ?? []) as RawIzin[]
   }
 
-  // Çalışan adları
+  const ivySiraNos = new Set(
+    ivyRaw.map(i => i.sira_no).filter((sn): sn is string => !!sn),
+  )
+
+  const rawBySiraNo = new Map<string, RawIzin>()
+  for (const raw of [...rmyRaw, ...ivyRaw, ...izyRaw]) {
+    if (raw.sira_no && raw.ayrilis && raw.baslama) {
+      rawBySiraNo.set(raw.sira_no, raw)
+    }
+  }
+
   const tumSiciller = new Set<string>()
-  ;[...rmyRaw, ...ivyRaw, ...izyRaw].forEach(i => { if (i.sicil_no) tumSiciller.add(i.sicil_no) })
+  rawBySiraNo.forEach(i => { if (i.sicil_no) tumSiciller.add(i.sicil_no) })
   const adMap: Record<string, string> = {}
   if (tumSiciller.size > 0) {
     const { data: calisanlar } = await supabase
@@ -123,40 +132,40 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     ;(calisanlar ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
   }
 
-  function toIzin(raw: RawIzin[], tip: SosyalHakTip): SosyalHakIzin[] {
-    return raw
-      .filter(i => i.sira_no && i.ayrilis && i.baslama)
-      .map(i => ({
-        sira_no:  i.sira_no!,
-        sicil_no: i.sicil_no ?? '',
-        ad_soyad: adMap[i.sicil_no ?? ''] ?? i.sicil_no ?? '',
-        tur:      i.tur ?? '',
-        tip,
-        ayrilis:  i.ayrilis!,
-        baslama:  i.baslama!,
-        gun:      i.gun ?? 0,
-      }))
-  }
+  const tumIzinler: SosyalHakIzin[] = []
+  for (const [sira_no, raw] of rawBySiraNo) {
+    const sicil = (raw.sicil_no ?? '').trim()
+    const tur = raw.tur ?? ''
+    const tips = sosyalHakTipsForIzin(
+      sicil,
+      tur,
+      memurSiciller,
+      vekilSiciller,
+      zabitaSiciller,
+      ivySiraNos,
+      sira_no,
+    )
+    if (tips.length === 0) continue
 
-  // Bir sira_no birden fazla listede görünebilir (ör. Rapor türü hem RMY hem IZY filtresiyle eşleşir).
-  // Unique kısıtı korumak için sira_no bazında deduplicate et; önce gelen tipin önceliği var.
-  const seenSiraNo = new Set<string>()
-  const tumIzinler: SosyalHakIzin[] = [
-    ...toIzin(rmyRaw, 'rmy'),
-    ...toIzin(ivyRaw, 'ivy'),
-    ...toIzin(izyRaw, 'izy'),
-  ].filter(iz => {
-    if (seenSiraNo.has(iz.sira_no)) return false
-    seenSiraNo.add(iz.sira_no)
-    return true
-  })
+    tumIzinler.push({
+      sira_no,
+      sicil_no: sicil,
+      ad_soyad: adMap[sicil] ?? sicil,
+      tur,
+      tips,
+      ayrilis: raw.ayrilis!,
+      baslama: raw.baslama!,
+      gun: raw.gun ?? 0,
+    })
+  }
 
   const aday:      SosyalHakIzin[] = []
   const islenecek: SosyalHakIzin[] = []
 
   for (const iz of tumIzinler) {
-    if (buDonemSecili.has(iz.sira_no)) {
-      islenecek.push({ ...iz, tip: buDonemSecili.get(iz.sira_no) ?? iz.tip })
+    const secilenTips = buDonemSecili.get(iz.sira_no)
+    if (secilenTips && secilenTips.length > 0) {
+      islenecek.push({ ...iz, tips: secilenTips })
     } else if (!digerDonemSecili.has(iz.sira_no)) {
       aday.push(iz)
     }
@@ -176,7 +185,7 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
 
 export async function sosyalHakSecimleriKaydet(
   donem_id: number,
-  siraNoList: { sira_no: string; tip: SosyalHakTip }[]
+  secimler: { sira_no: string; tips: SosyalHakTip[] }[]
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -184,22 +193,15 @@ export async function sosyalHakSecimleriKaydet(
 
   await db.from('sosyal_hak_secim').delete().eq('donem_id', donem_id)
 
-  if (siraNoList.length > 0) {
-    // Olası çift kayıt (aynı sira_no farklı tipte görünebilir) → unique kısıtı korumak için deduplicate
-    const seen = new Set<string>()
-    const tekSiraNoList = siraNoList.filter(({ sira_no }) => {
-      if (seen.has(sira_no)) return false
-      seen.add(sira_no)
-      return true
-    })
-    const { error } = await db.from('sosyal_hak_secim').insert(
-      tekSiraNoList.map(({ sira_no, tip }) => ({
-        donem_id,
-        izin_sira_no: sira_no,
-        tip,
-        dahil: true,
-      }))
-    )
+  const rows: { donem_id: number; izin_sira_no: string; tip: SosyalHakTip; dahil: boolean }[] = []
+  for (const { sira_no, tips } of secimler) {
+    for (const tip of tips) {
+      rows.push({ donem_id, izin_sira_no: sira_no, tip, dahil: true })
+    }
+  }
+
+  if (rows.length > 0) {
+    const { error } = await db.from('sosyal_hak_secim').insert(rows)
     if (error) return { hata: (error as { message: string }).message }
   }
 

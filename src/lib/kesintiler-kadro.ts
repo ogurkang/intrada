@@ -6,6 +6,55 @@ export const ZABITA_MUDURLUGU = 'Zabıta Müdürlüğü'
 
 export const RMY_IZIN_TURLERI = ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'] as const
 
+export function isRmyIzinTuru(tur: string): boolean {
+  return (RMY_IZIN_TURLERI as readonly string[]).includes(tur)
+}
+
+/** IZY ekranındaki .or(IZY_IZIN_TURLERI_OR) filtresiyle uyumlu */
+export function isIzyIzinTuru(tur: string): boolean {
+  if (tur === 'Rapor' || tur === 'Heyet Raporu') return true
+  const lower = tur.toLocaleLowerCase('tr-TR')
+  return (
+    lower.includes('yıllık') ||
+    lower.includes('ölüm') ||
+    lower.includes('evlilik') ||
+    lower.includes('babalık') ||
+    lower.includes('mehil') ||
+    lower.includes('mazeret') ||
+    lower.includes('idari') ||
+    lower.includes('doğum öncesi') ||
+    lower.includes('doğum sonrası') ||
+    lower.includes('refakatçi')
+  )
+}
+
+/**
+ * Sosyal Hak Kesintileri: Zabıta Müdürlüğü personelinin rapor / refakatçi raporu izinleri
+ * hem Raporlu Memur hem İzinli Zabıta hesabına dahil edilir.
+ */
+export function sosyalHakTipsForIzin(
+  sicil: string,
+  tur: string,
+  memurSiciller: Set<string>,
+  vekilSiciller: Set<string>,
+  zabitaSiciller: Set<string>,
+  ivySiraNos: Set<string>,
+  siraNo: string,
+): Array<'rmy' | 'ivy' | 'izy'> {
+  const tips = new Set<'rmy' | 'ivy' | 'izy'>()
+
+  if (ivySiraNos.has(siraNo)) tips.add('ivy')
+  if (memurSiciller.has(sicil) && isRmyIzinTuru(tur)) tips.add('rmy')
+  if (zabitaSiciller.has(sicil) && isIzyIzinTuru(tur)) tips.add('izy')
+  if (zabitaSiciller.has(sicil) && isRmyIzinTuru(tur)) {
+    tips.add('rmy')
+    tips.add('izy')
+  }
+
+  const sira: Array<'rmy' | 'ivy' | 'izy'> = ['rmy', 'ivy', 'izy']
+  return sira.filter(t => tips.has(t))
+}
+
 /** IZY izin türü filtresi (PostgREST .or ifadesi) */
 export const IZY_IZIN_TURLERI_OR =
   'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%,tur.ilike.%Refakatçi%,tur.eq.Rapor,tur.eq.Heyet Raporu'

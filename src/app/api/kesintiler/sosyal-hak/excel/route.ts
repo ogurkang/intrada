@@ -325,8 +325,7 @@ export async function GET(request: NextRequest) {
   if (secimler.length === 0) {
     return NextResponse.json({ error: 'Döneme aktarılmış izin yok' }, { status: 404 })
   }
-  const tipBySiraNo = new Map(secimler.map(s => [s.izin_sira_no, s.tip]))
-  const siraNoList  = secimler.map(s => s.izin_sira_no)
+  const siraNoList = [...new Set(secimler.map(s => s.izin_sira_no))]
 
   /* ── Temel izin verileri (tüm tipler) ─────────────────────────── */
   const { data: izinRaw } = await supabase
@@ -345,19 +344,29 @@ export async function GET(request: NextRequest) {
     ;(kad ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
   }
 
-  const leafRows: LeafRow[] = (izinRaw ?? [])
-    .filter(i => i.sira_no && i.ayrilis && i.baslama)
-    .map(i => ({
-      sira_no:  i.sira_no!,
+  const izinBySiraNo = new Map(
+    (izinRaw ?? [])
+      .filter(i => i.sira_no && i.ayrilis && i.baslama)
+      .map(i => [i.sira_no!, i]),
+  )
+
+  // Aynı izin birden fazla modülde (ör. rmy + izy) → Genel Excel'de her bölümde ayrı satır
+  const leafRows: LeafRow[] = []
+  for (const s of secimler) {
+    const i = izinBySiraNo.get(s.izin_sira_no)
+    if (!i?.sira_no || !i.ayrilis || !i.baslama) continue
+    leafRows.push({
+      sira_no:  i.sira_no,
       sicil_no: i.sicil_no ?? '',
       ad_soyad: adMap[i.sicil_no ?? ''] ?? i.sicil_no ?? '',
       unvan:    unvanMap[i.sicil_no ?? ''] ?? '',
-      tip:      tipBySiraNo.get(i.sira_no!) ?? '',
+      tip:      s.tip,
       tur:      i.tur ?? '',
       ayrilis:  i.ayrilis,
       baslama:  i.baslama,
       gun:      i.gun ?? 0,
-    }))
+    })
+  }
 
   /* ── Tatiller (hesap motorları için ortak) ────────────────────── */
   const { data: tatilRaw } = await supabase
