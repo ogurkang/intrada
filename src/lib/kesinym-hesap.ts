@@ -133,6 +133,8 @@ function sod(d: Date): number {
 
 function parseD(s: string | null | undefined): Date | null {
   if (!s) return null
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3])
   const d = new Date(s)
   return isNaN(d.getTime()) ? null : d
 }
@@ -261,6 +263,231 @@ export function buildIzyAnnualBakiyeBeforeMap(rhIzinler: KesintimIzinRow[]): Map
   return annualBakiyeBeforeSiraNo
 }
 
+export function isIzyRhTur(tur: string): boolean {
+  return tur === 'Rapor' || tur === 'Heyet Raporu'
+}
+
+/** Sicilin yılda belirli tarihe kadar (dahil) kümülatif R+HR gün toplamı */
+export function izyRhPeakForSicilYear(
+  rhIzinler: KesintimIzinRow[],
+  sicil: string,
+  year: string,
+  bitisMs?: number,
+): number {
+  let sum = 0
+  for (const iv of rhIzinler) {
+    if (iv.sicil_no !== sicil || !isIzyRhTur(iv.tur)) continue
+    if ((iv.ayrilis ?? '').slice(0, 4) !== year) continue
+    if (bitisMs !== undefined) {
+      const a = parseD(iv.ayrilis)
+      if (!a || sod(a) > bitisMs) continue
+    }
+    sum += izyRhToplamGun(iv)
+  }
+  return sum
+}
+
+export interface IzyPersonPeriodKsd {
+  OD: number
+  K:  number
+  SD: number
+}
+
+/** Sosyal Hak aylık dışa aktarım: K/SD yalnızca bu takvim penceresinde hesaplanır */
+export interface IzyRhKsdWindow {
+  baslangicMs: number
+  bitisMs: number
+}
+
+function izyRhDaysInRange(
+  sicil: string,
+  annualRhIzinler: KesintimIzinRow[],
+  rangeStartMs: number,
+  rangeEndMs: number,
+): { days: number; years: Set<string> } {
+  let days = 0
+  const years = new Set<string>()
+  for (const iv of annualRhIzinler) {
+    if (iv.sicil_no !== sicil || !isIzyRhTur(iv.tur)) continue
+    const a = parseD(iv.ayrilis)
+    if (!a) continue
+    const startMs = sod(a)
+    if (startMs >= rangeStartMs && startMs <= rangeEndMs) {
+      days += izyRhToplamGun(iv)
+      years.add((iv.ayrilis ?? '').slice(0, 4))
+    }
+  }
+  return { days, years }
+}
+
+function izyRhKsdStep(
+  carryIn: number,
+  rhDaysInPeriod: number,
+  rbPeakEndMs: number,
+  years: Set<string>,
+  annualRhIzinler: KesintimIzinRow[],
+  sicil: string,
+  kapasite: number,
+): { OD: number; K: number; SD: number } {
+  let rbPeak = 0
+  const yearsToCheck = years.size > 0 ? [...years] : [new Date(rbPeakEndMs).getFullYear().toString()]
+  for (const year of yearsToCheck) {
+    const peak = izyRhPeakForSicilYear(annualRhIzinler, sicil, year, rbPeakEndMs)
+    if (peak > rbPeak) rbPeak = peak
+  }
+
+  const carry = carryIn
+  let queue = 0
+  let K = 0
+  if (carry > 0) {
+    queue = carry + rhDaysInPeriod
+    K = Math.min(queue, kapasite)
+  } else if (rbPeak > IZY_YILLIK_RAPOR_LIMIT) {
+    queue = rbPeak
+    K = Math.min(Math.max(0, queue - IZY_YILLIK_RAPOR_LIMIT), kapasite)
+  }
+  return { OD: carry, K, SD: queue - K }
+}
+
+function runIzyRhKsdWindow(
+  carryBySicil: Map<string, number>,
+  result: Map<string, IzyPersonPeriodKsd>,
+  annualRhIzinler: KesintimIzinRow[],
+  rangeStartMs: number,
+  rangeEndMs: number,
+  writeResult: boolean,
+  /** Bu SH dönemine aktarılmış R/HR günleri (son ay satırında kuyruğa eklenir) */
+  donemRhDaysBySicil?: Map<string, number>,
+): void {
+  const kapasite = Math.floor((rangeEndMs - rangeStartMs) / 86_400_000) + 1
+  const sicillerInPeriod = new Set<string>()
+  for (const iv of annualRhIzinler) {
+    if (!isIzyRhTur(iv.tur)) continue
+    const a = parseD(iv.ayrilis)
+    if (!a) continue
+    const startMs = sod(a)
+    if (startMs >= rangeStartMs && startMs <= rangeEndMs) {
+      sicillerInPeriod.add(iv.sicil_no)
+    }
+  }
+  if (donemRhDaysBySicil) {
+    for (const [sicil, gun] of donemRhDaysBySicil) {
+      if (gun > 0) sicillerInPeriod.add(sicil)
+    }
+  }
+
+  const processSicil = (sicil: string) => {
+    let { days: rhDaysInPeriod, years } = izyRhDaysInRange(sicil, annualRhIzinler, rangeStartMs, rangeEndMs)
+    const donemGun = donemRhDaysBySicil?.get(sicil) ?? 0
+    if (donemGun > rhDaysInPeriod) rhDaysInPeriod = donemGun
+    const carryIn = carryBySicil.get(sicil) ?? 0
+    const { OD, K, SD } = izyRhKsdStep(carryIn, rhDaysInPeriod, rangeEndMs, years, annualRhIzinler, sicil, kapasite)
+    carryBySicil.set(sicil, SD)
+    if (writeResult) result.set(sicil, { OD, K, SD })
+  }
+
+  for (const sicil of sicillerInPeriod) processSicil(sicil)
+
+  if (writeResult) {
+    for (const [sicil, carry] of carryBySicil) {
+      if (sicillerInPeriod.has(sicil) || carry <= 0) continue
+      const K = Math.min(carry, kapasite)
+      const SD = carry - K
+      carryBySicil.set(sicil, SD)
+      result.set(sicil, { OD: carry, K, SD })
+    }
+  }
+}
+
+/**
+ * Sosyal Hak aylık dönem zinciri: Ocak→…→mevcut ay sırayla işlenir.
+ * Mayıs OD = Nisan SD (33); IZY modül dönemleri bu hesapta kullanılmaz.
+ */
+export function computeIzyRhKsdForShakMonths(
+  annualRhIzinler: KesintimIzinRow[],
+  shakWindows: IzyRhKsdWindow[],
+  /** Dışa aktarılan SH dönemine seçilmiş R/HR izin günleri (sicil → toplam gün) */
+  currentDonemRhDaysBySicil?: Map<string, number>,
+): Map<string, IzyPersonPeriodKsd> {
+  const carryBySicil = new Map<string, number>()
+  const result = new Map<string, IzyPersonPeriodKsd>()
+  if (shakWindows.length === 0) return result
+
+  for (let wi = 0; wi < shakWindows.length; wi++) {
+    const w = shakWindows[wi]
+    const isLast = wi === shakWindows.length - 1
+    runIzyRhKsdWindow(
+      carryBySicil,
+      result,
+      annualRhIzinler,
+      w.baslangicMs,
+      w.bitisMs,
+      isLast,
+      isLast ? currentDonemRhDaysBySicil : undefined,
+    )
+  }
+  return result
+}
+
+/** IZY modül dönem zinciri (native IZY ekranı / kesintimHesapla) */
+export function computeIzyRhKsdBySicilForPeriod(
+  donemler: KesintimDonemRow[],
+  curPeriodId: number,
+  annualRhIzinler: KesintimIzinRow[],
+): Map<string, IzyPersonPeriodKsd> {
+  const idxById = new Map(donemler.map(d => [d.id, d.idx]))
+  const byIdx = new Map(donemler.map(d => [d.idx, d]))
+  const curIdx = idxById.get(curPeriodId) ?? -1
+  if (curIdx < 0) return new Map()
+
+  const carryBySicil = new Map<string, number>()
+  const result = new Map<string, IzyPersonPeriodKsd>()
+
+  for (let pi = 0; pi <= curIdx; pi++) {
+    const p = byIdx.get(pi)!
+    runIzyRhKsdWindow(
+      carryBySicil,
+      result,
+      annualRhIzinler,
+      p.baslangic_tarihi_ms,
+      p.bitis_tarihi_ms,
+      pi === curIdx,
+    )
+  }
+
+  return result
+}
+
+/** IZY R/HR satırlarına dönem sonu kişi bazlı K/SD uygular (yalnızca son kayıt satırında gösterilir) */
+export function applyIzyPersonPeriodKsd(
+  satirlar: KesintimHesapSatir[],
+  ksdBySicil: Map<string, IzyPersonPeriodKsd>,
+  annualRhIzinler: KesintimIzinRow[],
+): KesintimHesapSatir[] {
+  const lastSiraBySicil = new Map<string, string>()
+  const rhSatirlar = satirlar.filter(s => isIzyRhTur(s.tur))
+  const izinBySn = new Map(annualRhIzinler.map(iv => [iv.sira_no, iv]))
+
+  const sorted = [...rhSatirlar].sort((a, b) => {
+    const ia = izinBySn.get(a.sira_no)
+    const ib = izinBySn.get(b.sira_no)
+    return (ia?.ayrilis ?? '').localeCompare(ib?.ayrilis ?? '')
+  })
+  for (const s of sorted) {
+    lastSiraBySicil.set(s.sicil_no, s.sira_no)
+  }
+
+  return satirlar.map(s => {
+    if (!isIzyRhTur(s.tur)) return s
+    const ksd = ksdBySicil.get(s.sicil_no)
+    if (!ksd) return { ...s, OD: 0, K: 0, SD: 0 }
+    if (s.sira_no !== lastSiraBySicil.get(s.sicil_no)) {
+      return { ...s, OD: 0, K: 0, SD: 0 }
+    }
+    return { ...s, OD: ksd.OD, K: ksd.K, SD: ksd.SD }
+  })
+}
+
 function kisiOzetTopla(
   satirlar: KesintimHesapSatir[],
   curKapasite: number
@@ -338,7 +565,7 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
   // ─────────────────────────────────────────────────────────────────────────
 
   const izinBySiraNo = new Map(izinler.map(iz => [iz.sira_no, iz]))
-  const satirlar: KesintimHesapSatir[] = []
+  let satirlar: KesintimHesapSatir[] = []
 
   for (const [siraNo, ilkDonemId] of Object.entries(ilkDonemIdBySiraNo)) {
     const firstIdx = idxById.get(ilkDonemId) ?? -1
@@ -360,10 +587,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
     const toplam = fns.toplam(startMs, lastMs, iv.gun, tatilRanges)
     if (toplam <= 0) continue
 
-    const isRH = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    const isRH = modul === 'izy' && isIzyRhTur(iv.tur)
     const bakiyeBefore  = isRH ? (annualBakiyeBeforeSiraNo.get(siraNo) ?? 0) : 0
-    const deductAmount  = isRH ? computeIzyRhDeductAmount(bakiyeBefore, toplam) : toplam
     const annualRBValue = isRH ? bakiyeBefore + toplam : 0
+    const deductAmount  = isRH ? 0 : toplam
 
     let prevSD = 0
     let curRow: { OD: number; R: number; RR: number; HR: number; K: number; SD: number; RB: number } | null = null
@@ -375,23 +602,8 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
 
       if (pi === firstIdx) {
         if (isRH) {
-          // ── IZY: R / HR — yıllık 30 gün sonrası deductAmount kesilir ─────
-          if (startMs > p.bitis_tarihi_ms) {
-            kes = 0
-            sd = deductAmount
-          } else if (startMs >= p.baslangic_tarihi_ms) {
-            kes = Math.min(deductAmount, kapasite)
-            sd  = Math.max(0, deductAmount - kes)
-          } else {
-            od = deductAmount
-            kes = Math.min(od, kapasite)
-            sd  = Math.max(0, od - kes)
-          }
-          if (iv.tur === 'Heyet Raporu') {
-            hrBilgi = od > 0 ? od : toplam
-          } else {
-            rBilgi = od > 0 ? od : toplam
-          }
+          if (iv.tur === 'Heyet Raporu') hrBilgi = toplam
+          else rBilgi = toplam
         } else {
           // ── Tüm modüller için standart mantık ──────────────────────────
           if (startMs > p.bitis_tarihi_ms) {
@@ -417,7 +629,7 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
             rBilgi = od > 0 ? od : toplam
           }
         }
-      } else {
+      } else if (!isRH) {
         od = prevSD
         if (od <= 0) { curRow = null; break }
         if (modul === 'rmy') {
@@ -428,9 +640,13 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
         }
         kes = Math.min(od, kapasite)
         sd  = Math.max(0, od - kes)
+      } else if (iv.tur === 'Heyet Raporu') {
+        hrBilgi = toplam
+      } else {
+        rBilgi = toplam
       }
 
-      prevSD = sd
+      if (!isRH) prevSD = sd
       if (pi === curIdx) curRow = { OD: od, R: rBilgi, RR: rrBilgi, HR: hrBilgi, K: kes, SD: sd, RB: annualRBValue }
     }
 
@@ -456,6 +672,12 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
       RB: curRow.RB,
       kategori,
     })
+  }
+
+  if (modul === 'izy') {
+    const rhKaynak = izyAnnualRhIzinler ?? izinler
+    const ksdBySicil = computeIzyRhKsdBySicilForPeriod(donemler, curId, rhKaynak)
+    satirlar = applyIzyPersonPeriodKsd(satirlar, ksdBySicil, rhKaynak)
   }
 
   const kapasite = curDonem.kapasite

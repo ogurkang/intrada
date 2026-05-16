@@ -299,7 +299,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     if (!data) return
     const secimler = data.islenecek.map(i => ({ sira_no: i.sira_no, tips: i.tips }))
     startTransition(async () => {
-      const res = await sosyalHakSecimleriKaydet(donemId, siraNoList)
+      const res = await sosyalHakSecimleriKaydet(donemId, secimler)
       if (res.hata) setHata(res.hata)
       else yukle()
     })

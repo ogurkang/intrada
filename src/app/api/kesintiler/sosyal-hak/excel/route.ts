@@ -4,10 +4,15 @@ import { createClient } from '@/lib/supabase/server'
 import {
   kesintimHesapla,
   buildIzyAnnualBakiyeBeforeMap,
-  computeIzyRhDeductAmount,
+  computeIzyRhKsdForShakMonths,
+  applyIzyPersonPeriodKsd,
+  isIzyRhTur,
+  izyRhToplamGun,
+  type IzyRhKsdWindow,
   type KesintimDonemRow,
   type KesintimIzinRow,
   type KesintimHesapSatir,
+  type KesintimKategori,
 } from '@/lib/kesinym-hesap'
 import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
@@ -272,36 +277,22 @@ async function hesaplaModul(
 
     const kapasite = globalCurDonem.kapasite
 
-    const isRH = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    const isRH = modul === 'izy' && isIzyRhTur(iv.tur)
     const annualMap = isRH && izyAnnualRhIzinler
       ? buildIzyAnnualBakiyeBeforeMap(izyAnnualRhIzinler)
       : new Map<string, number>()
     const bakiyeBefore = isRH ? (annualMap.get(sn) ?? 0) : 0
-    const deductAmt    = isRH ? computeIzyRhDeductAmount(bakiyeBefore, toplam) : toplam
     const annualRB     = isRH ? bakiyeBefore + toplam : 0
 
     let od = 0, r = 0, rr = 0, hr = 0, kes = 0, sd = 0
-
-    if (startMs < globalCurDonem.baslangic_tarihi_ms) {
-      od  = deductAmt
-      kes = Math.min(od, kapasite)
-      sd  = Math.max(0, od - kes)
-    } else if (startMs > globalCurDonem.bitis_tarihi_ms) {
-      sd = deductAmt
+    if (isRH) {
+      if (iv.tur === 'Heyet Raporu') hr = toplam
+      else r = toplam
+    } else if (modul === 'rmy') {
+      r  = iv.tur === 'Rapor' ? toplam : 0
+      rr = (iv.tur === 'Refakatçi Raporu' || iv.tur === 'Refakatçi İzni') ? toplam : 0
     } else {
-      kes = Math.min(deductAmt, kapasite)
-      sd  = Math.max(0, deductAmt - kes)
-    }
-
-    const base = od > 0 ? od : toplam
-    if (modul === 'rmy') {
-      r  = iv.tur === 'Rapor' ? base : 0
-      rr = (iv.tur === 'Refakatçi Raporu' || iv.tur === 'Refakatçi İzni') ? base : 0
-    } else if (isRH) {
-      if (iv.tur === 'Heyet Raporu') hr = base
-      else r = base
-    } else {
-      r = base
+      r = toplam
     }
 
     const kategori: KesintimKategori =
@@ -318,6 +309,48 @@ async function hesaplaModul(
       OD: od, R: r, RR: rr, HR: hr, K: kes, SD: sd, RB: annualRB,
       kategori,
     })
+  }
+
+  if (modul === 'izy' && izyAnnualRhIzinler) {
+    const shakYil = new Date(shakBasTarihi).getFullYear()
+    const { data: shDonemChain } = await db
+      .from('sosyal_hak_donem')
+      .select('baslangic_tarihi, bitis_tarihi')
+      .order('baslangic_tarihi', { ascending: true }) as {
+        data: { baslangic_tarihi: string; bitis_tarihi: string }[] | null
+      }
+
+    const shakWindows: IzyRhKsdWindow[] = (shDonemChain ?? [])
+      .filter(d => {
+        const basYil = new Date(d.baslangic_tarihi).getFullYear()
+        const bitMs  = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
+        return basYil === shakYil && bitMs <= shakBitMs
+      })
+      .map(d => {
+        const bas = new Date(d.baslangic_tarihi)
+        const bit = new Date(d.bitis_tarihi)
+        return {
+          baslangicMs: new Date(bas.getFullYear(), bas.getMonth(), bas.getDate()).getTime(),
+          bitisMs:     new Date(bit.getFullYear(), bit.getMonth(), bit.getDate(), 23, 59, 59, 999).getTime(),
+        }
+      })
+
+    const currentDonemRhDays = new Map<string, number>()
+    for (const iz of izinler) {
+      if (!isIzyRhTur(iz.tur)) continue
+      const gun = iz.gun > 0 ? iz.gun : izyRhToplamGun(iz)
+      if (gun <= 0) continue
+      currentDonemRhDays.set(iz.sicil_no, (currentDonemRhDays.get(iz.sicil_no) ?? 0) + gun)
+    }
+
+    const ksdBySicil = computeIzyRhKsdForShakMonths(
+      izyAnnualRhIzinler,
+      shakWindows,
+      currentDonemRhDays,
+    )
+    const adjusted = applyIzyPersonPeriodKsd([...resultMap.values()], ksdBySicil, izyAnnualRhIzinler)
+    resultMap.clear()
+    for (const s of adjusted) resultMap.set(s.sira_no, s)
   }
 
   return resultMap
