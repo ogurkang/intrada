@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
-import { kesintimHesapla, type KesintimDonemRow, type KesintimIzinRow, type KesintimHesapSatir } from '@/lib/kesinym-hesap'
+import {
+  kesintimHesapla,
+  buildIzyAnnualBakiyeBeforeMap,
+  computeIzyRhDeductAmount,
+  type KesintimDonemRow,
+  type KesintimIzinRow,
+  type KesintimHesapSatir,
+} from '@/lib/kesinym-hesap'
 import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
 function tarih(t: string | null | undefined) {
@@ -198,8 +205,44 @@ async function hesaplaModul(
       gun:      i.gun ?? 0,
     }))
 
+  let izyAnnualRhIzinler: KesintimIzinRow[] | undefined
+  if (modul === 'izy' && siciller.length > 0) {
+    const { data: rhRaw } = await db
+      .from('izin_hareketleri')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .in('sicil_no', siciller)
+      .in('tur', ['Rapor', 'Heyet Raporu'])
+      .neq('durum', 'İptal Edildi')
+    const rhBySira = new Map<string, KesintimIzinRow>()
+    for (const i of izinler) {
+      if (i.tur === 'Rapor' || i.tur === 'Heyet Raporu') rhBySira.set(i.sira_no, i)
+    }
+    for (const row of (rhRaw ?? []) as IzinDbRow[]) {
+      if (!row.sira_no || !row.ayrilis || !row.baslama) continue
+      rhBySira.set(row.sira_no, {
+        sira_no:  row.sira_no,
+        sicil_no: row.sicil_no ?? '',
+        ad_soyad: adMap[row.sicil_no ?? ''] ?? row.sicil_no ?? '',
+        unvan:    unvanMap[row.sicil_no ?? ''] ?? '',
+        tur:      row.tur ?? '',
+        ayrilis:  row.ayrilis,
+        baslama:  row.baslama,
+        gun:      row.gun ?? 0,
+      })
+    }
+    izyAnnualRhIzinler = [...rhBySira.values()]
+  }
+
   /* ── kesintimHesapla: globalCurId ile tek çalıştırma ─────────────── */
-  const sonuc = kesintimHesapla({ modul, curId: globalCurId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+  const sonuc = kesintimHesapla({
+    modul,
+    curId: globalCurId,
+    donemler: tumDonemler,
+    ilkDonemIdBySiraNo,
+    izinler,
+    tatiller,
+    izyAnnualRhIzinler,
+  })
   const resultMap = new Map<string, KesintimHesapSatir>(sonuc.satirlar.map(s => [s.sira_no, s]))
 
   /* ── Fallback: dönem zinciri kırılan izinler ─────────────────────── */
@@ -229,42 +272,34 @@ async function hesaplaModul(
 
     const kapasite = globalCurDonem.kapasite
 
-    // IZY R/HR: 30 günlük yıllık serbest kotaya göre kesilecek miktar
-    const isRH       = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
-    const freeAmount = isRH ? 30 : 0  // bakiyeBefore=0 (bağımsız fallback)
-    const deductAmt  = isRH ? Math.max(0, toplam - freeAmount) : toplam
-    const annualRB   = isRH ? toplam : 0
+    const isRH = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    const annualMap = isRH && izyAnnualRhIzinler
+      ? buildIzyAnnualBakiyeBeforeMap(izyAnnualRhIzinler)
+      : new Map<string, number>()
+    const bakiyeBefore = isRH ? (annualMap.get(sn) ?? 0) : 0
+    const deductAmt    = isRH ? computeIzyRhDeductAmount(bakiyeBefore, toplam) : toplam
+    const annualRB     = isRH ? bakiyeBefore + toplam : 0
 
-    let od = 0, r = 0, rr = 0, kes = 0, sd = 0
+    let od = 0, r = 0, rr = 0, hr = 0, kes = 0, sd = 0
 
     if (startMs < globalCurDonem.baslangic_tarihi_ms) {
-      // Takipteki: izin dönem başından önce başlıyor
       od  = deductAmt
       kes = Math.min(od, kapasite)
       sd  = Math.max(0, od - kes)
     } else if (startMs > globalCurDonem.bitis_tarihi_ms) {
-      // Askıdaki: izin henüz başlamamış
       sd = deductAmt
     } else {
-      // Dönemdeki: izin dönem içinde başlıyor
-      const oS = Math.max(startMs, globalCurDonem.baslangic_tarihi_ms)
-      const oE = Math.min(lastMs,  globalCurDonem.bitis_tarihi_ms)
-      const overlapGun = oE >= oS ? Math.floor((oE - oS) / 86_400_000) + 1 : 0
-      if (isRH) {
-        const deductableThisPeriod = Math.max(0, overlapGun - freeAmount)
-        kes = Math.min(deductableThisPeriod, kapasite)
-        sd  = Math.max(0, deductAmt - kes)
-      } else {
-        kes = Math.min(overlapGun, kapasite)
-        sd  = Math.max(0, toplam - kes)
-      }
+      kes = Math.min(deductAmt, kapasite)
+      sd  = Math.max(0, deductAmt - kes)
     }
 
-    // R / RR ayrımı (RMY)
     const base = od > 0 ? od : toplam
     if (modul === 'rmy') {
-      r  = iv.tur === 'Rapor'      ? base : 0
+      r  = iv.tur === 'Rapor' ? base : 0
       rr = (iv.tur === 'Refakatçi Raporu' || iv.tur === 'Refakatçi İzni') ? base : 0
+    } else if (isRH) {
+      if (iv.tur === 'Heyet Raporu') hr = base
+      else r = base
     } else {
       r = base
     }
@@ -280,7 +315,7 @@ async function hesaplaModul(
       ad_soyad: iv.ad_soyad,
       unvan:    iv.unvan,
       tur:      iv.tur,
-      OD: od, R: r, RR: rr, HR: 0, K: kes, SD: sd, RB: annualRB,
+      OD: od, R: r, RR: rr, HR: hr, K: kes, SD: sd, RB: annualRB,
       kategori,
     })
   }

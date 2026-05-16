@@ -207,6 +207,58 @@ export interface KesintimHesapParams {
   ilkDonemIdBySiraNo: Record<string, number>
   izinler:   KesintimIzinRow[]
   tatiller:  { tatil_baslangici: string; tatil_bitisi: string; durum: boolean }[]
+  /**
+   * IZY: Yıllık Rapor Bakiyesi (30 gün) için sicilin yıldaki tüm R/HR izinleri.
+   * Verilmezse yalnızca `izinler` içindeki R/HR kullanılır.
+   */
+  izyAnnualRhIzinler?: KesintimIzinRow[]
+}
+
+const IZY_YILLIK_RAPOR_LIMIT = 30
+
+/** IZY R/HR izin süresi (takvim günü) */
+export function izyRhToplamGun(iv: Pick<KesintimIzinRow, 'ayrilis' | 'baslama' | 'gun'>): number {
+  const ayrilis = parseD(iv.ayrilis)
+  const baslama = parseD(iv.baslama)
+  if (!ayrilis || !baslama) return iv.gun > 0 ? iv.gun : 0
+  const startMs = sod(ayrilis)
+  const lastDate = new Date(sod(baslama))
+  lastDate.setDate(lastDate.getDate() - 1)
+  const lastMs = sod(lastDate)
+  if (lastMs < startMs) return 0
+  return iv.gun > 0 ? iv.gun : Math.floor((lastMs - startMs) / 86_400_000) + 1
+}
+
+/**
+ * Bu izinden kesilecek gün: yıllık R+HR 30'u aştığında aşan kısım.
+ * Bakiye zaten 30+ ise iznin tamamı kesintiye tabidir.
+ */
+export function computeIzyRhDeductAmount(bakiyeBefore: number, toplam: number): number {
+  const excessBefore = Math.max(0, bakiyeBefore - IZY_YILLIK_RAPOR_LIMIT)
+  const excessAfter  = Math.max(0, bakiyeBefore + toplam - IZY_YILLIK_RAPOR_LIMIT)
+  return excessAfter - excessBefore
+}
+
+/** Her R/HR kaydı için işlenmeden önceki yıllık kümülatif bakiye */
+export function buildIzyAnnualBakiyeBeforeMap(rhIzinler: KesintimIzinRow[]): Map<string, number> {
+  const annualBakiyeBeforeSiraNo = new Map<string, number>()
+  const annualBySicilYear = new Map<string, number>()
+  const sorted = [...rhIzinler]
+    .filter(iv => iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
+    .sort((a, b) => {
+      const sc = a.sicil_no.localeCompare(b.sicil_no, 'tr')
+      if (sc !== 0) return sc
+      return (a.ayrilis ?? '').localeCompare(b.ayrilis ?? '')
+    })
+  for (const iv of sorted) {
+    const year = (iv.ayrilis ?? '').slice(0, 4)
+    if (!year) continue
+    const key = `${iv.sicil_no}:${year}`
+    const before = annualBySicilYear.get(key) ?? 0
+    annualBakiyeBeforeSiraNo.set(iv.sira_no, before)
+    annualBySicilYear.set(key, before + izyRhToplamGun(iv))
+  }
+  return annualBakiyeBeforeSiraNo
 }
 
 function kisiOzetTopla(
@@ -262,7 +314,7 @@ function isRefakatci(tur: string): boolean {
 }
 
 export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonucu {
-  const { modul, curId, donemler, ilkDonemIdBySiraNo, izinler, tatiller } = params
+  const { modul, curId, donemler, ilkDonemIdBySiraNo, izinler, tatiller, izyAnnualRhIzinler } = params
   const fns = GUN_FNS[modul]
   const yilList = donemler.flatMap(d => {
     const y1 = Number.parseInt(String(d.baslangic_tarihi ?? '').slice(0, 4), 10)
@@ -279,25 +331,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
   if (curIdx < 0 || !curDonem) return { satirlar: [], personeller: [], takipteki: [], donemdeki: [], askidaki: [] }
 
   // ─── Yıllık Rapor Bakiyesi ön-işleme (sadece IZY) ────────────────────────
-  // Her R / HR kaydı için: o izin işlenmeden önceki yıllık kümülatif bakiye
-  const annualBakiyeBeforeSiraNo = new Map<string, number>()
-  if (modul === 'izy') {
-    const annualBySicilYear = new Map<string, number>()
-    const rhLeaves = [...izinler]
-      .filter(iv => iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
-      .sort((a, b) => {
-        const sc = a.sicil_no.localeCompare(b.sicil_no)
-        if (sc !== 0) return sc
-        return (a.ayrilis ?? '').localeCompare(b.ayrilis ?? '')
-      })
-    for (const iv of rhLeaves) {
-      const year = (iv.ayrilis ?? '').slice(0, 4)
-      const key  = `${iv.sicil_no}:${year}`
-      const before = annualBySicilYear.get(key) ?? 0
-      annualBakiyeBeforeSiraNo.set(iv.sira_no, before)
-      annualBySicilYear.set(key, before + iv.gun)
-    }
-  }
+  const annualBakiyeBeforeSiraNo =
+    modul === 'izy'
+      ? buildIzyAnnualBakiyeBeforeMap(izyAnnualRhIzinler ?? izinler)
+      : new Map<string, number>()
   // ─────────────────────────────────────────────────────────────────────────
 
   const izinBySiraNo = new Map(izinler.map(iz => [iz.sira_no, iz]))
@@ -323,12 +360,10 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
     const toplam = fns.toplam(startMs, lastMs, iv.gun, tatilRanges)
     if (toplam <= 0) continue
 
-    // IZY için yıllık bakiye hesabı (R ve HR türleri)
     const isRH = modul === 'izy' && (iv.tur === 'Rapor' || iv.tur === 'Heyet Raporu')
     const bakiyeBefore  = isRH ? (annualBakiyeBeforeSiraNo.get(siraNo) ?? 0) : 0
-    const freeAmount    = isRH ? Math.max(0, 30 - bakiyeBefore) : 0
-    const deductAmount  = isRH ? Math.max(0, toplam - freeAmount) : toplam
-    const annualRBValue = isRH ? bakiyeBefore + toplam : 0  // Rapor Bakiyesi bu izin dahil
+    const deductAmount  = isRH ? computeIzyRhDeductAmount(bakiyeBefore, toplam) : toplam
+    const annualRBValue = isRH ? bakiyeBefore + toplam : 0
 
     let prevSD = 0
     let curRow: { OD: number; R: number; RR: number; HR: number; K: number; SD: number; RB: number } | null = null
@@ -340,29 +375,23 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
 
       if (pi === firstIdx) {
         if (isRH) {
-          // ── IZY: R / HR yıllık bakiye kuralına göre K/SD hesabı ──────────
+          // ── IZY: R / HR — yıllık 30 gün sonrası deductAmount kesilir ─────
           if (startMs > p.bitis_tarihi_ms) {
-            // f) ileri tarihli
-            kes = 0; sd = deductAmount
+            kes = 0
+            sd = deductAmount
           } else if (startMs >= p.baslangic_tarihi_ms) {
-            // a/b) dönem içinde başlayan
-            const kesisim = fns.overlap(startMs, lastMs, p.baslangic_tarihi_ms, p.bitis_tarihi_ms, tatilRanges)
-            // Dönemdeki deductable günler: kesisim'in freeAmount'u aşan kısmı
-            const deductableThisPeriod = Math.max(0, kesisim - freeAmount)
-            kes = Math.min(deductableThisPeriod, kapasite)
+            kes = Math.min(deductAmount, kapasite)
             sd  = Math.max(0, deductAmount - kes)
           } else {
-            // c/d/e) dönemden önce başlayan — deductAmount'u od olarak kullan
             od = deductAmount
-            if (lastMs < p.baslangic_tarihi_ms) {
-              // e) gecikmiş: dönem öncesinde bitti
-              kes = od; sd = 0
-            } else {
-              kes = Math.min(od, kapasite); sd = Math.max(0, od - kes)
-            }
+            kes = Math.min(od, kapasite)
+            sd  = Math.max(0, od - kes)
           }
-          // R/HR için İZ sütununa aktar (hrBilgi ayrı gösterilmez, İZ'e eklenir)
-          rBilgi = od > 0 ? od : toplam
+          if (iv.tur === 'Heyet Raporu') {
+            hrBilgi = od > 0 ? od : toplam
+          } else {
+            rBilgi = od > 0 ? od : toplam
+          }
         } else {
           // ── Tüm modüller için standart mantık ──────────────────────────
           if (startMs > p.bitis_tarihi_ms) {
