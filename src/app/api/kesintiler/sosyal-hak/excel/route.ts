@@ -4,11 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import {
   kesintimHesapla,
   buildIzyAnnualBakiyeBeforeMap,
-  computeIzyRhKsdForShakMonths,
-  applyIzyPersonPeriodKsd,
+  applyShakIzyKsdToSonuc,
+  buildShakWindowsForYear,
   isIzyRhTur,
   izyRhToplamGun,
-  type IzyRhKsdWindow,
   type KesintimDonemRow,
   type KesintimIzinRow,
   type KesintimHesapSatir,
@@ -320,20 +319,7 @@ async function hesaplaModul(
         data: { baslangic_tarihi: string; bitis_tarihi: string }[] | null
       }
 
-    const shakWindows: IzyRhKsdWindow[] = (shDonemChain ?? [])
-      .filter(d => {
-        const basYil = new Date(d.baslangic_tarihi).getFullYear()
-        const bitMs  = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
-        return basYil === shakYil && bitMs <= shakBitMs
-      })
-      .map(d => {
-        const bas = new Date(d.baslangic_tarihi)
-        const bit = new Date(d.bitis_tarihi)
-        return {
-          baslangicMs: new Date(bas.getFullYear(), bas.getMonth(), bas.getDate()).getTime(),
-          bitisMs:     new Date(bit.getFullYear(), bit.getMonth(), bit.getDate(), 23, 59, 59, 999).getTime(),
-        }
-      })
+    const shakWindows = buildShakWindowsForYear(shDonemChain ?? [], shakYil, shakBitMs)
 
     const currentDonemRhDays = new Map<string, number>()
     for (const iz of izinler) {
@@ -343,14 +329,14 @@ async function hesaplaModul(
       currentDonemRhDays.set(iz.sicil_no, (currentDonemRhDays.get(iz.sicil_no) ?? 0) + gun)
     }
 
-    const ksdBySicil = computeIzyRhKsdForShakMonths(
+    const adjusted = applyShakIzyKsdToSonuc(
+      { satirlar: [...resultMap.values()], personeller: [], takipteki: [], donemdeki: [], askidaki: [] },
       izyAnnualRhIzinler,
       shakWindows,
       currentDonemRhDays,
     )
-    const adjusted = applyIzyPersonPeriodKsd([...resultMap.values()], ksdBySicil, izyAnnualRhIzinler)
     resultMap.clear()
-    for (const s of adjusted) resultMap.set(s.sira_no, s)
+    for (const s of adjusted.satirlar) resultMap.set(s.sira_no, s)
   }
 
   return resultMap

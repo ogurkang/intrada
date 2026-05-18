@@ -218,6 +218,9 @@ export interface KesintimHesapParams {
 
 const IZY_YILLIK_RAPOR_LIMIT = 30
 
+/** Sosyal Hak IZY: aylık kesinti üst sınırı (dönem takvim gününden bağımsız) */
+export const SHAK_IZY_KESINTI_KAPASITE = 30
+
 /** IZY R/HR izin süresi (takvim günü) */
 export function izyRhToplamGun(iv: Pick<KesintimIzinRow, 'ayrilis' | 'baslama' | 'gun'>): number {
   const ayrilis = parseD(iv.ayrilis)
@@ -358,8 +361,11 @@ function runIzyRhKsdWindow(
   writeResult: boolean,
   /** Bu SH dönemine aktarılmış R/HR günleri (son ay satırında kuyruğa eklenir) */
   donemRhDaysBySicil?: Map<string, number>,
+  /** Kesilen üst sınırı; verilmezse dönem takvim günü kullanılır */
+  kesintiKapasite?: number,
 ): void {
-  const kapasite = Math.floor((rangeEndMs - rangeStartMs) / 86_400_000) + 1
+  const periodGun = Math.floor((rangeEndMs - rangeStartMs) / 86_400_000) + 1
+  const kapasite  = kesintiKapasite ?? periodGun
   const sicillerInPeriod = new Set<string>()
   for (const iv of annualRhIzinler) {
     if (!isIzyRhTur(iv.tur)) continue
@@ -424,9 +430,57 @@ export function computeIzyRhKsdForShakMonths(
       w.bitisMs,
       isLast,
       isLast ? currentDonemRhDaysBySicil : undefined,
+      SHAK_IZY_KESINTI_KAPASITE,
     )
   }
   return result
+}
+
+/** Sosyal Hak yılı için dönem pencereleri (mevcut döneme kadar) */
+export function buildShakWindowsForYear(
+  donemler: { baslangic_tarihi: string; bitis_tarihi: string }[],
+  year: number,
+  bitisMsLimit: number,
+): IzyRhKsdWindow[] {
+  return donemler
+    .filter(d => {
+      const bas = new Date(d.baslangic_tarihi)
+      const bitMs = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
+      return bas.getFullYear() === year && bitMs <= bitisMsLimit
+    })
+    .map(d => {
+      const bas = new Date(d.baslangic_tarihi)
+      const bit = new Date(d.bitis_tarihi)
+      return {
+        baslangicMs: new Date(bas.getFullYear(), bas.getMonth(), bas.getDate()).getTime(),
+        bitisMs:     new Date(bit.getFullYear(), bit.getMonth(), bit.getDate(), 23, 59, 59, 999).getTime(),
+      }
+    })
+}
+
+export function buildKesintimSonucFromSatirlar(
+  satirlar: KesintimHesapSatir[],
+  personelKapasite: number,
+): KesintimHesapSonucu {
+  return {
+    satirlar,
+    personeller: kisiOzetTopla(satirlar, personelKapasite),
+    takipteki:   kisiOzetTopla(satirlar.filter(s => s.kategori === 'Takipteki İzinler'), personelKapasite),
+    donemdeki:   kisiOzetTopla(satirlar.filter(s => s.kategori === 'Dönemdeki İzinler'), personelKapasite),
+    askidaki:    kisiOzetTopla(satirlar.filter(s => s.kategori === 'Askıdaki İzinler'),  personelKapasite),
+  }
+}
+
+/** Sosyal Hak önizleme / Excel: IZY K/SD + sabit 30 gün kesinti sınırı */
+export function applyShakIzyKsdToSonuc(
+  sonuc: KesintimHesapSonucu,
+  annualRhIzinler: KesintimIzinRow[],
+  shakWindows: IzyRhKsdWindow[],
+  currentDonemRhDaysBySicil?: Map<string, number>,
+): KesintimHesapSonucu {
+  const ksdBySicil = computeIzyRhKsdForShakMonths(annualRhIzinler, shakWindows, currentDonemRhDaysBySicil)
+  const satirlar   = applyIzyPersonPeriodKsd(sonuc.satirlar, ksdBySicil, annualRhIzinler)
+  return buildKesintimSonucFromSatirlar(satirlar, SHAK_IZY_KESINTI_KAPASITE)
 }
 
 /** IZY modül dönem zinciri (native IZY ekranı / kesintimHesapla) */
@@ -680,11 +734,5 @@ export function kesintimHesapla(params: KesintimHesapParams): KesintimHesapSonuc
     satirlar = applyIzyPersonPeriodKsd(satirlar, ksdBySicil, rhKaynak)
   }
 
-  const kapasite = curDonem.kapasite
-  const personeller = kisiOzetTopla(satirlar, kapasite)
-  const takipteki   = kisiOzetTopla(satirlar.filter(s => s.kategori === 'Takipteki İzinler'), kapasite)
-  const donemdeki   = kisiOzetTopla(satirlar.filter(s => s.kategori === 'Dönemdeki İzinler'), kapasite)
-  const askidaki    = kisiOzetTopla(satirlar.filter(s => s.kategori === 'Askıdaki İzinler'),  kapasite)
-
-  return { satirlar, personeller, takipteki, donemdeki, askidaki }
+  return buildKesintimSonucFromSatirlar(satirlar, curDonem.kapasite)
 }

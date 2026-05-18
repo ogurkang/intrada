@@ -10,6 +10,10 @@ import {
 } from '@/app/(dashboard)/kesintiler/sosyal-hak/[donem_id]/actions'
 import {
   kesintimHesapla,
+  applyShakIzyKsdToSonuc,
+  buildShakWindowsForYear,
+  isIzyRhTur,
+  izyRhToplamGun,
   type KesintimDonemRow,
   type KesintimIzinRow,
 } from '@/lib/kesinym-hesap'
@@ -388,6 +392,8 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     }
 
     const siraNoList = Object.keys(ilkDonemIdBySiraNo)
+    const adMap: Record<string, string> = {}
+    const unvanMap: Record<string, string> = {}
     let izinler: KesintimIzinRow[] = []
     if (siraNoList.length > 0) {
       const { data: izinRaw } = await supabase
@@ -397,8 +403,6 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
         .neq('durum', 'İptal Edildi')
 
       const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
-      const adMap: Record<string, string> = {}
-      const unvanMap: Record<string, string> = {}
       if (siciller.length > 0) {
         const { data: calisanlar } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
         ;(calisanlar ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
@@ -432,7 +436,63 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
       durum: t.durum ?? true,
     }))
 
-    const sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+    let sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+
+    const shakBasMs = new Date(data.donem.baslangic_tarihi).setHours(0, 0, 0, 0)
+    const shakBitMs = new Date(data.donem.bitis_tarihi).setHours(23, 59, 59, 999)
+    const shakYil   = new Date(data.donem.baslangic_tarihi).getFullYear()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: shDonemChain } = await (supabase as any)
+      .from('sosyal_hak_donem')
+      .select('baslangic_tarihi, bitis_tarihi')
+      .order('baslangic_tarihi', { ascending: true }) as {
+        data: { baslangic_tarihi: string; bitis_tarihi: string }[] | null
+      }
+
+    const shakWindows = buildShakWindowsForYear(shDonemChain ?? [], shakYil, shakBitMs)
+
+    const sicillerRh = [...new Set(izinler.map(i => i.sicil_no).filter(Boolean))]
+    let annualRhIzinler: KesintimIzinRow[] = []
+    if (sicillerRh.length > 0) {
+      const { data: rhRaw } = await supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .in('sicil_no', sicillerRh)
+        .in('tur', ['Rapor', 'Heyet Raporu'])
+        .neq('durum', 'İptal Edildi')
+      const rhBySira = new Map<string, KesintimIzinRow>()
+      for (const iz of izinler) {
+        if (isIzyRhTur(iz.tur)) rhBySira.set(iz.sira_no, iz)
+      }
+      for (const row of rhRaw ?? []) {
+        if (!row.sira_no || !row.ayrilis || !row.baslama) continue
+        rhBySira.set(row.sira_no, {
+          sira_no:  row.sira_no,
+          sicil_no: row.sicil_no ?? '',
+          ad_soyad: adMap[row.sicil_no] ?? row.sicil_no ?? '',
+          unvan:    unvanMap[row.sicil_no] ?? '',
+          tur:      row.tur ?? '',
+          ayrilis:  row.ayrilis,
+          baslama:  row.baslama,
+          gun:      row.gun ?? 0,
+        })
+      }
+      annualRhIzinler = [...rhBySira.values()]
+    }
+
+    const currentDonemRhDays = new Map<string, number>()
+    for (const iz of izinler) {
+      if (!isIzyRhTur(iz.tur)) continue
+      const gun = iz.gun > 0 ? iz.gun : izyRhToplamGun(iz)
+      if (gun <= 0) continue
+      currentDonemRhDays.set(iz.sicil_no, (currentDonemRhDays.get(iz.sicil_no) ?? 0) + gun)
+    }
+
+    if (annualRhIzinler.length > 0 && shakWindows.length > 0) {
+      sonuc = applyShakIzyKsdToSonuc(sonuc, annualRhIzinler, shakWindows, currentDonemRhDays)
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setOzetData({ donem: { ...data.donem, donem_adi: data.donem.donem_adi, durum: 'Açık' as const, yil: new Date().getFullYear() } as any, sonuc })
     setOzetAcik(true)
