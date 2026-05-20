@@ -6,6 +6,7 @@ import {
   mudurlukKonumHaritasi,
   type TanimMudurlukKonumRow,
 } from '@/lib/rapor-konuma-gore-cinsiyet'
+import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
 import {
   gelenlerAyrilanlar,
   periyotSonGunu,
@@ -98,14 +99,14 @@ export async function GET(req: Request) {
     const periyot = parsePeriyot(searchParams.get('p'))
 
     const [
-      { data: mudRaw },
+      tanimMudurluk,
       { data: kadroRaw },
       { data: calisanRaw },
       { data: firmaRaw },
       { data: phAyrRaw },
       { data: phIseRaw },
     ] = await Promise.all([
-      supabase.from('tanim_mudurluk').select('mudurluk_adi, konum, sira_no').eq('aktif', true),
+      fetchMudurlukYerleskeKonumTanimlari(supabase),
       supabase
         .from('kadro_hareketleri')
         .select(
@@ -143,13 +144,7 @@ export async function GET(req: Request) {
       })
     }
 
-    const tanimMudurluk: TanimMudurlukKonumRow[] = (mudRaw ?? []).map(r => ({
-      mudurluk_adi: r.mudurluk_adi,
-      konum: r.konum,
-      sira_no: r.sira_no,
-    }))
-
-    const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk)
+    const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk as TanimMudurlukKonumRow[])
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
     const firma: FirmaRaporRow[] = (firmaRaw ?? []) as FirmaRaporRow[]
 

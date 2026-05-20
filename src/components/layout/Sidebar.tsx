@@ -35,7 +35,14 @@ function itemOrSubtreeActive(pathname: string, item: MenuItem): boolean {
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? { href: '/personel', label: 'Çalışanlar' }
+      ? {
+          href: '/personel',
+          label: 'Çalışanlar',
+          children: [
+            { href: '/personel', label: 'Personel Listesi' },
+            { href: '/personel/yerleske-guncelle', label: 'Yerleşke Güncelle (Geçici)' },
+          ],
+        }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
   return [
@@ -65,6 +72,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/statuye-gore-yas', label: 'Statüye Göre Yaş Raporu' },
       { href: '/rapor/statuye-gore-hizmet', label: 'Statüye Göre Hizmet Raporu' },
       { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
+      { href: '/rapor/yerleske-adresine-gore-personel-sayi', label: 'Yerleşke Adresine Göre Personel Sayısı' },
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },

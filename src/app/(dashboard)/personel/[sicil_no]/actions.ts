@@ -7,6 +7,11 @@ import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
+import {
+  fetchMudurlukYerleskeTanimSatirlari,
+  gecerliYerleskeId,
+  mudurlukYerleskeHaritasi,
+} from '@/lib/yerleske-adresi'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
@@ -45,6 +50,30 @@ export async function calisanGuncelle(
   const hs = formdanHizmetSureBilesenleri(formData)
   const hizmetDondur = gorev_turu === 'Aylıksız İzin'
 
+  const yerleskeRaw = str(formData, 'yerleske_adresi_id')
+  let yerleske_adresi_id: number | null = null
+  if (yerleskeRaw) {
+    const yerleskeId = Number(yerleskeRaw)
+    if (!Number.isInteger(yerleskeId) || yerleskeId <= 0) {
+      return { hata: 'Geçersiz yerleşke seçimi.' }
+    }
+    yerleske_adresi_id = yerleskeId
+  }
+
+  const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+  const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const D = new Date().toISOString().slice(0, 10)
+  const { data: kadroRaw } = await supabase
+    .from('kadro_hareketleri')
+    .select('asil, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+    .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`)
+  const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
+  const sec = secilenKadroSatirAsil((kadroRaw ?? []) as Parameters<typeof secilenKadroSatirAsil>[0], D)
+  const mudurluk = String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
+  if (yerleske_adresi_id != null && !gecerliYerleskeId(yerleskeHarita, mudurluk, yerleske_adresi_id)) {
+    return { hata: 'Seçilen yerleşke, görev müdürlüğü ile eşleşmiyor.' }
+  }
+
   const temel: Record<string, unknown> = {
     ad_soyad,
     tckn:             str(formData, 'tckn'),
@@ -70,6 +99,7 @@ export async function calisanGuncelle(
     gorev_turu_aciklama,
     gorev_turu_yemek_hakki,
     gorev_durumu:           str(formData, 'gorev_durumu') ?? 'Diğer',
+    yerleske_adresi_id,
   }
   if (!hizmetDondur) {
     temel.hizmet_suresi_yil = hs.yil

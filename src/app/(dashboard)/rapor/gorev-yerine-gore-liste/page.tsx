@@ -9,6 +9,7 @@ import {
   hazirlaStatuSirali,
   karsilastirStatuSonraSicilAd,
 } from '@/lib/statu-liste-siralama'
+import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
 import {
   gorevYerineGoreListeSatirUret,
   mudurlukKonumMetniHaritasi,
@@ -37,7 +38,7 @@ function bosKadro(sicil: string): KadroGenis {
 }
 
 const LISTE_ACIKLAMA =
-  'Konum: Tanımlar > Müdürlük kaydındaki konum (kadro personelde kadro müdürlüğü; ADABEL personelde görev müdürlüğü ile eşleşir). Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
+  'Konum: Tanımlar > Müdürlük kaydında ilişkilendirilen yerleşkelerin konumu (kadro personelde kadro müdürlüğü; ADABEL personelde görev müdürlüğü ile eşleşir). Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
 
 export default async function GorevYerineGoreListePage() {
   const supabase = await createClient()
@@ -68,7 +69,7 @@ export default async function GorevYerineGoreListePage() {
     calisanResult,
     { data: phRaw },
     { data: tanimStatuRaw },
-    { data: mudTanimRaw },
+    tanimMudurluk,
   ] = await Promise.all([
     calisanQuery as Promise<{ data: CalisanRow[] | null; error: { message: string } | null }>,
     supabase
@@ -76,7 +77,7 @@ export default async function GorevYerineGoreListePage() {
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    supabase.from('tanim_mudurluk').select('mudurluk_adi, konum').eq('aktif', true),
+    fetchMudurlukYerleskeKonumTanimlari(supabase),
   ])
 
   const { data: calisanRaw, error } = calisanResult
@@ -98,7 +99,7 @@ export default async function GorevYerineGoreListePage() {
   const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
 
   const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
-  const mudKonum = mudurlukKonumMetniHaritasi(mudTanimRaw ?? [])
+  const mudKonum = mudurlukKonumMetniHaritasi(tanimMudurluk)
 
   const sicilList = [...aktifSiciller]
   const kadroByAsil = new Map<string, KadroGenis[]>()

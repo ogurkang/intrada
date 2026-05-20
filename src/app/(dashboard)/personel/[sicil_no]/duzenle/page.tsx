@@ -7,6 +7,12 @@ import { calisanGuncelle } from '../actions'
 import { resolvePersonelSegmentToSicil } from '@/lib/personel-detay-load'
 import { personelDetayHref } from '@/lib/personel-link'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
+import {
+  etkinYerleskeId,
+  fetchMudurlukYerleskeTanimSatirlari,
+  mudurlukYerleskeHaritasi,
+  yerleskeSecenekleri,
+} from '@/lib/yerleske-adresi'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -55,6 +61,13 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
     hizmet_suresi_gun: c.hizmet_suresi_gun ?? 0,
   }
 
+  const gorevMudurlugu = String(anaKadro?.gorev_mudurlugu ?? anaKadro?.kadro_mudurlugu ?? '').trim()
+  const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+  const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const yerleskeOpts = yerleskeSecenekleri(yerleskeHarita, gorevMudurlugu)
+  const kayitliYerleskeId = (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+  const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliYerleskeId)
+
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -77,6 +90,8 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
         kaynak={kaynak || undefined}
         hizmetKaynagi={hizmetKaynagi}
         onGuncelle={calisanGuncelle}
+        yerleskeSecenekleri={yerleskeOpts}
+        seciliYerleskeId={seciliYerleskeId}
       />
     </div>
   )

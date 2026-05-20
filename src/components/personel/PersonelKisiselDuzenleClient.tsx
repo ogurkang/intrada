@@ -32,9 +32,18 @@ interface Props {
     hizmet_suresi_gun: number
   }
   onGuncelle: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
+  yerleskeSecenekleri?: { id: number; ad: string }[]
+  seciliYerleskeId?: number | null
 }
 
-export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKaynagi, onGuncelle }: Props) {
+export default function PersonelKisiselDuzenleClient({
+  calisan,
+  kaynak,
+  hizmetKaynagi,
+  onGuncelle,
+  yerleskeSecenekleri = [],
+  seciliYerleskeId = null,
+}: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -179,6 +188,24 @@ export default function PersonelKisiselDuzenleClient({ calisan, kaynak, hizmetKa
                   placeholder="Örn. şube, servis, birim"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Yerleşke adresi</label>
+                {yerleskeSecenekleri.length === 0 ? (
+                  <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    Görev müdürlüğü için tanımlı yerleşke yok.
+                  </p>
+                ) : (
+                  <select
+                    name="yerleske_adresi_id"
+                    defaultValue={seciliYerleskeId ?? ''}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  >
+                    {yerleskeSecenekleri.map(y => (
+                      <option key={y.id} value={y.id}>{y.ad}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev türü</label>

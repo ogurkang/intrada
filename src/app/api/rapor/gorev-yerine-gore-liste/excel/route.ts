@@ -4,6 +4,7 @@ import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/god
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { FIRMA_STATU_ETIKET, TANIMSIZ_STATU_ETIKET, hazirlaStatuSirali, karsilastirStatuSonraSicilAd } from '@/lib/statu-liste-siralama'
+import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
 import {
   gorevYerineGoreListeSatirUret,
   gorevYerineGoreUnvanExcelRgb,
@@ -46,11 +47,11 @@ export async function GET(req: Request) {
     const D = new Date().toISOString().slice(0, 10)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calisanQuery = (supabase as any).from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu').order('ad_soyad')
-    const [calisanResult, { data: phRaw }, { data: tanimStatuRaw }, { data: mudTanimRaw }] = await Promise.all([
+    const [calisanResult, { data: phRaw }, { data: tanimStatuRaw }, tanimMudurluk] = await Promise.all([
       calisanQuery as Promise<{ data: any[] | null }>,
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-      supabase.from('tanim_mudurluk').select('mudurluk_adi, konum').eq('aktif', true),
+      fetchMudurlukYerleskeKonumTanimlari(supabase),
     ])
     const calisanRaw = calisanResult.data ?? []
     const sonAyrilisPerSicil = new Map<string, string | null>()
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
     })
     const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
     const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
-    const mudKonum = mudurlukKonumMetniHaritasi(mudTanimRaw ?? [])
+    const mudKonum = mudurlukKonumMetniHaritasi(tanimMudurluk)
     const kadroByAsil = new Map<string, KadroGenis[]>()
     for (const part of chunk([...aktifSiciller], 120)) {
       const { data: kRows } = await supabase

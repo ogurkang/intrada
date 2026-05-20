@@ -76,18 +76,8 @@ function normMudStr(v: string | null | undefined): string {
     .toLocaleLowerCase('tr-TR')
 }
 
-/** Tanımlar > Müdürlük: müdürlük adı (normalize) → konum metni */
-export function mudurlukKonumMetniHaritasi(
-  tanimlar: { mudurluk_adi: string; konum: string }[],
-): Map<string, string> {
-  const m = new Map<string, string>()
-  for (const r of tanimlar) {
-    const k = String(r.konum ?? '').trim()
-    if (!k) continue
-    m.set(normMudStr(r.mudurluk_adi), k)
-  }
-  return m
-}
+/** Tanımlar > Müdürlük yerleşke eşlemesi: müdürlük adı (normalize) → konum metni */
+export { mudurlukKonumMetniHaritasi } from '@/lib/mudurluk-konum'
 
 /** Tanımlar > Şirket: şirket adı (normalize) → konum metni */
 export function sirketKonumMetniHaritasi(

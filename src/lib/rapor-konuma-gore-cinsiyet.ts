@@ -1,6 +1,5 @@
 /**
- * Müdürlük konumuna (İç / Dış) göre cinsiyet — tanim_mudurluk.konum ile eşleştirme.
- * Kadro ve ADABEL Personeli aynı İç/Dış mantığıyla sayılır; ayrı «ADABEL Personeli» satırı yoktur.
+ * Müdürlük konumuna (İç / Dış) göre cinsiyet — yerleşke eşlemesindeki konum ile eşleştirme.
  */
 
 import type {
@@ -10,40 +9,14 @@ import type {
   StatuCinsiyetSatir,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { kadroBaslangic, kadroSatirAktifMi } from '@/lib/rapor-statuye-gore-cinsiyet'
+import {
+  mudurlukKonumHaritasi,
+  type MudurlukKonumTanimRow,
+} from '@/lib/mudurluk-konum'
 
-export interface TanimMudurlukKonumRow {
-  mudurluk_adi: string
-  konum: string
-  sira_no: number | null
-}
+export type TanimMudurlukKonumRow = MudurlukKonumTanimRow
 
-function normMudStr(v: string | null | undefined): string {
-  return String(v ?? '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLocaleLowerCase('tr-TR')
-}
-
-/** Tanımdaki konum metnini İç / Dış olarak indirger */
-function konumEtiket(konumRaw: string | null | undefined): 'İç' | 'Dış' | null {
-  const t = String(konumRaw ?? '')
-    .trim()
-    .toLocaleLowerCase('tr-TR')
-  if (t === 'iç') return 'İç'
-  if (t === 'dış') return 'Dış'
-  return null
-}
-
-/** mudurluk_adi (normalize) → İç | Dış */
-export function mudurlukKonumHaritasi(tanimlar: TanimMudurlukKonumRow[]): Map<string, 'İç' | 'Dış'> {
-  const m = new Map<string, 'İç' | 'Dış'>()
-  for (const r of tanimlar) {
-    const kn = konumEtiket(r.konum)
-    if (!kn) continue
-    m.set(normMudStr(r.mudurluk_adi), kn)
-  }
-  return m
-}
+export { mudurlukKonumHaritasi }
 
 function personelMudurlukKadro(k: KadroRaporRow): string {
   const g = String(k.gorev_mudurlugu ?? '').trim()
@@ -83,6 +56,13 @@ function cinsiyetKolon(c: string | null | undefined): 'Kadın' | 'Erkek' | null 
   return null
 }
 
+function normMudStr(v: string | null | undefined): string {
+  return String(v ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr-TR')
+}
+
 function konumBul(mudurlukKonum: Map<string, 'İç' | 'Dış'>, mudRaw: string): 'İç' | 'Dış' | undefined {
   const mud = String(mudRaw ?? '').trim()
   if (!mud) return undefined
@@ -90,7 +70,7 @@ function konumBul(mudurlukKonum: Map<string, 'İç' | 'Dış'>, mudRaw: string):
 }
 
 /**
- * Kadro + firma: görev müdürlüğü → tanim_mudurluk konumu (İç/Dış).
+ * Kadro + firma: görev müdürlüğü → yerleşke eşlemesindeki konum (İç/Dış).
  * Konum eşleşmeyenler «Konum atanmamış» satırında + isim listesinde.
  */
 export function konumCinsiyetSnapshot(input: KonumSnapshotInput): {

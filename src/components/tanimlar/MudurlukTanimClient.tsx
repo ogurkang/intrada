@@ -1,20 +1,26 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useEffect, useState, useTransition, useRef } from 'react'
 import Modal from '@/components/ui/Modal'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
-import type { Tables } from '@/types/database'
+import type { MudurlukKayit } from '@/app/(dashboard)/tanimlar/mudurluk/page'
 
-type MudurlukRow = Tables<'tanim_mudurluk'>
-
-export type MudurlukKayit = MudurlukRow & {
-  yerleske_adi_goster: string
-  yerleske_adresi_ids: number[]
+export type MudurlukYerleskeEsleme = {
+  yerleske_adresi_id: number
+  yerleske_adi: string
+  konum: 'İç' | 'Dış'
 }
 
 interface YerleskeSecenek {
   id: number
   label: string
+}
+
+type YerleskeFormSatir = {
+  id: number
+  label: string
+  secili: boolean
+  konum: 'İç' | 'Dış'
 }
 
 interface Props {
@@ -28,13 +34,28 @@ interface Props {
 const KONUM_SEC = [
   { value: 'İç', label: 'İç' },
   { value: 'Dış', label: 'Dış' },
-]
+] as const
 
 const TEHLIKE_SEC = [
   { value: 'Az Tehlikeli', label: 'Az Tehlikeli' },
   { value: 'Tehlikeli', label: 'Tehlikeli' },
   { value: 'Çok Tehlikeli', label: 'Çok Tehlikeli' },
 ]
+
+function yerleskeSatirlariniHazirla(
+  secenekler: YerleskeSecenek[],
+  secili: MudurlukKayit | null,
+): YerleskeFormSatir[] {
+  const eslemeMap = new Map(
+    (secili?.yerleske_eslemeleri ?? []).map(e => [e.yerleske_adresi_id, e.konum]),
+  )
+  return secenekler.map(y => ({
+    id: y.id,
+    label: y.label,
+    secili: eslemeMap.has(y.id),
+    konum: eslemeMap.get(y.id) ?? 'İç',
+  }))
+}
 
 export default function MudurlukTanimClient({
   data,
@@ -48,7 +69,14 @@ export default function MudurlukTanimClient({
   const [secili, setSecili] = useState<MudurlukKayit | null>(null)
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [yerleskeSatirlar, setYerleskeSatirlar] = useState<YerleskeFormSatir[]>([])
   const formRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (modalAcik) {
+      setYerleskeSatirlar(yerleskeSatirlariniHazirla(yerleskeSecenekleri, secili))
+    }
+  }, [modalAcik, secili, yerleskeSecenekleri])
 
   function yeniEkle() {
     setSecili(null)
@@ -75,18 +103,27 @@ export default function MudurlukTanimClient({
     })
   }
 
+  function yerleskeSatirGuncelle(id: number, patch: Partial<Pick<YerleskeFormSatir, 'secili' | 'konum'>>) {
+    setYerleskeSatirlar(prev =>
+      prev.map(s => (s.id === id ? { ...s, ...patch } : s)),
+    )
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSunuciHata(null)
     const fd = new FormData(e.currentTarget)
+    for (const s of yerleskeSatirlar) {
+      if (!s.secili) continue
+      fd.append('yerleske_adresi_ids', String(s.id))
+      fd.set(`konum_yerleske_${s.id}`, s.konum)
+    }
     startTransition(async () => {
       const res = secili ? await onUpdate(secili.id, fd) : await onAdd(fd)
       if (res?.hata) setSunuciHata(res.hata)
       else kapat()
     })
   }
-
-  const seciliYerleskeIds = new Set(secili?.yerleske_adresi_ids ?? [])
 
   return (
     <div>
@@ -116,8 +153,7 @@ export default function MudurlukTanimClient({
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-5 py-3 font-semibold text-slate-600 w-16">#</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600">Müdürlük Adı</th>
-              <th className="text-left px-5 py-3 font-semibold text-slate-600">Yerleşke Adresi</th>
-              <th className="text-left px-5 py-3 font-semibold text-slate-600 w-28">Konum</th>
+              <th className="text-left px-5 py-3 font-semibold text-slate-600">Yerleşke Adresi (Konum)</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600 w-36">Tehlike Sınıfı</th>
               <th className="text-center px-5 py-3 font-semibold text-slate-600 w-28">Durum</th>
               <th className="text-right px-5 py-3 font-semibold text-slate-600 w-36">İşlem</th>
@@ -126,7 +162,7 @@ export default function MudurlukTanimClient({
           <tbody className="divide-y divide-slate-100">
             {data.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-slate-400">
+                <td colSpan={6} className="text-center py-12 text-slate-400">
                   Henüz kayıt yok. &ldquo;Yeni Ekle&rdquo; butonu ile başlayın.
                 </td>
               </tr>
@@ -136,7 +172,6 @@ export default function MudurlukTanimClient({
                 <td className="px-5 py-3 text-slate-400 tabular-nums">{i + 1}</td>
                 <td className="px-5 py-3 font-medium text-slate-800">{item.mudurluk_adi}</td>
                 <td className="px-5 py-3 text-slate-600">{item.yerleske_adi_goster}</td>
-                <td className="px-5 py-3 text-slate-600">{item.konum}</td>
                 <td className="px-5 py-3 text-slate-600">{item.tehlike_sinifi}</td>
                 <td className="px-5 py-3 text-center">
                   <button
@@ -195,7 +230,10 @@ export default function MudurlukTanimClient({
           </div>
 
           <div>
-            <p className="block text-sm font-medium text-slate-700 mb-2">Yerleşke Adresi</p>
+            <p className="block text-sm font-medium text-slate-700 mb-2">Yerleşke Adresi ve Konum</p>
+            <p className="text-xs text-slate-500 mb-2">
+              Her yerleşke için ayrı İç/Dış konumu seçin. Aynı müdürlük farklı yerleşkelerde farklı konumda olabilir.
+            </p>
             {yerleskeSecenekleri.length === 0 ? (
               <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                 Aktif yerleşke adresi tanımı yok. Önce{' '}
@@ -205,38 +243,35 @@ export default function MudurlukTanimClient({
                 ekranından ekleyin.
               </p>
             ) : (
-              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                {yerleskeSecenekleri.map(y => (
-                  <label
-                    key={y.id}
-                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer text-sm text-slate-700"
+              <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                {yerleskeSatirlar.map(s => (
+                  <div
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-3 px-3 py-2.5 hover:bg-slate-50"
                   >
-                    <input
-                      type="checkbox"
-                      name="yerleske_adresi_ids"
-                      value={y.id}
-                      defaultChecked={seciliYerleskeIds.has(y.id)}
-                      className="rounded border-slate-300 text-slate-800 focus:ring-slate-500"
-                    />
-                    {y.label}
-                  </label>
+                    <label className="flex items-center gap-2 min-w-[10rem] flex-1 cursor-pointer text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={s.secili}
+                        onChange={e => yerleskeSatirGuncelle(s.id, { secili: e.target.checked })}
+                        className="rounded border-slate-300 text-slate-800 focus:ring-slate-500"
+                      />
+                      {s.label}
+                    </label>
+                    <select
+                      value={s.konum}
+                      disabled={!s.secili}
+                      onChange={e => yerleskeSatirGuncelle(s.id, { konum: e.target.value as 'İç' | 'Dış' })}
+                      className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white disabled:opacity-40 min-w-[5.5rem]"
+                    >
+                      {KONUM_SEC.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 ))}
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Konum</label>
-            <select
-              name="konum"
-              required
-              defaultValue={secili?.konum ?? 'İç'}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-            >
-              {KONUM_SEC.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
           </div>
 
           <div>

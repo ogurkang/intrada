@@ -7,6 +7,7 @@ import {
   type KadroRaporRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { mudurlukKonumHaritasi, type TanimMudurlukKonumRow } from '@/lib/rapor-konuma-gore-cinsiyet'
+import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
 
 function formatTarih(s: string | null | undefined): string {
   if (!s) return '—'
@@ -34,7 +35,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
 
   const supabase = await createClient()
 
-  const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, { data: mudRaw }] =
+  const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, tanimMudurluk] =
     await Promise.all([
       supabase
         .from('izin_hareketleri')
@@ -48,7 +49,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
         .from('kadro_hareketleri')
         .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
         .not('asil', 'is', null),
-      supabase.from('tanim_mudurluk').select('mudurluk_adi, konum, sira_no').eq('aktif', true),
+      fetchMudurlukYerleskeKonumTanimlari(supabase),
     ])
 
   const calisanArr = (calisanRaw ?? []) as { sicil_no: string; ad_soyad: string | null; gorev_turu: string | null; gorev_turu_aciklama: string | null }[]
@@ -60,7 +61,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
       .map(c => [c.sicil_no, c.gorev_turu_aciklama ?? '']),
   )
 
-  const mudurlukKonum = mudurlukKonumHaritasi((mudRaw ?? []) as TanimMudurlukKonumRow[])
+  const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk as TanimMudurlukKonumRow[])
 
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadroRaw ?? []) {

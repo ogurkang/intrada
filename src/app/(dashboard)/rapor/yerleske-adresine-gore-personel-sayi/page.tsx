@@ -1,13 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import StatuyeGoreCinsiyetClient, {
-  type StatuyeGoreCinsiyetTabVerisi,
-} from '@/components/rapor/StatuyeGoreCinsiyetClient'
-import {
-  konumCinsiyetSnapshot,
-  mudurlukKonumHaritasi,
-  type TanimMudurlukKonumRow,
-} from '@/lib/rapor-konuma-gore-cinsiyet'
-import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
+import YerleskeAdresineGorePersonelSayiClient, {
+  type YerleskePersonelSayiTabVerisi,
+} from '@/components/rapor/YerleskeAdresineGorePersonelSayiClient'
 import {
   gelenlerAyrilanlar,
   periyotSonGunu,
@@ -17,20 +11,13 @@ import {
   type PersonelHareketRaporRow,
   type RaporPeriyot,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { hazirlaStatuSirali } from '@/lib/statu-liste-siralama'
+import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import { yerleskePersonelSayiSnapshot } from '@/lib/rapor-yerleske-adresine-gore-personel-sayi'
 
 const AYLAR_TR = [
-  'Ocak',
-  'Şubat',
-  'Mart',
-  'Nisan',
-  'Mayıs',
-  'Haziran',
-  'Temmuz',
-  'Ağustos',
-  'Eylül',
-  'Ekim',
-  'Kasım',
-  'Aralık',
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ]
 
 function sonGunuMetin(D: string): string {
@@ -42,10 +29,10 @@ function sonGunuMetin(D: string): string {
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 
-const KONUM_ACIKLAMA =
-  'Kadro ve ADABEL Personeli, görev müdürlüğünün (kadroda yoksa kadro müdürlüğünün; firmada görev müdürlüğünün) Tanımlar > Müdürlük kaydında ilişkilendirilen yerleşkelerin konumuna (İç/Dış) göre sayılır. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Müdürlük eşleşmeyen veya birden fazla farklı konuma sahip müdürlükler tabloda «Konum atanmamış» satırında ve altta isim listesinde gösterilir.'
+const RAPOR_ACIKLAMA =
+  'Müdürlük–yerleşke tanım satırlarında, seçili anlık görüntü tarihinde aktif personel sayıları. Belediye personeli: Memur, Sözleşmeli, İşçi, Geçici İşçi, Meclis Üyesi, Stajyer ve Belediye Başkanı (unvan). Kadro personelde yerleşke, Görev Bilgileri kaydı; atanmamışsa müdürlüğün ilk yerleşkesi. ADABEL personelde görev müdürlüğünün ilk yerleşkesi kullanılır.'
 
-export default async function KonumaGoreCinsiyetPage({
+export default async function YerleskeAdresineGorePersonelSayiPage({
   searchParams,
 }: {
   searchParams: Promise<{ y?: string }>
@@ -59,21 +46,22 @@ export default async function KonumaGoreCinsiyetPage({
   const supabase = await createClient()
 
   const [
-    tanimMudurluk,
+    { data: tanimStatuRaw },
     { data: kadroRaw },
     { data: calisanRaw },
     { data: firmaRaw },
     { data: phAyrRaw },
     { data: phIseRaw },
+    tanimSatirlar,
   ] = await Promise.all([
-    fetchMudurlukYerleskeKonumTanimlari(supabase),
+    supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
     supabase
       .from('kadro_hareketleri')
       .select(
-        'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
+        'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu, gorev_unvani',
       )
       .not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, yerleske_adresi_id'),
     supabase
       .from('firma_calisanlar')
       .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu'),
@@ -89,6 +77,7 @@ export default async function KonumaGoreCinsiyetPage({
       .not('ise_baslama_tarihi', 'is', null)
       .gte('ise_baslama_tarihi', `${yil}-01-01`)
       .lte('ise_baslama_tarihi', `${yil}-12-31`),
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
   ])
 
   const phSeen = new Set<string>()
@@ -104,8 +93,7 @@ export default async function KonumaGoreCinsiyetPage({
     })
   }
 
-  const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk as TanimMudurlukKonumRow[])
-
+  const { etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
   const firma: FirmaRaporRow[] = (firmaRaw ?? []) as FirmaRaporRow[]
 
@@ -118,16 +106,22 @@ export default async function KonumaGoreCinsiyetPage({
     })
   }
 
+  const calisanYerleske = (calisanRaw ?? []).map(c => ({
+    sicil_no: c.sicil_no,
+    yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
+  }))
+
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-  const tabs: StatuyeGoreCinsiyetTabVerisi[] = periyotlar.map(p => {
+  const tabs: YerleskePersonelSayiTabVerisi[] = periyotlar.map(p => {
     const D = periyotSonGunu(yil, p)
-    const { satirlar, konumAtanmamisListe } = konumCinsiyetSnapshot({
+    const snap = yerleskePersonelSayiSnapshot({
       D,
-      mudurlukKonum,
+      tanimSatirlar,
       kadro,
-      calisanBySicil,
       firma,
+      calisanYerleske,
+      etiketler,
     })
     const { gelenler, ayrilanlar } = gelenlerAyrilanlar({
       periyot: p,
@@ -142,25 +136,19 @@ export default async function KonumaGoreCinsiyetPage({
       periyot: p,
       label,
       sonGunuEtiket: sonGunuMetin(D),
-      satirlar,
+      satirlar: snap.satirlar,
       gelenler,
       ayrilanlar,
-      konumAtanmamisListe,
     }
   })
 
   return (
-    <StatuyeGoreCinsiyetClient
+    <YerleskeAdresineGorePersonelSayiClient
       yil={yil}
       minYil={MIN_YIL}
       maxYil={MAX_YIL}
       tabs={tabs}
-      raporBasePath="/rapor/konuma-gore-cinsiyet"
-      excelBasePath="/api/rapor/konuma-gore-cinsiyet/excel"
-      baslik="Konuma Göre Cinsiyet Raporu"
-      aciklama={KONUM_ACIKLAMA}
-      aciklamaContainerClassName="max-w-3xl"
-      tabloSatirBaslik="Konum"
+      aciklama={RAPOR_ACIKLAMA}
     />
   )
 }

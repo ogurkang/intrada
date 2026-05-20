@@ -49,8 +49,15 @@ const RAPOR_KARTLARI = [
     kod: 'KGC',
     href: '/rapor/konuma-gore-cinsiyet',
     baslik: 'Konuma Göre Cinsiyet Raporu',
-    aciklama: 'Tanımlar > Müdürlük İç/Dış konumuna göre kadın/erkek; aynı sekme ve özet yapısı',
+    aciklama: 'Tanımlar > Müdürlük yerleşke eşlemesindeki İç/Dış konumuna göre kadın/erkek; aynı sekme ve özet yapısı',
     renk: 'border-violet-200 bg-violet-50 text-violet-900',
+  },
+  {
+    kod: 'YGP',
+    href: '/rapor/yerleske-adresine-gore-personel-sayi',
+    baslik: 'Yerleşke Adresine Göre Personel Sayısı',
+    aciklama: 'Müdürlük–yerleşke satırlarında ADABEL ve belediye personeli sayıları; YILLIK ve aylık sekmeler',
+    renk: 'border-indigo-200 bg-indigo-50 text-indigo-900',
   },
   {
     kod: 'SGO',

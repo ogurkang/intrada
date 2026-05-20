@@ -33,6 +33,17 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
     if (!own || own !== card) notFound()
   }
 
+  let yerleskeAdi: string | null = null
+  const yerleskeId = (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id
+  if (yerleskeId) {
+    const { data: yRow } = await supabase
+      .from('tanim_yerleske_adresi')
+      .select('yerleske_adi')
+      .eq('id', yerleskeId)
+      .maybeSingle()
+    yerleskeAdi = yRow?.yerleske_adi ?? null
+  }
+
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -64,6 +75,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         terfiOncesiTarihce={rest.terfiOncesiTarihce}
         onKisiselGuncelle={saltOkunur ? undefined : calisanGuncelle}
         saltOkunur={saltOkunur}
+        yerleskeAdi={yerleskeAdi}
       />
     </div>
   )
