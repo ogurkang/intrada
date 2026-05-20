@@ -224,6 +224,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/kazanc-bilgi', label: 'Kazanç Bilgileri' },
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
+      { href: '/tanimlar/yerleske-adresi', label: 'Yerleşke Adresleri' },
       { href: '/tanimlar/statu',      label: 'Statü'         },
       { href: '/tanimlar/hareket-tanimlari', label: 'Hareket Tanımları' },
       { href: '/tanimlar/izin-turu',  label: 'İzin Türleri'  },

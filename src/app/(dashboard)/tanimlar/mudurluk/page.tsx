@@ -1,18 +1,60 @@
 import { createClient } from '@/lib/supabase/server'
-import BasitTanimClient from '@/components/tanimlar/BasitTanimClient'
+import MudurlukTanimClient from '@/components/tanimlar/MudurlukTanimClient'
 import { mudurlukEkle, mudurlukGuncelle, mudurlukToggleAktif } from './actions'
 import type { Tables } from '@/types/database'
 
-type Mudurluk = Tables<'tanim_mudurluk'>
+type MudurlukRow = Tables<'tanim_mudurluk'>
+
+type MudurlukKayit = MudurlukRow & {
+  yerleske_adi_goster: string
+  yerleske_adresi_ids: number[]
+}
+
+type YerleskeLinkRow = {
+  yerleske_adresi_id: number
+  tanim_yerleske_adresi: { yerleske_adi: string } | null
+}
 
 export default async function MudurlukPage() {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('tanim_mudurluk')
-    .select('*')
-    .order('mudurluk_adi')
 
-  const kayitlar: Mudurluk[] = data ?? []
+  const [{ data, error }, { data: yerleskeRaw }] = await Promise.all([
+    supabase
+      .from('tanim_mudurluk')
+      .select(`
+        *,
+        tanim_mudurluk_yerleske (
+          yerleske_adresi_id,
+          tanim_yerleske_adresi ( yerleske_adi )
+        )
+      `)
+      .order('mudurluk_adi'),
+    supabase
+      .from('tanim_yerleske_adresi')
+      .select('id, yerleske_adi')
+      .eq('aktif', true)
+      .order('yerleske_adi'),
+  ])
+
+  const kayitlar: MudurlukKayit[] = (data ?? []).map((row) => {
+    const links = (row.tanim_mudurluk_yerleske ?? []) as YerleskeLinkRow[]
+    const adlar = links
+      .map(l => l.tanim_yerleske_adresi?.yerleske_adi)
+      .filter((a): a is string => !!a)
+    const { tanim_mudurluk_yerleske: _, ...rest } = row as typeof row & {
+      tanim_mudurluk_yerleske?: YerleskeLinkRow[]
+    }
+    return {
+      ...rest,
+      yerleske_adresi_ids: links.map(l => l.yerleske_adresi_id),
+      yerleske_adi_goster: adlar.length > 0 ? adlar.join(', ') : '—',
+    }
+  })
+
+  const yerleskeSecenekleri = (yerleskeRaw ?? []).map(y => ({
+    id: y.id,
+    label: y.yerleske_adi,
+  }))
 
   return (
     <>
@@ -21,32 +63,9 @@ export default async function MudurlukPage() {
           Veri yüklenirken hata: {error.message}
         </div>
       )}
-      <BasitTanimClient<Mudurluk>
-        baslik="Müdürlükler"
+      <MudurlukTanimClient
         data={kayitlar}
-        nameField="mudurluk_adi"
-        nameLabel="Müdürlük Adı"
-        extraSelectFields={[
-          {
-            key: 'konum',
-            label: 'Konum',
-            required: true,
-            options: [
-              { value: 'İç', label: 'İç' },
-              { value: 'Dış', label: 'Dış' },
-            ],
-          },
-          {
-            key: 'tehlike_sinifi',
-            label: 'Tehlike Sınıfı',
-            required: true,
-            options: [
-              { value: 'Az Tehlikeli', label: 'Az Tehlikeli' },
-              { value: 'Tehlikeli', label: 'Tehlikeli' },
-              { value: 'Çok Tehlikeli', label: 'Çok Tehlikeli' },
-            ],
-          },
-        ]}
+        yerleskeSecenekleri={yerleskeSecenekleri}
         onAdd={mudurlukEkle}
         onUpdate={mudurlukGuncelle}
         onToggle={mudurlukToggleAktif}

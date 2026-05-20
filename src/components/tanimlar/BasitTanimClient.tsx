@@ -16,6 +16,8 @@ interface ExtraSelectField {
   label: string
   options: { value: string; label: string }[]
   required?: boolean
+  /** Liste sütununda gösterilecek alan (form alanından farklıysa) */
+  listKey?: string
 }
 
 interface Props<T extends BasitTanimItem> {
@@ -23,6 +25,8 @@ interface Props<T extends BasitTanimItem> {
   data: T[]
   nameField: string        // 'isim' | 'mudurluk_adi' | ...
   nameLabel: string        // 'İsim' | 'Müdürlük Adı' | ...
+  /** Müdürlük adından hemen sonra gösterilecek seçim alanları */
+  middleSelectFields?: ExtraSelectField[]
   /** Liste ve formda ek seçim alanları (ör. müdürlük konumu) */
   extraSelectFields?: ExtraSelectField[]
   /** Yeni kayıt ekle (Server Action) */
@@ -40,6 +44,7 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
   data,
   nameField,
   nameLabel,
+  middleSelectFields,
   extraSelectFields,
   onAdd,
   onUpdate,
@@ -124,6 +129,9 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-5 py-3 font-semibold text-slate-600 w-16">#</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600">{nameLabel}</th>
+              {(middleSelectFields ?? []).map(f => (
+                <th key={f.key} className="text-left px-5 py-3 font-semibold text-slate-600">{f.label}</th>
+              ))}
               {(extraSelectFields ?? []).map(f => (
                 <th key={f.key} className="text-left px-5 py-3 font-semibold text-slate-600 w-28">{f.label}</th>
               ))}
@@ -134,7 +142,7 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
           <tbody className="divide-y divide-slate-100">
             {data.length === 0 && (
               <tr>
-                <td colSpan={4 + (extraSelectFields?.length ?? 0)} className="text-center py-12 text-slate-400">
+                <td colSpan={4 + (middleSelectFields?.length ?? 0) + (extraSelectFields?.length ?? 0)} className="text-center py-12 text-slate-400">
                   Henüz kayıt yok. &ldquo;Yeni Ekle&rdquo; butonu ile başlayın.
                 </td>
               </tr>
@@ -145,6 +153,11 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
                 <td className="px-5 py-3 font-medium text-slate-800">
                   {String(item[nameField] ?? '')}
                 </td>
+                {(middleSelectFields ?? []).map(f => (
+                  <td key={f.key} className="px-5 py-3 text-slate-600">
+                    {String(item[f.listKey ?? f.key] ?? '—')}
+                  </td>
+                ))}
                 {(extraSelectFields ?? []).map(f => (
                   <td key={f.key} className="px-5 py-3 text-slate-600">
                     {String(item[f.key] ?? '—')}
@@ -211,6 +224,27 @@ export default function BasitTanimClient<T extends BasitTanimItem>({
               placeholder={`${nameLabel} girin`}
             />
           </div>
+
+          {(middleSelectFields ?? []).map(f => (
+            <div key={f.key}>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">{f.label}</label>
+              <select
+                name={f.key}
+                required={f.required}
+                defaultValue={
+                  secili
+                    ? String(secili[f.key] ?? f.options[0]?.value ?? '')
+                    : (f.options[0]?.value ?? '')
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white"
+              >
+                {f.options.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          ))}
 
           {(extraSelectFields ?? []).map(f => (
             <div key={f.key}>

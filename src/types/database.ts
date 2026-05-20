@@ -52,6 +52,36 @@ export interface Database {
         }
         Relationships: []
       }
+      tanim_yerleske_adresi: {
+        Row: {
+          id: number
+          sira_no: number | null
+          yerleske_adi: string
+          adres: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sira_no?: number | null
+          yerleske_adi: string
+          adres: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          sira_no?: number | null
+          yerleske_adi?: string
+          adres?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_kazanc_bilgisi: {
         Row: {
           id: number
@@ -126,6 +156,30 @@ export interface Database {
         Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; konum?: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
         Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; konum?: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
         Relationships: []
+      }
+      tanim_mudurluk_yerleske: {
+        Row: {
+          id: number
+          mudurluk_id: number
+          yerleske_adresi_id: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          mudurluk_id: number
+          yerleske_adresi_id: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          mudurluk_id?: number
+          yerleske_adresi_id?: number
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'tanim_mudurluk_yerleske_mudurluk_id_fkey'; columns: ['mudurluk_id']; isOneToOne: false; referencedRelation: 'tanim_mudurluk'; referencedColumns: ['id'] },
+          { foreignKeyName: 'tanim_mudurluk_yerleske_yerleske_adresi_id_fkey'; columns: ['yerleske_adresi_id']; isOneToOne: false; referencedRelation: 'tanim_yerleske_adresi'; referencedColumns: ['id'] },
+        ]
       }
       tanim_statu: {
         Row:    { id: number; sira_no: number | null; statu_adi: string; aktif: boolean; created_at: string }
