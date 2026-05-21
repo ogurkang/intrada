@@ -6,8 +6,12 @@ import {
   kadroSatirAktifMi,
   type KadroRaporRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { mudurlukKonumHaritasi, type TanimMudurlukKonumRow } from '@/lib/rapor-konuma-gore-cinsiyet'
-import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
+import {
+  buildPersonelKonumCtx,
+  fetchSirketYerleskeTanimSatirlari,
+  personelKonumMetni,
+} from '@/lib/personel-gorev-konum'
+import { fetchMudurlukYerleskeTanimSatirlari, etkinYerleskeId } from '@/lib/yerleske-adresi'
 
 function formatTarih(s: string | null | undefined): string {
   if (!s) return '—'
@@ -17,11 +21,8 @@ function formatTarih(s: string | null | undefined): string {
   return `${g}.${m}.${y}`
 }
 
-function normMudStr(v: string | null | undefined): string {
-  return String(v ?? '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLocaleLowerCase('tr-TR')
+function personelGorevMudurlugu(k: KadroRaporRow): string {
+  return String(k.gorev_mudurlugu ?? '').trim() || String(k.kadro_mudurlugu ?? '').trim()
 }
 
 interface Props {
@@ -35,7 +36,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
 
   const supabase = await createClient()
 
-  const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, tanimMudurluk] =
+  const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, mudSatirlar, sirketSatirlar] =
     await Promise.all([
       supabase
         .from('izin_hareketleri')
@@ -44,24 +45,33 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
         .lte('ayrilis', tarih)
         .gt('baslama', tarih)
         .order('sicil_no'),
-      supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorev_turu_aciklama'),
+      supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorev_turu_aciklama, gorev_yeri, yerleske_adresi_id'),
       supabase
         .from('kadro_hareketleri')
         .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
         .not('asil', 'is', null),
-      fetchMudurlukYerleskeKonumTanimlari(supabase),
+      fetchMudurlukYerleskeTanimSatirlari(supabase),
+      fetchSirketYerleskeTanimSatirlari(supabase),
     ])
 
-  const calisanArr = (calisanRaw ?? []) as { sicil_no: string; ad_soyad: string | null; gorev_turu: string | null; gorev_turu_aciklama: string | null }[]
+  const calisanArr = (calisanRaw ?? []) as {
+    sicil_no: string
+    ad_soyad: string | null
+    gorev_turu: string | null
+    gorev_turu_aciklama: string | null
+    gorev_yeri: string | null
+    yerleske_adresi_id: number | null
+  }[]
 
   const adMap = new Map(calisanArr.map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
+  const calisanBySicil = new Map(calisanArr.map(c => [c.sicil_no, c]))
   const kurumMap = new Map(
     calisanArr
       .filter(c => c.gorev_turu === 'Kurum Görevlendirme' && c.gorev_turu_aciklama)
       .map(c => [c.sicil_no, c.gorev_turu_aciklama ?? '']),
   )
 
-  const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk as TanimMudurlukKonumRow[])
+  const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
 
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadroRaw ?? []) {
@@ -73,6 +83,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
   }
 
   const mudurlukBySicil = new Map<string, string>()
+  const gorevMudBySicil = new Map<string, string>()
   const statuBySicil = new Map<string, string>()
 
   for (const [sicil, rows] of byAsil) {
@@ -83,7 +94,8 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
         : [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
     if (hedef) {
       mudurlukBySicil.set(sicil, String(hedef.kadro_mudurlugu ?? hedef.gorev_mudurlugu ?? '').trim())
-      statuBySicil.set(sicil, String((hedef as any).statu ?? '').trim())
+      gorevMudBySicil.set(sicil, personelGorevMudurlugu(hedef))
+      statuBySicil.set(sicil, String((hedef as { statu?: string | null }).statu ?? '').trim())
     }
   }
 
@@ -92,7 +104,20 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
     const sicil = String(iz.sicil_no ?? '').trim()
     if (!sicil) continue
     const mudurluk = mudurlukBySicil.get(sicil) ?? ''
-    const konum = mudurlukKonum.get(normMudStr(mudurluk)) ?? ''
+    const cal = calisanBySicil.get(sicil)
+    const gorevMud = gorevMudBySicil.get(sicil) ?? ''
+    const yId = etkinYerleskeId(
+      konumCtx.yerleskeHarita,
+      gorevMud,
+      cal?.yerleske_adresi_id ?? null,
+    )
+    let konum = personelKonumMetni(konumCtx, {
+      gorevYeri: cal?.gorev_yeri,
+      gorevMudurlugu: gorevMud,
+      yerleskeId: yId,
+    })
+    if (cal?.gorev_turu === 'Kurum Görevlendirme') konum = 'Dış'
+    if (konum === '—') konum = ''
     satirlar.push({
       sicil_no: sicil,
       ad_soyad: adMap.get(sicil) ?? sicil,

@@ -14,6 +14,7 @@ export interface MudurlukYerleskeTanimSatir {
   yerleske_adresi_id: number
   yerleske_adi: string
   yerleske_sira_no: number | null
+  konum: string
 }
 
 export function normMudStr(v: string | null | undefined): string {
@@ -91,6 +92,7 @@ export async function fetchMudurlukYerleskeTanimSatirlari(
     .select(`
       mudurluk_id,
       yerleske_adresi_id,
+      konum,
       tanim_mudurluk!inner ( mudurluk_adi, sira_no, aktif ),
       tanim_yerleske_adresi!inner ( yerleske_adi, sira_no, aktif )
     `)
@@ -104,6 +106,7 @@ export async function fetchMudurlukYerleskeTanimSatirlari(
     const row = raw as {
       mudurluk_id: number
       yerleske_adresi_id: number
+      konum: string
       tanim_mudurluk: { mudurluk_adi: string; sira_no: number | null } | null
       tanim_yerleske_adresi: { yerleske_adi: string; sira_no: number | null } | null
     }
@@ -115,6 +118,7 @@ export async function fetchMudurlukYerleskeTanimSatirlari(
       yerleske_adresi_id: row.yerleske_adresi_id,
       yerleske_adi: row.tanim_yerleske_adresi.yerleske_adi,
       yerleske_sira_no: row.tanim_yerleske_adresi.sira_no,
+      konum: row.konum,
     })
   }
   return rows

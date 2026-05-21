@@ -3,15 +3,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
+import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
 import { gecerliYerleskeId, mudurlukYerleskeHaritasi, fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
 
+export type YerleskeKaynak = 'kadro' | 'firma'
+
 export interface YerleskeGuncelleSatir {
-  sicil_no: string
+  kaynak: YerleskeKaynak
+  sicil_no?: string
+  firma_id?: number
   yerleske_adresi_id: number | null
 }
 
-async function revalidateYerleskeGiris(sicil_no: string) {
-  await revalidatePersonelDetayPaths(sicil_no)
+async function revalidateYerleskeGiris(kaynak: YerleskeKaynak, id: string) {
+  if (kaynak === 'kadro') {
+    await revalidatePersonelDetayPaths(id)
+  } else {
+    const firmaId = Number(id)
+    if (Number.isInteger(firmaId) && firmaId > 0) {
+      await revalidateFirmaCalisanPaths(firmaId)
+    }
+    revalidatePath('/firma-calisanlar')
+  }
   revalidatePath('/personel')
   revalidatePath('/personel/yerleske-guncelle')
 }
@@ -24,16 +37,7 @@ function parseYerleskeId(raw: unknown): number | null {
   return n
 }
 
-export async function yerleskeGuncelleSatirKaydet(
-  sicil_no: string,
-  fd: FormData,
-): Promise<{ hata?: string }> {
-  const yerleskeId = parseYerleskeId(fd.get('yerleske_adresi_id'))
-  const supabase = await createClient()
-
-  const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
-  const harita = mudurlukYerleskeHaritasi(tanimSatirlar)
-
+async function kadroMudurlugu(supabase: Awaited<ReturnType<typeof createClient>>, sicil_no: string): Promise<string> {
   const D = new Date().toISOString().slice(0, 10)
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
@@ -42,19 +46,55 @@ export async function yerleskeGuncelleSatirKaydet(
 
   const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
   const sec = secilenKadroSatirAsil((kadroRaw ?? []) as Parameters<typeof secilenKadroSatirAsil>[0], D)
-  const mudurluk = String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
+  return String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
+}
+
+async function firmaMudurlugu(supabase: Awaited<ReturnType<typeof createClient>>, firmaId: number): Promise<string> {
+  const { data } = await supabase
+    .from('firma_calisanlar')
+    .select('gorev_mudurlugu')
+    .eq('id', firmaId)
+    .maybeSingle()
+  return String(data?.gorev_mudurlugu ?? '').trim()
+}
+
+export async function yerleskeGuncelleSatirKaydet(
+  kaynak: YerleskeKaynak,
+  id: string,
+  fd: FormData,
+): Promise<{ hata?: string }> {
+  const yerleskeId = parseYerleskeId(fd.get('yerleske_adresi_id'))
+  const supabase = await createClient()
+
+  const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+  const harita = mudurlukYerleskeHaritasi(tanimSatirlar)
+
+  const mudurluk =
+    kaynak === 'kadro'
+      ? await kadroMudurlugu(supabase, id)
+      : await firmaMudurlugu(supabase, Number(id))
 
   if (yerleskeId != null && !gecerliYerleskeId(harita, mudurluk, yerleskeId)) {
     return { hata: 'Seçilen yerleşke, personelin görev müdürlüğü ile eşleşmiyor.' }
   }
 
-  const { error } = await supabase
-    .from('calisan')
-    .update({ yerleske_adresi_id: yerleskeId })
-    .eq('sicil_no', sicil_no)
+  if (kaynak === 'kadro') {
+    const { error } = await supabase
+      .from('calisan')
+      .update({ yerleske_adresi_id: yerleskeId })
+      .eq('sicil_no', id)
+    if (error) return { hata: error.message }
+  } else {
+    const firmaId = Number(id)
+    if (!Number.isInteger(firmaId) || firmaId <= 0) return { hata: 'Geçersiz ADABEL kaydı.' }
+    const { error } = await supabase
+      .from('firma_calisanlar')
+      .update({ yerleske_adresi_id: yerleskeId })
+      .eq('id', firmaId)
+    if (error) return { hata: error.message }
+  }
 
-  if (error) return { hata: error.message }
-  await revalidateYerleskeGiris(sicil_no)
+  await revalidateYerleskeGiris(kaynak, id)
   return {}
 }
 
@@ -69,10 +109,10 @@ export async function yerleskeGuncelleTopluKaydet(
   const D = new Date().toISOString().slice(0, 10)
   const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
 
-  const siciller = [...new Set(satirlar.map(s => s.sicil_no))]
+  const kadroSiciller = [...new Set(satirlar.filter(s => s.kaynak === 'kadro').map(s => s.sicil_no!).filter(Boolean))]
   const kadroByAsil = new Map<string, Parameters<typeof secilenKadroSatirAsil>[0]>()
-  for (let i = 0; i < siciller.length; i += 120) {
-    const part = siciller.slice(i, i + 120)
+  for (let i = 0; i < kadroSiciller.length; i += 120) {
+    const part = kadroSiciller.slice(i, i + 120)
     const { data: kRows, error: kErr } = await supabase
       .from('kadro_hareketleri')
       .select('asil, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
@@ -86,23 +126,56 @@ export async function yerleskeGuncelleTopluKaydet(
     }
   }
 
+  const firmaIds = [...new Set(satirlar.filter(s => s.kaynak === 'firma').map(s => s.firma_id!).filter(Boolean))]
+  const firmaMudById = new Map<number, string>()
+  for (let i = 0; i < firmaIds.length; i += 120) {
+    const part = firmaIds.slice(i, i + 120)
+    const { data: fRows, error: fErr } = await supabase
+      .from('firma_calisanlar')
+      .select('id, gorev_mudurlugu')
+      .in('id', part)
+    if (fErr) return { hata: fErr.message }
+    for (const r of fRows ?? []) {
+      firmaMudById.set(r.id, String(r.gorev_mudurlugu ?? '').trim())
+    }
+  }
+
   let kaydedilen = 0
   for (const s of satirlar) {
-    const sec = secilenKadroSatirAsil(kadroByAsil.get(s.sicil_no) ?? [], D)
-    const mudurluk = String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
-    if (s.yerleske_adresi_id != null && !gecerliYerleskeId(harita, mudurluk, s.yerleske_adresi_id)) {
-      return { hata: `${s.sicil_no}: yerleşke seçimi görev müdürlüğü ile uyumsuz.` }
+    let mudurluk = ''
+    if (s.kaynak === 'kadro') {
+      const sicil = String(s.sicil_no ?? '').trim()
+      if (!sicil) return { hata: 'Eksik sicil numarası.' }
+      const sec = secilenKadroSatirAsil(kadroByAsil.get(sicil) ?? [], D)
+      mudurluk = String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
+    } else {
+      const fid = s.firma_id
+      if (fid == null) return { hata: 'Eksik ADABEL kayıt kimliği.' }
+      mudurluk = firmaMudById.get(fid) ?? ''
     }
-    const { error } = await supabase
-      .from('calisan')
-      .update({ yerleske_adresi_id: s.yerleske_adresi_id })
-      .eq('sicil_no', s.sicil_no)
-    if (error) return { hata: error.message }
+
+    if (s.yerleske_adresi_id != null && !gecerliYerleskeId(harita, mudurluk, s.yerleske_adresi_id)) {
+      const etiket = s.kaynak === 'kadro' ? s.sicil_no : `ADABEL #${s.firma_id}`
+      return { hata: `${etiket}: yerleşke seçimi görev müdürlüğü ile uyumsuz.` }
+    }
+
+    if (s.kaynak === 'kadro') {
+      const { error } = await supabase
+        .from('calisan')
+        .update({ yerleske_adresi_id: s.yerleske_adresi_id })
+        .eq('sicil_no', s.sicil_no!)
+      if (error) return { hata: error.message }
+      await revalidateYerleskeGiris('kadro', s.sicil_no!)
+    } else {
+      const { error } = await supabase
+        .from('firma_calisanlar')
+        .update({ yerleske_adresi_id: s.yerleske_adresi_id })
+        .eq('id', s.firma_id!)
+      if (error) return { hata: error.message }
+      await revalidateYerleskeGiris('firma', String(s.firma_id))
+    }
     kaydedilen++
   }
 
-  for (const sicil of siciller) {
-    await revalidateYerleskeGiris(sicil)
-  }
   return { kaydedilen }
 }

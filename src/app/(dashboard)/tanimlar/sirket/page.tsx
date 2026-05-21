@@ -1,24 +1,80 @@
 import { createClient } from '@/lib/supabase/server'
-import BasitTanimClient from '@/components/tanimlar/BasitTanimClient'
+import SirketTanimClient from '@/components/tanimlar/SirketTanimClient'
 import { sirketEkle, sirketGuncelle, sirketToggleAktif } from './actions'
+import type { Tables } from '@/types/database'
+import type { SirketYerleskeEsleme } from '@/components/tanimlar/SirketTanimClient'
 
-interface SirketRow {
-  id: number
-  sirket_adi: string
+type SirketRow = Tables<'tanim_sirket'> & { sirket_adi: string }
+
+export type SirketKayit = SirketRow & {
+  yerleske_eslemeleri: SirketYerleskeEsleme[]
+  yerleske_adi_goster: string
+}
+
+type YerleskeLinkRow = {
+  yerleske_adresi_id: number
   konum: string
-  aktif: boolean
-  [key: string]: unknown
+  tanim_yerleske_adresi: { yerleske_adi: string } | null
+}
+
+function yerleskeGosterim(links: YerleskeLinkRow[]): string {
+  if (links.length === 0) return '—'
+  return links
+    .map(l => {
+      const ad = l.tanim_yerleske_adresi?.yerleske_adi
+      if (!ad) return null
+      const konum = l.konum === 'Dış' ? 'Dış' : l.konum === 'İç' ? 'İç' : l.konum
+      return `${ad} (${konum})`
+    })
+    .filter((s): s is string => !!s)
+    .join(', ')
 }
 
 export default async function SirketPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb = (await createClient()) as any
-  const { data, error } = await sb
-    .from('tanim_sirket')
-    .select('id, sirket_adi, konum, aktif')
-    .order('sirket_adi')
+  const supabase = await createClient()
 
-  const kayitlar: SirketRow[] = data ?? []
+  const [{ data, error }, { data: yerleskeRaw }] = await Promise.all([
+    supabase
+      .from('tanim_sirket')
+      .select(`
+        *,
+        tanim_sirket_yerleske (
+          yerleske_adresi_id,
+          konum,
+          tanim_yerleske_adresi ( yerleske_adi )
+        )
+      `)
+      .order('sirket_adi'),
+    supabase
+      .from('tanim_yerleske_adresi')
+      .select('id, yerleske_adi')
+      .eq('aktif', true)
+      .order('yerleske_adi'),
+  ])
+
+  const kayitlar: SirketKayit[] = (data ?? []).map(row => {
+    const links = (row.tanim_sirket_yerleske ?? []) as YerleskeLinkRow[]
+    const { tanim_sirket_yerleske: _, ...rest } = row as typeof row & {
+      tanim_sirket_yerleske?: YerleskeLinkRow[]
+    }
+    const yerleske_eslemeleri: SirketYerleskeEsleme[] = links
+      .filter(l => l.tanim_yerleske_adresi?.yerleske_adi)
+      .map(l => ({
+        yerleske_adresi_id: l.yerleske_adresi_id,
+        yerleske_adi: l.tanim_yerleske_adresi!.yerleske_adi,
+        konum: l.konum === 'Dış' ? 'Dış' : 'İç',
+      }))
+    return {
+      ...(rest as SirketRow),
+      yerleske_eslemeleri,
+      yerleske_adi_goster: yerleskeGosterim(links),
+    }
+  })
+
+  const yerleskeSecenekleri = (yerleskeRaw ?? []).map(y => ({
+    id: y.id,
+    label: y.yerleske_adi,
+  }))
 
   return (
     <>
@@ -27,22 +83,9 @@ export default async function SirketPage() {
           Veri yüklenirken hata: {error.message}
         </div>
       )}
-      <BasitTanimClient<SirketRow>
-        baslik="Şirketler"
+      <SirketTanimClient
         data={kayitlar}
-        nameField="sirket_adi"
-        nameLabel="Şirket Adı"
-        extraSelectFields={[
-          {
-            key: 'konum',
-            label: 'Konum',
-            required: true,
-            options: [
-              { value: 'Dış', label: 'Dış' },
-              { value: 'İç', label: 'İç' },
-            ],
-          },
-        ]}
+        yerleskeSecenekleri={yerleskeSecenekleri}
         onAdd={sirketEkle}
         onUpdate={sirketGuncelle}
         onToggle={sirketToggleAktif}

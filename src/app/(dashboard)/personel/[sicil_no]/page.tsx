@@ -5,6 +5,14 @@ import { getAppAccess } from '@/lib/app-access'
 import PersonelDetayClient from '@/components/personel/PersonelDetayClient'
 import { calisanGuncelle } from './actions'
 import { loadPersonelDetayPageOrRedirect } from '@/lib/personel-detay-load'
+import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import {
+  buildPersonelKonumCtx,
+  etkinYerleskeAdiGoster,
+  fetchSirketYerleskeTanimSatirlari,
+  personelKonumMetni,
+} from '@/lib/personel-gorev-konum'
+import { fetchMudurlukYerleskeTanimSatirlari, etkinYerleskeId } from '@/lib/yerleske-adresi'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -33,16 +41,29 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
     if (!own || own !== card) notFound()
   }
 
-  let yerleskeAdi: string | null = null
-  const yerleskeId = (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id
-  if (yerleskeId) {
-    const { data: yRow } = await supabase
-      .from('tanim_yerleske_adresi')
-      .select('yerleske_adi')
-      .eq('id', yerleskeId)
-      .maybeSingle()
-    yerleskeAdi = yRow?.yerleske_adi ?? null
-  }
+  const [mudSatirlar, sirketSatirlar] = await Promise.all([
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
+  ])
+  const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
+
+  const D = new Date().toISOString().slice(0, 10)
+  const sec = secilenKadroSatirAsil(rest.kadrolar, D)
+  const gorevMud =
+    String(sec?.gorev_mudurlugu ?? '').trim() || String(sec?.kadro_mudurlugu ?? '').trim()
+  const kayitliYerleskeId =
+    (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+  const yId = etkinYerleskeId(konumCtx.yerleskeHarita, gorevMud, kayitliYerleskeId)
+  const yerleskeAdi = etkinYerleskeAdiGoster(konumCtx, {
+    gorevMudurlugu: gorevMud,
+    kayitliYerleskeId,
+  })
+  let konumMetni = personelKonumMetni(konumCtx, {
+    gorevYeri: calisan.gorev_yeri,
+    gorevMudurlugu: gorevMud,
+    yerleskeId: yId,
+  })
+  if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
 
   return (
     <div>
@@ -76,6 +97,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         onKisiselGuncelle={saltOkunur ? undefined : calisanGuncelle}
         saltOkunur={saltOkunur}
         yerleskeAdi={yerleskeAdi}
+        konumMetni={konumMetni}
       />
     </div>
   )

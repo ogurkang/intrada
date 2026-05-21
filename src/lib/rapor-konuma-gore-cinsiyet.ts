@@ -3,20 +3,28 @@
  */
 
 import type {
-  CalisanRaporRow,
   FirmaRaporRow,
   KadroRaporRow,
   StatuCinsiyetSatir,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { kadroBaslangic, kadroSatirAktifMi } from '@/lib/rapor-statuye-gore-cinsiyet'
+import type { PersonelKonumCtx } from '@/lib/personel-gorev-konum'
+import { personelKonumTipi } from '@/lib/personel-gorev-konum'
 import {
   mudurlukKonumHaritasi,
   type MudurlukKonumTanimRow,
 } from '@/lib/mudurluk-konum'
-
-export type TanimMudurlukKonumRow = MudurlukKonumTanimRow
+import { etkinYerleskeId } from '@/lib/yerleske-adresi'
 
 export { mudurlukKonumHaritasi }
+
+export interface CalisanKonumRaporRow {
+  sicil_no: string
+  ad_soyad: string
+  cinsiyet: string | null
+  gorev_yeri?: string | null
+  yerleske_adresi_id?: number | null
+}
 
 function personelMudurlukKadro(k: KadroRaporRow): string {
   const g = String(k.gorev_mudurlugu ?? '').trim()
@@ -43,9 +51,9 @@ function firmaAktifGun(f: FirmaRaporRow, D: string): boolean {
 
 export interface KonumSnapshotInput {
   D: string
-  mudurlukKonum: Map<string, 'İç' | 'Dış'>
+  konumCtx: PersonelKonumCtx
   kadro: KadroRaporRow[]
-  calisanBySicil: Map<string, CalisanRaporRow>
+  calisanBySicil: Map<string, CalisanKonumRaporRow>
   firma: FirmaRaporRow[]
 }
 
@@ -56,28 +64,14 @@ function cinsiyetKolon(c: string | null | undefined): 'Kadın' | 'Erkek' | null 
   return null
 }
 
-function normMudStr(v: string | null | undefined): string {
-  return String(v ?? '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLocaleLowerCase('tr-TR')
-}
-
-function konumBul(mudurlukKonum: Map<string, 'İç' | 'Dış'>, mudRaw: string): 'İç' | 'Dış' | undefined {
-  const mud = String(mudRaw ?? '').trim()
-  if (!mud) return undefined
-  return mudurlukKonum.get(normMudStr(mud))
-}
-
 /**
- * Kadro + firma: görev müdürlüğü → yerleşke eşlemesindeki konum (İç/Dış).
- * Konum eşleşmeyenler «Konum atanmamış» satırında + isim listesinde.
+ * Kadro + firma: şirket tanımı, yerleşke ataması veya müdürlük eşlemesinden konum (İç/Dış).
  */
 export function konumCinsiyetSnapshot(input: KonumSnapshotInput): {
   satirlar: StatuCinsiyetSatir[]
   konumAtanmamisListe: string[]
 } {
-  const { D, mudurlukKonum, kadro, calisanBySicil, firma } = input
+  const { D, konumCtx, kadro, calisanBySicil, firma } = input
 
   let icK = 0
   let icE = 0
@@ -111,8 +105,17 @@ export function konumCinsiyetSnapshot(input: KonumSnapshotInput): {
     if (aktif.length === 0) continue
     const secilen = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
     const mud = personelMudurlukKadro(secilen)
-    const kon = konumBul(mudurlukKonum, mud)
     const cal = calisanBySicil.get(sicil)
+    const yId = etkinYerleskeId(
+      konumCtx.yerleskeHarita,
+      mud,
+      cal?.yerleske_adresi_id ?? null,
+    )
+    const kon = personelKonumTipi(konumCtx, {
+      gorevYeri: cal?.gorev_yeri,
+      gorevMudurlugu: mud,
+      yerleskeId: yId,
+    })
     const col = cinsiyetKolon(cal?.cinsiyet)
     if (!col) continue
 
@@ -134,7 +137,15 @@ export function konumCinsiyetSnapshot(input: KonumSnapshotInput): {
     const col = cinsiyetKolon(f.cinsiyet)
     if (!col) continue
     const mud = personelMudurlukFirma(f)
-    const kon = konumBul(mudurlukKonum, mud)
+    const yId = etkinYerleskeId(
+      konumCtx.yerleskeHarita,
+      mud,
+      f.yerleske_adresi_id ?? null,
+    )
+    const kon = personelKonumTipi(konumCtx, {
+      gorevMudurlugu: mud,
+      yerleskeId: yId,
+    })
 
     if (kon === 'İç') {
       if (col === 'Kadın') icK += 1

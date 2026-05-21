@@ -184,6 +184,39 @@ export interface Database {
           { foreignKeyName: 'tanim_mudurluk_yerleske_yerleske_adresi_id_fkey'; columns: ['yerleske_adresi_id']; isOneToOne: false; referencedRelation: 'tanim_yerleske_adresi'; referencedColumns: ['id'] },
         ]
       }
+      tanim_sirket: {
+        Row: { id: number; sirket_adi: string; aktif: boolean; created_at: string }
+        Insert: { id?: number; sirket_adi: string; aktif?: boolean; created_at?: string }
+        Update: { id?: number; sirket_adi?: string; aktif?: boolean; created_at?: string }
+        Relationships: []
+      }
+      tanim_sirket_yerleske: {
+        Row: {
+          id: number
+          sirket_id: number
+          yerleske_adresi_id: number
+          konum: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          sirket_id: number
+          yerleske_adresi_id: number
+          konum?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          sirket_id?: number
+          yerleske_adresi_id?: number
+          konum?: string
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'tanim_sirket_yerleske_sirket_id_fkey'; columns: ['sirket_id']; isOneToOne: false; referencedRelation: 'tanim_sirket'; referencedColumns: ['id'] },
+          { foreignKeyName: 'tanim_sirket_yerleske_yerleske_adresi_id_fkey'; columns: ['yerleske_adresi_id']; isOneToOne: false; referencedRelation: 'tanim_yerleske_adresi'; referencedColumns: ['id'] },
+        ]
+      }
       tanim_statu: {
         Row:    { id: number; sira_no: number | null; statu_adi: string; aktif: boolean; created_at: string }
         Insert: { id?: number; sira_no?: number | null; statu_adi: string; aktif?: boolean; created_at?: string }
@@ -1234,6 +1267,7 @@ export interface Database {
           ogrenim: string | null; telefon: string | null; e_posta: string | null; kuruma_giris_tarihi: string | null
           gorev_mudurlugu: string | null; gorevi: string | null; meslegi: string | null
           ayrilis_tarihi: string | null; ayrilis_nedeni: string | null; kayit_zamani: string
+          yerleske_adresi_id: number | null
         }
         Insert: {
           id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
@@ -1241,6 +1275,7 @@ export interface Database {
           ogrenim?: string | null; telefon?: string | null; e_posta?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null
           ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null; kayit_zamani?: string
+          yerleske_adresi_id?: number | null
         }
         Update: {
           id?: number; public_id?: string; sira_no?: string | null; sicil_no?: string | null; tckn?: string | null
@@ -1248,6 +1283,7 @@ export interface Database {
           ogrenim?: string | null; telefon?: string | null; e_posta?: string | null; kuruma_giris_tarihi?: string | null
           gorev_mudurlugu?: string | null; gorevi?: string | null; meslegi?: string | null
           ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null; kayit_zamani?: string
+          yerleske_adresi_id?: number | null
         }
         Relationships: []
       }

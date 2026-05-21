@@ -49,6 +49,7 @@ export interface FirmaRaporRow {
   ayrilis_tarihi: string | null
   /** Konum raporu — görev müdürlüğü (tanim_mudurluk ile eşleştirme) */
   gorev_mudurlugu?: string | null
+  yerleske_adresi_id?: number | null
   /** Öğrenim / meslek raporları — firma kartındaki öğrenim ve meslek alanları */
   ogrenim?: string | null
   meslegi?: string | null

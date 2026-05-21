@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import IzinYeniClient from '@/components/izin/IzinYeniClient'
-import { izinEkle } from '../actions'
+import { izinEkle, siradakiIzinSiraNo } from '../actions'
 
 interface Props {
   searchParams: Promise<{ yil?: string }>
@@ -14,10 +14,11 @@ export default async function IzinYeniPage({ searchParams }: Props) {
 
   const supabase = await createClient()
 
-  const [{ data: personeller }, { data: izinTurleriRaw }, { data: hakRaw }] = await Promise.all([
+  const [{ data: personeller }, { data: izinTurleriRaw }, { data: hakRaw }, siradakiSiraNo] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
     supabase.from('tanim_izin_tur').select('tur_adi').eq('durum', true).order('sira_no', { nullsFirst: false }).order('tur_adi'),
     supabase.from('izin_haklari').select('sicil_no, kalan_gun').eq('yil', secilenYil),
+    siradakiIzinSiraNo(supabase, secilenYil),
   ])
 
   const hakMap: Record<string, number> = {}
@@ -27,7 +28,9 @@ export default async function IzinYeniPage({ searchParams }: Props) {
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Yeni İzin Kaydı</h1>
+        <h1 className="text-2xl font-bold text-slate-800">
+          {secilenYil}/{siradakiSiraNo} Sayılı Yeni İzin Kaydı
+        </h1>
         <Link href={`/izin?yil=${secilenYil}`}
           className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
           ← Listeye Dön

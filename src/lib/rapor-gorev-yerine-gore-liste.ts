@@ -1,5 +1,8 @@
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { trNormalize } from '@/lib/turkce-search'
+import type { PersonelKonumCtx } from '@/lib/personel-gorev-konum'
+import { personelKonumMetni } from '@/lib/personel-gorev-konum'
+import { etkinYerleskeId } from '@/lib/yerleske-adresi'
 
 /** Unvan metnine göre satır vurgusu (UI + Excel aynı sıra önceliği). */
 export type GorevYerineGoreUnvanVurgu = 'belediye_baskani' | 'baskan_yardimci' | 'mudur' | null
@@ -129,6 +132,7 @@ export type GorevYerineGoreListeKayit =
       ad_soyad: string
       cinsiyet: string | null
       gorev_yeri: string | null
+      yerleske_adresi_id?: number | null
       statuEtiket: string
       kadro: KadroGenis
     }
@@ -141,22 +145,33 @@ export type GorevYerineGoreListeKayit =
       gorev_mudurlugu: string | null
       gorevi: string | null
       statuEtiket: string
+      yerleske_adresi_id?: number | null
     }
 
 export function gorevYerineGoreListeSatirUret(
-  mudKonum: Map<string, string>,
+  konumCtx: PersonelKonumCtx,
   row: GorevYerineGoreListeKayit,
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
     const mudurluk = String(row.kadro.kadro_mudurlugu ?? '').trim() || '—'
-    const konumMudurluk = String(row.kadro.gorev_mudurlugu ?? '').trim() || String(row.kadro.kadro_mudurlugu ?? '').trim()
+    const konumMudurluk =
+      String(row.kadro.gorev_mudurlugu ?? '').trim() || String(row.kadro.kadro_mudurlugu ?? '').trim()
+    const yId = etkinYerleskeId(
+      konumCtx.yerleskeHarita,
+      konumMudurluk,
+      row.yerleske_adresi_id ?? null,
+    )
     return {
       kayit_key: row.kayit_key,
       kaynak: 'kadro',
       sicil_no: row.sicil_no,
       ad_soyad: row.ad_soyad,
       mudurluk,
-      konum: mudurlukKonumGoster(mudKonum, konumMudurluk),
+      konum: personelKonumMetni(konumCtx, {
+        gorevYeri: row.gorev_yeri,
+        gorevMudurlugu: konumMudurluk,
+        yerleskeId: yId,
+      }),
       cinsiyet: cinsiyetGoster(row.cinsiyet),
       unvan: String(row.kadro.gorev_unvani ?? '').trim() || '—',
       statu: row.statuEtiket,
@@ -164,13 +179,21 @@ export function gorevYerineGoreListeSatirUret(
     }
   }
   const mudurluk = String(row.gorev_mudurlugu ?? '').trim() || '—'
+  const yId = etkinYerleskeId(
+    konumCtx.yerleskeHarita,
+    row.gorev_mudurlugu,
+    row.yerleske_adresi_id ?? null,
+  )
   return {
     kayit_key: row.kayit_key,
     kaynak: 'firma',
     sicil_no: row.sicil_no,
     ad_soyad: row.ad_soyad,
     mudurluk,
-    konum: mudurlukKonumGoster(mudKonum, row.gorev_mudurlugu),
+    konum: personelKonumMetni(konumCtx, {
+      gorevMudurlugu: row.gorev_mudurlugu,
+      yerleskeId: yId,
+    }),
     cinsiyet: cinsiyetGoster(row.cinsiyet),
     unvan: String(row.gorevi ?? '').trim() || '—',
     statu: row.statuEtiket,

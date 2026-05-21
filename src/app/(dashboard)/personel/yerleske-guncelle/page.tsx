@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import YerleskeGuncelleClient from '@/components/personel/YerleskeGuncelleClient'
-import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -13,6 +14,7 @@ import {
   type YerleskeSecenek,
 } from '@/lib/yerleske-adresi'
 import { yerleskeGuncelleSatirKaydet, yerleskeGuncelleTopluKaydet } from './actions'
+import type { YerleskeGuncelleListeSatir } from '@/components/personel/YerleskeGuncelleClient'
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
@@ -28,6 +30,7 @@ export default async function YerleskeGuncellePage() {
     { data: calisanRaw, error },
     { data: phRaw },
     { data: tanimStatuRaw },
+    { data: firmaRaw },
     tanimSatirlar,
   ] = await Promise.all([
     supabase
@@ -39,6 +42,10 @@ export default async function YerleskeGuncellePage() {
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
+    supabase
+      .from('firma_calisanlar')
+      .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, ayrilis_tarihi, kuruma_giris_tarihi, e_posta, yerleske_adresi_id')
+      .order('ad_soyad'),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
   ])
 
@@ -56,7 +63,7 @@ export default async function YerleskeGuncellePage() {
   const aktifSiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+    if (!sonAyrilis || sonAyrilis > D) aktifSiciller.add(c.sicil_no)
   })
 
   const { etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
@@ -80,33 +87,62 @@ export default async function YerleskeGuncellePage() {
     }
   }
 
-  const data = kadroAday
-    .map(c => {
-      const rows = kadroByAsil.get(c.sicil_no) ?? []
-      const sec = secilenKadroSatirAsil(rows, D)
-      if (!sec) return null
-      const gorevMudurlugu = String(sec.gorev_mudurlugu ?? sec.kadro_mudurlugu ?? '').trim()
-      const rawStatu = sec.statu
-      const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
-      const kayitliId = (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+  const kadroSatirlar = kadroAday.flatMap(c => {
+    const rows = kadroByAsil.get(c.sicil_no) ?? []
+    const sec = secilenKadroSatirAsil(rows, D)
+    if (!sec) return []
+    const gorevMudurlugu = String(sec.gorev_mudurlugu ?? sec.kadro_mudurlugu ?? '').trim()
+    const rawStatu = sec.statu
+    const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
+    const kayitliId = (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+    const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliId)
+    const satir: YerleskeGuncelleListeSatir = {
+      kayit_key: `kadro:${c.sicil_no}`,
+      kaynak: 'kadro',
+      sicil_no: c.sicil_no,
+      public_id: c.public_id,
+      ad_soyad: c.ad_soyad,
+      statuEtiket,
+      gorev_mudurlugu: gorevMudurlugu || '—',
+      gorev_yeri: c.gorev_yeri ?? '',
+      kayitli_yerleske_id: kayitliId,
+      secili_yerleske_id: seciliYerleskeId,
+    }
+    return [satir]
+  })
+
+  const firmaSatirlar: YerleskeGuncelleListeSatir[] = filterOutHiddenSystemByEmail(firmaRaw ?? [])
+    .filter(f => {
+      const ayr = String(f.ayrilis_tarihi ?? '').slice(0, 10)
+      if (ayr && ayr <= D) return false
+      const kg = String(f.kuruma_giris_tarihi ?? '').slice(0, 10)
+      if (kg && kg > D) return false
+      return true
+    })
+    .map(f => {
+      const gorevMudurlugu = String(f.gorev_mudurlugu ?? '').trim()
+      const kayitliId = (f as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
       const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliId)
       return {
-        sicil_no: c.sicil_no,
-        public_id: c.public_id,
-        ad_soyad: c.ad_soyad,
-        statuEtiket,
+        kayit_key: `firma:${f.id}`,
+        kaynak: 'firma' as const,
+        firma_id: f.id,
+        sicil_no: String(f.sicil_no ?? '').trim() || '—',
+        public_id: f.public_id,
+        ad_soyad: f.ad_soyad,
+        statuEtiket: FIRMA_STATU_ETIKET,
         gorev_mudurlugu: gorevMudurlugu || '—',
-        gorev_yeri: c.gorev_yeri ?? '',
+        gorev_yeri: gorevMudurlugu,
         kayitli_yerleske_id: kayitliId,
         secili_yerleske_id: seciliYerleskeId,
       }
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-    .sort((a, b) => {
-      const mud = a.gorev_mudurlugu.localeCompare(b.gorev_mudurlugu, 'tr')
-      if (mud !== 0) return mud
-      return a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
-    })
+
+  const data = [...kadroSatirlar, ...firmaSatirlar].sort((a, b) => {
+    const mud = a.gorev_mudurlugu.localeCompare(b.gorev_mudurlugu, 'tr')
+    if (mud !== 0) return mud
+    return a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
+  })
 
   return (
     <div>

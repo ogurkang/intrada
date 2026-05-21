@@ -4,10 +4,13 @@ import StatuyeGoreCinsiyetClient, {
 } from '@/components/rapor/StatuyeGoreCinsiyetClient'
 import {
   konumCinsiyetSnapshot,
-  mudurlukKonumHaritasi,
-  type TanimMudurlukKonumRow,
+  type CalisanKonumRaporRow,
 } from '@/lib/rapor-konuma-gore-cinsiyet'
-import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
+import {
+  buildPersonelKonumCtx,
+  fetchSirketYerleskeTanimSatirlari,
+} from '@/lib/personel-gorev-konum'
+import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
 import {
   gelenlerAyrilanlar,
   periyotSonGunu,
@@ -43,7 +46,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const KONUM_ACIKLAMA =
-  'Kadro ve ADABEL Personeli, görev müdürlüğünün (kadroda yoksa kadro müdürlüğünün; firmada görev müdürlüğünün) Tanımlar > Müdürlük kaydında ilişkilendirilen yerleşkelerin konumuna (İç/Dış) göre sayılır. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Müdürlük eşleşmeyen veya birden fazla farklı konuma sahip müdürlükler tabloda «Konum atanmamış» satırında ve altta isim listesinde gösterilir.'
+  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü adı), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Eşleşmeyenler «Konum atanmamış» satırında listelenir.'
 
 export default async function KonumaGoreCinsiyetPage({
   searchParams,
@@ -59,24 +62,26 @@ export default async function KonumaGoreCinsiyetPage({
   const supabase = await createClient()
 
   const [
-    tanimMudurluk,
+    mudSatirlar,
+    sirketSatirlar,
     { data: kadroRaw },
     { data: calisanRaw },
     { data: firmaRaw },
     { data: phAyrRaw },
     { data: phIseRaw },
   ] = await Promise.all([
-    fetchMudurlukYerleskeKonumTanimlari(supabase),
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
     supabase
       .from('kadro_hareketleri')
       .select(
         'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
       )
       .not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, yerleske_adresi_id'),
     supabase
       .from('firma_calisanlar')
-      .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu'),
+      .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')
@@ -104,14 +109,25 @@ export default async function KonumaGoreCinsiyetPage({
     })
   }
 
-  const mudurlukKonum = mudurlukKonumHaritasi(tanimMudurluk as TanimMudurlukKonumRow[])
+  const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
 
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
   const firma: FirmaRaporRow[] = (firmaRaw ?? []) as FirmaRaporRow[]
 
-  const calisanBySicil = new Map<string, CalisanRaporRow>()
+  const calisanBySicil = new Map<string, CalisanKonumRaporRow>()
   for (const c of calisanRaw ?? []) {
     calisanBySicil.set(c.sicil_no, {
+      sicil_no: c.sicil_no,
+      ad_soyad: c.ad_soyad,
+      cinsiyet: c.cinsiyet,
+      gorev_yeri: (c as { gorev_yeri?: string | null }).gorev_yeri ?? null,
+      yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
+    })
+  }
+
+  const calisanRapor = new Map<string, CalisanRaporRow>()
+  for (const c of calisanRaw ?? []) {
+    calisanRapor.set(c.sicil_no, {
       sicil_no: c.sicil_no,
       ad_soyad: c.ad_soyad,
       cinsiyet: c.cinsiyet,
@@ -124,7 +140,7 @@ export default async function KonumaGoreCinsiyetPage({
     const D = periyotSonGunu(yil, p)
     const { satirlar, konumAtanmamisListe } = konumCinsiyetSnapshot({
       D,
-      mudurlukKonum,
+      konumCtx,
       kadro,
       calisanBySicil,
       firma,
@@ -133,7 +149,7 @@ export default async function KonumaGoreCinsiyetPage({
       periyot: p,
       yil,
       kadro,
-      calisanBySicil,
+      calisanBySicil: calisanRapor,
       firma,
       personelHareketleri,
     })

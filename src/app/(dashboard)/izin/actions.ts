@@ -80,7 +80,10 @@ async function getIslemYapanEtiketi(): Promise<string | null> {
 }
 
 /** Yıl içinde bir sonraki sıra numarasını üretir: "001", "002" ... */
-async function siradakiSiraNo(supabase: Awaited<ReturnType<typeof createClient>>, yil: number): Promise<string> {
+export async function siradakiIzinSiraNo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  yil: number,
+): Promise<string> {
   const { data } = await supabase
     .from('izin_hareketleri')
     .select('sira_no')
@@ -127,7 +130,7 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
   const cakisma = await izinCakismaMesaji(supabase, sicil_no, ayrilisKayit, baslama)
   if (cakisma) return { hata: cakisma }
 
-  const sira_no = await siradakiSiraNo(supabase, yil)
+  const sira_no = await siradakiIzinSiraNo(supabase, yil)
 
   let bilgiStr = str(formData, 'bilgi')
   if (isYillikIzin && !bilgiStr) {

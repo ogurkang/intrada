@@ -147,7 +147,11 @@ export function yerleskePersonelSayiSnapshot(params: {
     const kg = String(f.kuruma_giris_tarihi ?? '').slice(0, 10)
     if (kg && kg > D) continue
     const mud = String(f.gorev_mudurlugu ?? '').trim()
-    const yId = varsayilanYerleskeOnly(yerleskeHarita, mud)
+    const yId = etkinYerleskeId(
+      yerleskeHarita,
+      mud,
+      f.yerleske_adresi_id ?? null,
+    )
     artir(mud, yId, 'adabel')
   }
 
@@ -155,10 +159,3 @@ export function yerleskePersonelSayiSnapshot(params: {
   return { satirlar }
 }
 
-function varsayilanYerleskeOnly(
-  harita: ReturnType<typeof mudurlukYerleskeHaritasi>,
-  mudurlukAdi: string,
-): number | null {
-  const list = harita.get(normMudStr(mudurlukAdi)) ?? []
-  return list[0]?.id ?? null
-}

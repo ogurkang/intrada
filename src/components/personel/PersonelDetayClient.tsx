@@ -66,6 +66,7 @@ interface Props {
   /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
   saltOkunur?: boolean
   yerleskeAdi?: string | null
+  konumMetni?: string | null
 }
 
 function tarihFormatla(t: string | null | undefined) {
@@ -97,10 +98,12 @@ function KisiselTab({
   calisan,
   kadrolar,
   yerleskeAdi,
+  konumMetni,
 }: {
   calisan: Calisan
   kadrolar: KH[]
   yerleskeAdi?: string | null
+  konumMetni?: string | null
 }) {
   const sicil = (calisan.sicil_no ?? '').trim()
   const anaK = anaKadroSec(kadrolar, sicil)
@@ -164,6 +167,7 @@ function KisiselTab({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Alan etiket="Görev yeri" deger={calisan.gorev_yeri} />
           <Alan etiket="Yerleşke adresi" deger={yerleskeAdi} />
+          <Alan etiket="Konum" deger={konumMetni} />
           <Alan etiket="Görev türü" deger={calisan.gorev_turu ?? GOREV_TURU_OPTIONS[0]} />
           <Alan etiket="Görev türü tarihi" deger={
             (calisan.gorev_turu ?? 'Çalışan') === 'Çalışan'
@@ -1234,6 +1238,7 @@ export default function PersonelDetayClient({
   terfiOncesiTarihce = [],
   saltOkunur = false,
   yerleskeAdi = null,
+  konumMetni = null,
 }: Props) {
   const searchParams = useSearchParams()
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
@@ -1327,7 +1332,7 @@ export default function PersonelDetayClient({
 
         {/* Sekme İçeriği */}
         <div className="p-6">
-          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} kadrolar={kadrolar} yerleskeAdi={yerleskeAdi} />}
+          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} kadrolar={kadrolar} yerleskeAdi={yerleskeAdi} konumMetni={konumMetni} />}
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
           {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}

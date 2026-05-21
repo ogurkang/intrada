@@ -30,7 +30,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const RAPOR_ACIKLAMA =
-  'Müdürlük–yerleşke tanım satırlarında, seçili anlık görüntü tarihinde aktif personel sayıları. Belediye personeli: Memur, Sözleşmeli, İşçi, Geçici İşçi, Meclis Üyesi, Stajyer ve Belediye Başkanı (unvan). Kadro personelde yerleşke, Görev Bilgileri kaydı; atanmamışsa müdürlüğün ilk yerleşkesi. ADABEL personelde görev müdürlüğünün ilk yerleşkesi kullanılır.'
+  'Müdürlük–yerleşke tanım satırlarında, seçili anlık görüntü tarihinde aktif personel sayıları. Belediye personeli: Memur, Sözleşmeli, İşçi, Geçici İşçi, Meclis Üyesi, Stajyer ve Belediye Başkanı (unvan). Kadro personelde yerleşke Görev Bilgileri kaydı; atanmamışsa müdürlüğün ilk yerleşkesi. ADABEL personelde yerleşke ataması; atanmamışsa müdürlüğün ilk yerleşkesi.'
 
 export default async function YerleskeAdresineGorePersonelSayiPage({
   searchParams,
@@ -64,7 +64,7 @@ export default async function YerleskeAdresineGorePersonelSayiPage({
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, yerleske_adresi_id'),
     supabase
       .from('firma_calisanlar')
-      .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu'),
+      .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')

@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { personelDetayHref } from '@/lib/personel-link'
 import { normMudStr, type YerleskeSecenek } from '@/lib/yerleske-adresi'
-import type { YerleskeGuncelleSatir } from '@/app/(dashboard)/personel/yerleske-guncelle/actions'
+import type { YerleskeGuncelleSatir, YerleskeKaynak } from '@/app/(dashboard)/personel/yerleske-guncelle/actions'
 import { trNormalize } from '@/lib/turkce-search'
 
 function karsilastirMudurlukSonraAd(
@@ -18,7 +18,10 @@ function karsilastirMudurlukSonraAd(
 }
 
 export type YerleskeGuncelleListeSatir = {
+  kayit_key: string
+  kaynak: YerleskeKaynak
   sicil_no: string
+  firma_id?: number
   public_id: string
   ad_soyad: string
   statuEtiket: string
@@ -31,8 +34,20 @@ export type YerleskeGuncelleListeSatir = {
 interface Props {
   data: YerleskeGuncelleListeSatir[]
   yerleskeHarita: Record<string, YerleskeSecenek[]>
-  onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
+  onSatirKaydet: (kaynak: YerleskeKaynak, id: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: YerleskeGuncelleSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
+}
+
+function satirId(p: YerleskeGuncelleListeSatir): string {
+  return p.kaynak === 'kadro' ? p.sicil_no : String(p.firma_id ?? '')
+}
+
+function satirDetayHref(p: YerleskeGuncelleListeSatir): string {
+  if (p.kaynak === 'firma') {
+    const seg = encodeURIComponent(p.public_id?.trim() || String(p.firma_id ?? ''))
+    return `/firma-calisanlar/${seg}`
+  }
+  return personelDetayHref(p)
 }
 
 function secenekler(
@@ -51,7 +66,7 @@ export default function YerleskeGuncelleClient({
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama] = useState('')
-  const [duzenlenenSicil, setDuzenlenenSicil] = useState<string | null>(null)
+  const [duzenlenenKey, setDuzenlenenKey] = useState<string | null>(null)
   const [inlineVeri, setInlineVeri] = useState<Record<string, number | null>>({})
   const [topluVeri, setTopluVeri] = useState<Record<string, number | null>>({})
   const [hata, setHata] = useState<string | null>(null)
@@ -77,14 +92,14 @@ export default function YerleskeGuncelleClient({
   }, [sirali, arama])
 
   function inlineDeger(p: YerleskeGuncelleListeSatir): number | null {
-    if (duzenlenenSicil === p.sicil_no && p.sicil_no in inlineVeri) {
-      return inlineVeri[p.sicil_no] ?? null
+    if (duzenlenenKey === p.kayit_key && p.kayit_key in inlineVeri) {
+      return inlineVeri[p.kayit_key] ?? null
     }
     return p.secili_yerleske_id
   }
 
   function topluDeger(p: YerleskeGuncelleListeSatir): number | null {
-    if (p.sicil_no in topluVeri) return topluVeri[p.sicil_no] ?? null
+    if (p.kayit_key in topluVeri) return topluVeri[p.kayit_key] ?? null
     return p.secili_yerleske_id
   }
 
@@ -100,10 +115,10 @@ export default function YerleskeGuncelleClient({
     const val = inlineDeger(p)
     if (val != null) fd.set('yerleske_adresi_id', String(val))
     startTransition(async () => {
-      const res = await onSatirKaydet(p.sicil_no, fd)
+      const res = await onSatirKaydet(p.kaynak, satirId(p), fd)
       if (res.hata) setHata(res.hata)
       else {
-        setDuzenlenenSicil(null)
+        setDuzenlenenKey(null)
         setInlineVeri({})
         router.refresh()
       }
@@ -118,10 +133,11 @@ export default function YerleskeGuncelleClient({
       setTopluHata('Değişiklik yapılmadı.')
       return
     }
-    const satirlar: YerleskeGuncelleSatir[] = degistirilmis.map(p => ({
-      sicil_no: p.sicil_no,
-      yerleske_adresi_id: topluDeger(p),
-    }))
+    const satirlar: YerleskeGuncelleSatir[] = degistirilmis.map(p =>
+      p.kaynak === 'kadro'
+        ? { kaynak: 'kadro', sicil_no: p.sicil_no, yerleske_adresi_id: topluDeger(p) }
+        : { kaynak: 'firma', firma_id: p.firma_id, yerleske_adresi_id: topluDeger(p) },
+    )
     startTransition(async () => {
       const res = await onTopluKaydet(satirlar)
       if (res.hata) setTopluHata(res.hata)
@@ -172,11 +188,11 @@ export default function YerleskeGuncelleClient({
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Yerleşke Güncelle (geçici)</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Aktif personelin çalıştığı yerleşke adresini toplu veya satır bazında güncelleyin. Seçim,
-            görev müdürlüğüne bağlı yerleşke tanımları ile sınırlıdır; varsayılan ilk eşleşmedir.
+            Aktif kadro ve ADABEL personelinin çalıştığı yerleşke adresini toplu veya satır bazında güncelleyin.
           </p>
           <p className="text-xs text-amber-700 mt-2">
-            Kayıt, personel kartı → Kişisel Bilgiler → Görev Bilgileri bölümünde görünür.
+            Kadro personelinde kayıt personel kartı → Görev Bilgileri bölümünde görünür. ADABEL personeli
+            firma kartında yerleşke alanı ile raporlara yansır.
           </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
@@ -227,7 +243,7 @@ export default function YerleskeGuncelleClient({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <p className="text-sm text-slate-600">
               Değiştirdiğiniz satırlar mavi ile işaretlenir; <strong>Toplu Kaydet</strong> yalnızca
-              değişen sicilleri yazar.
+              değişen kayıtları yazar.
             </p>
             <button
               type="button"
@@ -269,17 +285,17 @@ export default function YerleskeGuncelleClient({
                 </tr>
               ) : (
                 (sekme === 'liste' ? filtreli : sirali).map((p, idx) => {
-                  const duz = sekme === 'liste' && duzenlenenSicil === p.sicil_no
+                  const duz = sekme === 'liste' && duzenlenenKey === p.kayit_key
                   const degisti = sekme === 'toplu' && topluSatirDegisti(p)
                   return (
                     <tr
-                      key={p.sicil_no}
+                      key={p.kayit_key}
                       className={duz || degisti ? 'bg-blue-50' : 'hover:bg-slate-50'}
                     >
                       <td className="px-3 py-2.5 text-center text-slate-500 tabular-nums">{idx + 1}</td>
                       <td className="px-4 py-2.5">
                         <Link
-                          href={personelDetayHref(p)}
+                          href={satirDetayHref(p)}
                           className="font-medium text-slate-800 hover:text-blue-700 hover:underline"
                         >
                           {p.ad_soyad}
@@ -291,13 +307,13 @@ export default function YerleskeGuncelleClient({
                       <td className="px-4 py-2.5">
                         {sekme === 'liste' && duz ? (
                           yerleskeSelect(p, inlineDeger(p), id =>
-                            setInlineVeri(prev => ({ ...prev, [p.sicil_no]: id })),
+                            setInlineVeri(prev => ({ ...prev, [p.kayit_key]: id })),
                           )
                         ) : sekme === 'toplu' ? (
                           yerleskeSelect(
                             p,
                             topluDeger(p),
-                            id => setTopluVeri(prev => ({ ...prev, [p.sicil_no]: id })),
+                            id => setTopluVeri(prev => ({ ...prev, [p.kayit_key]: id })),
                             false,
                             degisti,
                           )
@@ -325,8 +341,8 @@ export default function YerleskeGuncelleClient({
                               type="button"
                               onClick={() => {
                                 setHata(null)
-                                setDuzenlenenSicil(p.sicil_no)
-                                setInlineVeri({ [p.sicil_no]: p.secili_yerleske_id })
+                                setDuzenlenenKey(p.kayit_key)
+                                setInlineVeri({ [p.kayit_key]: p.secili_yerleske_id })
                               }}
                               className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
                             >

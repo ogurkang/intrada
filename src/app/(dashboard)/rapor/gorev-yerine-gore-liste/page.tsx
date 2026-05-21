@@ -9,10 +9,13 @@ import {
   hazirlaStatuSirali,
   karsilastirStatuSonraSicilAd,
 } from '@/lib/statu-liste-siralama'
-import { fetchMudurlukYerleskeKonumTanimlari } from '@/lib/mudurluk-konum'
+import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import {
+  buildPersonelKonumCtx,
+  fetchSirketYerleskeTanimSatirlari,
+} from '@/lib/personel-gorev-konum'
 import {
   gorevYerineGoreListeSatirUret,
-  mudurlukKonumMetniHaritasi,
   type GorevYerineGoreListeSatir,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
@@ -38,7 +41,7 @@ function bosKadro(sicil: string): KadroGenis {
 }
 
 const LISTE_ACIKLAMA =
-  'Konum: Tanımlar > Müdürlük kaydında ilişkilendirilen yerleşkelerin konumu (kadro personelde kadro müdürlüğü; ADABEL personelde görev müdürlüğü ile eşleşir). Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
+  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
 
 export default async function GorevYerineGoreListePage() {
   const supabase = await createClient()
@@ -57,19 +60,21 @@ export default async function GorevYerineGoreListePage() {
     cinsiyet: string | null
     gorev_yeri: string | null
     gorev_turu: string | null
+    yerleske_adresi_id: number | null
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calisanQuery = (supabase as any)
     .from('calisan')
-    .select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu')
+    .select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu, yerleske_adresi_id')
     .order('ad_soyad')
 
   const [
     calisanResult,
     { data: phRaw },
     { data: tanimStatuRaw },
-    tanimMudurluk,
+    mudSatirlar,
+    sirketSatirlar,
   ] = await Promise.all([
     calisanQuery as Promise<{ data: CalisanRow[] | null; error: { message: string } | null }>,
     supabase
@@ -77,7 +82,8 @@ export default async function GorevYerineGoreListePage() {
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    fetchMudurlukYerleskeKonumTanimlari(supabase),
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
   ])
 
   const { data: calisanRaw, error } = calisanResult
@@ -99,7 +105,8 @@ export default async function GorevYerineGoreListePage() {
   const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
 
   const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
-  const mudKonum = mudurlukKonumMetniHaritasi(tanimMudurluk)
+  const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
+  const yerleskeBySicil = new Map(kadroCalisan.map(c => [c.sicil_no, c.yerleske_adresi_id ?? null]))
 
   const sicilList = [...aktifSiciller]
   const kadroByAsil = new Map<string, KadroGenis[]>()
@@ -138,7 +145,7 @@ export default async function GorevYerineGoreListePage() {
 
   const { data: firmaRaw } = await supabase
     .from('firma_calisanlar')
-    .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet')
+    .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet, yerleske_adresi_id')
     .order('ad_soyad')
 
   const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
@@ -155,6 +162,7 @@ export default async function GorevYerineGoreListePage() {
       cinsiyet: f.cinsiyet,
       gorev_mudurlugu: f.gorev_mudurlugu,
       gorevi: f.gorevi,
+      yerleske_adresi_id: (f as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
     }))
 
   const siralı = [...kadroSatirlarRaw, ...firmaSatirlarRaw].sort((a, b) =>
@@ -180,7 +188,7 @@ export default async function GorevYerineGoreListePage() {
 
   const satirlar: GorevYerineGoreListeSatir[] = siralı.map(row => {
     const s = gorevYerineGoreListeSatirUret(
-      mudKonum,
+      konumCtx,
       row.kind === 'kadro'
         ? {
             kayit_key: row.kayit_key,
@@ -189,6 +197,7 @@ export default async function GorevYerineGoreListePage() {
             ad_soyad: row.ad_soyad,
             cinsiyet: row.cinsiyet,
             gorev_yeri: row.gorev_yeri,
+            yerleske_adresi_id: yerleskeBySicil.get(row.sicil_no) ?? null,
             statuEtiket: row.statuEtiket,
             kadro: row.kadro,
           }
@@ -200,6 +209,7 @@ export default async function GorevYerineGoreListePage() {
             cinsiyet: row.cinsiyet,
             gorev_mudurlugu: row.gorev_mudurlugu,
             gorevi: row.gorevi,
+            yerleske_adresi_id: row.yerleske_adresi_id,
             statuEtiket: row.statuEtiket,
           },
     )

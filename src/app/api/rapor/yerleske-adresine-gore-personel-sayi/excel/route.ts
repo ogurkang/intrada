@@ -14,9 +14,24 @@ import { hazirlaStatuSirali } from '@/lib/statu-liste-siralama'
 import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
 import { yerleskePersonelSayiSnapshot } from '@/lib/rapor-yerleske-adresine-gore-personel-sayi'
 
-const AYLAR_TR = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik']
+const AYLAR_TR = [
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık',
+]
 const MIN_YIL = 2000
 const MAX_YIL = 2035
+
+/** Veri tablosu: A–F (Sıra No … Toplam) */
 const COL_LAST = 5
 
 function parseYil(v: string | null): number {
@@ -34,7 +49,14 @@ function parsePeriyot(v: string | null): RaporPeriyot {
 
 function sonGunuMetin(D: string): string {
   const [y, m, d] = D.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const dt = new Date(y, m - 1, d)
+  return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function padRow(cols: number, cells: (string | number)[]): (string | number)[] {
+  const r = [...cells]
+  while (r.length < cols) r.push('')
+  return r
 }
 
 const THIN_BORDER = {
@@ -44,6 +66,41 @@ const THIN_BORDER = {
   right: { style: 'thin' as const, color: { rgb: 'D1D5DB' } },
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasCellData(cell: any): boolean {
+  if (!cell) return false
+  const v = cell.v
+  if (v === null || v === undefined) return false
+  if (typeof v === 'string' && v.trim() === '') return false
+  return true
+}
+
+function mergeAt(
+  merges: XLSX.Range[] | undefined,
+  r: number,
+  c: number,
+): XLSX.Range | null {
+  if (!merges) return null
+  for (const m of merges) {
+    if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) return m
+  }
+  return null
+}
+
+function cellGetsBorder(
+  ws: XLSX.WorkSheet,
+  merges: XLSX.Range[] | undefined,
+  r: number,
+  c: number,
+): boolean {
+  const m = mergeAt(merges, r, c)
+  if (m) {
+    const a = XLSX.utils.encode_cell({ r: m.s.r, c: m.s.c })
+    return hasCellData(ws[a])
+  }
+  return hasCellData(ws[XLSX.utils.encode_cell({ r, c })])
+}
+
 export async function GET(req: Request) {
   try {
     const supabase = await createClient()
@@ -51,7 +108,7 @@ export async function GET(req: Request) {
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
     const D = periyotSonGunu(yil, periyot)
-    const periyotLabel = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
+    const label = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
 
     const [
       { data: tanimStatuRaw },
@@ -72,7 +129,7 @@ export async function GET(req: Request) {
       supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, yerleske_adresi_id'),
       supabase
         .from('firma_calisanlar')
-        .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu'),
+        .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
       supabase
         .from('personel_hareketleri')
         .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')
@@ -133,46 +190,136 @@ export async function GET(req: Request) {
     }
 
     const rows: (string | number)[][] = [
-      ['Yerleske Adresine Gore Personel Sayisi'],
-      [`Yil: ${yil}`, `Donem: ${periyotLabel}`, `Anlik goruntu: ${sonGunuMetin(D)}`],
-      [],
-      ['Sira No', 'Mudurluk Adi', 'Yerleske Adi', 'ADABEL Personel Sayisi', 'Belediye Personel Sayisi', 'Toplam'],
+      padRow(COL_LAST + 1, ['Yerleşke Adresine Göre Personel Sayısı']),
+      padRow(COL_LAST + 1, [`Yıl: ${yil} · Sekme: ${label}`]),
+      padRow(COL_LAST + 1, [`Anlık görüntü tarihi: ${sonGunuMetin(D)}`]),
+      padRow(COL_LAST + 1, ["ADABEL'de çalışanlar hariç"]),
+      padRow(COL_LAST + 1, ['']),
+      padRow(COL_LAST + 1, [
+        'Sıra No',
+        'Müdürlük Adı',
+        'Yerleşke Adı',
+        'ADABEL Personel Sayısı',
+        'Belediye Personel Sayısı',
+        'Toplam',
+      ]),
+      ...snap.satirlar.map((s, i) =>
+        padRow(COL_LAST + 1, [i + 1, s.mudurlukAdi, s.yerleskeAdi, s.adabel, s.belediye, s.toplam]),
+      ),
+      padRow(COL_LAST + 1, ['Toplam', '', '', toplamAdabel, toplamBelediye, toplamGenel]),
+      padRow(COL_LAST + 1, ['']),
     ]
-    snap.satirlar.forEach((s, i) => {
-      rows.push([i + 1, s.mudurlukAdi, s.yerleskeAdi, s.adabel, s.belediye, s.toplam])
-    })
-    rows.push(['', 'Toplam', '', toplamAdabel, toplamBelediye, toplamGenel])
-    rows.push([])
-    rows.push(['Gelenler:', gelenler.join(', ') || '—'])
-    rows.push(['Ayrilanlar:', ayrilanlar.join(', ') || '—'])
+
+    const noteRow = 3
+    const headerRow = 5
+    const totalRow = headerRow + 1 + snap.satirlar.length
+    const nameBlockRows = new Set<number>()
+    const nameListRows = new Set<number>()
+    const tallRows = new Set<number>()
+    const merges: XLSX.Range[] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: COL_LAST } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: COL_LAST } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: COL_LAST } },
+      { s: { r: noteRow, c: 0 }, e: { r: noteRow, c: COL_LAST } },
+      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 2 } },
+    ]
+
+    const gelenlerTitleRow = rows.length
+    rows.push(padRow(COL_LAST + 1, ['Gelenler']))
+    const gelenlerContentRow = rows.length
+    rows.push(padRow(COL_LAST + 1, [gelenler.length ? gelenler.join(', ') : '—']))
+    rows.push(padRow(COL_LAST + 1, ['']))
+    const ayrilanlarTitleRow = rows.length
+    rows.push(padRow(COL_LAST + 1, ['Ayrılanlar']))
+    const ayrilanlarContentRow = rows.length
+    rows.push(padRow(COL_LAST + 1, [ayrilanlar.length ? ayrilanlar.join(', ') : '—']))
+
+    merges.push({ s: { r: gelenlerTitleRow, c: 0 }, e: { r: gelenlerTitleRow, c: COL_LAST } })
+    merges.push({ s: { r: gelenlerContentRow, c: 0 }, e: { r: gelenlerContentRow, c: COL_LAST } })
+    merges.push({ s: { r: ayrilanlarTitleRow, c: 0 }, e: { r: ayrilanlarTitleRow, c: COL_LAST } })
+    merges.push({ s: { r: ayrilanlarContentRow, c: 0 }, e: { r: ayrilanlarContentRow, c: COL_LAST } })
+    nameBlockRows.add(gelenlerTitleRow)
+    nameBlockRows.add(gelenlerContentRow)
+    nameBlockRows.add(ayrilanlarTitleRow)
+    nameBlockRows.add(ayrilanlarContentRow)
+    nameListRows.add(gelenlerContentRow)
+    nameListRows.add(ayrilanlarContentRow)
+    tallRows.add(gelenlerContentRow)
+    tallRows.add(ayrilanlarContentRow)
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
-    ws['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 24 }, { wch: 10 }]
+    ws['!merges'] = merges
+    ws['!cols'] = [
+      { wch: 8 },
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 10 },
+    ]
+    ws['!rows'] = []
+    for (const r of tallRows) ws['!rows'][r] = { hpt: 150 }
 
-    for (let r = 0; r < rows.length; r++) {
-      for (let c = 0; c <= COL_LAST; c++) {
+    const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
+
+    for (let r = 0; r <= range.e.r; r++) {
+      for (let c = 0; c <= range.e.c; c++) {
         const addr = XLSX.utils.encode_cell({ r, c })
         if (!ws[addr]) continue
-        ws[addr].s = {
-          border: THIN_BORDER,
-          ...(r === 3 ? { font: { bold: true }, fill: { fgColor: { rgb: 'F1F5F9' } } } : {}),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cell = ws[addr] as any
+        const isTitle = r <= 2
+        const isNote = r === noteRow
+        const isHead = r === headerRow
+        const isTotal = r === totalRow
+        const inNameBlock = nameBlockRows.has(r)
+        const numCols = c >= 3 && c <= 5
+
+        let horizontal: 'left' | 'center' | 'right' = 'center'
+        if (isTitle || isNote) horizontal = 'center'
+        else if (isHead && (c === 1 || c === 2)) horizontal = 'left'
+        else if (isTotal && c === 0) horizontal = 'left'
+        else if (!isHead && (c === 1 || c === 2) && r >= headerRow && r <= totalRow) horizontal = 'left'
+        else if (inNameBlock) horizontal = 'left'
+        else if (numCols && r >= headerRow && r <= totalRow) horizontal = 'center'
+        else if (c === 0 && r > headerRow && r < totalRow) horizontal = 'center'
+
+        const vertical: 'top' | 'center' = nameListRows.has(r) ? 'top' : 'center'
+        const useBorder = cellGetsBorder(ws, ws['!merges'], r, c)
+
+        cell.s = {
+          font: {
+            name: 'Calibri',
+            sz: 11,
+            bold: isTitle || isNote || isHead || isTotal || (inNameBlock && !nameListRows.has(r)),
+          },
+          alignment: {
+            vertical,
+            horizontal,
+            wrapText: true,
+          },
+          ...(useBorder ? { border: THIN_BORDER } : {}),
+        }
+        if (isHead || isTotal) {
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: isHead ? 'E5E7EB' : 'F1F5F9' } }
         }
       }
     }
 
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, periyotLabel.slice(0, 31))
+    XLSX.utils.book_append_sheet(wb, ws, 'Yerleske Personel')
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    const fname = `yerleske-adresine-gore-personel-sayi_${yil}_${periyotLabel}.xlsx`
+    const filename = `Yerleske_Adresine_Gore_Personel_Sayisi_${yil}_${label}.xlsx`
+    const encodedFilename = encodeURIComponent(filename)
 
     return new NextResponse(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${fname}"`,
+        'Content-Disposition': `attachment; filename="Yerleske_Personel_Sayisi.xlsx"; filename*=UTF-8''${encodedFilename}`,
       },
     })
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Excel olusturulamadi'
-    return NextResponse.json({ error: msg }, { status: 500 })
+  } catch (err) {
+    console.error('YERLESKE_PERSONEL_SAYI_EXCEL_HATA', err)
+    return NextResponse.json({ error: 'Excel oluşturulamadı.' }, { status: 500 })
   }
 }

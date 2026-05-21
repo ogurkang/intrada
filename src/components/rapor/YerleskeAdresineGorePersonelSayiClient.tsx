@@ -118,9 +118,12 @@ export default function YerleskeAdresineGorePersonelSayiClient({
 
       {aktif && (
         <>
-          <p className="text-xs text-slate-500">
-            Anlık görüntü tarihi: <strong className="text-slate-700">{aktif.sonGunuEtiket}</strong>
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-slate-500">
+              Anlık görüntü tarihi: <strong className="text-slate-700">{aktif.sonGunuEtiket}</strong>
+            </p>
+            <p className="text-xs font-semibold text-slate-700">ADABEL&apos;de çalışanlar hariç</p>
+          </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
