@@ -84,6 +84,9 @@ export function kullaniciPathAllowed(
   const path = (pathname.split('?')[0] || pathname).replace(/\/$/, '') || '/'
   if (path === '/' || path === '') return true
 
+  /** Ana sayfa KPI — git geliştirme listesi (modül izni gerekmez) */
+  if (path === '/mihenk-taslari') return true
+
   // İlk kurulum: modül seçimi olmadan da tamamlanabilmeli (PermissionGate ile çakışmasın)
   if (path === '/hesap/ilk-kurulum' || path.startsWith('/hesap/ilk-kurulum/')) return true
 

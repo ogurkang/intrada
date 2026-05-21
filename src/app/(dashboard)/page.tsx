@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
 import type { GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
+import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
 import { izinDurumDegistir } from './izin/actions'
 import type {
@@ -371,6 +372,7 @@ export default async function DashboardPage() {
         izindekiler={izindekiler}
         izinArtisAdaylari={izinArtisAdaylari}
         gorevHatirlaticilar={gorevHatirlaticilar}
+        mihenkTasiSayisi={getGelistirmelerCount()}
         buYil={buYil}
         canEditIzinHak={access.mode === 'admin'}
         onDurumDegistir={izinDurumDegistir}

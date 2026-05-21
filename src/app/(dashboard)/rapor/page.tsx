@@ -137,6 +137,13 @@ const RAPOR_KARTLARI = [
     renk: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900',
   },
   {
+    kod: 'APL',
+    href: '/rapor/adabel-personel-bilgileri-liste',
+    baslik: 'ADABEL Personel Bilgileri Listesi',
+    aciklama: 'ADABEL personelinin sicil, kimlik, iletişim ve görev bilgileri; yıllık/aylık sekmeler ve Excel.',
+    renk: 'border-amber-200 bg-amber-50 text-amber-900',
+  },
+  {
     kod: 'YIB',
     href: '/rapor/yonetici-iletisim-bilgileri-liste',
     baslik: 'Yönetici İletişim Bilgileri Listesi',

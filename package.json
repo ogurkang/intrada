@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/generate-gelistirmeler.mjs && next dev",
     "dev:3001": "next dev -p 3001",
-    "build": "next build",
+    "gen:gelistirmeler": "node scripts/generate-gelistirmeler.mjs",
+    "build": "node scripts/generate-gelistirmeler.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "bulk-auth-users": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs",

@@ -70,6 +70,7 @@ interface Props {
   izindekiler:         IzindekiPersonel[]
   izinArtisAdaylari:   IzinArtisAdayi[]
   gorevHatirlaticilar: GorevHatirlaticiItem[]
+  mihenkTasiSayisi:    number
   buYil:               number
   canEditIzinHak:      boolean
   onDurumDegistir:     (id: number, yeniDurum: 'Onaylandı' | 'İptal Edildi') => Promise<{ hata?: string }>
@@ -98,13 +99,23 @@ function KpiKart({ baslik, deger, alt, renk, href }: {
   baslik: string; deger: number | string; alt?: string; renk: string; href?: string
 }) {
   const icerik = (
-    <div className={`rounded-xl border p-5 ${renk} transition-shadow hover:shadow-md`}>
+    <div className={`rounded-xl border p-5 h-full ${renk} transition-shadow hover:shadow-md`}>
       <p className="text-xs font-semibold uppercase tracking-widest opacity-70 mb-2">{baslik}</p>
       <p className="text-4xl font-bold leading-none mb-1">{deger}</p>
       {alt && <p className="text-xs opacity-60 mt-1">{alt}</p>}
     </div>
   )
-  return href ? <Link href={href}>{icerik}</Link> : icerik
+  if (!href) return icerik
+  const prefetch = href !== '/mihenk-taslari'
+  return (
+    <Link
+      href={href}
+      prefetch={prefetch}
+      className="block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl"
+    >
+      {icerik}
+    </Link>
+  )
 }
 
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
@@ -113,6 +124,7 @@ export default function DashboardClient({
   aktifPersonelSayisi, kadroDoluluk, izinIstatistik,
   bekleyenIzinler, yaklaşanTatiller, izindekiler, izinArtisAdaylari,
   gorevHatirlaticilar,
+  mihenkTasiSayisi,
   buYil, canEditIzinHak, onDurumDegistir,
 }: Props) {
   const [isPending, startTransition] = useTransition()
@@ -145,8 +157,8 @@ export default function DashboardClient({
         </p>
       </div>
 
-      {/* KPI Kartları */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* KPI Kartları + Mihenk Taşları */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <KpiKart
           baslik="Aktif Personel"
           deger={aktifPersonelSayisi}
@@ -177,6 +189,13 @@ export default function DashboardClient({
             : 'bg-slate-50 border-slate-200 text-slate-600'
           }
           href="/izin"
+        />
+        <KpiKart
+          baslik="Mihenk Taşları"
+          deger={mihenkTasiSayisi}
+          alt="source kodu geliştirmesi"
+          renk="bg-violet-50 border-violet-200 text-violet-800"
+          href="/mihenk-taslari"
         />
       </div>
 
