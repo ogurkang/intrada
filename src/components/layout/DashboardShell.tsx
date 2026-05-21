@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import PermissionGate from '@/components/auth/PermissionGate'
+import IntradaAsistanWidget from '@/components/asistan/IntradaAsistanWidget'
 import type { AppAccess } from '@/lib/app-access'
 
 interface DashboardShellProps {
@@ -71,6 +72,7 @@ export default function DashboardShell({
           build: {buildMarker ?? 'unknown'}
         </div>
       </div>
+      <IntradaAsistanWidget access={access} />
     </div>
   )
 }

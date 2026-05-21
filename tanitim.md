@@ -1,8 +1,9 @@
-# Intrada — Kurumsal Personel ve Operasyon Yönetim Platformu  
-## Tanıtım Dökümanı (Yönetim Sunumu / Notebook LM Kaynağı)
+# Intrada — Kurumsal Personel ve Operasyon Yönetim Platformu
+## Tanıtım Dökümanı (Yönetim Sunumu / Asistan Bilgi Kaynağı)
 
 **Belge adı:** tanitim  
-**Amaç:** Belediye yönetimine; modüler yapıyı, iş değerini ve teknik omurgayı özetleyen tanıtıcı metin. Video özeti veya Word raporuna doğrudan kaynak olarak kullanılabilir.
+**Sürüm notu:** Menü ve modül listesi uygulama kodu ile uyumlu tutulur (2026).  
+**Amaç:** Belediye yönetimine modüler yapıyı özetlemek; INTRADA Asistan’ın “nasıl kullanılır” sorularına kaynak olmak.
 
 ---
 
@@ -10,139 +11,197 @@
 
 **Intrada**, belediye personeli, izinleri, kadrosu, raporları, kesintileri, eğitimini, yerel bilgi girişlerini ve stratejik planlama süreçlerini **tek çatı altında** toplayan modern bir web uygulamasıdır. Arayüz Türkçe; rol ve müdürlük bazlı erişim ile hem merkezi yönetim hem saha müdürlükleri için güvenli çalışma alanı sunar.
 
-Uygulama; **Next.js** (sunucu ve istemci bileşenleri), **React**, **Supabase** (veri, kimlik doğrulama, satır düzeyi güvenlik) ve **Vercel** dağıtım pratikleri üzerinde geliştirilmiştir. Raporlar ve puantajlar için **Excel uyumlu çıktılar** standartlaştırılmıştır.
+**Teknik omurga:** Next.js, React, Supabase (veri + kimlik), Vercel dağıtımı. Raporlar ve puantajlar için Excel uyumlu çıktılar standarttır.
+
+**Ana adres (örnek):** `intrada.adapazari.bel.tr` — kurum içi giriş sonrası kullanılır.
 
 ---
 
-### 2. Teknik omurga (güven ve sürdürülebilirlik)
+### 2. Giriş ve roller
 
-| Alan | Açıklama |
-|------|----------|
-| **Mimari** | Sayfa bazlı modüller; sunucu tarafında veri çekimi ve iş kuralları; istemcide hızlı etkileşim. |
-| **Veri** | İlişkisel model; migration ile sürümlenen şema; tutarlı rapor ve puantaj mantığı. |
-| **Güvenlik** | Oturum ve profil tabanlı erişim; yönetici / kullanıcı modları; müdürlük kapsamı ile veri sızıntısı riskinin azaltılması. |
-| **Raporlama** | Birçok raporda ortak Excel biçimi; yazdırma ve paylaşım için uygun çıktılar. |
+| Rol | Özet |
+|-----|------|
+| **Yönetici / admin** | Tüm modüller (yetkilendirme tanımına göre); personel ve izin verisi sorgulama. |
+| **Kullanıcı** | `app_profiles.menu_izinleri` ile açık modüller; çoğunlukla kendi personel kartı ve sınırlı işlemler. |
+| **İlk kurulum** | `/hesap/ilk-kurulum` — menü izinleri seçimi. |
 
-Bu yapı, hem **mevzuata uygun kayıt tutma** hem de **üst yönetime anlık görünürlük** sağlamayı hedefler.
+Sol menüde **arama kutusu** tüm başlıkları filtreler; rapor sayfalarında placeholder “Rapor ara…” olur.
 
 ---
 
-### 3. Modül modül tanıtım
-
-Aşağıdaki bölümler menü yapısıyla uyumludur; her modül, belediye operasyonunda somut iş yükünü azaltacak şekilde konumlandırılmıştır.
+### 3. Modül rehberi (menü ile uyumlu)
 
 #### 3.1 Personel Yönetimi
 
-- **Çalışanlar:** Aktif personel kartlarının listelenmesi; arama ve sayfalama; detay sayfasına güvenli geçiş (sicil veya kamuya uygun link segmenti).
-- **Ayrılanlar:** Geçmiş personelin ayrılmış kayıtlarının izlenebilmesi; hukuki ve arşiv ihtiyacına uygun ayrım.
-- **ADABEL Personeli:** Sözleşmeli / firma personelinin ayrı yaşam döngüsü; kadro memurlarıyla karışmadan yönetim.
-- **Kadro Hareketleri:** Dolu / boş / vekil durumları; görev ve kadro müdürlükleri; **iptal kararı** alanları ile hukuki netlik; Excel ve listelerle uyumlu veri modeli.
-- **Personel Hareketleri:** İşe giriş–çıkış ve görev değişimlerinin izi; rapor ve izin modülleriyle tutarlılık.
-- **Terfi Hareketleri:** Kariyer ve terfi süreçlerinin kayıt altına alınması; katsayı ve özlük verileriyle ilişkilendirme potansiyeli.
+| Menü | Yol | Ne işe yarar |
+|------|-----|----------------|
+| Çalışanlar | `/personel` | Aktif personel listesi, detay kartı, arama. |
+| Yerleşke Güncelle (Geçici) | `/personel/yerleske-guncelle` | Kadro personeline toplu yerleşke ataması. |
+| Ayrılanlar | `/personel/ayrilanlar` | Ayrılmış personel arşivi. |
+| ADABEL Personeli | `/firma-calisanlar` | Sözleşmeli/firma personeli; sıralanabilir liste. |
+| Personel Hareketleri | `/personel-hareketleri` | İşe giriş–çıkış ve görev değişim izi. |
+| Terfi Hareketleri | Opak URL (ör. `/…`) | Terfi kayıtları; menüde gizli segment. |
+| Kadro Hareketleri | `/kadro` | Dolu / boş / vekil kadro; iptal kararı alanları. |
 
-**Öne çıkan değer:** Personel, kadro ve hareket verilerinin tek merkezde toplanması; yöneticinin “kim nerede, ne statüde” sorusuna anında yanıt vermesi.
+**Konum / yerleşke:** Personel detayında görev konumu (İç/Dış), müdürlük–yerleşke ve şirket–yerleşke tanımlarından türetilir. Tanımlar: **Yerleşke Adresleri**, **Müdürlük**, **Şirket**.
 
 ---
 
-#### 3.2 Rapor Yönetimi
+#### 3.2 Rapor Yönetimi (`/rapor` genel bakış)
 
-İstatistikten listeye geniş bir yelpaze: **statüye göre cinsiyet, sayı, yaş, hizmet, öğrenim, meslek**; **konuma göre cinsiyet**; **meslek sahibi listesi**; **görev yerine / müdürlüğe göre personel**; **tehlike sınıfı** raporları; **kan grubu**; **doğum günü**; **belediye geneli personel listesi**; **yönetici iletişim ve öğrenim listeleri**; **adrese göre personel** vb.
+Çoğu raporda **yıl** ve **YILLIK / ay sekmeleri**; **Excel indir** vardır.
 
-Bazı listelerde **kayıt sırasının özelleştirilmesi**, **Excel indirme** ve **dönem (yıl / ay)** seçimi gibi özellikler, hem İK hem üst yönetim sunumları için güçlü araçlar sunar.
-
-**Öne çıkan değer:** Karar destek; meclis ve encümen hazırlığında tekrarlanan Excel üretiminin otomasyonu ve biçim standardı.
+| Rapor | Yol |
+|-------|-----|
+| Genel Bakış | `/rapor` |
+| İzin Hareketleri | `/rapor/izin-hareketleri` |
+| İşçi İzinleri | `/rapor/isci-izinleri` |
+| Statüye Göre Cinsiyet / Sayı / Yaş / Hizmet | `/rapor/statuye-gore-*` |
+| Konuma Göre Cinsiyet | `/rapor/konuma-gore-cinsiyet` |
+| Yerleşke Adresine Göre Personel Sayısı | `/rapor/yerleske-adresine-gore-personel-sayi` |
+| Statüye Göre Öğrenim / Meslek | `/rapor/statuye-gore-ogrenim`, `statuye-gore-meslek` |
+| Meslek Sahibi Liste | `/rapor/meslek-sahibi-liste` |
+| Görev Yerine / Müdürlüğe Göre Liste | `/rapor/gorev-yerine-gore-liste`, `mudurluge-gore-personel-liste` |
+| Tehlike sınıfı raporları | `/rapor/tehlike-*` |
+| Kan grubu / Doğum günü | `/rapor/kan-grubuna-gore-personel-liste`, `dogum-gunune-gore-personel-liste` |
+| Belediye Geneli Personel | `/rapor/belediye-geneli-personel-liste` |
+| ADABEL Personel Bilgileri | `/rapor/adabel-personel-bilgileri-liste` |
+| Yönetici iletişim / öğrenim | `/rapor/yonetici-*` |
+| Öğrenim / adres / izin limiti listeleri | `/rapor/ogrenim-durumuna-gore-personel-liste`, `adrese-gore-personel-liste`, `izin-limitine-takilan-personel-liste` |
+| Belirli günde izinli personel | `/rapor/belirli-gunde-izinli-personel` |
+| Maaş öncesi izinli müdürler | `/rapor/maas-oncesi-izinli-mudurler` |
+| Görev türüne göre çalışan | `/rapor/gorev-turune-gore-calisan` |
+| Personele göre kullanılan izin | `/rapor/personele-gore-kullanilan-izin-listesi` |
 
 ---
 
 #### 3.3 İzin Yönetimi
 
-- **İzin hareketleri:** Talep, onay ve kullanım izinin tek ekrandan izlenmesi.
-- **İzin hakları:** Dönem ve personel bazlı hak takibi; haksız kullanımın önlenmesine katkı.
+| Menü | Yol | Açıklama |
+|------|-----|----------|
+| İzin Hareketleri | `/izin` | Talep listesi, onay/iptal, yeni kayıt. |
+| Yeni izin | `/izin/yeni` | Sıra no ile yeni izin formu (ör. `2026/001`). |
+| İzin Hakları | `/izin/haklar` | Yıllık hak, devreden, kullanılan, **kalan gün** (`izin_haklari`). |
+| Geçmiş İzinler | `/izin/gecmis-izinler` | Arşiv izin hareketleri. |
 
-**Öne çıkan değer:** İzin süreçlerinin şeffaflığı ve denetlenebilirliği.
+**İzin hakkı alanları (personel başına, yıl):** `devreden_gun`, `hak_edilen_gun`, `kullanilan_gun`, `kalan_gun`. Onaylı izinler kullanılan günü günceller.
 
----
-
-#### 3.4 Bildirim Yönetimi (Etik beyan süreçleri)
-
-- **Öğrenim, aile, mal** bildirimleri: Yasal yükümlülüklerin dijital ortamda toplanması ve güncellenmesi.
-
-**Öne çıkan değer:** Kağıt ve e-posta karmaşasının azalması; denetim ve arşiv için tek kaynak.
+**Tipik sorular:** “X kişinin kaç gün izni var?” → İzin Hakları ekranı veya personel kartı → İzin sekmesi; asistan yönetici için veritabanından okuyabilir.
 
 ---
 
-#### 3.5 Kesintiler Yönetimi
+#### 3.4 Bildirim Yönetimi
 
-- **Yevmiye puantajı**, **arazi puantajı**, **AYY**, **raporlu memurlar**, **izinli vekiller**, **izinli zabıtalar**, **toplam raporlu zabıtalar** gibi alt modüller; dönem bazlı çalışma ve **Excel çıktıları** ile muhasebe ve insan kaynakları iş birliğini destekler.
+- `/bildirim` — Genel bakış  
+- `/bildirim/ogrenim`, `/bildirim/aile`, `/bildirim/mal` — Etik beyan formları  
 
-**Öne çıkan değer:** Puantaj ve kesinti hesaplarının ekran ile Excel arasında **uyumlu** tutulması (tartışmasız veri).
-
----
-
-#### 3.6 Eğitim Yönetimi
-
-- **Eğitim takvimi** ve **istatistik**; planlama ve geri bildirim için görünürlük.
-
-**Öne çıkan değer:** İSG ve mesleki gelişim yükümlülüklerinin izlenebilir hale gelmesi.
+(Kullanıcı rolünde yalnızca aile/mal açık olabilir.)
 
 ---
 
-#### 3.7 Yerel Bilgi Yönetimi
+#### 3.5 İletişim Yönetimi
 
-**İşlemler:** Belediye kimlik formu, araç bilgileri, bütçe tahminleri ve gerçekleşmeleri girişleri.  
-**Raporlar:** Yaş dağılımı, araç, bütçe ve kimlik formu raporları.  
-**Tanımlar:** Araç sahiplik / durum / tür hiyerarşisi; bütçe gelir–gider kalemleri.
-
-**Öne çıkan değer:** Yerel yönetim raporlama ve şeffaflık ihtiyacına doğrudan cevap veren modüler yapı.
+- `/iletisim-yonetimi/sms-islemleri`  
+- `/iletisim-yonetimi/e-posta-islemleri`  
+- `/iletisim-yonetimi/tanimlar`  
 
 ---
 
-#### 3.8 Stratejik Yönetim
+#### 3.6 Kesintiler Yönetimi
 
-- **Stratejik plan:** Dönem, amaç, hedef ve faaliyet hiyerarşisi; işlemler, raporlar ve tanımlar ayrımı.
-- **Performans programı:** Yıllık dönemler; program → alt program → faaliyet yapısı; **stratejik plandan amaç bağlama**; **veri girişi** ve **bütçe kodu** yönetimi (içe aktarma ve tanımlar) ile performans takibinin operasyonel hale getirilmesi.
-- **Faaliyet raporu:** Planlama döngüsünün tamamlayıcı ayağı.
+| Alt modül | Yol |
+|-----------|-----|
+| Genel Bakış | `/kesintiler` |
+| Yevmiye Puantajı | `/kesintiler/yevmiye` |
+| Arazi Puantajı | `/kesintiler/arazi` |
+| Aylık Yemek (AYY) | `/kesintiler/ayy` |
+| Sosyal Hak Kesintileri | `/kesintiler/sosyal-hak` |
+| Raporlu Memurlar | `/kesintiler/rmy` |
+| İzinli Vekiller | `/kesintiler/ivy` |
+| İzinli Zabıtalar | `/kesintiler/izy` |
+| Toplam Raporlu Zabıtalar | `/kesintiler/toplam-raporlu` |
 
-**Öne çıkan değer:** Stratejik plan ile performans ve bütçe dilinin aynı platformda buluşması; üst yönetim ve müdürlükler arası ortak dil.
-
----
-
-#### 3.9 Tanımlar Yönetimi
-
-Öğrenim, kazanç bilgisi, unvan, müdürlük, statü, hareket ve izin türleri, tatiller, **tatil tür tanımları** (yasal metinle uyumlu açıklama), yıllık izin kuralları, gösterge tanımları gibi **tüm sistemin sözlüğü** burada toplanır.
-
-**Öne çıkan değer:** Kod değiştirmeden iş kuralı güncellemesi; belediye özelinde esneklik.
-
----
-
-#### 3.10 Yetkilendirme Yönetimi
-
-Profil ve menü erişimlerinin yönetimi; “kim ne görebilir” sorusunun merkezi cevabı.
-
-**Öne çıkan değer:** KVKK ve iç denetim açısından minimum yetki ilkesinin uygulanabilmesi.
+Dönem bazlı çalışma; Excel çıktıları.
 
 ---
 
-#### 3.11 Pano (Dashboard) ve genel kullanılabilirlik
+#### 3.7 Eğitim Yönetimi
 
-Özet widget’lar (ör. görev hatırlatıcıları, bekleyen izin talepleri vb.) ile yöneticinin **ilk girişte** odaklanacağı işler öne çıkar.
-
-**Öne çıkan değer:** Operasyonel triyaj; ekran başına harcanan sürenin kısalması.
-
----
-
-### 4. Kullanıcı deneyimi ve sunum notları
-
-- Arayüz **Türkçe** ve belediye terminolojisine yakın etiketlerle kurgulanmıştır.
-- **Responsive** düşünülmüş ekranlar; toplantı öncesi tabletten özet alınabilir.
-- Rapor ve listelerde **Excel** çıktısı, paylaşım ve arşiv kültürüyle uyumludur.
+- `/egitim` — Eğitim takvimi  
+- `/egitim/istatistik` — İstatistik  
 
 ---
 
-### 5. Kapanış — yönetim mesajı
+#### 3.8 Yerel Bilgi Yönetimi
 
-Intrada; personelden stratejik plana, izinden kesintiye kadar belediye **dijital dönüşüm** yolculuğunda modüler ve büyümeye açık bir platformdur. Her modül, kendi alanında **şeffaflık**, **hız** ve **denetlenebilirlik** hedefiyle öne çıkar. Bu döküman, Notebook LM veya video özeti üretiminde **bölüm başlıkları** olarak bölünerek kullanılabilir; her modül için ayrı “seslendirme metni” genişletilebilir.
+**İşlemler:** kimlik formu, araç, bütçe tahmin/gerçekleşme girişleri (`/yerel-bilgi/islemler/...`).  
+**Raporlar:** yaş, araç, bütçe, kimlik formu (`/yerel-bilgi/raporlar/...`).  
+**Tanımlar:** araç ve bütçe sözlükleri (`/yerel-bilgi/tanimlar/...`).
 
 ---
 
-*Bu metin proje deposundaki `tanitim.md` dosyasıdır. Word’e aktarmak için tüm içeriği kopyalayıp yapıştırmanız veya Word’de “Markdown’dan veya düz metinden biçimlendir” seçeneklerini kullanmanız yeterlidir.*
+#### 3.9 Stratejik Yönetim
+
+Her alt modülde **İşlemler / Raporlar / Tanımlar:**
+
+- Stratejik Plan — `/stratejik-yonetim/stratejik-plan`  
+- Performans Programı — `/stratejik-yonetim/performans-programi` (bütçe kodu, veri girişi)  
+- Faaliyet Raporu — `/stratejik-yonetim/faaliyet-raporu`  
+
+---
+
+#### 3.10 Tanımlar Yönetimi (`/tanimlar/...`)
+
+Öğrenim, kazanç bilgisi, unvan, **müdürlük** (çoklu yerleşke), **yerleşke adresleri** (İç/Dış konum), statü, hareket tanımları, izin türleri, izin tanımları, tatiller, tatil tür tanımları, yıllık izin kuralları, gösterge tanımları, **şirket** (şirket–yerleşke bağlantısı).
+
+---
+
+#### 3.11 Yetkilendirme Yönetimi
+
+- `/yetkilendirme` — Profiller, menü modül izinleri (`personel`, `rapor`, `izin`, …).
+
+---
+
+#### 3.12 Pano (Dashboard) — `/`
+
+Üst KPI kartları:
+
+1. Aktif Personel → `/personel`  
+2. Kadro Doluluk → `/kadro`  
+3. Yıl İzin Hareketleri → `/izin`  
+4. Bekleyen Talepler (Taslak izin) → `/izin`  
+5. **Mihenk Taşları** → `/mihenk-taslari` (sürüm / geliştirme kayıtları, git commit listesi)
+
+Alt bölümler: kadro doluluk çubuğu, izin dağılımı, bekleyen izin onayları, yaklaşan tatiller, yıllık izni artacaklar, görev bitiş hatırlatıcıları.
+
+**INTRADA Asistan:** Sağ alttaki sohbet balonu — modül kullanımı ve (yetkili kullanıcı için) personel izin hakkı gibi kısa veri soruları.
+
+---
+
+### 4. Sık sorulan kullanım soruları (asistan için)
+
+- **Yeni izin nasıl açılır?** Sol menü → İzin Yönetimi → İzin Hareketleri → yeni kayıt veya `/izin/yeni`.  
+- **İzin hakkı nerede düzenlenir?** `/izin/haklar` veya personel detay → İzin sekmesi.  
+- **Excel rapor nasıl indirilir?** İlgili rapor sayfasında yeşil **Excel İndir** (aktif sekme/yıl).  
+- **ADABEL personel nerede?** `/firma-calisanlar` ve rapor `/rapor/adabel-personel-bilgileri-liste`.  
+- **Yerleşke tanımı?** Tanımlar → Yerleşke Adresleri; müdürlük/şirket ekranlarından bağlanır.  
+- **Bekleyen izin onayı?** Ana sayfa “Bekleyen İzin Talepleri” veya `/izin` (Taslak durum).  
+- **Personel izin sorgusu (asistan):** Tam ad şart değil; örn. “Gürkan kaç gün izni var”. Birden fazla eşleşmede numaralı listeden seçim yapılır.  
+
+---
+
+### 5. Veri gizliliği (asistan)
+
+- Personel izin hakkı ve kimlik bilgisi yalnızca **yetkili oturum** ile sorgulanır.  
+- Kullanıcı rolü başka personelin iznini göremez; kendi sicili veya genel yardım metni.  
+- Asistan hukuki karar vermez; resmi işlem için ilgili ekrana yönlendirir.
+
+---
+
+### 6. Kapanış
+
+Intrada; personelden stratejik plana, izinden kesintiye kadar modüler bir platformdur. Bu döküman güncel menü yollarıyla uyumludur; yeni rapor veya modül eklendiğinde `tanitim.md` ve sol menü birlikte güncellenmelidir.
+
+---
+
+*Proje kökündeki `tanitim.md` — Word / Notebook LM / INTRADA Asistan bilgi kaynağı.*
