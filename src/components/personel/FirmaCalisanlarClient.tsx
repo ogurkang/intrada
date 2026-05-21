@@ -29,13 +29,77 @@ function tarihSiralaDegeri(t: string | null): number {
   return Number.isFinite(ts) ? ts : Number.NaN
 }
 
+type SortSutun = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'tarih' | 'durum'
+type SortYon = 'asc' | 'desc'
+
+/** Rakam ve metin parçalarına bölerek doğal sıralama yapar (1 < 2 < 10 < 20). */
+function naturalCompare(a: string, b: string): number {
+  const re = /(\d+)|(\D+)/g
+  const ap = a.match(re) ?? []
+  const bp = b.match(re) ?? []
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    const x = ap[i] ?? ''
+    const y = bp[i] ?? ''
+    if (x === y) continue
+    const nx = parseInt(x, 10)
+    const ny = parseInt(y, 10)
+    if (!isNaN(nx) && !isNaN(ny)) return nx - ny
+    return x.localeCompare(y, 'tr')
+  }
+  return 0
+}
+
+function firmaCalisanSirala(
+  liste: FC[],
+  sutun: SortSutun,
+  yon: SortYon,
+  sekme: 'calisanlar' | 'ayrilanlar',
+): FC[] {
+  return [...liste].sort((a, b) => {
+    let fark = 0
+    if (sutun === 'tarih') {
+      const ta = tarihSiralaDegeri(sekme === 'ayrilanlar' ? a.ayrilis_tarihi : a.kuruma_giris_tarihi)
+      const tb = tarihSiralaDegeri(sekme === 'ayrilanlar' ? b.ayrilis_tarihi : b.kuruma_giris_tarihi)
+      const aGecerli = Number.isFinite(ta)
+      const bGecerli = Number.isFinite(tb)
+      if (aGecerli && bGecerli) fark = ta - tb
+      else if (aGecerli !== bGecerli) fark = aGecerli ? -1 : 1
+    } else if (sutun === 'durum') {
+      const da = isFirmaCalisanAktif(a.ayrilis_tarihi) ? '0' : '1'
+      const db = isFirmaCalisanAktif(b.ayrilis_tarihi) ? '0' : '1'
+      fark = da.localeCompare(db, 'tr')
+    } else if (sutun === 'mudurluk') {
+      const ma = `${a.gorev_mudurlugu ?? ''} ${a.gorevi ?? ''}`.trim()
+      const mb = `${b.gorev_mudurlugu ?? ''} ${b.gorevi ?? ''}`.trim()
+      fark = naturalCompare(ma, mb)
+    } else {
+      fark = naturalCompare(String(a[sutun] ?? ''), String(b[sutun] ?? ''))
+    }
+    return yon === 'asc' ? fark : -fark
+  })
+}
+
+function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
+  if (!aktif) {
+    return (
+      <span className="ml-1 text-slate-300">
+        <svg className="inline w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      </span>
+    )
+  }
+  return yon === 'asc' ? <span className="ml-1 text-blue-500">↑</span> : <span className="ml-1 text-blue-500">↓</span>
+}
+
 const SAYFA_BOYUTU = 10
 
 export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, onGuncelle, onSil }: Props) {
   const router = useRouter()
   const [arama, setArama]             = useState('')
   const [sekme, setSekme]             = useState<'calisanlar' | 'ayrilanlar'>('calisanlar')
-  const [ayrilanSiralama, setAyrilanSiralama] = useState<'asc' | 'desc'>('desc')
+  const [sortSutun, setSortSutun]     = useState<SortSutun>('sicil_no')
+  const [sortYon, setSortYon]         = useState<SortYon>('desc')
   const [mudFiltre, setMud]           = useState('')
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<FC | null>(null)
@@ -43,29 +107,14 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
   const [isPending, startTransition]  = useTransition()
   const [sayfa, setSayfa]             = useState(0)
 
-  const calisanlarList = useMemo(() =>
-    kayitlar.filter(k => isFirmaCalisanAktif(k.ayrilis_tarihi)).sort((a, b) => {
-      const na = parseInt(a.sicil_no ?? '0', 10) || 0
-      const nb = parseInt(b.sicil_no ?? '0', 10) || 0
-      return nb - na
-    }),
-  [kayitlar])
-  const ayrilanlarList = useMemo(() =>
-    kayitlar.filter(k => !isFirmaCalisanAktif(k.ayrilis_tarihi)).sort((a, b) => {
-      const ta = tarihSiralaDegeri(a.ayrilis_tarihi)
-      const tb = tarihSiralaDegeri(b.ayrilis_tarihi)
-      const aGecerli = Number.isFinite(ta)
-      const bGecerli = Number.isFinite(tb)
-      if (aGecerli && bGecerli && ta !== tb) {
-        return ayrilanSiralama === 'asc' ? ta - tb : tb - ta
-      }
-      if (aGecerli !== bGecerli) return aGecerli ? -1 : 1
-
-      const na = parseInt(a.sicil_no ?? '0', 10) || 0
-      const nb = parseInt(b.sicil_no ?? '0', 10) || 0
-      return nb - na
-    }),
-  [kayitlar, ayrilanSiralama])
+  const calisanlarList = useMemo(
+    () => kayitlar.filter(k => isFirmaCalisanAktif(k.ayrilis_tarihi)),
+    [kayitlar],
+  )
+  const ayrilanlarList = useMemo(
+    () => kayitlar.filter(k => !isFirmaCalisanAktif(k.ayrilis_tarihi)),
+    [kayitlar],
+  )
 
   const liste = sekme === 'calisanlar' ? calisanlarList : ayrilanlarList
 
@@ -82,9 +131,54 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
     })
   }, [liste, arama, mudFiltre])
 
-  useEffect(() => setSayfa(0), [sekme, arama, mudFiltre])
-  const toplamSayfa = Math.max(1, Math.ceil(filtreli.length / SAYFA_BOYUTU))
-  const sayfadaki = filtreli.slice(sayfa * SAYFA_BOYUTU, (sayfa + 1) * SAYFA_BOYUTU)
+  const siraliFiltreli = useMemo(
+    () => firmaCalisanSirala(filtreli, sortSutun, sortYon, sekme),
+    [filtreli, sortSutun, sortYon, sekme],
+  )
+
+  useEffect(() => {
+    setSortSutun(sekme === 'ayrilanlar' ? 'tarih' : 'sicil_no')
+    setSortYon('desc')
+  }, [sekme])
+
+  useEffect(() => setSayfa(0), [sekme, arama, mudFiltre, sortSutun, sortYon])
+
+  const toplamSayfa = Math.max(1, Math.ceil(siraliFiltreli.length / SAYFA_BOYUTU))
+  const sayfadaki = siraliFiltreli.slice(sayfa * SAYFA_BOYUTU, (sayfa + 1) * SAYFA_BOYUTU)
+
+  function handleSutunTikla(sutun: SortSutun) {
+    if (sortSutun === sutun) {
+      setSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortSutun(sutun)
+      setSortYon('asc')
+    }
+  }
+
+  function ThSutun({
+    sutun,
+    label,
+    orta,
+    sag,
+  }: {
+    sutun: SortSutun
+    label: string
+    orta?: boolean
+    sag?: boolean
+  }) {
+    const aktif = sortSutun === sutun
+    return (
+      <th
+        className={`px-4 py-3 font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 transition-colors ${
+          orta ? 'text-center' : sag ? 'text-right' : 'text-left'
+        } ${aktif ? 'text-blue-600 bg-blue-50' : ''}`}
+        onClick={() => handleSutunTikla(sutun)}
+      >
+        {label}
+        <SortIkon aktif={aktif} yon={sortYon} />
+      </th>
+    )
+  }
 
   function duzenleAc(k: FC) { setSecili(k); setHata(null); setFormAcik(true) }
   function kapat()       { setFormAcik(false); setSecili(null); setHata(null) }
@@ -172,17 +266,6 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
             {s === 'calisanlar' ? 'Çalışanlar' : 'Ayrılanlar'}
           </button>
         ))}
-        {sekme === 'ayrilanlar' && (
-          <select
-            value={ayrilanSiralama}
-            onChange={e => setAyrilanSiralama(e.target.value as 'asc' | 'desc')}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-            title="Ayrılanları ayrılış tarihine göre sırala"
-          >
-            <option value="desc">Ayrılış: Yeni → Eski</option>
-            <option value="asc">Ayrılış: Eski → Yeni</option>
-          </select>
-        )}
         <select value={mudFiltre} onChange={e => setMud(e.target.value)}
           className="ml-auto px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
           <option value="">Tüm Müdürlükler</option>
@@ -195,13 +278,15 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Müdürlük / Görevi</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">
-                {sekme === 'ayrilanlar' ? 'Ayrılış Tarihi' : 'Giriş Tarihi'}
-              </th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
+              <ThSutun sutun="sicil_no" label="Sicil No" />
+              <ThSutun sutun="ad_soyad" label="Ad Soyad" />
+              <ThSutun sutun="mudurluk" label="Müdürlük / Görevi" />
+              <ThSutun
+                sutun="tarih"
+                label={sekme === 'ayrilanlar' ? 'Ayrılış Tarihi' : 'Giriş Tarihi'}
+                orta
+              />
+              <ThSutun sutun="durum" label="Durum" orta />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -238,10 +323,10 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
             ))}
           </tbody>
         </table>
-        {filtreli.length > 0 && (
+        {siraliFiltreli.length > 0 && (
           <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400">
-              Toplam {filtreli.length} kayıt · Sayfa {sayfa + 1}/{toplamSayfa}
+              Toplam {siraliFiltreli.length} kayıt · Sayfa {sayfa + 1}/{toplamSayfa}
             </span>
             <div className="flex items-center gap-1">
               <button onClick={() => setSayfa(0)} disabled={sayfa === 0}

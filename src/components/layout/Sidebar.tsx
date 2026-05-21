@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
+import { trNormalize } from '@/lib/turkce-search'
 
 type MenuItem = {
   href: string
@@ -30,6 +31,31 @@ function itemPathActive(pathname: string, item: MenuItem): boolean {
 function itemOrSubtreeActive(pathname: string, item: MenuItem): boolean {
   if (item.children?.length && item.children.some(c => childPathActive(pathname, c.href))) return true
   return pathname === item.href || pathname.startsWith(item.href + '/')
+}
+
+function filterMenuItem(item: MenuItem, q: string): MenuItem | null {
+  const trimmed = q.trim()
+  if (!trimmed) return item
+  const nq = trNormalize(trimmed)
+  if (item.children?.length) {
+    const parentMatch = trNormalize(item.label).includes(nq)
+    if (parentMatch) return item
+    const children = item.children.filter(ch => trNormalize(ch.label).includes(nq))
+    if (children.length) return { ...item, children }
+    return null
+  }
+  return trNormalize(item.label).includes(nq) ? item : null
+}
+
+function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
+  const trimmed = q.trim()
+  if (!trimmed) return grup
+  const nq = trNormalize(trimmed)
+  if (trNormalize(grup.grup).includes(nq)) return grup
+  const items = grup.items
+    .map(i => filterMenuItem(i, trimmed))
+    .filter((i): i is MenuItem => i != null)
+  return items.length ? { ...grup, items } : null
 }
 
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
@@ -321,8 +347,18 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     }
     return ilk
   })
+  const [menuAramaQuery, setMenuAramaQuery] = useState('')
 
-  const grupList = filteredGroups
+  const menuArama = menuAramaQuery.trim()
+  const aramaAktif = menuArama.length > 0
+  const raporModulunde = pathname === '/rapor' || pathname.startsWith('/rapor/')
+
+  const aramaliGrupList = useMemo(() => {
+    if (!aramaAktif) return filteredGroups
+    return filteredGroups
+      .map(g => filterMenuGroup(g, menuArama))
+      .filter((g): g is MenuGroup => g != null)
+  }, [filteredGroups, menuArama, aramaAktif])
 
   function toggle(grup: string) {
     setAciklar(prev => ({ ...prev, [grup]: !prev[grup] }))
@@ -347,6 +383,34 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
     })
   }, [pathname, menuGroups])
 
+  useEffect(() => {
+    if (!aramaAktif) return
+    setAciklar(prev => {
+      let degisti = false
+      const next = { ...prev }
+      for (const g of aramaliGrupList) {
+        if (g.accordion && !next[g.grup]) {
+          next[g.grup] = true
+          degisti = true
+        }
+      }
+      return degisti ? next : prev
+    })
+    setAltAciklar(prev => {
+      let degisti = false
+      const next = { ...prev }
+      for (const g of aramaliGrupList) {
+        for (const i of g.items) {
+          if (i.children?.length && !next[i.href]) {
+            next[i.href] = true
+            degisti = true
+          }
+        }
+      }
+      return degisti ? next : prev
+    })
+  }, [aramaAktif, menuArama, aramaliGrupList])
+
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* Logo */}
@@ -358,13 +422,60 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
         <span className="block text-xs text-slate-400 mt-0.5 text-center">v4 · Personel Yönetimi</span>
       </div>
 
+      <div className="px-4 py-3 border-b border-slate-700">
+        <label htmlFor="sidebar-menu-arama" className="sr-only">
+          Menüde ara
+        </label>
+        <div className="relative">
+          <svg
+            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+          </svg>
+          <input
+            id="sidebar-menu-arama"
+            type="search"
+            value={menuAramaQuery}
+            onChange={e => setMenuAramaQuery(e.target.value)}
+            placeholder={raporModulunde ? 'Rapor ara…' : 'Menüde ara…'}
+            className="w-full rounded-md border border-slate-600 bg-slate-800 py-2 pl-9 pr-8 text-sm text-slate-100 placeholder:text-slate-500 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {menuAramaQuery.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMenuAramaQuery('')}
+              aria-label="Aramayı temizle"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {aramaAktif && (
+          <p className="mt-1.5 text-[10px] text-slate-500">
+            {aramaliGrupList.length === 0
+              ? 'Eşleşen menü bulunamadı'
+              : `${aramaliGrupList.reduce((n, g) => n + g.items.length, 0)} sonuç`}
+          </p>
+        )}
+      </div>
+
       {/* Navigasyon */}
       <nav className="flex-1 overflow-y-auto py-4">
-        {grupList.map((grup) => {
+        {aramaliGrupList.map((grup) => {
           const grupAktif = grup.items.some((item) => itemOrSubtreeActive(pathname, item))
 
           if (grup.accordion) {
-            const acik = !!aciklar[grup.grup]
+            const acik = aramaAktif || !!aciklar[grup.grup]
 
             return (
               <div key={grup.grup} className="mb-2">
