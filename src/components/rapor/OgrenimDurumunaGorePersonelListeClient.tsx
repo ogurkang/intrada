@@ -72,7 +72,8 @@ export default function OgrenimDurumunaGorePersonelListeClient({
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Öğrenim Durumuna Göre Personel Listesi</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Lisans + lisansüstü/doktora kaydı olan personelde kimlik sütunları satır birleştirme ile tek blok gösterilir.
+            Önlisans ve üzeri birden fazla öğrenim kaydı olan personelde (ör. önlisans + lisans, lisans + yüksek lisans)
+            kimlik sütunları satır birleştirme ile tek blok; tüm öğrenim satırları ayrı gösterilir.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 justify-end">

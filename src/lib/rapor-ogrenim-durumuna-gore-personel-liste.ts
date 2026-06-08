@@ -1,4 +1,5 @@
 import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
+import { ogrenimTuruSiraIndex } from '@/lib/ogrenim-sira'
 import {
   etiketAnahtari,
   kadroBaslangic,
@@ -56,21 +57,12 @@ function txt(v: string | null | undefined): string {
   return String(v ?? '').trim()
 }
 
-function normalizeOgrenim(v: string | null | undefined): string {
-  return txt(v).toLocaleLowerCase('tr-TR')
-}
+const ONLISANS_SIRA = ogrenimTuruSiraIndex('Önlisans')
+const DOKTORA_SIRA = ogrenimTuruSiraIndex('Doktora')
 
-function isLisans(v: string | null | undefined): boolean {
-  return normalizeOgrenim(v) === 'lisans'
-}
-
-function isLisansUstu(v: string | null | undefined): boolean {
-  const n = normalizeOgrenim(v)
-  return n === 'lisansüstü' || n === 'lisansustu' || n === 'yüksek lisans' || n === 'yuksek lisans'
-}
-
-function isDoktora(v: string | null | undefined): boolean {
-  return normalizeOgrenim(v) === 'doktora'
+function isOnlisansVeUstu(v: string | null | undefined): boolean {
+  const sira = ogrenimTuruSiraIndex(v)
+  return sira >= ONLISANS_SIRA && sira <= DOKTORA_SIRA
 }
 
 function okulBolum(o: CalisanOgrenimSatir): string {
@@ -82,17 +74,11 @@ function okulBolum(o: CalisanOgrenimSatir): string {
   return '—'
 }
 
-function sortOgrenimRows(rows: CalisanOgrenimSatir[]): CalisanOgrenimSatir[] {
-  const rank = (v: string | null | undefined): number => {
-    if (isLisans(v)) return 1
-    if (isLisansUstu(v)) return 2
-    if (isDoktora(v)) return 3
-    return 9
-  }
+function sortOnlisansVeUstu(rows: CalisanOgrenimSatir[]): CalisanOgrenimSatir[] {
   return [...rows].sort((a, b) => {
-    const ra = rank(a.ogrenim_turu)
-    const rb = rank(b.ogrenim_turu)
-    if (ra !== rb) return ra - rb
+    const sa = ogrenimTuruSiraIndex(a.ogrenim_turu)
+    const sb = ogrenimTuruSiraIndex(b.ogrenim_turu)
+    if (sa !== sb) return sa - sb
     if ((a.varsayilan ?? false) !== (b.varsayilan ?? false)) return (a.varsayilan ? -1 : 1)
     if ((a.aktif ?? false) !== (b.aktif ?? false)) return (a.aktif ? -1 : 1)
     return txt(a.ogrenim_turu).localeCompare(txt(b.ogrenim_turu), 'tr')
@@ -139,22 +125,18 @@ export function ogrenimDurumunaGorePersonelListeSnapshot(
     const calisan = calisanBySicil.get(sicil)
     if (!calisan) continue
 
-    const personelOgrenim = sortOgrenimRows(ogrenimBySicil.get(sicil) ?? [])
-    const lisans = personelOgrenim.find(o => isLisans(o.ogrenim_turu))
-    const lisansUstu = personelOgrenim.find(o => isLisansUstu(o.ogrenim_turu))
-    const doktora = personelOgrenim.find(o => isDoktora(o.ogrenim_turu))
+    const personelOgrenim = ogrenimBySicil.get(sicil) ?? []
+    const onlisansVeUstu = sortOnlisansVeUstu(
+      personelOgrenim.filter(o => isOnlisansVeUstu(o.ogrenim_turu)),
+    )
 
     const detaylar: OgrenimDurumunaGorePersonelDetaySatir[] = []
-    if (lisans && (lisansUstu || doktora)) {
-      detaylar.push({ ogrenim_durumu: txt(lisans.ogrenim_turu) || 'Lisans', okul_bolum: okulBolum(lisans) })
-      if (lisansUstu) {
+    if (onlisansVeUstu.length > 0) {
+      for (const o of onlisansVeUstu) {
         detaylar.push({
-          ogrenim_durumu: txt(lisansUstu.ogrenim_turu) || 'Lisansüstü',
-          okul_bolum: okulBolum(lisansUstu),
+          ogrenim_durumu: txt(o.ogrenim_turu) || '—',
+          okul_bolum: okulBolum(o),
         })
-      }
-      if (doktora) {
-        detaylar.push({ ogrenim_durumu: txt(doktora.ogrenim_turu) || 'Doktora', okul_bolum: okulBolum(doktora) })
       }
     } else {
       const varsayilan = personelOgrenim.find(o => o.varsayilan) ?? personelOgrenim.find(o => o.aktif) ?? personelOgrenim[0]
