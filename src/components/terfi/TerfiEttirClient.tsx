@@ -145,7 +145,9 @@ export default function TerfiEttirClient({
 
   async function excelIndir() {
     // Hem henüz terfi ettirilmemiş (önizleme) hem de bu dönemde terfi ettirilmiş satırları birleştir
-    const tumSatirlar = [...satirlar, ...terfiEttirilenRows]
+    const tumSatirlar = [...satirlar, ...terfiEttirilenRows].sort((a, b) =>
+      a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }),
+    )
 
     const wb = new ExcelJS.Workbook()
     const ws = wb.addWorksheet('Çalışanlar', {
