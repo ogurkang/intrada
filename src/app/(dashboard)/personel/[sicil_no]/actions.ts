@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
+import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
+import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
@@ -146,6 +148,11 @@ export async function personelHareketiEkle(
   if (!hareket_tipi)    return { hata: 'Hareket tipi zorunludur.' }
   if (!yururluk_tarihi) return { hata: 'Yürürlük tarihi zorunludur.' }
 
+  const ayrilis_tarihi = str(formData, 'ayrilis_tarihi')
+  const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
+  const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
+  if (ayrilisHata) return { hata: ayrilisHata }
+
   const supabase = await createClient()
   const payload = {
     sicil_no,
@@ -161,7 +168,8 @@ export async function personelHareketiEkle(
     yeni_ekea_derece:      str(formData, 'yeni_ekea_derece'),
     yeni_ekea_kademe:      str(formData, 'yeni_ekea_kademe'),
     ise_baslama_tarihi:    str(formData, 'ise_baslama_tarihi'),
-    ayrilis_tarihi:        str(formData, 'ayrilis_tarihi'),
+    ayrilis_tarihi,
+    ayrilis_nedeni,
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
@@ -170,6 +178,16 @@ export async function personelHareketiEkle(
   const { data: inserted, error } = await supabase.from('personel_hareketleri').insert(payload).select('id').single()
 
   if (error) return { hata: error.message }
+  if (
+    personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni }) &&
+    ayrilis_tarihi &&
+    ayrilis_nedeni
+  ) {
+    const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
+    if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    revalidatePath('/kadro')
+    revalidatePath('/personel-hareketleri')
+  }
   await writePersonelAuditLogSafe(supabase, {
     sicil_no,
     modul: 'personel',
@@ -192,10 +210,15 @@ export async function personelHareketiGuncelle(
   const { data: onceki } = await supabase
     .from('personel_hareketleri')
     .select(
-      'hareket_tipi, yururluk_tarihi, kadro_sira_no, yeni_gorev_yeri, yeni_unvan, yeni_sinif, yeni_kadro_derecesi, yeni_kha_derece, yeni_kha_kademe, yeni_ekea_derece, yeni_ekea_kademe, ise_baslama_tarihi, ayrilis_tarihi, dayanak, aciklama, dagitim_mudurlukleri',
+      'hareket_tipi, yururluk_tarihi, kadro_sira_no, yeni_gorev_yeri, yeni_unvan, yeni_sinif, yeni_kadro_derecesi, yeni_kha_derece, yeni_kha_kademe, yeni_ekea_derece, yeni_ekea_kademe, ise_baslama_tarihi, ayrilis_tarihi, ayrilis_nedeni, dayanak, aciklama, dagitim_mudurlukleri',
     )
     .eq('id', id)
     .maybeSingle()
+  const ayrilis_tarihi = str(formData, 'ayrilis_tarihi')
+  const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
+  const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
+  if (ayrilisHata) return { hata: ayrilisHata }
+
   const payload = {
     hareket_tipi:          str(formData, 'hareket_tipi'),
     yururluk_tarihi:       str(formData, 'yururluk_tarihi'),
@@ -209,7 +232,8 @@ export async function personelHareketiGuncelle(
     yeni_ekea_derece:      str(formData, 'yeni_ekea_derece'),
     yeni_ekea_kademe:      str(formData, 'yeni_ekea_kademe'),
     ise_baslama_tarihi:    str(formData, 'ise_baslama_tarihi'),
-    ayrilis_tarihi:        str(formData, 'ayrilis_tarihi'),
+    ayrilis_tarihi,
+    ayrilis_nedeni,
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
@@ -217,6 +241,16 @@ export async function personelHareketiGuncelle(
   const { error } = await supabase.from('personel_hareketleri').update(payload).eq('id', id)
 
   if (error) return { hata: error.message }
+  if (
+    personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni }) &&
+    ayrilis_tarihi &&
+    ayrilis_nedeni
+  ) {
+    const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
+    if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    revalidatePath('/kadro')
+    revalidatePath('/personel-hareketleri')
+  }
   await writePersonelAuditLogSafe(supabase, {
     sicil_no,
     modul: 'personel',

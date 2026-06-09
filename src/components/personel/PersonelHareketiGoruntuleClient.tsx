@@ -159,6 +159,7 @@ export default function PersonelHareketiGoruntuleClient({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <AlanGoster etiket="İşe başladığı tarih" deger={tarih(hareket.ise_baslama_tarihi)} />
             <AlanGoster etiket="Ayrıldığı tarih" deger={tarih(hareket.ayrilis_tarihi)} />
+            <AlanGoster etiket="Ayrılış Nedeni" deger={hareket.ayrilis_nedeni} />
             <AlanGoster etiket="Kayıt Tarihi" deger={tarih(hareket.kayit_tarihi)} />
             <AlanGoster etiket="Kayıt No" deger={hareket.kayit_no} />
             <AlanGoster etiket="Yürürlük Tarihi" deger={tarih(hareket.yururluk_tarihi)} />

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import PersonelHareketiDegistirClient from '@/components/personel/PersonelHareketiDegistirClient'
 import { personelHareketiEkle } from '../../actions'
 import type { Tables } from '@/types/database'
+import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
 
 type KH = Tables<'kadro_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
@@ -41,6 +42,12 @@ export default async function PersonelHareketiDegistirPage({
       .limit(1),
     supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil_no).order('kayit_zamani', { ascending: false }).limit(1),
     supabase
+      .from('personel_hareketleri')
+      .select('ayrilis_tarihi, ayrilis_nedeni')
+      .eq('sicil_no', sicil_no)
+      .order('kayit_zamani', { ascending: false })
+      .limit(1),
+    supabase
       .from('kadro_hareketleri')
       .select('id, kadro_sira_no, kadro_derecesi, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu')
       .eq('durumu', 'Boş')
@@ -56,7 +63,8 @@ export default async function PersonelHareketiDegistirPage({
   const unvanRaw = results[3]?.data ?? null
   const ogrenimRaw = results[4]?.data ?? null
   const terfiSon = ((results[5]?.data ?? [])[0] ?? null) as TH | null
-  const tumBosKadrolar = (results[6]?.data ?? []) as BosKadroSecenek[]
+  const sonHareketRaw = ((results[6]?.data ?? [])[0] ?? null) as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null } | null
+  const tumBosKadrolar = (results[7]?.data ?? []) as BosKadroSecenek[]
 
   if (!personel) notFound()
 
@@ -118,6 +126,8 @@ export default async function PersonelHareketiDegistirPage({
     ? `${ogrenim.ogrenim_turu}${ogrenim.okul_adi ? ` - ${ogrenim.okul_adi}` : ''}`
     : null
 
+  const ayrilisNedenleri = await yukleGidisAyrilisNedenleri(supabase)
+
   return (
     <PersonelHareketiDegistirClient
       personel={personel}
@@ -128,6 +138,11 @@ export default async function PersonelHareketiDegistirPage({
       onaylayan={onaylayan}
       yardimcilar={yardimcilar}
       terfiSon={terfiSon}
+      ayrilisNedenleri={ayrilisNedenleri}
+      sonHareketAyrilis={{
+        tarih: sonHareketRaw?.ayrilis_tarihi ?? null,
+        nedeni: sonHareketRaw?.ayrilis_nedeni ?? null,
+      }}
       seciliKadroRol={seciliRol === 'vekil' ? 'vekil' : 'asil'}
       bosKadrolar={bosKadrolar}
       popup={popup}

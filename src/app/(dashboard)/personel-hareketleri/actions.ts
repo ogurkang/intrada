@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { ggAayyyyToIso } from '@/lib/tarih'
+import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
+import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -178,6 +180,10 @@ export async function personelHareketiGuncelle(
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
+  const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
+  const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
+  const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
+  if (ayrilisHata) return { hata: ayrilisHata }
 
   const { data: updated, error } = await supabase.from('personel_hareketleri').update({
     hareket_tipi,
@@ -197,22 +203,29 @@ export async function personelHareketiGuncelle(
     yeni_ek_odeme,
     yeni_ek_gosterge,
     ise_baslama_tarihi:    tarihStr(formData, 'ise_baslama_tarihi'),
-    ayrilis_tarihi:        tarihStr(formData, 'ayrilis_tarihi'),
+    ayrilis_tarihi,
+    ayrilis_nedeni,
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
   }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
-  const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
-    sicil_no,
-    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
-    onceki_kadro_rol,
-    yeni_kadro_id,
-  })
-  if (kadroAtama.hata) return { hata: kadroAtama.hata }
-  const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
-  if (kadroSync.hata) return { hata: kadroSync.hata }
+  const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
+  if (pasif && sicil_no && ayrilis_tarihi && ayrilis_nedeni) {
+    const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
+    if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+  } else {
+    const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
+      sicil_no,
+      onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+      onceki_kadro_rol,
+      yeni_kadro_id,
+    })
+    if (kadroAtama.hata) return { hata: kadroAtama.hata }
+    const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
+    if (kadroSync.hata) return { hata: kadroSync.hata }
+  }
 
   if (sicil_no) {
     const { data: sonTerfi } = await supabase
@@ -247,6 +260,8 @@ export async function personelHareketiGuncelle(
   }
 
   revalidatePath('/personel-hareketleri')
+  revalidatePath('/personel')
+  revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
   if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
   if (sicil_no) await revalidatePersonelDetayPaths(sicil_no)
@@ -282,6 +297,11 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
+  const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
+  const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
+  const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
+  if (ayrilisHata) return { hata: ayrilisHata }
+
   const { data: inserted, error } = await supabase.from('personel_hareketleri').insert({
     sicil_no,
     hareket_tipi,
@@ -320,7 +340,8 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     teklif_eden:                    str(formData, 'teklif_eden'),
     onaylayan:                      str(formData, 'onaylayan'),
     ise_baslama_tarihi:             tarihStr(formData, 'ise_baslama_tarihi'),
-    ayrilis_tarihi:                 tarihStr(formData, 'ayrilis_tarihi'),
+    ayrilis_tarihi,
+    ayrilis_nedeni,
     kayit_tarihi:                   tarihStr(formData, 'kayit_tarihi'),
     kayit_no:                       str(formData, 'kayit_no'),
     dagitim_mudurlukleri:           (formData.getAll('dagitim_mudurlukleri') as string[]).filter(Boolean).join('; ') || null,
@@ -328,15 +349,21 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
-  const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
-    sicil_no,
-    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
-    onceki_kadro_rol,
-    yeni_kadro_id,
-  })
-  if (kadroAtama.hata) return { hata: kadroAtama.hata }
-  const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
-  if (kadroSync.hata) return { hata: kadroSync.hata }
+  const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
+  if (pasif && ayrilis_tarihi && ayrilis_nedeni) {
+    const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
+    if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+  } else {
+    const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
+      sicil_no,
+      onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+      onceki_kadro_rol,
+      yeni_kadro_id,
+    })
+    if (kadroAtama.hata) return { hata: kadroAtama.hata }
+    const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
+    if (kadroSync.hata) return { hata: kadroSync.hata }
+  }
 
   const { data: sonTerfi } = await supabase
     .from('terfi_hareketleri')
@@ -369,6 +396,8 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }
 
   revalidatePath('/personel-hareketleri')
+  revalidatePath('/personel')
+  revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)

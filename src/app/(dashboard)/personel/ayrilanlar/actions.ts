@@ -36,6 +36,7 @@ export async function personelAktifEt(formData: FormData): Promise<{ hata?: stri
     .from('personel_hareketleri')
     .update({
       ayrilis_tarihi:     null,
+      ayrilis_nedeni:     null,
       ise_baslama_tarihi: giris,
       hareket_tipi:       son.hareket_tipi ?? 'Göreve Başlama',
       aciklama:           yeniAciklama,
@@ -55,6 +56,7 @@ export async function personelAktifEt(formData: FormData): Promise<{ hata?: stri
     },
     sonraki: {
       ayrilis_tarihi: null,
+      ayrilis_nedeni: null,
       ise_baslama_tarihi: giris,
       hareket_tipi: son.hareket_tipi ?? 'Göreve Başlama',
       aciklama: yeniAciklama,

@@ -3,6 +3,7 @@ import PersonelListClient from '@/components/personel/PersonelListClient'
 import type { Tables } from '@/types/database'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -22,21 +23,15 @@ export default async function PersonelPage() {
       .order('ad_soyad'),
     supabase
       .from('personel_hareketleri')
-      .select('sicil_no, ayrilis_tarihi')
+      .select('sicil_no, ayrilis_tarihi, ayrilis_nedeni')
       .order('yururluk_tarihi', { ascending: false }),
   ])
 
-  const sonAyrilisPerSicil = new Map<string, string | null>()
-  for (const r of phRaw ?? []) {
-    if (!sonAyrilisPerSicil.has(r.sicil_no)) {
-      sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
-    }
-  }
+  const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRaw ?? [])
   const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
   const aktifAdaySiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
-    const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifAdaySiciller.add(c.sicil_no)
+    if (personelAktifMi(sonAyrilisHaritasi.get(c.sicil_no), D)) aktifAdaySiciller.add(c.sicil_no)
   })
 
   // Personel listesinde yalnızca aktif kadro satırı bulunan asıl personeli göster.

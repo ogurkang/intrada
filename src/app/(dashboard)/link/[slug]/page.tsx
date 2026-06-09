@@ -20,6 +20,7 @@ import { personelHareketiGuncelle } from '@/app/(dashboard)/personel-hareketleri
 import PersonelHareketiDuzenleClient from '@/components/personel/PersonelHareketiDuzenleClient'
 import IzinHareketDetayView from '@/components/izin/IzinHareketDetayView'
 import type { Tables } from '@/types/database'
+import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -114,9 +115,10 @@ export default async function Page({ params }: Props) {
   }
 
   if (linked?.kind === 'personel_hareketi') {
-    const [{ data: hareket }, { data: unvanRows }] = await Promise.all([
+    const [{ data: hareket }, { data: unvanRows }, ayrilisNedenleri] = await Promise.all([
       supabase.from('personel_hareketleri').select('*').eq('id', linked.id).single(),
       supabase.from('tanim_unvan').select('id, unvan_adi').eq('aktif', true).order('sira_no'),
+      yukleGidisAyrilisNedenleri(supabase),
     ])
     if (!hareket) notFound()
     const unvanlar = (unvanRows ?? [])
@@ -126,6 +128,7 @@ export default async function Page({ params }: Props) {
       <PersonelHareketiDuzenleClient
         hareket={hareket as Tables<'personel_hareketleri'>}
         unvanlar={unvanlar}
+        ayrilisNedenleri={ayrilisNedenleri}
         onGuncelle={personelHareketiGuncelle}
       />
     )

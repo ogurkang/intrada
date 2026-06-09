@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { dogrulaAyrilisAlanlari } from '@/lib/personel-ayrilis'
 
 type PH = Tables<'personel_hareketleri'>
 
@@ -13,10 +14,11 @@ const SINIFLAR = ['GİH', 'TH', 'SHS', 'AH', 'EH', 'DH', 'YH', 'ZB']
 interface Props {
   hareket: PH
   unvanlar: { id: number; unvan_adi: string }[]
+  ayrilisNedenleri: string[]
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
-export default function PersonelHareketiDuzenleClient({ hareket, unvanlar, onGuncelle }: Props) {
+export default function PersonelHareketiDuzenleClient({ hareket, unvanlar, ayrilisNedenleri, onGuncelle }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -65,6 +67,14 @@ export default function PersonelHareketiDuzenleClient({ hareket, unvanlar, onGun
     e.preventDefault()
     setHata(null)
     const fd = new FormData(e.currentTarget)
+    const ayrilisHata = dogrulaAyrilisAlanlari(
+      String(fd.get('ayrilis_tarihi') ?? '').trim() || null,
+      String(fd.get('ayrilis_nedeni') ?? '').trim() || null,
+    )
+    if (ayrilisHata) {
+      setHata(ayrilisHata)
+      return
+    }
     startTransition(async () => {
       const res = await onGuncelle(hareket.id, fd)
       if (res.hata) setHata(res.hata)
@@ -103,9 +113,10 @@ export default function PersonelHareketiDuzenleClient({ hareket, unvanlar, onGun
             </div>
           </div>
           <hr className="border-slate-100" />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {input('ise_baslama_tarihi', 'İşe Başlama', 'date')}
             {input('ayrilis_tarihi', 'Ayrılış Tarihi', 'date')}
+            {sel('ayrilis_nedeni', 'Ayrılış Nedeni', ayrilisNedenleri)}
             {input('dayanak', 'Dayanak', 'text', 'Karar no veya belge')}
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -3,6 +3,7 @@ import type { Database, Tables } from '@/types/database'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
   Tables<'kadro_hareketleri'>,
@@ -94,18 +95,14 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
       supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, statu').order('sicil_no'),
-      supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
+      supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ayrilis_nedeni').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
     ])
 
-  const sonAyrilisPerSicil = new Map<string, string | null>()
-  for (const r of phRaw ?? []) {
-    if (!sonAyrilisPerSicil.has(r.sicil_no)) sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
-  }
+  const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRaw ?? [])
   const aktifSiciller = new Set<string>()
   ;(calisanlar ?? []).forEach((c) => {
-    const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+    if (personelAktifMi(sonAyrilisHaritasi.get(c.sicil_no))) aktifSiciller.add(c.sicil_no)
   })
 
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))

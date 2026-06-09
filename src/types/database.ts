@@ -812,7 +812,7 @@ export interface Database {
           yeni_oht: string | null; yeni_igz: string | null; yeni_ek_odeme: string | null
           yeni_ek_gosterge: string | null; dayanak: string | null; aciklama: string | null
           teklif_eden: string | null; onaylayan: string | null
-          ise_baslama_tarihi: string | null; ayrilis_tarihi: string | null
+          ise_baslama_tarihi: string | null; ayrilis_tarihi: string | null; ayrilis_nedeni: string | null
           kayit_tarihi: string | null; kayit_no: string | null
           dagitim_mudurlukleri: string | null; kayit_zamani: string
         }
@@ -832,7 +832,7 @@ export interface Database {
           yeni_oht?: string | null; yeni_igz?: string | null; yeni_ek_odeme?: string | null
           yeni_ek_gosterge?: string | null; dayanak?: string | null; aciklama?: string | null
           teklif_eden?: string | null; onaylayan?: string | null
-          ise_baslama_tarihi?: string | null; ayrilis_tarihi?: string | null
+          ise_baslama_tarihi?: string | null; ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null
           kayit_tarihi?: string | null; kayit_no?: string | null
           dagitim_mudurlukleri?: string | null; kayit_zamani?: string
         }
@@ -852,7 +852,7 @@ export interface Database {
           yeni_oht?: string | null; yeni_igz?: string | null; yeni_ek_odeme?: string | null
           yeni_ek_gosterge?: string | null; dayanak?: string | null; aciklama?: string | null
           teklif_eden?: string | null; onaylayan?: string | null
-          ise_baslama_tarihi?: string | null; ayrilis_tarihi?: string | null
+          ise_baslama_tarihi?: string | null; ayrilis_tarihi?: string | null; ayrilis_nedeni?: string | null
           kayit_tarihi?: string | null; kayit_no?: string | null
           dagitim_mudurlukleri?: string | null; kayit_zamani?: string
         }

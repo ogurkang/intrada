@@ -4,6 +4,7 @@ import { useRef, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import { dogrulaAyrilisAlanlari } from '@/lib/personel-ayrilis'
 
 type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
@@ -20,6 +21,8 @@ interface Props {
   onaylayan: string
   yardimcilar: { sicil: string; ad: string }[]
   terfiSon: TH | null
+  ayrilisNedenleri: string[]
+  sonHareketAyrilis?: { tarih: string | null; nedeni: string | null }
   popup?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
@@ -35,6 +38,8 @@ export default function PersonelHareketiDegistirClient({
   onaylayan,
   yardimcilar,
   terfiSon,
+  ayrilisNedenleri,
+  sonHareketAyrilis,
   popup = false,
   onKaydet,
 }: Props) {
@@ -156,6 +161,14 @@ export default function PersonelHareketiDegistirClient({
     const hareketTipi = String(fd.get('hareket_tipi') ?? '').trim()
     if (!hareketTipi) {
       setHata('Hareket Tipi seçimini tamamlayınız.')
+      return
+    }
+    const ayrilisHata = dogrulaAyrilisAlanlari(
+      String(fd.get('ayrilis_tarihi') ?? '').trim() || null,
+      String(fd.get('ayrilis_nedeni') ?? '').trim() || null,
+    )
+    if (ayrilisHata) {
+      setHata(ayrilisHata)
       return
     }
     setIsPending(true)
@@ -619,7 +632,7 @@ export default function PersonelHareketiDegistirClient({
 
         {/* Tarih ve Kayıt */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">İşe başladığı tarih</label>
               <input name="ise_baslama_tarihi" type="date"
@@ -629,8 +642,18 @@ export default function PersonelHareketiDegistirClient({
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Ayrıldığı tarih</label>
               <input name="ayrilis_tarihi" type="date"
-                defaultValue={(seciliKadro?.ayrilis_tarihi ?? '').toString().slice(0, 10)}
+                defaultValue={(sonHareketAyrilis?.tarih ?? seciliKadro?.ayrilis_tarihi ?? '').toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Ayrılış Nedeni</label>
+              <select name="ayrilis_nedeni" defaultValue={sonHareketAyrilis?.nedeni ?? ''}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white">
+                <option value="">Seçiniz</option>
+                {ayrilisNedenleri.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Kayıt Tarihi</label>
