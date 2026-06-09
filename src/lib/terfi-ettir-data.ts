@@ -1,7 +1,68 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables } from '@/types/database'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+
+type KadroEslestirmeSatir = Pick<
+  Tables<'kadro_hareketleri'>,
+  | 'id'
+  | 'asil'
+  | 'vekil'
+  | 'gorev_unvan_id'
+  | 'kadro_unvan_id'
+  | 'gorev_unvani'
+  | 'kadro_unvani'
+  | 'kadro_derecesi'
+  | 'durumu'
+  | 'ayrilis_tarihi'
+>
+
+function sicilEsit(a: string | null | undefined, b: string): boolean {
+  return (a ?? '').trim() === b.trim()
+}
+
+function kadroAktifMi(ayrilis: string | null | undefined, bugun = new Date().toISOString().slice(0, 10)): boolean {
+  const t = String(ayrilis ?? '').trim().slice(0, 10)
+  if (!t) return true
+  return t > bugun
+}
+
+async function yukleKadroSatirlariMemurIcin(
+  supabase: SupabaseClient<Database>,
+  memurSiciller: string[],
+): Promise<KadroEslestirmeSatir[]> {
+  if (!memurSiciller.length) return []
+  const CHUNK = 80
+  const rows: KadroEslestirmeSatir[] = []
+  for (let i = 0; i < memurSiciller.length; i += CHUNK) {
+    const chunk = memurSiciller.slice(i, i + CHUNK)
+    const { data } = await supabase
+      .from('kadro_hareketleri')
+      .select(
+        'id, asil, vekil, gorev_unvan_id, kadro_unvan_id, gorev_unvani, kadro_unvani, kadro_derecesi, durumu, ayrilis_tarihi',
+      )
+      .or(chunk.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','))
+    rows.push(...((data ?? []) as KadroEslestirmeSatir[]))
+  }
+  return rows
+}
+
+/** Personel detay / Terfi Bilgileri ile uyumlu ana kadro seçimi. */
+function secilenKadroSatir(sicil: string, khRows: KadroEslestirmeSatir[]): KadroEslestirmeSatir | null {
+  const s = sicil.trim()
+  const ilgili = khRows.filter(r => sicilEsit(r.asil, s) || sicilEsit(r.vekil, s))
+  if (!ilgili.length) return null
+
+  const aktif = ilgili.filter(r => kadroAktifMi(r.ayrilis_tarihi))
+  const ana = anaKadroSec(aktif as Tables<'kadro_hareketleri'>[], s)
+  if (ana) return ana as KadroEslestirmeSatir
+
+  const fallbackAktif = [...aktif].sort((a, b) => b.id - a.id)[0]
+  if (fallbackAktif) return fallbackAktif
+
+  return [...ilgili].sort((a, b) => b.id - a.id)[0] ?? null
+}
 
 function eslestirOgrenimId(
   ogrenimTuru: string | null | undefined,
@@ -28,17 +89,13 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   kaynaklar: TerfiKaynak[]
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
 }> {
-  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }, { data: khUnvan }] =
+  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
     await Promise.all([
       supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
       supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, statu').order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, vekil, gorev_unvan_id, kadro_unvan_id, gorev_unvani, kadro_unvani, kadro_derecesi')
-        .is('ayrilis_tarihi', null),
     ])
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
@@ -81,18 +138,17 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     }
   }
 
+  const khRows = await yukleKadroSatirlariMemurIcin(supabase, memurSiciller)
   const unvanIdBySicil = new Map<string, number>()
   const kadroUnvaniBySicil = new Map<string, string | null>()
   const kadroDerecesiBySicil = new Map<string, string | null>()
   for (const sicil of memurSiciller) {
-    for (const r of khUnvan ?? []) {
-      if (r.asil !== sicil && r.vekil !== sicil) continue
-      kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
-      kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
-      const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
-      if (uid != null) unvanIdBySicil.set(sicil, uid)
-      break
-    }
+    const r = secilenKadroSatir(sicil, khRows)
+    if (!r) continue
+    kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
+    kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
+    const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
+    if (uid != null) unvanIdBySicil.set(sicil, uid)
   }
 
   const { data: kazancRaw } = await supabase.from('tanim_kazanc_bilgisi').select('*')
