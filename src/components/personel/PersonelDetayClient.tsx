@@ -938,40 +938,6 @@ function jsonPretty(value: unknown): string {
   }
 }
 
-const SENSITIVE_KEYS = new Set([
-  'tckn',
-  'esin_tckn',
-  'telefon',
-  'e_posta',
-  'adresi',
-  'yakini_telefonu',
-  'anne_adi',
-  'baba_adi',
-])
-
-function maskValue(v: unknown): unknown {
-  if (v == null) return v
-  const s = String(v)
-  if (s.length <= 4) return '***'
-  return `${s.slice(0, 2)}***${s.slice(-2)}`
-}
-
-function sanitizeAuditPayload(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizeAuditPayload)
-  if (!value || typeof value !== 'object') return value
-  const obj = value as Record<string, unknown>
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    const keyLower = k.toLocaleLowerCase('tr-TR')
-    if (SENSITIVE_KEYS.has(keyLower)) {
-      out[k] = maskValue(v)
-      continue
-    }
-    out[k] = sanitizeAuditPayload(v)
-  }
-  return out
-}
-
 function ymd(v: string | null | undefined): string {
   if (!v) return ''
   return String(v).slice(0, 10)
@@ -1184,13 +1150,13 @@ function GecmisTab({ auditLoglar }: { auditLoglar: AuditLog[] }) {
                               <div className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 border-b border-slate-200">
                                 Önce
                               </div>
-                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(sanitizeAuditPayload(log.onceki))}</pre>
+                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(log.onceki)}</pre>
                             </div>
                             <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
                               <div className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 border-b border-slate-200">
                                 Sonra
                               </div>
-                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(sanitizeAuditPayload(log.sonraki))}</pre>
+                              <pre className="p-3 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">{jsonPretty(log.sonraki)}</pre>
                             </div>
                           </div>
                         </td>
