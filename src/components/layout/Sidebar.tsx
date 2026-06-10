@@ -92,6 +92,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       { href: '/rapor', label: 'Genel Bakış' },
       { href: '/rapor/izin-hareketleri', label: 'İzin Hareketleri Raporu' },
+      { href: '/rapor/memur-izinleri', label: 'Memur İzinleri Raporu' },
       { href: '/rapor/isci-izinleri', label: 'İşçi İzinleri Raporu' },
       { href: '/rapor/statuye-gore-cinsiyet', label: 'Statüye Göre Cinsiyet Raporu' },
       { href: '/rapor/statuye-gore-sayi', label: 'Statüye Göre Sayı Durumu Raporu' },

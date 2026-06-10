@@ -11,6 +11,13 @@ const RAPOR_KARTLARI = [
     renk: 'border-teal-200 bg-teal-50 text-teal-900',
   },
   {
+    kod: 'MIR',
+    href: '/rapor/memur-izinleri',
+    baslik: 'Memur İzinleri Raporu',
+    aciklama: 'Memur statüsündeki personeller için izin hakkı, kullanılan izin ve kalan izin bilgisi',
+    renk: 'border-blue-200 bg-blue-50 text-blue-900',
+  },
+  {
     kod: 'IIR',
     href: '/rapor/isci-izinleri',
     baslik: 'İşçi İzinleri Raporu',

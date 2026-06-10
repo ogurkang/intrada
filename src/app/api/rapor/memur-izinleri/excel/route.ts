@@ -16,10 +16,10 @@ export async function GET(req: Request) {
     const mudurlukFiltre = parseMudurlukFromQuery(searchParams.get('m'))
 
     const { buf, filename } = await statuIzinExcelOlustur(supabase, {
-      statuTip: 'isci',
-      baslik: 'İşçi İzinleri Raporu',
-      sheetAdi: 'Isci Izinleri',
-      dosyaAdi: 'Isci_Izinleri_Raporu',
+      statuTip: 'memur',
+      baslik: 'Memur İzinleri Raporu',
+      sheetAdi: 'Memur Izinleri',
+      dosyaAdi: 'Memur_Izinleri_Raporu',
       yil,
       periyot,
       mudurlukFiltre,
@@ -29,11 +29,11 @@ export async function GET(req: Request) {
     return new NextResponse(new Uint8Array(buf), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Isci_Izinleri_Raporu.xlsx"; filename*=UTF-8''${encodedFilename}`,
+        'Content-Disposition': `attachment; filename="Memur_Izinleri_Raporu.xlsx"; filename*=UTF-8''${encodedFilename}`,
       },
     })
   } catch (err) {
-    console.error('ISCI_IZINLERI_EXCEL_HATA', err)
+    console.error('MEMUR_IZINLERI_EXCEL_HATA', err)
     return NextResponse.json({ error: 'Excel oluşturulamadı.' }, { status: 500 })
   }
 }

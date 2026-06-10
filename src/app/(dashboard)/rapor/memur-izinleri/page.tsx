@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import StatuIzinleriRaporClient from '@/components/rapor/StatuIzinleriRaporClient'
-import { parseMudurlukParam } from '@/lib/rapor-isci-izinleri'
+import { parseMudurlukParam } from '@/lib/rapor-memur-izinleri'
 import { yukleStatuIzinRaporVerisi } from '@/lib/rapor-statu-izinleri-load'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const RAPOR_ACIKLAMA =
-  'Sadece İşçi statüsündeki aktif personeller listelenir. YILLIK sekmede kullanılan izin yıl toplamı; aylık sekmelerde sadece seçilen ayda kullanılan izin gösterilir. Devreden ve hak edilen izin günleri ayrı sütunlarda sunulur.'
+  'Sadece Memur statüsündeki aktif personeller listelenir. YILLIK sekmede kullanılan izin yıl toplamı; aylık sekmelerde sadece seçilen ayda kullanılan izin gösterilir. Devreden ve hak edilen izin günleri ayrı sütunlarda sunulur.'
 
-export default async function IsciIzinleriRaporuPage({
+export default async function MemurIzinleriRaporuPage({
   searchParams,
 }: {
   searchParams: Promise<{ y?: string; m?: string }>
@@ -23,7 +23,7 @@ export default async function IsciIzinleriRaporuPage({
 
   const supabase = await createClient()
   const { tabs, tumMudurlukler } = await yukleStatuIzinRaporVerisi(supabase, {
-    statuTip: 'isci',
+    statuTip: 'memur',
     yil,
   })
 
@@ -35,11 +35,11 @@ export default async function IsciIzinleriRaporuPage({
       tabs={tabs}
       tumMudurlukler={tumMudurlukler}
       initialMudurlukler={initialMudurlukler}
-      raporBasePath="/rapor/isci-izinleri"
-      excelBasePath="/api/rapor/isci-izinleri/excel"
-      baslik="İşçi İzinleri Raporu"
+      raporBasePath="/rapor/memur-izinleri"
+      excelBasePath="/api/rapor/memur-izinleri/excel"
+      baslik="Memur İzinleri Raporu"
       aciklama={RAPOR_ACIKLAMA}
-      statuEtiket="İşçi"
+      statuEtiket="Memur"
     />
   )
 }
