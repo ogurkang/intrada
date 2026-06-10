@@ -13,7 +13,7 @@ export async function kadroPasifeAlPersonelIcin(
   sicil_no: string,
   ayrilis_tarihi: string,
   ayrilis_nedeni: string,
-): Promise<{ hata?: string }> {
+): Promise<{ hata?: string; bosaltilanKadroIdleri?: number[] }> {
   const sicil = sicil_no.trim()
   if (!sicil) return {}
 
@@ -25,6 +25,8 @@ export async function kadroPasifeAlPersonelIcin(
 
   if (selErr) return { hata: selErr.message }
   if (!kadrolar?.length) return {}
+
+  const bosaltilanKadroIdleri: number[] = []
 
   for (const k of kadrolar) {
     const asil = String(k.asil ?? '').trim()
@@ -57,7 +59,8 @@ export async function kadroPasifeAlPersonelIcin(
       .update(update)
       .eq('id', k.id)
     if (updErr) return { hata: updErr.message }
+    bosaltilanKadroIdleri.push(k.id)
   }
 
-  return {}
+  return { bosaltilanKadroIdleri }
 }

@@ -74,6 +74,12 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
     if (!w) router.push(href)
   }
 
+  function gecmisAcYeniSekme(h: HareketSatir) {
+    const href = `/personel/${encodeURIComponent(h.sicil_no)}?sekme=gecmis`
+    const w = window.open(href, '_blank')
+    if (!w) router.push(href)
+  }
+
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const ok =
@@ -128,11 +134,12 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">Hareket Tipi</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Yürürlük Tarihi</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Yeni Yer / Unvan</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">İşlemler</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {filtreli.map((h, idx) => (
               <tr
@@ -156,6 +163,34 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
                 <td className="px-4 py-3 text-xs text-slate-600">
                   {h.yeni_gorev_yeri ? <span className="font-medium">{h.yeni_gorev_yeri}</span> : ''}
                   {h.yeni_unvan ? <span className="ml-1 text-slate-400">/ {h.yeni_unvan}</span> : ''}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      title="Detayı görüntüle"
+                      onClick={e => { e.stopPropagation(); satirAcYeniSekme(h) }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                          d="M2.04 12.32a1 1 0 010-.64C3.42 7.51 7.36 4.5 12 4.5s8.58 3.01 9.96 7.18a1 1 0 010 .64C20.58 16.49 16.64 19.5 12 19.5s-8.58-3.01-9.96-7.18z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      title="Log kayıtları (Geçmiş)"
+                      onClick={e => { e.stopPropagation(); gecmisAcYeniSekme(h) }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.5 2" />
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                          d="M3.5 9.5A9 9 0 113 12m.5-2.5L1.75 7.25M3.5 9.5L6 8.75" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

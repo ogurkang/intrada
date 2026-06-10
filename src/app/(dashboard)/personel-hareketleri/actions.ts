@@ -6,6 +6,43 @@ import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
+import {
+  writePersonelAuditLogSafe,
+  alanDegisiklikleriHesapla,
+  degisiklikOzeti,
+  degisiklikPayload,
+} from '@/lib/personel-audit'
+
+const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
+  hareket_tipi:         'Hareket Tipi',
+  yururluk_tarihi:      'Yürürlük Tarihi',
+  kadro_sira_no:        'Kadro Sıra No',
+  yeni_gorev_yeri:      'Yeni Görev Yeri',
+  yeni_unvan:           'Yeni Unvan',
+  yeni_sinif:           'Yeni Sınıf',
+  yeni_kadro_derecesi:  'Yeni Kadro Derecesi',
+  yeni_kha_derece:      'KHA Derece',
+  yeni_kha_kademe:      'KHA Kademe',
+  yeni_ekea_derece:     'EKEA Derece',
+  yeni_ekea_kademe:     'EKEA Kademe',
+  yeni_kidem_yili:      'Kıdem Yılı',
+  yeni_oht:             'ÖHT',
+  yeni_igz:             'Yan Ödeme',
+  yeni_ek_odeme:        'Ek Ödeme',
+  yeni_ek_gosterge:     'Ek Gösterge',
+  ise_baslama_tarihi:   'İşe Başlama Tarihi',
+  ayrilis_tarihi:       'Ayrılış Tarihi',
+  ayrilis_nedeni:       'Ayrılış Nedeni',
+  dayanak:              'Dayanak',
+  aciklama:             'Açıklama',
+  dagitim_mudurlukleri: 'Dağıtım Müdürlükleri',
+}
+
+function trTarih(v: string | null): string {
+  if (!v) return ''
+  const [y, m, d] = v.slice(0, 10).split('-')
+  return d && m && y ? `${d}.${m}.${y}` : v
+}
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -155,10 +192,11 @@ export async function personelHareketiGuncelle(
   if (!hareket_tipi) return { hata: 'Hareket Tipi seçimini tamamlayınız.' }
   const { data: row } = await supabase
     .from('personel_hareketleri')
-    .select('sicil_no')
+    .select(`sicil_no, ${Object.keys(HAREKET_ALAN_ETIKETLERI).join(', ')}`)
     .eq('id', id)
     .single()
-  const sicil_no = row?.sicil_no
+  const oncekiHareket = (row ?? null) as Record<string, unknown> | null
+  const sicil_no = oncekiHareket?.sicil_no as string | undefined
   const yeni_kha_derece = str(formData, 'yeni_kha_derece')
   const yeni_kha_kademe = str(formData, 'yeni_kha_kademe')
   const yeni_ekea_derece = str(formData, 'yeni_ekea_derece')
@@ -185,7 +223,7 @@ export async function personelHareketiGuncelle(
   const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
   if (ayrilisHata) return { hata: ayrilisHata }
 
-  const { data: updated, error } = await supabase.from('personel_hareketleri').update({
+  const guncellemePayload = {
     hareket_tipi,
     yururluk_tarihi:       tarihStr(formData, 'yururluk_tarihi'),
     kadro_sira_no:         str(formData, 'kadro_sira_no'),
@@ -208,13 +246,43 @@ export async function personelHareketiGuncelle(
     dayanak:               str(formData, 'dayanak'),
     aciklama:              str(formData, 'aciklama'),
     dagitim_mudurlukleri:  str(formData, 'dagitim_mudurlukleri'),
-  }).eq('id', id).select('public_id').single()
+  }
+  const { data: updated, error } = await supabase.from('personel_hareketleri')
+    .update(guncellemePayload).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+
+  if (sicil_no) {
+    const degisiklikler = alanDegisiklikleriHesapla(oncekiHareket, guncellemePayload, HAREKET_ALAN_ETIKETLERI)
+    if (degisiklikler.length > 0) {
+      const payload = degisiklikPayload(degisiklikler)
+      await writePersonelAuditLogSafe(supabase, {
+        sicil_no,
+        modul: 'personel',
+        islem: 'Hareket Güncelle',
+        ozet: degisiklikOzeti(degisiklikler, 'Personel hareketi güncellendi'),
+        ref_table: 'personel_hareketleri',
+        ref_id: String(id),
+        onceki: payload.onceki,
+        sonraki: payload.sonraki,
+      })
+    }
+  }
+
   const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
   if (pasif && sicil_no && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    if ((kadroAyrilis.bosaltilanKadroIdleri ?? []).length > 0) {
+      await writePersonelAuditLogSafe(supabase, {
+        sicil_no,
+        modul: 'kadro',
+        islem: 'Kadro Boşaltma',
+        ozet: `Ayrılış nedeniyle kadrodan çıkarıldı (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`,
+        ref_table: 'kadro_hareketleri',
+        ref_id: kadroAyrilis.bosaltilanKadroIdleri!.join(','),
+      })
+    }
   } else {
     const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
       sicil_no,
@@ -349,10 +417,44 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+
+  const ayrilisOzet = ayrilis_tarihi && ayrilis_nedeni
+    ? ` Ayrılış kaydedildi (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`
+    : ''
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'personel',
+    islem: 'Hareket Ekle',
+    ozet: `${hareket_tipi} hareketi kaydedildi.${ayrilisOzet}`,
+    ref_table: 'personel_hareketleri',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki: {
+      hareket_tipi,
+      kadro_sira_no,
+      yeni_gorev_yeri,
+      yeni_unvan: str(formData, 'yeni_unvan'),
+      yeni_sinif: str(formData, 'yeni_sinif'),
+      yeni_kadro_derecesi: str(formData, 'yeni_kadro_derecesi'),
+      ise_baslama_tarihi: tarihStr(formData, 'ise_baslama_tarihi'),
+      ayrilis_tarihi,
+      ayrilis_nedeni,
+    },
+  })
+
   const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
   if (pasif && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    if ((kadroAyrilis.bosaltilanKadroIdleri ?? []).length > 0) {
+      await writePersonelAuditLogSafe(supabase, {
+        sicil_no,
+        modul: 'kadro',
+        islem: 'Kadro Boşaltma',
+        ozet: `Ayrılış nedeniyle kadrodan çıkarıldı (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`,
+        ref_table: 'kadro_hareketleri',
+        ref_id: kadroAyrilis.bosaltilanKadroIdleri!.join(','),
+      })
+    }
   } else {
     const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
       sicil_no,
