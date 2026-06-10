@@ -992,6 +992,9 @@ function resolveAuditRefHref(log: AuditLog): string | null {
     if (Number.isFinite(n)) return `/personel-hareketleri/${n}/goruntule`
     return null
   }
+  if (table === 'calisan') {
+    return `/personel/${encodeURIComponent(log.sicil_no)}`
+  }
   if (table === 'calisan_ogrenim' || table === 'aile_bildirimi' || table === 'izin_haklari') {
     if (table === 'calisan_ogrenim') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=ogrenim`
     if (table === 'aile_bildirimi') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=aile`

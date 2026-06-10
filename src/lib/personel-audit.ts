@@ -50,3 +50,52 @@ export async function writePersonelAuditLogSafe(
     console.error('PERSONEL_AUDIT_WRITE_FAILED', err)
   }
 }
+
+export interface AlanDegisiklik {
+  alan: string
+  etiket: string
+  onceki: unknown
+  sonraki: unknown
+}
+
+function normalize(v: unknown): string {
+  if (v == null) return ''
+  return String(v).trim()
+}
+
+/**
+ * Eski ve yeni kayıt arasındaki alan bazlı farkları çıkarır.
+ * Yalnızca `etiketler` içinde tanımlı alanlar karşılaştırılır.
+ */
+export function alanDegisiklikleriHesapla(
+  onceki: Record<string, unknown> | null | undefined,
+  sonraki: Record<string, unknown>,
+  etiketler: Record<string, string>,
+): AlanDegisiklik[] {
+  const out: AlanDegisiklik[] = []
+  for (const [alan, etiket] of Object.entries(etiketler)) {
+    if (!(alan in sonraki)) continue
+    const eski = onceki?.[alan]
+    const yeni = sonraki[alan]
+    if (normalize(eski) === normalize(yeni)) continue
+    out.push({ alan, etiket, onceki: eski ?? null, sonraki: yeni ?? null })
+  }
+  return out
+}
+
+export function degisiklikOzeti(degisiklikler: AlanDegisiklik[], baslik: string): string {
+  const etiketler = degisiklikler.map(d => d.etiket).join(', ')
+  return `${baslik}: ${etiketler}`
+}
+
+export function degisiklikPayload(
+  degisiklikler: AlanDegisiklik[],
+): { onceki: Record<string, unknown>; sonraki: Record<string, unknown> } {
+  const onceki: Record<string, unknown> = {}
+  const sonraki: Record<string, unknown> = {}
+  for (const d of degisiklikler) {
+    onceki[d.alan] = d.onceki
+    sonraki[d.alan] = d.sonraki
+  }
+  return { onceki, sonraki }
+}

@@ -14,7 +14,12 @@ import {
   gecerliYerleskeId,
   mudurlukYerleskeHaritasi,
 } from '@/lib/yerleske-adresi'
-import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import {
+  writePersonelAuditLogSafe,
+  alanDegisiklikleriHesapla,
+  degisiklikOzeti,
+  degisiklikPayload,
+} from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -22,6 +27,37 @@ function str(fd: FormData, key: string): string | null {
 }
 
 // ─── Kişisel Bilgiler ────────────────────────────────────────────────────────
+
+const CALISAN_ALAN_ETIKETLERI: Record<string, string> = {
+  ad_soyad:                'Ad Soyad',
+  tckn:                    'TC Kimlik No',
+  sgk_ssk_sicil_no:        'SGK/SSK Sicil No',
+  dogum_tarihi:            'Doğum Tarihi',
+  cinsiyet:                'Cinsiyet',
+  kan_grubu:               'Kan Grubu',
+  dogum_yeri:              'Doğum Yeri',
+  anne_adi:                'Anne Adı',
+  baba_adi:                'Baba Adı',
+  askerlik_durumu:         'Askerlik Durumu',
+  telefon:                 'Telefon',
+  e_posta:                 'E-posta',
+  adresi:                  'Adres',
+  yakini:                  'Yakını',
+  yakini_telefonu:         'Yakını Telefonu',
+  memuriyet_tarihi:        'Memuriyet Tarihi',
+  kuruma_giris_tarihi:     'Kuruma Giriş Tarihi',
+  gorev_yeri:              'Görev Yeri',
+  gorev_turu:              'Görev Türü',
+  gorev_turu_tarihi:       'Görev Türü Tarihi',
+  gorev_turu_bitis_tarihi: 'Görev Türü Bitiş Tarihi',
+  gorev_turu_aciklama:     'Görev Türü Açıklaması',
+  gorev_turu_yemek_hakki:  'Yemek Hakkı',
+  gorev_durumu:            'Görev Durumu',
+  yerleske_adresi_id:      'Yerleşke Adresi',
+  hizmet_suresi_yil:       'Hizmet Süresi (Yıl)',
+  hizmet_suresi_ay:        'Hizmet Süresi (Ay)',
+  hizmet_suresi_gun:       'Hizmet Süresi (Gün)',
+}
 
 export async function calisanGuncelle(
   sicil_no: string,
@@ -109,9 +145,34 @@ export async function calisanGuncelle(
     temel.hizmet_suresi_gun = hs.gun
   }
 
+  const { data: oncekiCalisan } = await supabase
+    .from('calisan')
+    .select(Object.keys(CALISAN_ALAN_ETIKETLERI).join(', '))
+    .eq('sicil_no', sicil_no)
+    .maybeSingle()
+
   const { error } = await supabase.from('calisan').update(temel).eq('sicil_no', sicil_no)
 
   if (error) return { hata: error.message }
+
+  const degisiklikler = alanDegisiklikleriHesapla(
+    (oncekiCalisan ?? null) as Record<string, unknown> | null,
+    temel,
+    CALISAN_ALAN_ETIKETLERI,
+  )
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no,
+      modul: 'kişisel bilgiler',
+      islem: 'Güncelle',
+      ozet: degisiklikOzeti(degisiklikler, 'Kişisel bilgiler güncellendi'),
+      ref_table: 'calisan',
+      ref_id: sicil_no,
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
 
   const { data: khRows, error: khErr } = await supabase
     .from('kadro_hareketleri')
