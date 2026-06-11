@@ -958,14 +958,21 @@ function resolveAuditRefHref(log: AuditLog): string | null {
     if (Number.isFinite(n)) return `/personel-hareketleri/${n}/goruntule`
     return null
   }
+  if (table === 'kadro_hareketleri') {
+    const n = Number.parseInt(refId, 10)
+    if (Number.isFinite(n)) return `/kadro/${n}`
+    return null
+  }
+  const sicil = String(log.sicil_no ?? '').trim()
+  if (!sicil) return null
   if (table === 'calisan') {
-    return `/personel/${encodeURIComponent(log.sicil_no)}`
+    return `/personel/${encodeURIComponent(sicil)}`
   }
   if (table === 'calisan_ogrenim' || table === 'aile_bildirimi' || table === 'izin_haklari') {
-    if (table === 'calisan_ogrenim') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=ogrenim`
-    if (table === 'aile_bildirimi') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=aile`
-    if (table === 'izin_haklari') return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=izin`
-    return `/personel/${encodeURIComponent(log.sicil_no)}?sekme=gecmis`
+    if (table === 'calisan_ogrenim') return `/personel/${encodeURIComponent(sicil)}?sekme=ogrenim`
+    if (table === 'aile_bildirimi') return `/personel/${encodeURIComponent(sicil)}?sekme=aile`
+    if (table === 'izin_haklari') return `/personel/${encodeURIComponent(sicil)}?sekme=izin`
+    return `/personel/${encodeURIComponent(sicil)}?sekme=gecmis`
   }
   return null
 }

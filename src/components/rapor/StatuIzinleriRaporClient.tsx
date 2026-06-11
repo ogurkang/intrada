@@ -148,6 +148,11 @@ export default function StatuIzinleriRaporClient({
         <>
           <p className="text-xs text-slate-500">
             Anlık görüntü tarihi: <strong className="text-slate-700">{aktif.sonGunuEtiket}</strong>
+            {aktif.periyot !== 'yillik' && (
+              <span className="ml-2 text-amber-700">
+                · Kullanılan izin yalnızca {aktif.label} ayındaki izinleri gösterir (yıl toplamı için YILLIK sekmesine bakın)
+              </span>
+            )}
             {mudurlukFiltreler.length > 0 && (
               <span className="ml-2 text-teal-700">
                 · {gorunenSatirlar.length} kayıt (müdürlük filtresi uygulanmış)

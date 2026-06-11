@@ -2,8 +2,68 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-05-21T13:47:32.473Z",
+  "generatedAt": "2026-06-11T10:53:32.102Z",
   "commits": [
+    {
+      "hash": "bb51e43",
+      "fullHash": "bb51e43b1033e8d696170cb40151241b6142cebd",
+      "date": "2026-06-10",
+      "subject": "Memur İzinleri Raporu ekle; işçi/memur raporlarına müdürlük sütunu ve filtresi."
+    },
+    {
+      "hash": "02a6a37",
+      "fullHash": "02a6a3710984783949550aaf5066c75d4b305f0d",
+      "date": "2026-06-10",
+      "subject": "Personel hareketleri ekranına audit log ve İşlemler kolonu ekle."
+    },
+    {
+      "hash": "b9dd05f",
+      "fullHash": "b9dd05f47d7951d05b29e1bc340e627e01d59c30",
+      "date": "2026-06-10",
+      "subject": "Geçmiş sekmesi detayında maskelemeyi kaldır; değerler açık gösterilsin."
+    },
+    {
+      "hash": "2abe453",
+      "fullHash": "2abe4530dcf5ac8c033465496f49b987bd391c23",
+      "date": "2026-06-10",
+      "subject": "Kişisel bilgi güncellemelerini alan bazlı audit log ile Geçmiş sekmesine ekle."
+    },
+    {
+      "hash": "54b7a15",
+      "fullHash": "54b7a1549bdf5d743918b30d5ddee28b712c1a7a",
+      "date": "2026-06-09",
+      "subject": "Personel ayrılışında kadro boşaltma ve ayrılış nedeni alanı."
+    },
+    {
+      "hash": "9a5dc3e",
+      "fullHash": "9a5dc3e3b8edfdfe8f9508b5fbd84691c6221e5d",
+      "date": "2026-06-09",
+      "subject": "fix(terfi): excel indirmede sicil numarasina gore siralama"
+    },
+    {
+      "hash": "309c140",
+      "fullHash": "309c140ee296a1a3cc3c6dc57498a06c2676fbe3",
+      "date": "2026-06-09",
+      "subject": "fix(terfi): terfi ettir onizlemede kadro derecesi eslestirmesi"
+    },
+    {
+      "hash": "338cd9e",
+      "fullHash": "338cd9e944714c1c96d2a2b478ab386d7ec3b38f",
+      "date": "2026-06-08",
+      "subject": "fix(rapor): ogrenim listesinde onlisans ve ustu tum kayitlari goster"
+    },
+    {
+      "hash": "04c3265",
+      "fullHash": "04c3265bd6940e587511d9b6090588fbf1241114",
+      "date": "2026-05-21",
+      "subject": "feat(asistan): INTRADA yardim botu ve kismi isimle izin sorgusu"
+    },
+    {
+      "hash": "ba5e45d",
+      "fullHash": "ba5e45d2bfddc91f58a14f64ecffe475ceca87c8",
+      "date": "2026-05-21",
+      "subject": "feat: mihenk taslari, ADABEL personel raporu ve gelistirme listesi"
+    },
     {
       "hash": "f9d9752",
       "fullHash": "f9d97525e751ff1c910e6b1588fc6b2047d7067f",
@@ -183,66 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "ec23db53902e7692fd8e46a4b720728c95638f03",
       "date": "2026-05-14",
       "subject": "feat: SosyalHak - Ozet Onizle + Rapor Bakiyesi + IZY buton duzeni"
-    },
-    {
-      "hash": "d8283e8",
-      "fullHash": "d8283e8ed958c93492c7a26c6468786847e4ae6e",
-      "date": "2026-05-14",
-      "subject": "fix: RMY, IVY, IZY ekranlarından Tip sütununu kaldır"
-    },
-    {
-      "hash": "3e41224",
-      "fullHash": "3e412245b31ed0ed4f12d401263173ba17cb28b0",
-      "date": "2026-05-14",
-      "subject": "fix: SosyalHakDetayClient duplicate key hatasi - tip+sira_no+idx kullan"
-    },
-    {
-      "hash": "1df42e3",
-      "fullHash": "1df42e3ca4c45a7e25fe6e40b59fdd5591d06adf",
-      "date": "2026-05-14",
-      "subject": "feat: gorev-yerine-gore-liste - Kurum Gorevlendirme konumu Dis olarak goster"
-    },
-    {
-      "hash": "09537cf",
-      "fullHash": "09537cfe959168ee6ced16c80082d41597844e70",
-      "date": "2026-05-14",
-      "subject": "fix: check constraint, gorev-turune-gore-calisan statu+kurum+gun, kurum alani kaldir"
-    },
-    {
-      "hash": "f80a481",
-      "fullHash": "f80a4815a928c53a2183639e9d6f507f252e0202",
-      "date": "2026-05-14",
-      "subject": "feat: statu ve gorevlendirilen_kurum alanlari ekle, build hatasi duzelt"
-    },
-    {
-      "hash": "f0b0102",
-      "fullHash": "f0b0102b92c51fdbfa4c9fc5883104d9a88a4665",
-      "date": "2026-05-14",
-      "subject": "feat: maas oncesi izinli mudurler ve gorev turune gore calisan raporlari, kurum gorevlendirme secenegi"
-    },
-    {
-      "hash": "2d037c8",
-      "fullHash": "2d037c865186602d618310d1825a595f817a6fcc",
-      "date": "2026-05-14",
-      "subject": "fix: firma-calisanlar yeni personel eklemede sekme kapatma ve yenileme"
-    },
-    {
-      "hash": "f4381a1",
-      "fullHash": "f4381a172f08d751b750cf0d5b13547e75464e0d",
-      "date": "2026-05-14",
-      "subject": "feat: firma calisan eklemede otomatik sicil no, ayilis bolumu kaldirildi"
-    },
-    {
-      "hash": "914183e",
-      "fullHash": "914183e8a17fe072ee1f27a54a70e96f49d36a7e",
-      "date": "2026-05-13",
-      "subject": "feat: SHK aday uste islenecek alta, natural sort, Excel indir"
-    },
-    {
-      "hash": "8f73847",
-      "fullHash": "8f738471c48588a30c25e98d1fae5575bcad76f1",
-      "date": "2026-05-13",
-      "subject": "fix: sosyal_hak tablolari icin as any cast eklendi (tipler henuz uretilmedi)"
     }
   ]
 }

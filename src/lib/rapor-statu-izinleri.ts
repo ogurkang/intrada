@@ -37,6 +37,12 @@ export interface StatuIzinHakRow {
   sicil_no: string
   devreden_gun: number
   hak_edilen_gun: number
+  /** izin_haklari.kullanilan_gun — YILLIK sekmede hareket toplamı 0 ise yedek */
+  kullanilan_gun?: number
+}
+
+function normSicil(v: string | null | undefined): string {
+  return String(v ?? '').trim()
 }
 
 function date10(v: string | null | undefined): string | null {
@@ -99,10 +105,11 @@ export function statuIzinRaporSnapshot(input: {
 
   const kadroByAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadro) {
-    if (!r.asil) continue
-    const list = kadroByAsil.get(r.asil) ?? []
+    const asil = normSicil(r.asil)
+    if (!asil) continue
+    const list = kadroByAsil.get(asil) ?? []
     list.push(r)
-    kadroByAsil.set(r.asil, list)
+    kadroByAsil.set(asil, list)
   }
 
   const statuSiciller = new Map<string, { mudurluk: string }>()
@@ -117,14 +124,15 @@ export function statuIzinRaporSnapshot(input: {
 
   const kullanilanBySicil = new Map<string, number>()
   for (const h of hareketler) {
-    if (!statuSiciller.has(h.sicil_no)) continue
+    const sicil = normSicil(h.sicil_no)
+    if (!sicil || !statuSiciller.has(sicil)) continue
     if (!HAKTAN_DUSEN_DURUMLAR.has(String(h.durum ?? '').trim())) continue
     if (!hakKullananTurler.has(String(h.tur ?? '').trim())) continue
     const ht = hareketTarih(h)
     if (!ht || ht > D) continue
     if (ht < aralik.bas || ht > aralik.bit) continue
-    const onceki = kullanilanBySicil.get(h.sicil_no) ?? 0
-    kullanilanBySicil.set(h.sicil_no, onceki + (h.gun ?? 0))
+    const onceki = kullanilanBySicil.get(sicil) ?? 0
+    kullanilanBySicil.set(sicil, onceki + (h.gun ?? 0))
   }
 
   const mudurlukSet =
@@ -137,7 +145,10 @@ export function statuIzinRaporSnapshot(input: {
       const devreden = hak?.devreden_gun ?? 0
       const hakEdilen = hak?.hak_edilen_gun ?? 0
       const toplamHak = devreden + hakEdilen
-      const kullanilan = kullanilanBySicil.get(sicil) ?? 0
+      let kullanilan = kullanilanBySicil.get(sicil) ?? 0
+      if (periyot === 'yillik' && kullanilan === 0 && (hak?.kullanilan_gun ?? 0) > 0) {
+        kullanilan = hak!.kullanilan_gun!
+      }
       const kalan = toplamHak - kullanilan
       return {
         sicil_no: sicil,

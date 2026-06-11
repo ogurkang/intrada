@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import KadroGecmisPanel from '@/components/kadro/KadroGecmisPanel'
 
 type Kadro = Tables<'kadro_hareketleri'>
 
@@ -37,12 +39,14 @@ interface Props {
   unvanlar?: { id: number; unvan_adi: string; sinif_adi: string | null }[]
   gelisNedenleri?: string[]
   ayrilisNedenleri?: string[]
+  auditLoglar?: Tables<'personel_audit_log'>[]
   onGuncelle?: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
 export default function KadroDetayClient({
-  row, adMap,
+  row, adMap, auditLoglar = [],
 }: Props) {
+  const [gecmisAcik, setGecmisAcik] = useState(false)
   const kadroBaslik =
     [row.kadro_sira_no, row.kadro_unvani ?? row.gorev_unvani]
       .filter(Boolean)
@@ -64,6 +68,19 @@ export default function KadroDetayClient({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setGecmisAcik(true)}
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            title="Bu kadronun değişiklik geçmişi"
+          >
+            Bilgi
+            {auditLoglar.length > 0 && (
+              <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                {auditLoglar.length}
+              </span>
+            )}
+          </button>
           <Link
             href={`/kadro/${row.id}/duzenle`}
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
@@ -119,6 +136,13 @@ export default function KadroDetayClient({
           </div>
         </div>
       </div>
+
+      <KadroGecmisPanel
+        acik={gecmisAcik}
+        onKapat={() => setGecmisAcik(false)}
+        auditLoglar={auditLoglar}
+        adMap={adMap}
+      />
     </div>
   )
 }

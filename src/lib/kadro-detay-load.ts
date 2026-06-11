@@ -12,6 +12,7 @@ export type KadroDetayPageData = {
   unvanlar: { id: number; unvan_adi: string; sinif_adi: string | null }[]
   gelisNedenleri: string[]
   ayrilisNedenleri: string[]
+  auditLoglar: Tables<'personel_audit_log'>[]
 }
 
 export async function loadKadroDetayPageData(
@@ -25,6 +26,7 @@ export async function loadKadroDetayPageData(
     { data: statuRaw },
     { data: mudurRaw },
     { data: unvanRaw },
+    { data: auditLogRaw },
   ] = await Promise.all([
     supabase.from('kadro_hareketleri').select('*').eq('id', idNum).single(),
     supabase.from('kadro_hareketleri').select('gelis_nedeni, ayrilis_nedeni'),
@@ -32,6 +34,12 @@ export async function loadKadroDetayPageData(
     supabase.from('tanim_statu').select('statu_adi').eq('aktif', true).order('statu_adi'),
     supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
     supabase.from('tanim_unvan').select('id, unvan_adi').eq('aktif', true).order('sira_no').order('unvan_adi'),
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .eq('ref_table', 'kadro_hareketleri')
+      .eq('ref_id', String(idNum))
+      .order('created_at', { ascending: false }),
   ])
 
   if (error || !k) return null
@@ -89,6 +97,7 @@ export async function loadKadroDetayPageData(
     }),
     gelisNedenleri,
     ayrilisNedenleri,
+    auditLoglar: (auditLogRaw ?? []) as Tables<'personel_audit_log'>[],
   }
 }
 

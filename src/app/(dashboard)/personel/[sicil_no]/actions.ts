@@ -6,6 +6,7 @@ import { ggAayyyyToIso } from '@/lib/tarih'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
+import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
@@ -246,6 +247,14 @@ export async function personelHareketiEkle(
   ) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    if ((kadroAyrilis.bosaltmaKayitlari ?? []).length > 0) {
+      await writeKadroBosaltmaAuditLoglari(supabase, {
+        sicil_no,
+        ayrilis_nedeni,
+        ayrilis_tarihi,
+        kayitlar: kadroAyrilis.bosaltmaKayitlari!,
+      })
+    }
     revalidatePath('/kadro')
     revalidatePath('/personel-hareketleri')
   }
@@ -309,6 +318,14 @@ export async function personelHareketiGuncelle(
   ) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
+    if ((kadroAyrilis.bosaltmaKayitlari ?? []).length > 0) {
+      await writeKadroBosaltmaAuditLoglari(supabase, {
+        sicil_no,
+        ayrilis_nedeni,
+        ayrilis_tarihi,
+        kayitlar: kadroAyrilis.bosaltmaKayitlari!,
+      })
+    }
     revalidatePath('/kadro')
     revalidatePath('/personel-hareketleri')
   }

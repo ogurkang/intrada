@@ -860,13 +860,13 @@ export interface Database {
       }
       personel_audit_log: {
         Row: {
-          id: number; sicil_no: string; modul: string; islem: string; ozet: string
+          id: number; sicil_no: string | null; modul: string; islem: string; ozet: string
           actor_id: string | null; actor_email: string | null
           ref_table: string | null; ref_id: string | null
           onceki: Json | null; sonraki: Json | null; created_at: string
         }
         Insert: {
-          id?: number; sicil_no: string; modul: string; islem: string; ozet: string
+          id?: number; sicil_no?: string | null; modul: string; islem: string; ozet: string
           actor_id?: string | null; actor_email?: string | null
           ref_table?: string | null; ref_id?: string | null
           onceki?: Json | null; sonraki?: Json | null; created_at?: string

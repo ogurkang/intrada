@@ -109,6 +109,7 @@ export default async function Page({ params }: Props) {
           gelisNedenleri={rest.gelisNedenleri}
           ayrilisNedenleri={rest.ayrilisNedenleri}
           onGuncelle={kadroGuncelle}
+          auditLoglar={rest.auditLoglar}
         />
       </div>
     )

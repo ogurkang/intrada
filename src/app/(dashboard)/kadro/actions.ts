@@ -3,6 +3,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { kadroDurumuHesapla } from '@/lib/kadro-durum'
+import {
+  KADRO_ALAN_ETIKETLERI,
+  KADRO_AUDIT_SELECT,
+  kadroAuditSicilNo,
+  kadroAuditSnapshot,
+} from '@/lib/kadro-audit'
+import {
+  writePersonelAuditLogSafe,
+  alanDegisiklikleriHesapla,
+  degisiklikOzeti,
+  degisiklikPayload,
+} from '@/lib/personel-audit'
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
@@ -79,8 +91,42 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+
+  const sonrakiSnap = kadroAuditSnapshot({
+    meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
+    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    iptal_karar_tarihi:   iptalKararTarihi,
+    iptal_karar_no:       iptalKararNo,
+    kadro_sira_no,
+    kadro_derecesi:       str(formData, 'kadro_derecesi'),
+    statu,
+    kadro_unvani:         kadroUn.unvan_adi,
+    kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
+    gorev_unvani:         gorevUn.unvan_adi,
+    gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
+    asil,
+    vekil,
+    durumu,
+    gelis_nedeni:         str(formData, 'gelis_nedeni'),
+    geldigi_yer:          str(formData, 'geldigi_yer'),
+    ayrilis_tarihi:       str(formData, 'ayrilis_tarihi'),
+    ayrilis_nedeni:       str(formData, 'ayrilis_nedeni'),
+    gittigi_yer:          str(formData, 'gittigi_yer'),
+    aciklama:             str(formData, 'aciklama'),
+  })
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: kadroAuditSicilNo(asil, vekil),
+    modul: 'kadro',
+    islem: 'Ekle',
+    ozet: `Kadro kaydı oluşturuldu${kadro_sira_no ? ` (${kadro_sira_no})` : ''}.`,
+    ref_table: 'kadro_hareketleri',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki: sonrakiSnap,
+  })
+
   revalidatePath('/kadro')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
+  if (inserted?.id) revalidatePath(`/kadro/${inserted.id}`)
   return {}
 }
 
@@ -106,7 +152,7 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const supabase = await createClient()
   const { data: mevcut } = await supabase
     .from('kadro_hareketleri')
-    .select('kadro_unvan_id, kadro_unvani, gorev_unvan_id, gorev_unvani')
+    .select(`kadro_unvan_id, kadro_unvani, gorev_unvan_id, gorev_unvani, ${KADRO_AUDIT_SELECT}`)
     .eq('id', id)
     .maybeSingle()
   const kadroUn = await unvanFormdan(supabase, formData, 'kadro_unvan_id')
@@ -137,6 +183,45 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   }).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+
+  const oncekiSnap = kadroAuditSnapshot(mevcut ?? {})
+  const sonrakiSnap = kadroAuditSnapshot({
+    meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
+    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    iptal_karar_tarihi:   iptalKararTarihi,
+    iptal_karar_no:       iptalKararNo,
+    kadro_sira_no,
+    kadro_derecesi:       str(formData, 'kadro_derecesi'),
+    statu,
+    kadro_unvani:         kadroUn.unvan_adi ?? mevcut?.kadro_unvani ?? null,
+    kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
+    gorev_unvani:         gorevUn.unvan_adi ?? mevcut?.gorev_unvani ?? null,
+    gorev_mudurlugu:      str(formData, 'gorev_mudurlugu'),
+    asil,
+    vekil,
+    durumu,
+    gelis_nedeni:         str(formData, 'gelis_nedeni'),
+    geldigi_yer:          str(formData, 'geldigi_yer'),
+    ayrilis_tarihi:       str(formData, 'ayrilis_tarihi'),
+    ayrilis_nedeni:       str(formData, 'ayrilis_nedeni'),
+    gittigi_yer:          str(formData, 'gittigi_yer'),
+    aciklama:             str(formData, 'aciklama'),
+  })
+  const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, KADRO_ALAN_ETIKETLERI)
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no: kadroAuditSicilNo(asil, vekil),
+      modul: 'kadro',
+      islem: 'Güncelle',
+      ozet: degisiklikOzeti(degisiklikler, 'Kadro güncellendi'),
+      ref_table: 'kadro_hareketleri',
+      ref_id: String(id),
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
+
   revalidatePath('/kadro')
   revalidatePath(`/kadro/${id}`)
   if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)

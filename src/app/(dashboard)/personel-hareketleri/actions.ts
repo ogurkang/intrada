@@ -6,6 +6,7 @@ import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
+import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
@@ -273,14 +274,12 @@ export async function personelHareketiGuncelle(
   if (pasif && sicil_no && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
-    if ((kadroAyrilis.bosaltilanKadroIdleri ?? []).length > 0) {
-      await writePersonelAuditLogSafe(supabase, {
+    if ((kadroAyrilis.bosaltmaKayitlari ?? []).length > 0) {
+      await writeKadroBosaltmaAuditLoglari(supabase, {
         sicil_no,
-        modul: 'kadro',
-        islem: 'Kadro Boşaltma',
-        ozet: `Ayrılış nedeniyle kadrodan çıkarıldı (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`,
-        ref_table: 'kadro_hareketleri',
-        ref_id: kadroAyrilis.bosaltilanKadroIdleri!.join(','),
+        ayrilis_nedeni,
+        ayrilis_tarihi,
+        kayitlar: kadroAyrilis.bosaltmaKayitlari!,
       })
     }
   } else {
@@ -445,14 +444,12 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   if (pasif && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
     if (kadroAyrilis.hata) return { hata: kadroAyrilis.hata }
-    if ((kadroAyrilis.bosaltilanKadroIdleri ?? []).length > 0) {
-      await writePersonelAuditLogSafe(supabase, {
+    if ((kadroAyrilis.bosaltmaKayitlari ?? []).length > 0) {
+      await writeKadroBosaltmaAuditLoglari(supabase, {
         sicil_no,
-        modul: 'kadro',
-        islem: 'Kadro Boşaltma',
-        ozet: `Ayrılış nedeniyle kadrodan çıkarıldı (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`,
-        ref_table: 'kadro_hareketleri',
-        ref_id: kadroAyrilis.bosaltilanKadroIdleri!.join(','),
+        ayrilis_nedeni,
+        ayrilis_tarihi,
+        kayitlar: kadroAyrilis.bosaltmaKayitlari!,
       })
     }
   } else {

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface PersonelAuditWriteInput {
-  sicil_no: string
+  sicil_no?: string | null
   modul: string
   islem: string
   ozet: string
@@ -26,7 +26,7 @@ export async function writePersonelAuditLog(
 ): Promise<void> {
   const actor = await resolveActor(supabase)
   const { error } = await supabase.from('personel_audit_log').insert({
-    sicil_no: input.sicil_no,
+    sicil_no: input.sicil_no ?? null,
     modul: input.modul,
     islem: input.islem,
     ozet: input.ozet,
