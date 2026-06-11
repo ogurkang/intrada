@@ -42,13 +42,19 @@ export const TERFI_AUDIT_SELECT_FULL =
 
 const TARIH_ALANLARI = new Set(['kha_tarihi', 'ekea_tarihi', 'kidem_tarihi', 'iyi_hal_terfi_tarihi'])
 
+const TERFI_TARIH_ALANLARI = ['kha_tarihi', 'ekea_tarihi', 'kidem_tarihi', 'iyi_hal_terfi_tarihi'] as const
+
 export function terfiAuditSnapshot(
   row: Record<string, unknown>,
   alanlar: Record<string, string> = TERFI_ALAN_ETIKETLERI,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const alan of Object.keys(alanlar)) {
-    out[alan] = row[alan] ?? null
+    let v = row[alan] ?? null
+    if (v != null && (TERFI_TARIH_ALANLARI as readonly string[]).includes(alan)) {
+      v = String(v).slice(0, 10) || null
+    }
+    out[alan] = v
   }
   return out
 }

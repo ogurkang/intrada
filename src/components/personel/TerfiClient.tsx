@@ -40,6 +40,29 @@ interface Props {
 
 function fmt(v: string | null) { return v ?? '—' }
 
+const INLINE_TERFI_ALANLARI = [
+  'gorev_ayligi_derece', 'gorev_ayligi_kademe',
+  'kha_derece', 'kha_kademe', 'kha_tarihi',
+  'ekea_derece', 'ekea_kademe', 'ekea_tarihi',
+  'kidem_yili', 'kidem_tarihi', 'iyi_hal_terfi_tarihi',
+  'ek_gosterge', 'ek_odeme', 'oht', 'yan_odeme', 'sds_orani',
+] as const
+
+function normInlineTerfiDeger(alan: string, deger: unknown): string {
+  if (deger == null || deger === '') return ''
+  if (alan.endsWith('_tarihi')) return String(deger).slice(0, 10)
+  return String(deger).trim()
+}
+
+function inlineTerfiDegisiklikVarMi(r: TH, v: Record<string, string>): boolean {
+  for (const alan of INLINE_TERFI_ALANLARI) {
+    const eski = normInlineTerfiDeger(alan, (r as Record<string, unknown>)[alan])
+    const yeni = normInlineTerfiDeger(alan, v[alan] ?? '')
+    if (eski !== yeni) return true
+  }
+  return false
+}
+
 const KOLON_GRUPLAR = [
   {
     baslik: 'Görev Aylığı',
@@ -251,10 +274,24 @@ export default function TerfiClient({
     setHata(null); setFormAcik(true)
   }
 
+  function inlineIptal(rowKey: string) {
+    setDuzenlenenRowKey(prev => (prev === rowKey ? null : prev))
+    setInlineVeri(prev => {
+      const next = { ...prev }
+      delete next[rowKey]
+      return next
+    })
+    setHata(null)
+  }
+
   async function handleInlineKaydet(row: ListRow) {
     const r = row.terfi
     if (r?.id) {
       const v = inlineVeri[row.liste_satir_id] ?? {}
+      if (!inlineTerfiDegisiklikVarMi(r, v)) {
+        inlineIptal(row.liste_satir_id)
+        return
+      }
       const fd = new FormData()
       fd.set('sicil_no', row.sicil_no)
       Object.entries(v).forEach(([k, val]) => fd.set(k, val))
@@ -565,7 +602,7 @@ export default function TerfiClient({
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">ÖHT</th>
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Yan Ö.</th>
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">SDS</th>
-              <th className="text-right px-1 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs w-14">İşlem</th>
+              <th className="text-right px-1 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs w-[4.5rem]">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -723,12 +760,38 @@ export default function TerfiClient({
                     )}
                   </td>
                   <td className="px-1 py-1 text-right align-top">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-0.5">
                       {duzenleniyor ? (
-                        <button onClick={() => handleInlineKaydet(row)} disabled={isPending}
-                          className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors disabled:opacity-50">
-                          {isPending ? '…' : 'Kaydet'}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleInlineKaydet(row)}
+                            disabled={isPending}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                            title="Kaydet"
+                            aria-label="Kaydet"
+                          >
+                            {isPending ? (
+                              <span className="block w-4 h-4 text-center text-xs leading-4">…</span>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => inlineIptal(rowKey)}
+                            disabled={isPending}
+                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                            title="İptal"
+                            aria-label="İptal"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </>
                       ) : r?.id ? (
                         <>
                           <button
@@ -737,22 +800,49 @@ export default function TerfiClient({
                               e.stopPropagation()
                               setGecmisTerfi({ id: r.id, ad_soyad: row.ad_soyad })
                             }}
-                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                            className="relative p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                             title="Değişiklik geçmişi"
+                            aria-label="Değişiklik geçmişi"
                           >
-                            Bilgi
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.5 2" />
+                              <path strokeLinecap="round" strokeLinejoin="round"
+                                d="M3.5 9.5A9 9 0 113 12m.5-2.5L1.75 7.25M3.5 9.5L6 8.75" />
+                            </svg>
                             {(auditLoglarByTerfiId[String(r.id)]?.length ?? 0) > 0 && (
-                              <span className="ml-1 inline-flex min-w-[1rem] h-4 px-1 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
+                              <span className="absolute -top-1 -right-1 inline-flex min-w-[0.9rem] h-[0.9rem] px-0.5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-medium">
                                 {auditLoglarByTerfiId[String(r.id)]!.length}
                               </span>
                             )}
                           </button>
-                          <button type="button" onClick={() => duzenleAc(r, row)}
-                            className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
+                          <button
+                            type="button"
+                            onClick={() => duzenleAc(r, row)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                            title="Düzenle"
+                            aria-label="Düzenle"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round"
+                                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L16.862 4.487" />
+                            </svg>
+                          </button>
                         </>
                       ) : r ? (
-                        <button type="button" onClick={() => duzenleAc(r, row)}
-                          className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
+                        <button
+                          type="button"
+                          onClick={() => duzenleAc(r, row)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Düzenle"
+                          aria-label="Düzenle"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round"
+                              d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L16.862 4.487" />
+                          </svg>
+                        </button>
                       ) : (
                         <button type="button" onClick={() => duzenleAc(null, row, idx)}
                           className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Ekle</button>

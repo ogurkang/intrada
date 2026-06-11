@@ -47,12 +47,17 @@ export default function FirmaCalisanDetayView({
           <button
             type="button"
             onClick={() => setGecmisAcik(true)}
-            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-            title="Bu personelin değişiklik geçmişi"
+            className="relative flex items-center justify-center border border-slate-300 text-slate-600 p-2 rounded-lg hover:bg-slate-50 hover:text-amber-600 transition-colors"
+            title="Değişiklik geçmişi"
+            aria-label="Değişiklik geçmişi"
           >
-            Bilgi
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.5 2" />
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3.5 9.5A9 9 0 113 12m.5-2.5L1.75 7.25M3.5 9.5L6 8.75" />
+            </svg>
             {auditLoglar.length > 0 && (
-              <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+              <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.1rem] h-[1.1rem] px-1 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
                 {auditLoglar.length}
               </span>
             )}
