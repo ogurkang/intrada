@@ -4,6 +4,19 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { revalidateTerfiRoutes } from '@/lib/terfi-app-path'
+import {
+  TERFI_ALAN_ETIKETLERI,
+  TERFI_AUDIT_SELECT,
+  TERFI_AUDIT_SELECT_FULL,
+  TERFI_KATSAYI_ALAN_ETIKETLERI,
+  terfiAuditSnapshot,
+  writeTerfiAuditLogSafe,
+} from '@/lib/terfi-audit'
+import {
+  alanDegisiklikleriHesapla,
+  degisiklikOzeti,
+  degisiklikPayload,
+} from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -15,7 +28,7 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
   if (!sicil_no) return { hata: 'Sicil no zorunludur.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('terfi_hareketleri').insert({
+  const insertPayload = {
     sicil_no,
     ad_soyad:               str(fd, 'ad_soyad'),
     rol:                    str(fd, 'rol'),
@@ -38,8 +51,24 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
     oht:                    str(fd, 'oht'),
     yan_odeme:              str(fd, 'yan_odeme'),
     sds_orani:              str(fd, 'sds_orani'),
-  })
+  }
+  const { data: inserted, error } = await supabase
+    .from('terfi_hareketleri')
+    .insert(insertPayload)
+    .select('id')
+    .single()
   if (error) return { hata: error.message }
+
+  if (inserted?.id) {
+    await writeTerfiAuditLogSafe(supabase, {
+      sicil_no,
+      terfiId: inserted.id,
+      islem: 'Ekle',
+      ozet: `Terfi kaydı oluşturuldu (sicil ${sicil_no}).`,
+      sonraki: terfiAuditSnapshot(insertPayload, TERFI_ALAN_ETIKETLERI),
+    })
+  }
+
   revalidateTerfiRoutes()
   revalidatePath(`/personel/${sicil_no}`)
   return {}
@@ -50,7 +79,13 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
   if (!sicil_no) return { hata: 'Sicil no zorunludur.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('terfi_hareketleri').update({
+  const { data: mevcut } = await supabase
+    .from('terfi_hareketleri')
+    .select(TERFI_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  const guncelleme = {
     gorev_ayligi_derece:    str(fd, 'gorev_ayligi_derece'),
     gorev_ayligi_kademe:    str(fd, 'gorev_ayligi_kademe'),
     kha_derece:             str(fd, 'kha_derece'),
@@ -67,8 +102,26 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     oht:                    str(fd, 'oht'),
     yan_odeme:              str(fd, 'yan_odeme'),
     sds_orani:              str(fd, 'sds_orani'),
-  }).eq('id', id)
+  }
+
+  const { error } = await supabase.from('terfi_hareketleri').update(guncelleme).eq('id', id)
   if (error) return { hata: error.message }
+
+  const oncekiSnap = terfiAuditSnapshot(mevcut ?? {}, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  const sonrakiSnap = terfiAuditSnapshot({ ...mevcut, ...guncelleme }, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writeTerfiAuditLogSafe(supabase, {
+      sicil_no,
+      terfiId: id,
+      islem: 'Güncelle',
+      ozet: degisiklikOzeti(degisiklikler, 'Terfi kaydı güncellendi'),
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
+
   revalidateTerfiRoutes()
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
@@ -76,8 +129,25 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
 
 export async function terfiSil(id: number, sicil_no: string): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: mevcut } = await supabase
+    .from('terfi_hareketleri')
+    .select(TERFI_AUDIT_SELECT_FULL)
+    .eq('id', id)
+    .maybeSingle()
+
   const { error } = await supabase.from('terfi_hareketleri').delete().eq('id', id)
   if (error) return { hata: error.message }
+
+  if (mevcut) {
+    await writeTerfiAuditLogSafe(supabase, {
+      sicil_no,
+      terfiId: id,
+      islem: 'Sil',
+      ozet: `Terfi kaydı silindi (sicil ${sicil_no}).`,
+      onceki: terfiAuditSnapshot(mevcut, TERFI_ALAN_ETIKETLERI),
+    })
+  }
+
   revalidateTerfiRoutes()
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
@@ -135,21 +205,64 @@ export async function terfiTopluKaydet(
   if (!satirlar.length) return { kaydedilen: 0 }
   const supabase = await createClient()
 
+  const guncellenecekIdler = satirlar
+    .map(s => (s.id != null && Number.isFinite(s.id) ? s.id! : null))
+    .filter((id): id is number => id != null)
+  const mevcutById = new Map<number, Record<string, unknown>>()
+  if (guncellenecekIdler.length > 0) {
+    const { data: mevcutRows, error: selErr } = await supabase
+      .from('terfi_hareketleri')
+      .select(`id, ${TERFI_AUDIT_SELECT}`)
+      .in('id', guncellenecekIdler)
+    if (selErr) return { hata: selErr.message }
+    for (const r of mevcutRows ?? []) {
+      mevcutById.set(r.id, r as Record<string, unknown>)
+    }
+  }
+
   for (const s of satirlar) {
     const id = s.id != null && Number.isFinite(s.id) ? s.id : null
+    const payload = terfiKatsayiPayload(s)
     if (id != null) {
-      const { error } = await supabase.from('terfi_hareketleri').update(terfiKatsayiPayload(s)).eq('id', id)
+      const oncekiSnap = terfiAuditSnapshot(mevcutById.get(id) ?? {}, TERFI_KATSAYI_ALAN_ETIKETLERI)
+      const sonrakiSnap = terfiAuditSnapshot({ ...mevcutById.get(id), ...payload }, TERFI_KATSAYI_ALAN_ETIKETLERI)
+      const { error } = await supabase.from('terfi_hareketleri').update(payload).eq('id', id)
       if (error) return { hata: error.message }
+      const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
+      if (degisiklikler.length > 0) {
+        const diff = degisiklikPayload(degisiklikler)
+        await writeTerfiAuditLogSafe(supabase, {
+          sicil_no: s.sicil_no,
+          terfiId: id,
+          islem: 'Güncelle',
+          ozet: degisiklikOzeti(degisiklikler, 'Terfi toplu güncelleme'),
+          onceki: diff.onceki,
+          sonraki: diff.sonraki,
+        })
+      }
     } else {
-      const { error } = await supabase.from('terfi_hareketleri').insert({
-        sicil_no: s.sicil_no,
-        rol: null,
-        kadro_sira_no: null,
-        unvan: null,
-        mudurluk: null,
-        ...terfiKatsayiPayload(s),
-      })
+      const { data: inserted, error } = await supabase
+        .from('terfi_hareketleri')
+        .insert({
+          sicil_no: s.sicil_no,
+          rol: null,
+          kadro_sira_no: null,
+          unvan: null,
+          mudurluk: null,
+          ...payload,
+        })
+        .select('id')
+        .single()
       if (error) return { hata: error.message }
+      if (inserted?.id) {
+        await writeTerfiAuditLogSafe(supabase, {
+          sicil_no: s.sicil_no,
+          terfiId: inserted.id,
+          islem: 'Ekle',
+          ozet: `Terfi toplu kayıt ile oluşturuldu (sicil ${s.sicil_no}).`,
+          sonraki: terfiAuditSnapshot({ ...payload, sicil_no: s.sicil_no }, TERFI_KATSAYI_ALAN_ETIKETLERI),
+        })
+      }
     }
   }
 

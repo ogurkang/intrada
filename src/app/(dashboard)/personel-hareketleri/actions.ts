@@ -8,6 +8,12 @@ import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
 import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import {
+  TERFI_AUDIT_SELECT,
+  TERFI_KATSAYI_ALAN_ETIKETLERI,
+  logTerfiDegisiklikSafe,
+  terfiAuditSnapshot,
+} from '@/lib/terfi-audit'
+import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
   degisiklikOzeti,
@@ -54,6 +60,40 @@ function tarihStr(fd: FormData, key: string): string | null {
   const v = str(fd, key)
   if (!v) return null
   return ggAayyyyToIso(v) ?? v
+}
+
+async function terfiSenkronPersonelHareketinden(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string,
+  hareketId: number,
+  guncelleme: Record<string, string | null>,
+): Promise<string | undefined> {
+  const { data: sonTerfi } = await supabase
+    .from('terfi_hareketleri')
+    .select(`id, ${TERFI_AUDIT_SELECT}`)
+    .eq('sicil_no', sicil_no)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!sonTerfi?.id) return undefined
+
+  const oncekiSnap = terfiAuditSnapshot(sonTerfi, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  const { error: terfiErr } = await supabase
+    .from('terfi_hareketleri')
+    .update(guncelleme)
+    .eq('id', sonTerfi.id)
+  if (terfiErr) return terfiErr.message
+
+  await logTerfiDegisiklikSafe(supabase, {
+    sicil_no,
+    terfiId: sonTerfi.id,
+    islem: 'Hareket Senkron',
+    ozetBaslik: 'Personel hareketi ile terfi senkronize edildi',
+    onceki: oncekiSnap,
+    sonraki: terfiAuditSnapshot({ ...sonTerfi, ...guncelleme }, TERFI_KATSAYI_ALAN_ETIKETLERI),
+    ozetEk: hareketId > 0 ? `(hareket #${hareketId})` : undefined,
+  })
+  return undefined
 }
 
 async function kadroAtamasiniGuncelle(
@@ -295,41 +335,30 @@ export async function personelHareketiGuncelle(
   }
 
   if (sicil_no) {
-    const { data: sonTerfi } = await supabase
-      .from('terfi_hareketleri')
-      .select('id')
-      .eq('sicil_no', sicil_no)
-      .order('kayit_zamani', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (sonTerfi?.id) {
-      const { error: terfiErr } = await supabase
-        .from('terfi_hareketleri')
-        .update({
-          kha_derece: yeni_kha_derece,
-          kha_kademe: yeni_kha_kademe,
-          ekea_derece: yeni_ekea_derece,
-          ekea_kademe: yeni_ekea_kademe,
-          kha_tarihi: yeni_kha_tarihi,
-          ekea_tarihi: yeni_ekea_tarihi,
-          kidem_yili: yeni_kidem_yili,
-          kidem_tarihi: yeni_kidem_tarihi,
-          iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
-          oht: yeni_oht,
-          yan_odeme: yeni_yan_odeme,
-          ek_odeme: yeni_ek_odeme,
-          ek_gosterge: yeni_ek_gosterge,
-          sds_orani: yeni_sds_orani,
-        })
-        .eq('id', sonTerfi.id)
-      if (terfiErr) return { hata: terfiErr.message }
-    }
+    const terfiHata = await terfiSenkronPersonelHareketinden(supabase, sicil_no, id, {
+      kha_derece: yeni_kha_derece,
+      kha_kademe: yeni_kha_kademe,
+      ekea_derece: yeni_ekea_derece,
+      ekea_kademe: yeni_ekea_kademe,
+      kha_tarihi: yeni_kha_tarihi,
+      ekea_tarihi: yeni_ekea_tarihi,
+      kidem_yili: yeni_kidem_yili,
+      kidem_tarihi: yeni_kidem_tarihi,
+      iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
+      oht: yeni_oht,
+      yan_odeme: yeni_yan_odeme,
+      ek_odeme: yeni_ek_odeme,
+      ek_gosterge: yeni_ek_gosterge,
+      sds_orani: yeni_sds_orani,
+    })
+    if (terfiHata) return { hata: terfiHata }
   }
 
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')
   revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
+  revalidatePath('/terfi/bilgiler')
   if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
   if (sicil_no) await revalidatePersonelDetayPaths(sicil_no)
   return {}
@@ -464,40 +493,29 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     if (kadroSync.hata) return { hata: kadroSync.hata }
   }
 
-  const { data: sonTerfi } = await supabase
-    .from('terfi_hareketleri')
-    .select('id')
-    .eq('sicil_no', sicil_no)
-    .order('kayit_zamani', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (sonTerfi?.id) {
-    const { error: terfiErr } = await supabase
-      .from('terfi_hareketleri')
-      .update({
-        kha_derece: yeni_kha_derece,
-        kha_kademe: yeni_kha_kademe,
-        ekea_derece: yeni_ekea_derece,
-        ekea_kademe: yeni_ekea_kademe,
-        kha_tarihi: yeni_kha_tarihi,
-        ekea_tarihi: yeni_ekea_tarihi,
-        kidem_yili: yeni_kidem_yili,
-        kidem_tarihi: yeni_kidem_tarihi,
-        iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
-        oht: yeni_oht,
-        yan_odeme: yeni_yan_odeme,
-        ek_odeme: yeni_ek_odeme,
-        ek_gosterge: yeni_ek_gosterge,
-        sds_orani: yeni_sds_orani,
-      })
-      .eq('id', sonTerfi.id)
-    if (terfiErr) return { hata: terfiErr.message }
-  }
+  const terfiHata = await terfiSenkronPersonelHareketinden(supabase, sicil_no, inserted?.id ?? 0, {
+    kha_derece: yeni_kha_derece,
+    kha_kademe: yeni_kha_kademe,
+    ekea_derece: yeni_ekea_derece,
+    ekea_kademe: yeni_ekea_kademe,
+    kha_tarihi: yeni_kha_tarihi,
+    ekea_tarihi: yeni_ekea_tarihi,
+    kidem_yili: yeni_kidem_yili,
+    kidem_tarihi: yeni_kidem_tarihi,
+    iyi_hal_terfi_tarihi: yeni_iyi_hal_terfi_tarihi,
+    oht: yeni_oht,
+    yan_odeme: yeni_yan_odeme,
+    ek_odeme: yeni_ek_odeme,
+    ek_gosterge: yeni_ek_gosterge,
+    sds_orani: yeni_sds_orani,
+  })
+  if (terfiHata) return { hata: terfiHata }
 
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')
   revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
+  revalidatePath('/terfi/bilgiler')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}

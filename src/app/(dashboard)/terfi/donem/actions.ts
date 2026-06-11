@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import type { Tables } from '@/types/database'
+import {
+  TERFI_KATSAYI_ALAN_ETIKETLERI,
+  terfiAuditSnapshot,
+  writeTerfiAuditLogSafe,
+} from '@/lib/terfi-audit'
+import { alanDegisiklikleriHesapla, degisiklikOzeti, degisiklikPayload } from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -166,15 +172,29 @@ export async function terfiEttirKaydet(
       .eq('id', s.terfi_id)
     if (error) return { hata: error.message }
 
+    const oncekiSnap = terfiSnapshotFromRow(onceki)
     const { error: logErr } = await supabase.from('terfi_donem_islem_log').insert({
       donem_id: donemId,
       sicil_no: s.sicil_no,
       terfi_id: s.terfi_id,
-      onceki: terfiSnapshotFromRow(onceki),
+      onceki: oncekiSnap,
       sonraki,
       geri_alindi: false,
     })
     if (logErr) return { hata: logErr.message }
+
+    const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonraki, TERFI_KATSAYI_ALAN_ETIKETLERI)
+    if (degisiklikler.length > 0) {
+      const payload = degisiklikPayload(degisiklikler)
+      await writeTerfiAuditLogSafe(supabase, {
+        sicil_no: s.sicil_no,
+        terfiId: s.terfi_id,
+        islem: 'Terfi Ettir',
+        ozet: degisiklikOzeti(degisiklikler, `Terfi ettirildi (dönem #${donemId})`),
+        onceki: payload.onceki,
+        sonraki: payload.sonraki,
+      })
+    }
   }
 
   revalidatePath('/terfi')
@@ -211,12 +231,33 @@ export async function terfiGeriAlTek(
   if (!logRow) return { hata: 'Terfi işlem logu bulunamadı.' }
   if (logRow.geri_alindi) return { hata: 'Bu kayıt daha önce geri alınmış.' }
 
-  const onceki = (logRow.onceki ?? {}) as TerfiAlanSnapshot
+  const geriYukle = (logRow.onceki ?? {}) as TerfiAlanSnapshot
+  const { data: guncel } = await supabase
+    .from('terfi_hareketleri')
+    .select('*')
+    .eq('id', logRow.terfi_id)
+    .maybeSingle()
+  const oncekiSnap = terfiAuditSnapshot(guncel ?? {}, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  const sonrakiSnap = terfiAuditSnapshot(geriYukle, TERFI_KATSAYI_ALAN_ETIKETLERI)
+
   const { error: upErr } = await supabase
     .from('terfi_hareketleri')
-    .update(onceki)
+    .update(geriYukle)
     .eq('id', logRow.terfi_id)
   if (upErr) return { hata: upErr.message }
+
+  const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writeTerfiAuditLogSafe(supabase, {
+      sicil_no: logRow.sicil_no,
+      terfiId: logRow.terfi_id,
+      islem: 'Terfi Geri Al',
+      ozet: degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId})`),
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
 
   const { error: markErr } = await supabase
     .from('terfi_donem_islem_log')
@@ -249,12 +290,33 @@ export async function terfiGeriAlToplu(
 
   const siciller: string[] = []
   for (const logRow of logs) {
-    const onceki = (logRow.onceki ?? {}) as TerfiAlanSnapshot
+    const geriYukle = (logRow.onceki ?? {}) as TerfiAlanSnapshot
+    const { data: guncel } = await supabase
+      .from('terfi_hareketleri')
+      .select('*')
+      .eq('id', logRow.terfi_id)
+      .maybeSingle()
+    const oncekiSnap = terfiAuditSnapshot(guncel ?? {}, TERFI_KATSAYI_ALAN_ETIKETLERI)
+    const sonrakiSnap = terfiAuditSnapshot(geriYukle, TERFI_KATSAYI_ALAN_ETIKETLERI)
+
     const { error: upErr } = await supabase
       .from('terfi_hareketleri')
-      .update(onceki)
+      .update(geriYukle)
       .eq('id', logRow.terfi_id)
     if (upErr) return { hata: upErr.message }
+
+    const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
+    if (degisiklikler.length > 0) {
+      const payload = degisiklikPayload(degisiklikler)
+      await writeTerfiAuditLogSafe(supabase, {
+        sicil_no: logRow.sicil_no,
+        terfiId: logRow.terfi_id,
+        islem: 'Terfi Geri Al',
+        ozet: degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId}, toplu)`),
+        onceki: payload.onceki,
+        sonraki: payload.sonraki,
+      })
+    }
     siciller.push(logRow.sicil_no)
   }
 

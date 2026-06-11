@@ -12,7 +12,7 @@ export default async function TerfiBilgilerPage() {
     return t > D
   }
 
-  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }] = await Promise.all([
+  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: auditRaw }] = await Promise.all([
     supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
     supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
     supabase
@@ -20,7 +20,20 @@ export default async function TerfiBilgilerPage() {
       .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
       .order('sicil_no'),
     supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .eq('ref_table', 'terfi_hareketleri')
+      .order('created_at', { ascending: false }),
   ])
+
+  const auditLoglarByTerfiId: Record<string, Tables<'personel_audit_log'>[]> = {}
+  for (const log of auditRaw ?? []) {
+    const refId = String(log.ref_id ?? '').trim()
+    if (!refId) continue
+    if (!auditLoglarByTerfiId[refId]) auditLoglarByTerfiId[refId] = []
+    auditLoglarByTerfiId[refId].push(log as Tables<'personel_audit_log'>)
+  }
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
   for (const r of phRaw ?? []) {
@@ -163,6 +176,7 @@ export default async function TerfiBilgilerPage() {
       onGuncelle={terfiGuncelle}
       onSil={terfiSil}
       onTopluKaydet={terfiTopluKaydet}
+      auditLoglarByTerfiId={auditLoglarByTerfiId}
     />
   )
 }

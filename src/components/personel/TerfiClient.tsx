@@ -8,6 +8,7 @@ import { ggAayyyyToIso } from '@/lib/tarih'
 import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
+import TerfiGecmisPanel from '@/components/personel/TerfiGecmisPanel'
 
 type TH = Tables<'terfi_hareketleri'>
 
@@ -34,6 +35,7 @@ interface Props {
   onSil:       (id: number, sicil_no: string) => Promise<{ hata?: string }>
   onTopluKaydet?: (satirlar: TerfiSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
   sabitSicil?: string
+  auditLoglarByTerfiId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function fmt(v: string | null) { return v ?? '—' }
@@ -109,6 +111,7 @@ export default function TerfiClient({
   onSil,
   onTopluKaydet,
   sabitSicil,
+  auditLoglarByTerfiId = {},
 }: Props) {
   const router = useRouter()
   const showMemurMeta = !sabitSicil && Array.isArray(memurlar) && memurlar.length > 0
@@ -127,6 +130,7 @@ export default function TerfiClient({
   const [topluVeri, setTopluVeri] = useState<Record<string, Partial<TerfiSatir>>>({})
   const [duzenlenenRowKey, setDuzenlenenRowKey] = useState<string | null>(null)
   const [inlineVeri, setInlineVeri] = useState<Record<string, Record<string, string>>>({})
+  const [gecmisTerfi, setGecmisTerfi] = useState<{ id: number; ad_soyad: string } | null>(null)
 
   function topluGuncelle(sicil_no: string, alan: string, deger: string) {
     setTopluVeri(prev => ({
@@ -719,18 +723,41 @@ export default function TerfiClient({
                     )}
                   </td>
                   <td className="px-1 py-1 text-right align-top">
-                    {duzenleniyor ? (
-                      <button onClick={() => handleInlineKaydet(row)} disabled={isPending}
-                        className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors disabled:opacity-50">
-                        {isPending ? '…' : 'Kaydet'}
-                      </button>
-                    ) : r ? (
-                      <button type="button" onClick={() => duzenleAc(row.terfi ?? null, row)}
-                        className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
-                    ) : (
-                      <button type="button" onClick={() => duzenleAc(null, row, idx)}
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Ekle</button>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {duzenleniyor ? (
+                        <button onClick={() => handleInlineKaydet(row)} disabled={isPending}
+                          className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition-colors disabled:opacity-50">
+                          {isPending ? '…' : 'Kaydet'}
+                        </button>
+                      ) : r?.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setGecmisTerfi({ id: r.id, ad_soyad: row.ad_soyad })
+                            }}
+                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
+                            title="Değişiklik geçmişi"
+                          >
+                            Bilgi
+                            {(auditLoglarByTerfiId[String(r.id)]?.length ?? 0) > 0 && (
+                              <span className="ml-1 inline-flex min-w-[1rem] h-4 px-1 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
+                                {auditLoglarByTerfiId[String(r.id)]!.length}
+                              </span>
+                            )}
+                          </button>
+                          <button type="button" onClick={() => duzenleAc(r, row)}
+                            className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
+                        </>
+                      ) : r ? (
+                        <button type="button" onClick={() => duzenleAc(r, row)}
+                          className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Düzenle</button>
+                      ) : (
+                        <button type="button" onClick={() => duzenleAc(null, row, idx)}
+                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">Ekle</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -789,6 +816,13 @@ export default function TerfiClient({
       </Modal>
       </>
       )}
+
+      <TerfiGecmisPanel
+        acik={gecmisTerfi != null}
+        onKapat={() => setGecmisTerfi(null)}
+        auditLoglar={gecmisTerfi ? (auditLoglarByTerfiId[String(gecmisTerfi.id)] ?? []) : []}
+        baslik={gecmisTerfi ? `Terfi Geçmişi — ${gecmisTerfi.ad_soyad}` : undefined}
+      />
     </div>
   )
 }
