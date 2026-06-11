@@ -1,5 +1,9 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
+import FirmaGecmisPanel from '@/components/personel/FirmaGecmisPanel'
 
 function tarihFmt(t: string | null) {
   if (!t) return '—'
@@ -10,8 +14,21 @@ function routeSegment(row: Tables<'firma_calisanlar'>) {
   return encodeURIComponent(row.public_id ?? String(row.id))
 }
 
-export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_calisanlar'> }) {
+interface Props {
+  row: Tables<'firma_calisanlar'>
+  auditLoglar?: Tables<'personel_audit_log'>[]
+  yerleskeMap?: Record<number, string>
+}
+
+export default function FirmaCalisanDetayView({
+  row,
+  auditLoglar = [],
+  yerleskeMap = {},
+}: Props) {
+  const [gecmisAcik, setGecmisAcik] = useState(false)
   const seg = routeSegment(row)
+  const yerleskeAdi = row.yerleske_adresi_id ? yerleskeMap[row.yerleske_adresi_id] : null
+
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -27,6 +44,19 @@ export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_cali
           ADABEL Personeli — {row.ad_soyad}
         </h1>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setGecmisAcik(true)}
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            title="Bu personelin değişiklik geçmişi"
+          >
+            Bilgi
+            {auditLoglar.length > 0 && (
+              <span className="inline-flex min-w-[1.25rem] h-5 px-1.5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                {auditLoglar.length}
+              </span>
+            )}
+          </button>
           <Link
             href={`/firma-calisanlar/${seg}/duzenle`}
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
@@ -62,6 +92,7 @@ export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_cali
               <Alan etiket="Görev Yeri" deger={row.gorev_mudurlugu} />
               <Alan etiket="Görevi" deger={row.gorevi} />
               <Alan etiket="Mesleği" deger={row.meslegi} />
+              <Alan etiket="Yerleşke Adresi" deger={yerleskeAdi} />
             </div>
           </div>
           {(row.ayrilis_tarihi || row.ayrilis_nedeni) && (
@@ -75,6 +106,13 @@ export default function FirmaCalisanDetayView({ row }: { row: Tables<'firma_cali
           )}
         </div>
       </div>
+
+      <FirmaGecmisPanel
+        acik={gecmisAcik}
+        onKapat={() => setGecmisAcik(false)}
+        auditLoglar={auditLoglar}
+        yerleskeMap={yerleskeMap}
+      />
     </div>
   )
 }

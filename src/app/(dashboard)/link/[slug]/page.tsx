@@ -10,7 +10,7 @@ import {
   type MalBildirimUrlParsedOk,
 } from '@/lib/mal-bildirim-detail-load'
 import { fetchPersonelDetayPageData } from '@/lib/personel-detay-load'
-import { fetchFirmaCalisanById } from '@/lib/firma-calisan-load'
+import { loadFirmaCalisanDetayPageData } from '@/lib/firma-calisan-load'
 import { calisanGuncelle } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import FirmaCalisanDetayView from '@/components/personel/FirmaCalisanDetayView'
 import { loadKadroDetayPageData } from '@/lib/kadro-detay-load'
@@ -75,9 +75,15 @@ export default async function Page({ params }: Props) {
   }
 
   if (linked?.kind === 'firma_calisan') {
-    const row = await fetchFirmaCalisanById(supabase, linked.id)
-    if (!row) notFound()
-    return <FirmaCalisanDetayView row={row} />
+    const detail = await loadFirmaCalisanDetayPageData(supabase, linked.id)
+    if (!detail) notFound()
+    return (
+      <FirmaCalisanDetayView
+        row={detail.row}
+        auditLoglar={detail.auditLoglar}
+        yerleskeMap={detail.yerleskeMap}
+      />
+    )
   }
 
   if (linked?.kind === 'kadro_hareketi') {

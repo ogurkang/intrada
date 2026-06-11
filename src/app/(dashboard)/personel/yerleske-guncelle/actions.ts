@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
 import { gecerliYerleskeId, mudurlukYerleskeHaritasi, fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import { writeFirmaAuditLogSafe, FIRMA_ALAN_ETIKETLERI } from '@/lib/firma-audit'
+import { alanDegisiklikleriHesapla, degisiklikPayload } from '@/lib/personel-audit'
 
 export type YerleskeKaynak = 'kadro' | 'firma'
 
@@ -87,11 +89,34 @@ export async function yerleskeGuncelleSatirKaydet(
   } else {
     const firmaId = Number(id)
     if (!Number.isInteger(firmaId) || firmaId <= 0) return { hata: 'Geçersiz ADABEL kaydı.' }
+    const { data: onceki } = await supabase
+      .from('firma_calisanlar')
+      .select('yerleske_adresi_id')
+      .eq('id', firmaId)
+      .maybeSingle()
     const { error } = await supabase
       .from('firma_calisanlar')
       .update({ yerleske_adresi_id: yerleskeId })
       .eq('id', firmaId)
     if (error) return { hata: error.message }
+    const eskiYerleske = onceki?.yerleske_adresi_id ?? null
+    if (eskiYerleske !== yerleskeId) {
+      const degisiklikler = alanDegisiklikleriHesapla(
+        { yerleske_adresi_id: eskiYerleske },
+        { yerleske_adresi_id: yerleskeId },
+        FIRMA_ALAN_ETIKETLERI,
+      )
+      if (degisiklikler.length > 0) {
+        const payload = degisiklikPayload(degisiklikler)
+        await writeFirmaAuditLogSafe(supabase, {
+          firmaId,
+          islem: 'Yerleşke Güncelle',
+          ozet: 'Yerleşke adresi güncellendi.',
+          onceki: payload.onceki,
+          sonraki: payload.sonraki,
+        })
+      }
+    }
   }
 
   await revalidateYerleskeGiris(kaynak, id)
@@ -128,15 +153,17 @@ export async function yerleskeGuncelleTopluKaydet(
 
   const firmaIds = [...new Set(satirlar.filter(s => s.kaynak === 'firma').map(s => s.firma_id!).filter(Boolean))]
   const firmaMudById = new Map<number, string>()
+  const firmaYerleskeById = new Map<number, number | null>()
   for (let i = 0; i < firmaIds.length; i += 120) {
     const part = firmaIds.slice(i, i + 120)
     const { data: fRows, error: fErr } = await supabase
       .from('firma_calisanlar')
-      .select('id, gorev_mudurlugu')
+      .select('id, gorev_mudurlugu, yerleske_adresi_id')
       .in('id', part)
     if (fErr) return { hata: fErr.message }
     for (const r of fRows ?? []) {
       firmaMudById.set(r.id, String(r.gorev_mudurlugu ?? '').trim())
+      firmaYerleskeById.set(r.id, r.yerleske_adresi_id ?? null)
     }
   }
 
@@ -167,12 +194,32 @@ export async function yerleskeGuncelleTopluKaydet(
       if (error) return { hata: error.message }
       await revalidateYerleskeGiris('kadro', s.sicil_no!)
     } else {
+      const firmaId = s.firma_id!
+      const eskiYerleske = firmaYerleskeById.get(firmaId) ?? null
       const { error } = await supabase
         .from('firma_calisanlar')
         .update({ yerleske_adresi_id: s.yerleske_adresi_id })
-        .eq('id', s.firma_id!)
+        .eq('id', firmaId)
       if (error) return { hata: error.message }
-      await revalidateYerleskeGiris('firma', String(s.firma_id))
+      if (eskiYerleske !== s.yerleske_adresi_id) {
+        const degisiklikler = alanDegisiklikleriHesapla(
+          { yerleske_adresi_id: eskiYerleske },
+          { yerleske_adresi_id: s.yerleske_adresi_id },
+          FIRMA_ALAN_ETIKETLERI,
+        )
+        if (degisiklikler.length > 0) {
+          const payload = degisiklikPayload(degisiklikler)
+          await writeFirmaAuditLogSafe(supabase, {
+            firmaId,
+            islem: 'Yerleşke Güncelle',
+            ozet: 'Yerleşke adresi güncellendi (toplu).',
+            onceki: payload.onceki,
+            sonraki: payload.sonraki,
+          })
+        }
+        firmaYerleskeById.set(firmaId, s.yerleske_adresi_id)
+      }
+      await revalidateYerleskeGiris('firma', String(firmaId))
     }
     kaydedilen++
   }

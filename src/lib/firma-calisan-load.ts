@@ -39,13 +39,54 @@ export async function resolveFirmaCalisanSegmentToId(
   return idNum
 }
 
+export type FirmaCalisanDetayPageData = {
+  row: Tables<'firma_calisanlar'>
+  auditLoglar: Tables<'personel_audit_log'>[]
+  yerleskeMap: Record<number, string>
+}
+
+export async function fetchYerleskeAdMap(
+  supabase: SupabaseClient,
+): Promise<Record<number, string>> {
+  const { data } = await supabase
+    .from('tanim_yerleske_adresi')
+    .select('id, yerleske_adi')
+    .eq('aktif', true)
+  const map: Record<number, string> = {}
+  for (const r of data ?? []) {
+    if (r.id != null && r.yerleske_adi) map[r.id] = r.yerleske_adi
+  }
+  return map
+}
+
+export async function loadFirmaCalisanDetayPageData(
+  supabase: SupabaseClient,
+  id: number,
+): Promise<FirmaCalisanDetayPageData | null> {
+  const [{ data: row, error }, { data: auditLogRaw }, yerleskeMap] = await Promise.all([
+    supabase.from('firma_calisanlar').select('*').eq('id', id).single(),
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .eq('ref_table', 'firma_calisanlar')
+      .eq('ref_id', String(id))
+      .order('created_at', { ascending: false }),
+    fetchYerleskeAdMap(supabase),
+  ])
+  if (error || !row) return null
+  return {
+    row: row as Tables<'firma_calisanlar'>,
+    auditLoglar: (auditLogRaw ?? []) as Tables<'personel_audit_log'>[],
+    yerleskeMap,
+  }
+}
+
 export async function fetchFirmaCalisanById(
   supabase: SupabaseClient,
   id: number,
 ): Promise<Tables<'firma_calisanlar'> | null> {
-  const { data, error } = await supabase.from('firma_calisanlar').select('*').eq('id', id).single()
-  if (error || !data) return null
-  return data as Tables<'firma_calisanlar'>
+  const detail = await loadFirmaCalisanDetayPageData(supabase, id)
+  return detail?.row ?? null
 }
 
 export async function loadFirmaCalisanDetayPageOrRedirect(

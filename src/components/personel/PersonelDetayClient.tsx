@@ -923,6 +923,7 @@ function modulBadgeClass(modul: string | null | undefined): string {
   const m = String(modul ?? '').trim().toLocaleLowerCase('tr-TR')
   if (m === 'izin') return 'bg-emerald-100 text-emerald-700'
   if (m === 'kadro') return 'bg-indigo-100 text-indigo-700'
+  if (m === 'adabel') return 'bg-violet-100 text-violet-700'
   if (m === 'eğitim' || m === 'egitim') return 'bg-sky-100 text-sky-700'
   if (m === 'terfi') return 'bg-fuchsia-100 text-fuchsia-700'
   if (m === 'personel') return 'bg-slate-100 text-slate-700'
@@ -961,6 +962,11 @@ function resolveAuditRefHref(log: AuditLog): string | null {
   if (table === 'kadro_hareketleri') {
     const n = Number.parseInt(refId, 10)
     if (Number.isFinite(n)) return `/kadro/${n}`
+    return null
+  }
+  if (table === 'firma_calisanlar') {
+    const n = Number.parseInt(refId, 10)
+    if (Number.isFinite(n)) return `/firma-calisanlar/${n}`
     return null
   }
   const sicil = String(log.sicil_no ?? '').trim()

@@ -3,6 +3,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
+import {
+  FIRMA_ALAN_ETIKETLERI,
+  FIRMA_AUDIT_SELECT,
+  firmaAuditSnapshot,
+  writeFirmaAuditLogSafe,
+} from '@/lib/firma-audit'
+import {
+  alanDegisiklikleriHesapla,
+  degisiklikOzeti,
+  degisiklikPayload,
+} from '@/lib/personel-audit'
 
 /** gg.aa.yyyy formatındaki tarihi yyyy-mm-dd'ye çevirir */
 function parseTarihFromNeden(neden: string | null): string | null {
@@ -85,6 +96,32 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
     .select('id, public_id')
     .single()
   if (error) return { hata: error.message }
+
+  if (inserted?.id) {
+    const sonrakiSnap = firmaAuditSnapshot({
+      sira_no:             str(fd, 'sira_no'),
+      sicil_no,
+      ad_soyad,
+      tckn:                str(fd, 'tckn'),
+      cinsiyet:            str(fd, 'cinsiyet'),
+      dogum_tarihi:        tarih(fd, 'dogum_tarihi'),
+      ogrenim:             str(fd, 'ogrenim'),
+      telefon:             str(fd, 'telefon'),
+      e_posta:             str(fd, 'e_posta'),
+      kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
+      gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
+      gorevi:              str(fd, 'gorevi'),
+      meslegi:             str(fd, 'meslegi'),
+      yerleske_adresi_id:  null,
+    })
+    await writeFirmaAuditLogSafe(supabase, {
+      firmaId: inserted.id,
+      islem: 'Ekle',
+      ozet: `ADABEL personeli oluşturuldu (${ad_soyad}${sicil_no ? `, sicil ${sicil_no}` : ''}).`,
+      sonraki: sonrakiSnap,
+    })
+  }
+
   revalidatePath('/firma-calisanlar')
   if (inserted?.id) await revalidateFirmaCalisanPaths(inserted.id)
   return { id: inserted?.id, public_id: inserted?.public_id }
@@ -101,7 +138,13 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('firma_calisanlar').update({
+  const { data: mevcut } = await supabase
+    .from('firma_calisanlar')
+    .select(FIRMA_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  const guncelleme = {
     ad_soyad,
     sira_no:             str(fd, 'sira_no'),
     sicil_no:            str(fd, 'sicil_no'),
@@ -117,8 +160,25 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     meslegi:             str(fd, 'meslegi'),
     ayrilis_tarihi:      ayrilisTarihi,
     ayrilis_nedeni:      str(fd, 'ayrilis_nedeni'),
-  }).eq('id', id)
+  }
+
+  const { error } = await supabase.from('firma_calisanlar').update(guncelleme).eq('id', id)
   if (error) return { hata: error.message }
+
+  const oncekiSnap = firmaAuditSnapshot(mevcut ?? {})
+  const sonrakiSnap = firmaAuditSnapshot({ ...mevcut, ...guncelleme })
+  const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, FIRMA_ALAN_ETIKETLERI)
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writeFirmaAuditLogSafe(supabase, {
+      firmaId: id,
+      islem: 'Güncelle',
+      ozet: degisiklikOzeti(degisiklikler, 'ADABEL personeli güncellendi'),
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
+
   revalidatePath('/firma-calisanlar')
   await revalidateFirmaCalisanPaths(id)
   return {}
@@ -126,8 +186,26 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
 
 export async function firmaSil(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: mevcut } = await supabase
+    .from('firma_calisanlar')
+    .select(FIRMA_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
   const { error } = await supabase.from('firma_calisanlar').delete().eq('id', id)
   if (error) return { hata: error.message }
+
+  if (mevcut) {
+    const oncekiSnap = firmaAuditSnapshot(mevcut)
+    const ad = String(mevcut.ad_soyad ?? '').trim() || `#${id}`
+    await writeFirmaAuditLogSafe(supabase, {
+      firmaId: id,
+      islem: 'Sil',
+      ozet: `ADABEL personeli silindi (${ad}).`,
+      onceki: oncekiSnap,
+    })
+  }
+
   revalidatePath('/firma-calisanlar')
   return {}
 }
