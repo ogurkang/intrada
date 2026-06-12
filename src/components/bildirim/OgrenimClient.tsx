@@ -3,7 +3,10 @@
 import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { CopKutusuSilDugmesi, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
+import { ogrenimAuditDegerGoster, ogrenimAuditDiffSatirlari } from '@/lib/ogrenim-audit'
 import { sortBildirimOgrenimList } from '@/lib/ogrenim-sira'
 import type { Tables } from '@/types/database'
 
@@ -23,9 +26,10 @@ interface Props {
   ogrenimTurleri: { id: number; isim: string }[]
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onSil: (id: number) => Promise<{ hata?: string }>
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
-export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, onSil }: Props) {
+export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, onSil, auditLoglarByRefId = {} }: Props) {
   const router = useRouter()
   useIntradaTabRefresh('ogrenim', router)
 
@@ -47,6 +51,7 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
   const [formAcik, setFormAcik] = useState(false)
   const [secili, setSecili] = useState<Ogrenim | null>(null)
   const [hata, setHata] = useState<string | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
@@ -141,7 +146,7 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Mesleği</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Mezuniyet Tarihi</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Varsayılan</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -154,6 +159,8 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
             )}
             {filtreli.map((row, idx) => {
               const vars = row.varsayilan ?? row.aktif
+              const refId = String(row.id)
+              const auditLoglar = auditLoglarByRefId[refId] ?? []
               return (
                 <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
@@ -186,23 +193,19 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
                       {vars ? 'Evet' : 'Hayır'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => duzenleAc(row)}
-                        className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                      >
-                        Düzenle
-                      </button>
-                      <button
-                        type="button"
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
+                      <SaatGecmisDugmesi
+                        sayi={auditLoglar.length}
+                        onClick={() => setGecmisRefId(refId)}
+                        title="Öğrenim kaydı değişiklik geçmişi"
+                      />
+                      <KalemDuzenleDugmesi onClick={() => duzenleAc(row)} title="Düzenle" />
+                      <CopKutusuSilDugmesi
                         onClick={() => handleSil(row.id)}
                         disabled={isPending}
-                        className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40"
-                      >
-                        Sil
-                      </button>
+                        title="Sil"
+                      />
                     </div>
                   </td>
                 </tr>
@@ -299,6 +302,15 @@ export default function OgrenimClient({ kayitlar, ogrenimTurleri, onGuncelle, on
           </form>
         )}
       </Modal>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="Öğrenim Kaydı Geçmişi"
+        diffSatirlari={ogrenimAuditDiffSatirlari}
+        degerGoster={ogrenimAuditDegerGoster}
+      />
     </div>
   )
 }

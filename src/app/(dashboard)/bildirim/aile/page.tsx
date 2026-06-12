@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import AileClient, { type AileBilgisi, type Cocuk } from '@/components/bildirim/AileClient'
 import { aileSil } from './actions'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 
 export default async function AilePage() {
   const supabase = await createClient()
@@ -29,11 +30,18 @@ export default async function AilePage() {
   }))
     .sort((a, b) => String(a.sicil_no).localeCompare(String(b.sicil_no), undefined, { numeric: true }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'aile_bildirimi',
+    kayitlar.map(k => k.sicil_no),
+  )
+
   return (
     <AileClient
       kayitlar={kayitlar}
       onSil={aileSil}
       kullaniciModu={access.mode === 'kullanici'}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

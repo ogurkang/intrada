@@ -3,7 +3,10 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
-import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { CopKutusuSilDugmesi, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { aileAuditDegerGoster, aileAuditDiffSatirlari } from '@/lib/aile-audit'
+import type { Tables } from '@/types/database'
 
 export interface Cocuk {
   ad_soyad:      string
@@ -32,11 +35,13 @@ interface Props {
   onSil:    (id: number) => Promise<{ hata?: string }>
   /** Kullanıcı: tabloda sil yok */
   kullaniciModu?: boolean
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
-export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: Props) {
+export default function AileClient({ kayitlar, onSil, kullaniciModu = false, auditLoglarByRefId = {} }: Props) {
   const router = useRouter()
   const [arama, setArama] = useState('')
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
@@ -97,7 +102,7 @@ export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: P
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Eş Adı</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Çocuk</th>
               {!kullaniciModu && (
-                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               )}
             </tr>
           </thead>
@@ -105,7 +110,10 @@ export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: P
             {filtreli.length === 0 && (
               <tr><td colSpan={kullaniciModu ? 6 : 7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
-            {filtreli.map((k, idx) => (
+            {filtreli.map((k, idx) => {
+              const refId = k.sicil_no
+              const auditLoglar = auditLoglarByRefId[refId] ?? []
+              return (
               <tr
                 key={k.id}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -130,16 +138,40 @@ export default function AileClient({ kayitlar, onSil, kullaniciModu = false }: P
                   </span>
                 </td>
                 {!kullaniciModu && (
-                <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                  <button type="button" onClick={() => handleSil(k.id)} disabled={isPending}
-                    className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-center gap-1">
+                    <SaatGecmisDugmesi
+                      sayi={auditLoglar.length}
+                      onClick={() => setGecmisRefId(refId)}
+                      title="Aile bildirimi değişiklik geçmişi"
+                    />
+                    <KalemDuzenleLink
+                      href={`/bildirim/aile/${k.id}/duzenle`}
+                      title="Düzenle"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <CopKutusuSilDugmesi
+                      onClick={() => handleSil(k.id)}
+                      disabled={isPending}
+                      title="Sil"
+                    />
+                  </div>
                 </td>
                 )}
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="Aile Bildirimi Geçmişi"
+        diffSatirlari={aileAuditDiffSatirlari}
+        degerGoster={aileAuditDegerGoster}
+      />
     </div>
   )
 }

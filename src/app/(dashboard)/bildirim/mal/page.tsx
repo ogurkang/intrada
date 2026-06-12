@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import MalClient, { type MalBildirimi } from '@/components/bildirim/MalClient'
 import { malBildirimSil } from './actions'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 
 export default async function MalPage() {
   const supabase = await createClient()
@@ -27,11 +28,18 @@ export default async function MalPage() {
     kayit_zamani: r.kayit_zamani,
   }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'mal_bildirimi',
+    kayitlar.map(k => String(k.id)),
+  )
+
   return (
     <MalClient
       kayitlar={kayitlar}
       onSil={malBildirimSil}
       kullaniciModu={access.mode === 'kullanici'}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

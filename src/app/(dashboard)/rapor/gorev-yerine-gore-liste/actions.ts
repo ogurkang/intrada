@@ -2,11 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logRaporAyarListeDegisikligi } from '@/lib/rapor-audit'
 
 export async function gorevYeriListeAyarKaydet(kayitKeyleri: string[]): Promise<{ hata?: string }> {
   const supabase = await createClient()
-  // Yeni tablo henüz Database tiplerine yansımadığı için geçici cast.
-  // Supabase type generation güncellendiğinde kaldırılabilir.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const temiz = Array.from(
@@ -17,6 +16,13 @@ export async function gorevYeriListeAyarKaydet(kayitKeyleri: string[]): Promise<
     ),
   )
 
+  const { data: mevcutRows, error: mevcutErr } = await sb
+    .from('rapor_gorev_yeri_liste_ayar')
+    .select('kayit_key')
+    .order('sira_no', { ascending: true })
+  if (mevcutErr) return { hata: mevcutErr.message }
+  const oncekiKeys = (mevcutRows ?? []).map((r: { kayit_key: string }) => r.kayit_key)
+
   const { error: delErr } = await sb.from('rapor_gorev_yeri_liste_ayar').delete().neq('id', 0)
   if (delErr) return { hata: delErr.message }
 
@@ -26,6 +32,9 @@ export async function gorevYeriListeAyarKaydet(kayitKeyleri: string[]): Promise<
     if (insErr) return { hata: insErr.message }
   }
 
+  await logRaporAyarListeDegisikligi(supabase, 'GYL', oncekiKeys, temiz)
+
+  revalidatePath('/rapor')
   revalidatePath('/rapor/gorev-yerine-gore-liste')
   revalidatePath('/api/rapor/gorev-yerine-gore-liste/excel')
   return {}

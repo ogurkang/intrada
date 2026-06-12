@@ -10,6 +10,7 @@ import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster 
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
+import { izinAuditDiffSatirlari, izinAuditDegerGoster } from '@/lib/izin-audit'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -973,6 +974,14 @@ function resolveAuditRefHref(log: AuditLog): string | null {
   if (table === 'terfi_hareketleri') {
     return '/terfi/bilgiler'
   }
+  if (table === 'terfi_donem') {
+    const n = Number.parseInt(refId, 10)
+    if (Number.isFinite(n)) return `/terfi/donem/${n}`
+    return '/terfi'
+  }
+  if (table === 'rapor_tanim') {
+    return '/rapor'
+  }
   const sicil = String(log.sicil_no ?? '').trim()
   if (!sicil) return null
   if (table === 'calisan') {
@@ -988,7 +997,8 @@ function resolveAuditRefHref(log: AuditLog): string | null {
 }
 
 function AuditLogDetay({ log }: { log: AuditLog }) {
-  if (String(log.modul ?? '').trim().toLocaleLowerCase('tr-TR') === 'terfi') {
+  const modul = String(log.modul ?? '').trim().toLocaleLowerCase('tr-TR')
+  if (modul === 'terfi') {
     const diffSatirlari = terfiAuditDiffSatirlari(log.onceki, log.sonraki)
     if (diffSatirlari.length > 0) {
       return (
@@ -1007,6 +1017,34 @@ function AuditLogDetay({ log }: { log: AuditLog }) {
                   <td className="px-3 py-2 text-slate-700 font-medium">{d.etiket}</td>
                   <td className="px-3 py-2 text-slate-600">{terfiAuditDegerGoster(d.alan, d.onceki)}</td>
                   <td className="px-3 py-2 text-slate-800">{terfiAuditDegerGoster(d.alan, d.sonraki)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  }
+
+  if (modul === 'izin') {
+    const diffSatirlari = izinAuditDiffSatirlari(log.onceki, log.sonraki)
+    if (diffSatirlari.length > 0) {
+      return (
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-100 border-b border-slate-200">
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Alan</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Eski</th>
+                <th className="text-left px-3 py-2 font-semibold text-slate-600">Yeni</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {diffSatirlari.map(d => (
+                <tr key={d.alan}>
+                  <td className="px-3 py-2 text-slate-700 font-medium">{d.etiket}</td>
+                  <td className="px-3 py-2 text-slate-600">{izinAuditDegerGoster(d.alan, d.onceki)}</td>
+                  <td className="px-3 py-2 text-slate-800">{izinAuditDegerGoster(d.alan, d.sonraki)}</td>
                 </tr>
               ))}
             </tbody>

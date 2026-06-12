@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Json } from '@/types/database'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { malAuditSnapshot } from '@/lib/mal-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -407,7 +409,7 @@ export async function malBildirimEkle(fd: FormData): Promise<{ hata?: string }> 
   )
   if (!memurMu) return { hata: 'Bu personel memur kadrosunda (dolu) görünmüyor.' }
 
-  const { error } = await supabase.from('mal_bildirimi').insert({
+  const { data: inserted, error } = await supabase.from('mal_bildirimi').insert({
     sicil_no,
     son_net_maas,
     beyan_turu,
@@ -422,9 +424,24 @@ export async function malBildirimEkle(fd: FormData): Promise<{ hata?: string }> 
     altin_mucevher_json,
     borc_alacak_json,
     haklar_json,
-  })
+  }).select('id').single()
 
   if (error) return { hata: error.message }
+  const sonraki = malAuditSnapshot({
+    beyan_turu,
+    onay_tarihi,
+    son_net_maas,
+    aciklama: str(fd, 'aciklama'),
+  })
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'mal bildirimi',
+    islem: 'Ekle',
+    ozet: `${beyan_turu} mal beyanı eklendi.`,
+    ref_table: 'mal_bildirimi',
+    ref_id: String(inserted?.id ?? ''),
+    sonraki,
+  })
   revalidatePath('/bildirim/mal')
   return {}
 }
@@ -490,26 +507,49 @@ export async function malBildirimGuncelle(id: number, fd: FormData): Promise<{ h
   const { data: pubRow } = await supabase.from('mal_bildirimi').select('public_id').eq('id', id).maybeSingle()
   const urlSeg = pubRow?.public_id ? String(pubRow.public_id) : String(id)
 
+  const { data: oncekiRow } = await supabase
+    .from('mal_bildirimi')
+    .select('beyan_turu, onay_tarihi, son_net_maas, aciklama')
+    .eq('id', id)
+    .maybeSingle()
+
+  const payload = {
+    son_net_maas,
+    beyan_turu,
+    onay_tarihi,
+    aciklama: str(fd, 'aciklama'),
+    kimlik_json,
+    tasinmaz_json,
+    kooperatif_json,
+    tasitlar_json,
+    diger_tasinirlar_json,
+    banka_menkul_json,
+    altin_mucevher_json,
+    borc_alacak_json,
+    haklar_json,
+  }
+
   const { error } = await supabase
     .from('mal_bildirimi')
-    .update({
-      son_net_maas,
-      beyan_turu,
-      onay_tarihi,
-      aciklama: str(fd, 'aciklama'),
-      kimlik_json,
-      tasinmaz_json,
-      kooperatif_json,
-      tasitlar_json,
-      diger_tasinirlar_json,
-      banka_menkul_json,
-      altin_mucevher_json,
-      borc_alacak_json,
-      haklar_json,
-    })
+    .update(payload)
     .eq('id', id)
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: mevcutRow.sicil_no,
+    modul: 'mal bildirimi',
+    islem: 'Güncelle',
+    ozet: `${beyan_turu} mal beyanı güncellendi.`,
+    ref_table: 'mal_bildirimi',
+    ref_id: String(id),
+    onceki: oncekiRow ? malAuditSnapshot(oncekiRow as Record<string, unknown>) : null,
+    sonraki: malAuditSnapshot({
+      beyan_turu,
+      onay_tarihi,
+      son_net_maas,
+      aciklama: str(fd, 'aciklama'),
+    }),
+  })
   revalidatePath('/bildirim/mal')
   revalidatePath(`/bildirim/mal/${urlSeg}`)
   revalidatePath(`/bildirim/mal/${urlSeg}/duzenle`)
@@ -522,7 +562,11 @@ export async function malBildirimSil(id: number): Promise<{ hata?: string }> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Oturum gerekli.' }
   const access = await getAppAccess(supabase, user.id)
-  const { data: row } = await supabase.from('mal_bildirimi').select('sicil_no').eq('id', id).maybeSingle()
+  const { data: row } = await supabase
+    .from('mal_bildirimi')
+    .select('sicil_no, beyan_turu, onay_tarihi, son_net_maas, aciklama')
+    .eq('id', id)
+    .maybeSingle()
   if (!row) return { hata: 'Kayıt bulunamadı.' }
   if (!isAdminLike(access) && access.mode === 'kullanici') {
     if (String(access.sicilNo).trim() !== String(row.sicil_no).trim()) {
@@ -531,6 +575,15 @@ export async function malBildirimSil(id: number): Promise<{ hata?: string }> {
   }
   const { error } = await supabase.from('mal_bildirimi').delete().eq('id', id)
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: row.sicil_no,
+    modul: 'mal bildirimi',
+    islem: 'Sil',
+    ozet: `${row.beyan_turu ?? 'Mal'} beyanı silindi.`,
+    ref_table: 'mal_bildirimi',
+    ref_id: String(id),
+    onceki: malAuditSnapshot(row as Record<string, unknown>),
+  })
   revalidatePath('/bildirim/mal')
   return {}
 }

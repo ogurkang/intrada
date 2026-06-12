@@ -4,13 +4,16 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
+import TerfiDonemGecmisPanel from '@/components/terfi/TerfiDonemGecmisPanel'
 import type { Tables } from '@/types/database'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 type TD = Tables<'terfi_donem'> & { kayit_sayisi?: number }
+type AuditLog = Tables<'personel_audit_log'>
 
 interface Props {
   donemler: TD[]
+  auditLoglarByDonemId: Record<string, AuditLog[]>
   onEkle: (fd: FormData) => Promise<{ hata?: string }>
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onKapat: (id: number) => Promise<{ hata?: string }>
@@ -22,12 +25,13 @@ function tarih(t: string | null) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
-export default function TerfiDonemClient({ donemler, onEkle, onGuncelle, onKapat, onAc }: Props) {
+export default function TerfiDonemClient({ donemler, auditLoglarByDonemId, onEkle, onGuncelle, onKapat, onAc }: Props) {
   const router = useRouter()
   const [yilFiltre, setYilFiltre] = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik] = useState(false)
   const [seciliDonem, setSeciliDonem] = useState<TD | null>(null)
+  const [gecmisDonem, setGecmisDonem] = useState<TD | null>(null)
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -187,12 +191,33 @@ export default function TerfiDonemClient({ donemler, onEkle, onGuncelle, onKapat
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <div className="flex items-center justify-center gap-1 flex-wrap">
                     <Link
                       href={`/terfi/donem/${row.id}`}
-                      className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                      Detay
+                      title="Dönem detayı"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                        />
+                      </svg>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => setGecmisDonem(row)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                      title="Dönem işlem geçmişi">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.5 2" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M3.5 9.5A9 9 0 113 12m.5-2.5L1.75 7.25M3.5 9.5L6 8.75"
+                        />
+                      </svg>
+                    </button>
                     <button
                       type="button"
                       onClick={() => duzenleAc(row)}
@@ -321,6 +346,17 @@ export default function TerfiDonemClient({ donemler, onEkle, onGuncelle, onKapat
           </div>
         </form>
       </Modal>
+
+      <TerfiDonemGecmisPanel
+        acik={gecmisDonem != null}
+        onKapat={() => setGecmisDonem(null)}
+        auditLoglar={gecmisDonem ? (auditLoglarByDonemId[String(gecmisDonem.id)] ?? []) : []}
+        baslik={
+          gecmisDonem
+            ? `Dönem Geçmişi — ${gecmisDonem.donem_adi ?? `${gecmisDonem.yil} Dönemi`}`
+            : undefined
+        }
+      />
     </div>
   )
 }

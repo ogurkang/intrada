@@ -19,6 +19,7 @@ import { kadroGuncelle } from '@/app/(dashboard)/kadro/actions'
 import { personelHareketiGuncelle } from '@/app/(dashboard)/personel-hareketleri/actions'
 import PersonelHareketiDuzenleClient from '@/components/personel/PersonelHareketiDuzenleClient'
 import IzinHareketDetayView from '@/components/izin/IzinHareketDetayView'
+import { loadIzinHareketAuditLoglar } from '@/lib/izin-hareket-detay-load'
 import type { Tables } from '@/types/database'
 import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
 
@@ -155,12 +156,14 @@ export default async function Page({ params }: Props) {
       .maybeSingle()
     const h = izin as Tables<'izin_hareketleri'>
     const listeyeYil = h.yil ?? new Date().getFullYear()
+    const auditLoglar = await loadIzinHareketAuditLoglar(supabase, h.id)
     return (
       <IzinHareketDetayView
         h={h}
         adSoyad={calisanRow?.ad_soyad}
         listeyeYil={listeyeYil}
         duzenleHref={`/izin/${h.id}/duzenle`}
+        auditLoglar={auditLoglar}
       />
     )
   }

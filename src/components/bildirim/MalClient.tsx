@@ -4,7 +4,10 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
-import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { CopKutusuSilDugmesi, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { malAuditDegerGoster, malAuditDiffSatirlari } from '@/lib/mal-audit'
+import type { Tables } from '@/types/database'
 
 export interface MalBildirimi {
   id:           number
@@ -21,11 +24,13 @@ interface Props {
   kayitlar: MalBildirimi[]
   onSil:    (id: number) => Promise<{ hata?: string }>
   kullaniciModu?: boolean
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
-export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Props) {
+export default function MalClient({ kayitlar, onSil, kullaniciModu = false, auditLoglarByRefId = {} }: Props) {
   const router = useRouter()
   const [arama, setArama] = useState('')
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
@@ -86,7 +91,7 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Pr
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-44">Beyan Türü</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Onay Tarihi</th>
               {!kullaniciModu && (
-                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               )}
             </tr>
           </thead>
@@ -94,7 +99,11 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Pr
             {filtreli.length === 0 && (
               <tr><td colSpan={kullaniciModu ? 5 : 6} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
-            {filtreli.map((kayit, idx) => (
+            {filtreli.map((kayit, idx) => {
+              const refId = String(kayit.id)
+              const auditLoglar = auditLoglarByRefId[refId] ?? []
+              const duzenleHref = `${malBildirimDetayHref(kayit)}/duzenle`
+              return (
               <tr
                 key={kayit.id}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -114,16 +123,40 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false }: Pr
                   {kayit.onay_tarihi ? new Date(kayit.onay_tarihi).toLocaleDateString('tr-TR') : '—'}
                 </td>
                 {!kullaniciModu && (
-                <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                  <button type="button" onClick={() => handleSil(kayit.id)} disabled={isPending}
-                    className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-center gap-1">
+                    <SaatGecmisDugmesi
+                      sayi={auditLoglar.length}
+                      onClick={() => setGecmisRefId(refId)}
+                      title="Mal beyanı değişiklik geçmişi"
+                    />
+                    <KalemDuzenleLink
+                      href={duzenleHref}
+                      title="Düzenle"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <CopKutusuSilDugmesi
+                      onClick={() => handleSil(kayit.id)}
+                      disabled={isPending}
+                      title="Sil"
+                    />
+                  </div>
                 </td>
                 )}
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="Mal Beyanı Geçmişi"
+        diffSatirlari={malAuditDiffSatirlari}
+        degerGoster={malAuditDegerGoster}
+      />
     </div>
   )
 }

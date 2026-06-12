@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import OgrenimClient from '@/components/bildirim/OgrenimClient'
 import { sortBildirimOgrenimList, sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { ogrenimGuncelle, ogrenimSil } from './actions'
 
 export default async function OgrenimPage() {
@@ -34,6 +35,12 @@ export default async function OgrenimPage() {
     }))
   )
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'calisan_ogrenim',
+    kayitlar.map(k => String(k.id)),
+  )
+
   return (
     <OgrenimClient
       kayitlar={kayitlar}
@@ -42,6 +49,7 @@ export default async function OgrenimPage() {
       )}
       onGuncelle={ogrenimGuncelle}
       onSil={ogrenimSil}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import IzinHakYonetimClient from '@/components/izin/IzinHakYonetimClient'
 import { izinHakiKaydet } from './actions'
 import { getAppAccess } from '@/lib/app-access'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
 import type { Tables, Views } from '@/types/database'
 
 interface Props {
@@ -48,6 +50,9 @@ export default async function IzinHaklarPage({ searchParams }: Props) {
   // Yıl seçici için mevcut yıl ± 3
   const tumYillar = Array.from({ length: 7 }, (_, i) => buYil - 3 + i)
 
+  const refIds = satirlar.map(s => izinHakkiAuditRefId(s.sicil_no, yil))
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(supabase, 'izin_haklari', refIds)
+
   return (
     <IzinHakYonetimClient
       yil={yil}
@@ -57,6 +62,7 @@ export default async function IzinHaklarPage({ searchParams }: Props) {
       odakSicilNo={sicil_no ?? null}
       returnTo={return_to ?? null}
       canEdit={canEdit}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

@@ -116,6 +116,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/yonetici-ogrenim-durum-liste', label: 'Yönetici Öğrenim Durum Listesi' },
       { href: '/rapor/ogrenim-durumuna-gore-personel-liste', label: 'Öğrenim Durumuna Göre Personel Listesi' },
       { href: '/rapor/izin-limitine-takilan-personel-liste', label: 'İzin Limitine Takılan Personel Listesi' },
+      { href: '/rapor/personele-gore-kullanilan-izin-listesi', label: 'Personele Göre Kullanılan İzin Listesi' },
       { href: '/rapor/adrese-gore-personel-liste', label: 'Adrese Göre Personel Listesi' },
       { href: '/rapor/belirli-gunde-izinli-personel', label: 'Belirli Günde İzinli Olan Personel Listesi' },
       { href: '/rapor/maas-oncesi-izinli-mudurler', label: 'Maaş Öncesi İzinli Müdürler Raporu' },

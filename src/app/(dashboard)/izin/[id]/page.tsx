@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/types/database'
 import IzinHareketDetayView from '@/components/izin/IzinHareketDetayView'
 import { resolveIzinHareketSegment } from '@/lib/izin-hareket-route'
+import { loadIzinHareketAuditLoglar } from '@/lib/izin-hareket-detay-load'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,12 +36,15 @@ export default async function IzinGoruntuPage({ params, searchParams }: Props) {
 
   const h = izin as Tables<'izin_hareketleri'>
 
+  const auditLoglar = await loadIzinHareketAuditLoglar(supabase, h.id)
+
   return (
     <IzinHareketDetayView
       h={h}
       adSoyad={calisanRow?.ad_soyad}
       listeyeYil={listeyeYil}
       duzenleHref={`/izin/${h.id}/duzenle`}
+      auditLoglar={auditLoglar}
     />
   )
 }

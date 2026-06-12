@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
 
 // ─── Tekli Kayıt Ekle / Güncelle ────────────────────────────────────────────
 
@@ -30,12 +32,31 @@ export async function izinHakiKaydet(
     return { hata: 'Bu işlem için admin yetkisi gerekir.' }
   }
 
+  const { data: onceki } = await supabase
+    .from('izin_haklari')
+    .select('yil, devreden_gun, hak_edilen_gun, kullanilan_gun, kalan_gun')
+    .eq('sicil_no', sicil_no)
+    .eq('yil', yil)
+    .maybeSingle()
+
+  const payload = { yil, sicil_no, devreden_gun, hak_edilen_gun }
+
   const { error } = await supabase.from('izin_haklari').upsert(
-    { yil, sicil_no, devreden_gun, hak_edilen_gun },
+    payload,
     { onConflict: 'yil,sicil_no' }
   )
 
   if (error) return { hata: error.message }
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'izin hakkı',
+    islem: onceki ? 'Güncelle' : 'Ekle',
+    ozet: `${yil} yılı izin hakkı ${onceki ? 'güncellendi' : 'eklendi'}.`,
+    ref_table: 'izin_haklari',
+    ref_id: izinHakkiAuditRefId(sicil_no, yil),
+    onceki: onceki ?? null,
+    sonraki: payload,
+  })
   revalidatePath('/izin/haklar')
   revalidatePath('/izin/haklar/duzenle')
   revalidatePath('/')

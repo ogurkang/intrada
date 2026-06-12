@@ -3,6 +3,9 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { izinHakkiAuditDegerGoster, izinHakkiAuditDiffSatirlari, izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
 import type { Tables, Views } from '@/types/database'
 
 type IzinHak   = Tables<'izin_haklari'>
@@ -23,6 +26,7 @@ interface Props {
   odakSicilNo?: string | null
   returnTo?: string | null
   canEdit?: boolean
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function renkBg(kalan: number) {
@@ -35,6 +39,7 @@ function renkBg(kalan: number) {
 export default function IzinHakYonetimClient({
   yil, satirlar, tumYillar, onKaydet,
   odakSicilNo, returnTo, canEdit = true,
+  auditLoglarByRefId = {},
 }: Props) {
   const router                              = useRouter()
   const [aramaQ, setAramaQ]                = useState('')
@@ -42,6 +47,7 @@ export default function IzinHakYonetimClient({
   const [modalAcik, setModalAcik]          = useState(false)
   const [seciliSatir, setSeciliSatir]      = useState<SatirVeri | null>(null)
   const [sunuciHata, setSunuciHata]        = useState<string | null>(null)
+  const [gecmisRefId, setGecmisRefId]      = useState<string | null>(null)
   const [isPending, startTransition]       = useTransition()
 
   const filtreli = useMemo(() => {
@@ -180,7 +186,7 @@ export default function IzinHakYonetimClient({
                 <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">Hak Edilen</th>
                 <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">Kullanılan</th>
                 <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24 pr-6">Kalan</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">İşlem</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -196,6 +202,8 @@ export default function IzinHakYonetimClient({
                 const hakEdilen    = s.hak?.hak_edilen_gun ?? null
                 const kullanilan   = s.hak?.kullanilan_gun ?? null
                 const kalan        = s.hak ? (s.hak.kalan_gun ?? ((devreden ?? 0) + (hakEdilen ?? 0) - (kullanilan ?? 0))) : null
+                const refId        = izinHakkiAuditRefId(s.sicil_no, yil)
+                const auditLoglar  = auditLoglarByRefId[refId] ?? []
 
                 return (
                   <tr key={`${s.sicil_no}-${idx}`} className={`hover:bg-slate-50 transition-colors ${!s.hak ? 'bg-amber-50/30' : ''} ${odakSicilNo && s.sicil_no === odakSicilNo ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200' : ''}`}>
@@ -221,12 +229,19 @@ export default function IzinHakYonetimClient({
                       </td>
                     )}
 
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => duzenleAc(s)}
-                        disabled={!canEdit}
-                        className="text-sm text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                        {s.hak ? 'Düzenle' : 'Tanımla'}
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <SaatGecmisDugmesi
+                          sayi={auditLoglar.length}
+                          onClick={() => setGecmisRefId(refId)}
+                          title="İzin hakkı değişiklik geçmişi"
+                        />
+                        <KalemDuzenleDugmesi
+                          onClick={() => duzenleAc(s)}
+                          disabled={!canEdit}
+                          title={s.hak ? 'Düzenle' : 'Tanımla'}
+                        />
+                      </div>
                     </td>
                   </tr>
                 )
@@ -307,6 +322,16 @@ export default function IzinHakYonetimClient({
           </div>
         </form>
       </Modal>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="İzin Hakkı Geçmişi"
+        aciklama={`${yil} yılı izin hakkı kaydındaki tüm işlemler.`}
+        diffSatirlari={izinHakkiAuditDiffSatirlari}
+        degerGoster={izinHakkiAuditDegerGoster}
+      />
     </div>
   )
 }

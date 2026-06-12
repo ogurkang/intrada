@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { raporExcelAralikKapsamSnapshot, writeRaporKapsamAuditLogSafe } from '@/lib/rapor-audit'
 
 function parsePozitifInt(v: string | null): number | null {
   if (!v) return null
@@ -164,6 +166,20 @@ export async function GET(req: Request) {
         kayit_sayisi: secili.length,
         izin_ids: secili.map(x => x.id),
       })
+
+      await writeRaporKapsamAuditLogSafe(supabase, {
+        raporKod: 'IHR',
+        islem: 'Excel Kapsam',
+        ozet: `${yilResolved} yılı sıra ${alt}–${ust} aralığı (${secili.length} kayıt)`,
+        onceki: null,
+        sonraki: raporExcelAralikKapsamSnapshot({
+          yil: yilResolved,
+          siraBas: alt,
+          siraBit: ust,
+          kayitSayisi: secili.length,
+        }),
+      })
+      revalidatePath('/rapor')
     }
 
     const wb = XLSX.utils.book_new()

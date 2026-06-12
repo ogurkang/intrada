@@ -5,13 +5,29 @@ import { terfiDonemAc, terfiDonemEkle, terfiDonemGuncelle, terfiDonemKapat } fro
 
 export default async function TerfiDonemleriPage() {
   const supabase = await createClient()
-  const { data: donemRaw } = await supabase.from('terfi_donem').select('*').order('id', { ascending: false })
+  const [{ data: donemRaw }, { data: auditRaw }] = await Promise.all([
+    supabase.from('terfi_donem').select('*').order('id', { ascending: false }),
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .eq('ref_table', 'terfi_donem')
+      .order('created_at', { ascending: false }),
+  ])
 
   const donemler = (donemRaw ?? []).map((d) => ({ ...(d as Tables<'terfi_donem'>) }))
+
+  const auditLoglarByDonemId: Record<string, Tables<'personel_audit_log'>[]> = {}
+  for (const log of auditRaw ?? []) {
+    const refId = String(log.ref_id ?? '').trim()
+    if (!refId) continue
+    if (!auditLoglarByDonemId[refId]) auditLoglarByDonemId[refId] = []
+    auditLoglarByDonemId[refId].push(log as Tables<'personel_audit_log'>)
+  }
 
   return (
     <TerfiDonemClient
       donemler={donemler}
+      auditLoglarByDonemId={auditLoglarByDonemId}
       onEkle={terfiDonemEkle}
       onGuncelle={terfiDonemGuncelle}
       onKapat={terfiDonemKapat}

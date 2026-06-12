@@ -9,6 +9,12 @@ import {
   terfiAuditSnapshot,
   writeTerfiAuditLogSafe,
 } from '@/lib/terfi-audit'
+import {
+  TERFI_DONEM_ALAN_ETIKETLERI,
+  TERFI_DONEM_AUDIT_SELECT,
+  donemAuditSnapshot,
+  writeTerfiDonemAuditLogSafe,
+} from '@/lib/terfi-donem-audit'
 import { alanDegisiklikleriHesapla, degisiklikOzeti, degisiklikPayload } from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
@@ -24,26 +30,58 @@ export async function terfiDonemEkle(fd: FormData): Promise<{ hata?: string }> {
   if (bitis_tarihi < baslangic_tarihi) return { hata: 'Bitiş tarihi başlangıçtan önce olamaz.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('terfi_donem').insert({
-    yil,
-    baslangic_tarihi,
-    bitis_tarihi,
-    sira_no: str(fd, 'sira_no'),
-    donem_adi: str(fd, 'donem_adi'),
-    durum: 'Açık',
-  })
+  const { data: inserted, error } = await supabase
+    .from('terfi_donem')
+    .insert({
+      yil,
+      baslangic_tarihi,
+      bitis_tarihi,
+      sira_no: str(fd, 'sira_no'),
+      donem_adi: str(fd, 'donem_adi'),
+      durum: 'Açık',
+    })
+    .select(`id, ${TERFI_DONEM_AUDIT_SELECT}`)
+    .single()
 
   if (error) return { hata: error.message }
+  if (inserted) {
+    const sonraki = donemAuditSnapshot(inserted)
+    await writeTerfiDonemAuditLogSafe(supabase, {
+      donemId: inserted.id,
+      islem: 'Dönem Ekle',
+      ozet: `Yeni terfi dönemi: ${inserted.donem_adi ?? `${inserted.yil} Dönemi`}`,
+      onceki: null,
+      sonraki,
+    })
+  }
   revalidatePath('/terfi')
   return {}
 }
 
 export async function terfiDonemGuncelle(id: number, fd: FormData): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: mevcut, error: mevcutErr } = await supabase
+    .from('terfi_donem')
+    .select(TERFI_DONEM_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+  if (mevcutErr) return { hata: mevcutErr.message }
+  if (!mevcut) return { hata: 'Dönem bulunamadı.' }
+
+  const oncekiSnap = donemAuditSnapshot(mevcut)
+  const sonrakiSnap = donemAuditSnapshot({
+    yil: parseInt(String(fd.get('yil') ?? '0'), 10),
+    sira_no: str(fd, 'sira_no'),
+    donem_adi: str(fd, 'donem_adi'),
+    baslangic_tarihi: str(fd, 'baslangic_tarihi'),
+    bitis_tarihi: str(fd, 'bitis_tarihi'),
+    durum: mevcut.durum,
+  })
+
   const { error } = await supabase
     .from('terfi_donem')
     .update({
-      yil: parseInt(String(fd.get('yil') ?? '0'), 10),
+      yil: sonrakiSnap.yil as number,
       sira_no: str(fd, 'sira_no') ?? undefined,
       donem_adi: str(fd, 'donem_adi') ?? undefined,
       baslangic_tarihi: str(fd, 'baslangic_tarihi') ?? undefined,
@@ -52,6 +90,19 @@ export async function terfiDonemGuncelle(id: number, fd: FormData): Promise<{ ha
     .eq('id', id)
 
   if (error) return { hata: error.message }
+
+  const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_DONEM_ALAN_ETIKETLERI)
+  if (degisiklikler.length > 0) {
+    const payload = degisiklikPayload(degisiklikler)
+    await writeTerfiDonemAuditLogSafe(supabase, {
+      donemId: id,
+      islem: 'Dönem Güncelle',
+      ozet: degisiklikOzeti(degisiklikler, 'Terfi dönemi güncellendi'),
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+  }
+
   revalidatePath('/terfi')
   revalidatePath(`/terfi/donem/${id}`)
   return {}
@@ -59,8 +110,28 @@ export async function terfiDonemGuncelle(id: number, fd: FormData): Promise<{ ha
 
 export async function terfiDonemKapat(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: mevcut, error: mevcutErr } = await supabase
+    .from('terfi_donem')
+    .select(TERFI_DONEM_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+  if (mevcutErr) return { hata: mevcutErr.message }
+  if (!mevcut) return { hata: 'Dönem bulunamadı.' }
+
+  const oncekiSnap = donemAuditSnapshot(mevcut)
+  const sonrakiSnap = { ...oncekiSnap, durum: 'Kapalı' }
+
   const { error } = await supabase.from('terfi_donem').update({ durum: 'Kapalı' }).eq('id', id)
   if (error) return { hata: error.message }
+
+  await writeTerfiDonemAuditLogSafe(supabase, {
+    donemId: id,
+    islem: 'Dönem Kapat',
+    ozet: 'Terfi dönemi kapatıldı',
+    onceki: oncekiSnap,
+    sonraki: sonrakiSnap,
+  })
+
   revalidatePath('/terfi')
   revalidatePath(`/terfi/donem/${id}`)
   return {}
@@ -68,8 +139,28 @@ export async function terfiDonemKapat(id: number): Promise<{ hata?: string }> {
 
 export async function terfiDonemAc(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: mevcut, error: mevcutErr } = await supabase
+    .from('terfi_donem')
+    .select(TERFI_DONEM_AUDIT_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+  if (mevcutErr) return { hata: mevcutErr.message }
+  if (!mevcut) return { hata: 'Dönem bulunamadı.' }
+
+  const oncekiSnap = donemAuditSnapshot(mevcut)
+  const sonrakiSnap = { ...oncekiSnap, durum: 'Açık' }
+
   const { error } = await supabase.from('terfi_donem').update({ durum: 'Açık' }).eq('id', id)
   if (error) return { hata: error.message }
+
+  await writeTerfiDonemAuditLogSafe(supabase, {
+    donemId: id,
+    islem: 'Dönem Aç',
+    ozet: 'Terfi dönemi tekrar açıldı',
+    onceki: oncekiSnap,
+    sonraki: sonrakiSnap,
+  })
+
   revalidatePath('/terfi')
   revalidatePath(`/terfi/donem/${id}`)
   return {}
@@ -186,11 +277,20 @@ export async function terfiEttirKaydet(
     const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonraki, TERFI_KATSAYI_ALAN_ETIKETLERI)
     if (degisiklikler.length > 0) {
       const payload = degisiklikPayload(degisiklikler)
+      const ozet = degisiklikOzeti(degisiklikler, `Terfi ettirildi (dönem #${donemId})`)
       await writeTerfiAuditLogSafe(supabase, {
         sicil_no: s.sicil_no,
         terfiId: s.terfi_id,
         islem: 'Terfi Ettir',
-        ozet: degisiklikOzeti(degisiklikler, `Terfi ettirildi (dönem #${donemId})`),
+        ozet,
+        onceki: payload.onceki,
+        sonraki: payload.sonraki,
+      })
+      await writeTerfiDonemAuditLogSafe(supabase, {
+        donemId,
+        sicil_no: s.sicil_no,
+        islem: 'Terfi Ettir',
+        ozet,
         onceki: payload.onceki,
         sonraki: payload.sonraki,
       })
@@ -249,11 +349,20 @@ export async function terfiGeriAlTek(
   const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
   if (degisiklikler.length > 0) {
     const payload = degisiklikPayload(degisiklikler)
+    const ozet = degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId})`)
     await writeTerfiAuditLogSafe(supabase, {
       sicil_no: logRow.sicil_no,
       terfiId: logRow.terfi_id,
       islem: 'Terfi Geri Al',
-      ozet: degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId})`),
+      ozet,
+      onceki: payload.onceki,
+      sonraki: payload.sonraki,
+    })
+    await writeTerfiDonemAuditLogSafe(supabase, {
+      donemId,
+      sicil_no: logRow.sicil_no,
+      islem: 'Terfi Geri Al',
+      ozet,
       onceki: payload.onceki,
       sonraki: payload.sonraki,
     })
@@ -308,11 +417,20 @@ export async function terfiGeriAlToplu(
     const degisiklikler = alanDegisiklikleriHesapla(oncekiSnap, sonrakiSnap, TERFI_KATSAYI_ALAN_ETIKETLERI)
     if (degisiklikler.length > 0) {
       const payload = degisiklikPayload(degisiklikler)
+      const ozet = degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId}, toplu)`)
       await writeTerfiAuditLogSafe(supabase, {
         sicil_no: logRow.sicil_no,
         terfiId: logRow.terfi_id,
         islem: 'Terfi Geri Al',
-        ozet: degisiklikOzeti(degisiklikler, `Terfi geri alındı (dönem #${donemId}, toplu)`),
+        ozet,
+        onceki: payload.onceki,
+        sonraki: payload.sonraki,
+      })
+      await writeTerfiDonemAuditLogSafe(supabase, {
+        donemId,
+        sicil_no: logRow.sicil_no,
+        islem: 'Terfi Geri Al',
+        ozet,
         onceki: payload.onceki,
         sonraki: payload.sonraki,
       })
