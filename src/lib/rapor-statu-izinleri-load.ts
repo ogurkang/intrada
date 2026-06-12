@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
 import type { KadroRaporRow, RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import {
   statuIzinMudurlukListesi,
@@ -23,23 +24,11 @@ async function fetchAllIzinHareketleriYil(
   supabase: SupabaseClient<Database>,
   yil: number,
 ): Promise<StatuIzinHareketRow[]> {
-  const pageSize = 1000
-  let from = 0
-  const all: StatuIzinHareketRow[] = []
-  while (true) {
-    const { data, error } = await supabase
-      .from('izin_hareketleri')
-      .select(IZIN_HAREKET_SELECT)
-      .eq('yil', yil)
-      .order('id', { ascending: true })
-      .range(from, from + pageSize - 1)
-    if (error) throw error
-    if (!data?.length) break
-    all.push(...(data as StatuIzinHareketRow[]))
-    if (data.length < pageSize) break
-    from += pageSize
-  }
-  return all
+  const { data, error } = await fetchAllIzinHareketleriByYil<StatuIzinHareketRow>(supabase, yil, {
+    select: IZIN_HAREKET_SELECT,
+  })
+  if (error) throw new Error(error)
+  return data
 }
 
 function normSicil(v: string | null | undefined): string {

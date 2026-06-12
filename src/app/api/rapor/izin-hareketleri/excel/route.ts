@@ -3,7 +3,22 @@ import * as XLSX from 'xlsx-js-style'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
 import { raporExcelAralikKapsamSnapshot, writeRaporKapsamAuditLogSafe } from '@/lib/rapor-audit'
+
+type IzinHareketRaporSatir = {
+  id: number
+  yil: number
+  sira_no: string | null
+  sicil_no: string
+  tur: string
+  ayrilis: string | null
+  baslama: string | null
+  gun: number
+  durum: string
+  islem_yapan: string | null
+  kayit_tarihi: string
+}
 
 function parsePozitifInt(v: string | null): number | null {
   if (!v) return null
@@ -72,16 +87,15 @@ export async function GET(req: Request) {
     }
 
     const [{ data: izinRaw, error: izinErr }, { data: calisanRaw }] = await Promise.all([
-      supabase
-        .from('izin_hareketleri')
-        .select('id, yil, sira_no, sicil_no, tur, ayrilis, baslama, gun, durum, islem_yapan, kayit_tarihi')
-        .eq('yil', yilResolved),
+      fetchAllIzinHareketleriByYil<IzinHareketRaporSatir>(supabase, yilResolved, {
+        select: 'id, yil, sira_no, sicil_no, tur, ayrilis, baslama, gun, durum, islem_yapan, kayit_tarihi',
+      }),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
     ])
-    if (izinErr) return NextResponse.json({ error: izinErr.message }, { status: 500 })
+    if (izinErr) return NextResponse.json({ error: izinErr }, { status: 500 })
 
     const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
-    const secili = (izinRaw ?? [])
+    const secili = izinRaw
       .filter(r => {
         if (r.durum === 'İptal Edildi') return false
         if (izinIdsFromLog && izinIdsFromLog.length > 0) return izinIdsFromLog.includes(r.id)

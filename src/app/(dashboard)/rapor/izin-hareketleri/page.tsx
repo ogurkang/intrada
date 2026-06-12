@@ -1,6 +1,21 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
+
+type IzinHareketRaporSatir = {
+  id: number
+  yil: number
+  sira_no: string | null
+  sicil_no: string
+  tur: string
+  ayrilis: string | null
+  baslama: string | null
+  gun: number
+  durum: string
+  islem_yapan: string | null
+  kayit_tarihi: string
+}
 
 interface Props {
   searchParams: Promise<{ yil?: string; siraBas?: string; siraBit?: string }>
@@ -50,18 +65,18 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
           .limit(5)
     : Promise.resolve({ data: [] as never[] })
 
-  const [{ data: izinRaw }, { data: calisanRaw }, { data: gecmisRaw }] = await Promise.all([
-    supabase
-      .from('izin_hareketleri')
-      .select('id, yil, sira_no, sicil_no, tur, ayrilis, baslama, gun, durum, islem_yapan, kayit_tarihi')
-      .eq('yil', yil)
-      .order('id', { ascending: false }),
+  const [{ data: izinRaw, error: izinErr }, { data: calisanRaw }, { data: gecmisRaw }] = await Promise.all([
+    fetchAllIzinHareketleriByYil<IzinHareketRaporSatir>(supabase, yil, {
+      select: 'id, yil, sira_no, sicil_no, tur, ayrilis, baslama, gun, durum, islem_yapan, kayit_tarihi',
+    }),
     supabase.from('calisan').select('sicil_no, ad_soyad'),
     gecmisSorgu,
   ])
 
+  const izinListe = [...izinRaw].sort((a, b) => b.id - a.id)
+
   const adMap = new Map((calisanRaw ?? []).map(c => [c.sicil_no, c.ad_soyad ?? c.sicil_no]))
-  const seciliSayisi = (izinRaw ?? []).filter(r => {
+  const seciliSayisi = izinListe.filter(r => {
     if (r.durum === 'İptal Edildi') return false
     if (!aralikGecerli || aralikBas == null || aralikBit == null) return false
     const sira = parsePozitifInt(r.sira_no ?? undefined)
@@ -146,9 +161,15 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
         )}
       </div>
 
+      {izinErr && (
+        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3">
+          Veri yüklenirken hata: {izinErr}
+        </div>
+      )}
+
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 text-sm text-slate-600">
-          {yil} yılı izin hareketleri (salt okunur)
+          {yil} yılı izin hareketleri (salt okunur) · {izinListe.length} kayıt
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -165,12 +186,12 @@ export default async function IzinHareketleriRaporuPage({ searchParams }: Props)
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(izinRaw ?? []).length === 0 ? (
+              {izinListe.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-slate-400">Bu yıla ait izin hareketi bulunamadı.</td>
                 </tr>
               ) : (
-                (izinRaw ?? []).map(r => (
+                izinListe.map(r => (
                   <tr key={r.id}>
                     <td className="px-3 py-2 text-slate-700">{r.yil}/{r.sira_no ?? '—'}</td>
                     <td className="px-3 py-2 font-mono text-xs text-slate-600">{r.sicil_no}</td>

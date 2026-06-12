@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import IzinListClient from '@/components/izin/IzinListClient'
+import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
 import type { Tables } from '@/types/database'
 
 type IzinHareketi = Tables<'izin_hareketleri'>
@@ -22,16 +23,12 @@ export default async function IzinPage({ searchParams }: Props) {
   const supabase = await createClient()
 
   const [
-    { data: hareketlerRaw, error },
+    { data: hareketlerRaw, error: hareketErr },
     { data: calisanlarRaw },
     { data: izinTurleriRaw },
     { data: hakRaw },
   ] = await Promise.all([
-    supabase
-      .from('izin_hareketleri')
-      .select('*')
-      .eq('yil', yil)
-      .order('id', { ascending: false }),
+    fetchAllIzinHareketleriByYil<Tables<'izin_hareketleri'>>(supabase, yil),
     supabase
       .from('calisan')
       .select('sicil_no, ad_soyad')
@@ -48,7 +45,8 @@ export default async function IzinPage({ searchParams }: Props) {
       .eq('yil', yil),
   ])
 
-  const hareketler = (hareketlerRaw ?? []) as IzinHareketi[]
+  const hareketler = hareketlerRaw
+  const error = hareketErr ? { message: hareketErr } : null
   const personeller = (calisanlarRaw ?? []) as { sicil_no: string; ad_soyad: string }[]
   const izinTurleri = (izinTurleriRaw ?? []).map(t => t.tur_adi)
 
