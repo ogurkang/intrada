@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DonemListClient, { type Donem } from '@/components/kesintiler/DonemListClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { donemEkle, donemGuncelle, donemKapat, donemAc, secimGetir, secimKaydet } from './actions'
 
 export default async function SosyalHakPage() {
@@ -11,6 +12,12 @@ export default async function SosyalHakPage() {
     .order('id', { ascending: false })
 
   const donemler: Donem[] = (raw ?? []) as Donem[]
+
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'sosyal_hak_donem',
+    donemler.map(d => String(d.id)),
+  )
 
   return (
     <DonemListClient
@@ -26,6 +33,7 @@ export default async function SosyalHakPage() {
       onAc={donemAc}
       onSecimGetir={secimGetir}
       onSecimKaydet={secimKaydet}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { IzinSatir } from '@/components/kesintiler/DonemListClient'
+import {
+  KESINTI_DONEM_AUDIT_SELECT,
+  kesintiDonemAuditSnapshot,
+  writeKesintiDonemAuditLogSafe,
+} from '@/lib/kesinti-donem-audit'
 
 type DonemTablo = 'aylik_yemek_yeni_donem' | 'raporlu_memurlar_yeni_donem' | 'izinli_vekiller_yeni_donem' | 'izinli_zabitalar_yeni_donem'
 type SecimTablo = 'aylik_yemek_yeni_secim' | 'raporlu_memurlar_yeni_secim' | 'izinli_vekiller_yeni_secim' | 'izinli_zabitalar_yeni_secim'
@@ -51,12 +56,31 @@ async function ayyDonemAcilisKontrolu(
   return null
 }
 
+const KESINTI_MODUL: Record<DonemTablo, string> = {
+  aylik_yemek_yeni_donem: 'AYY',
+  raporlu_memurlar_yeni_donem: 'RMY',
+  izinli_vekiller_yeni_donem: 'IVY',
+  izinli_zabitalar_yeni_donem: 'IZY',
+}
+
 export function makeDonemActions(
   donemTablo: DonemTablo,
   secimTablo: SecimTablo,
   path: string,
   options?: { zabitaFilter?: boolean; vekilFilter?: boolean; memurFilter?: boolean; memurSozlesmeliFilter?: boolean }
 ) {
+  const modul = KESINTI_MODUL[donemTablo]
+
+  async function donemSnapshot(id: number) {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from(donemTablo)
+      .select(KESINTI_DONEM_AUDIT_SELECT)
+      .eq('id', id)
+      .maybeSingle()
+    return data ? kesintiDonemAuditSnapshot(data as Record<string, unknown>) : null
+  }
+
   async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
     const yil              = parseInt(String(fd.get('yil') ?? '0'), 10)
     const baslangic_tarihi = str(fd, 'baslangic_tarihi')
@@ -64,44 +88,81 @@ export function makeDonemActions(
     if (!yil || !baslangic_tarihi || !bitis_tarihi) return { hata: 'Yıl ve tarihler zorunludur.' }
     if (bitis_tarihi < baslangic_tarihi) return { hata: 'Bitiş tarihi başlangıçtan önce olamaz.' }
 
-    const supabase = await createClient()
-    const { error } = await supabase.from(donemTablo).insert({
+    const payload = {
       yil,
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
       baslangic_tarihi,
       bitis_tarihi,
-      durum:            'Açık',
-    } as never)
+      durum:            'Açık' as const,
+    }
+
+    const supabase = await createClient()
+    const { data: inserted, error } = await supabase
+      .from(donemTablo)
+      .insert(payload as never)
+      .select('id')
+      .single()
 
     if (error) return { hata: error.message }
+    if (inserted?.id) {
+      await writeKesintiDonemAuditLogSafe(supabase, {
+        refTable: donemTablo,
+        modul,
+        donemId: inserted.id,
+        islem: 'Ekle',
+        ozet: `${payload.donem_adi ?? payload.sira_no ?? 'Dönem'} eklendi.`,
+        sonraki: kesintiDonemAuditSnapshot(payload as Record<string, unknown>),
+      })
+    }
     revalidatePath(path)
     return {}
   }
 
   async function donemGuncelle(id: number, fd: FormData): Promise<{ hata?: string }> {
     const supabase = await createClient()
-    const { error } = await supabase.from(donemTablo).update({
+    const onceki = await donemSnapshot(id)
+    const payload = {
       yil:              parseInt(String(fd.get('yil') ?? '0'), 10),
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
       baslangic_tarihi: str(fd, 'baslangic_tarihi'),
       bitis_tarihi:     str(fd, 'bitis_tarihi'),
-    } as never).eq('id', id)
+    }
+    const { error } = await supabase.from(donemTablo).update(payload as never).eq('id', id)
 
     if (error) return { hata: error.message }
+    await writeKesintiDonemAuditLogSafe(supabase, {
+      refTable: donemTablo,
+      modul,
+      donemId: id,
+      islem: 'Güncelle',
+      ozet: `${payload.donem_adi ?? payload.sira_no ?? 'Dönem'} güncellendi.`,
+      onceki,
+      sonraki: kesintiDonemAuditSnapshot({ ...payload, durum: onceki?.durum ?? 'Açık' }),
+    })
     revalidatePath(path)
     return {}
   }
 
   async function donemKapat(id: number): Promise<{ hata?: string }> {
     const supabase = await createClient()
+    const onceki = await donemSnapshot(id)
     const patch: Record<string, unknown> = { durum: 'Kapalı' }
     if (donemTablo === 'aylik_yemek_yeni_donem') {
       patch.kapatildi_at = new Date().toISOString()
     }
     const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
     if (error) return { hata: error.message }
+    await writeKesintiDonemAuditLogSafe(supabase, {
+      refTable: donemTablo,
+      modul,
+      donemId: id,
+      islem: 'Kapat',
+      ozet: `${String(onceki?.donem_adi ?? onceki?.sira_no ?? id)} dönemi kapatıldı.`,
+      onceki,
+      sonraki: { ...onceki, durum: 'Kapalı' },
+    })
     revalidatePath(path)
     return {}
   }
@@ -112,12 +173,22 @@ export function makeDonemActions(
       const kontrolHata = await ayyDonemAcilisKontrolu(supabase, id)
       if (kontrolHata) return { hata: kontrolHata }
     }
+    const onceki = await donemSnapshot(id)
     const patch: Record<string, unknown> = { durum: 'Açık' }
     if (donemTablo === 'aylik_yemek_yeni_donem') {
       patch.kapatildi_at = null
     }
     const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
     if (error) return { hata: error.message }
+    await writeKesintiDonemAuditLogSafe(supabase, {
+      refTable: donemTablo,
+      modul,
+      donemId: id,
+      islem: 'Aç',
+      ozet: `${String(onceki?.donem_adi ?? onceki?.sira_no ?? id)} dönemi tekrar açıldı.`,
+      onceki,
+      sonraki: { ...onceki, durum: 'Açık' },
+    })
     revalidatePath(path)
     return {}
   }

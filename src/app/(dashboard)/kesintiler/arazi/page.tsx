@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import AraziDonemClient from '@/components/kesintiler/AraziDonemClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { araziDonemEkle, araziDonemGuncelle, araziDonemKapat, araziDonemAc } from './actions'
 import type { Tables } from '@/types/database'
 import { getAppAccess } from '@/lib/app-access'
@@ -23,6 +24,12 @@ export default async function AraziPage() {
     kayit_sayisi: sayiMap[d.id] ?? 0,
   }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'arazi_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <AraziDonemClient
       donemler={donemler}
@@ -31,6 +38,7 @@ export default async function AraziPage() {
       onKapat={araziDonemKapat}
       onAc={araziDonemAc}
       saltOkunur={saltOkunur}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

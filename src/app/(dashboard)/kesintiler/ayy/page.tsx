@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DonemListClient, { type Donem } from '@/components/kesintiler/DonemListClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { donemEkle, donemGuncelle, donemKapat, donemAc, secimGetir, secimKaydet } from './actions'
 
 export default async function AyyPage() {
@@ -19,6 +20,12 @@ export default async function AyyPage() {
 
   const donemler: Donem[] = (donemRaw ?? []).map(d => ({ ...d, secim_sayisi: secimMap[d.id] ?? 0 }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'aylik_yemek_yeni_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <DonemListClient
       baslik="Aylık Yemek Yeni (AYY)"
@@ -35,6 +42,7 @@ export default async function AyyPage() {
       onSecimGetir={secimGetir}
       onSecimKaydet={secimKaydet}
       detayBase="/kesintiler/ayy"
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

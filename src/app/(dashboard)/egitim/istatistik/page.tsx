@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import EgitimIstatistikClient, {
   type IstatistikDonem, type IstatistikEgitim, type IstatistikPersonel,
 } from '@/components/egitim/EgitimIstatistikClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { istatistikKatilimKaydet } from './actions'
 
 interface Props {
@@ -69,6 +70,12 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
     (katilimRaw ?? []).map(k => `${k.sicil_no}:${k.egitim_id}`)
   )
 
+  const katilimAuditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'egitim_istatistik_katilim',
+    Array.from(katilimSet),
+  )
+
   const adMap: Record<string, string> = {}
   ;(calisanRaw ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
 
@@ -96,6 +103,7 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
       katilimSet={katilimSet}
       donemId={seciliDonemId ?? undefined}
       mudurlukMap={mudurlukMap}
+      katilimAuditLoglarByRefId={katilimAuditLoglarByRefId}
       onKatilimKaydet={istatistikKatilimKaydet}
     />
   )

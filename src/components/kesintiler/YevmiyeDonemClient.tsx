@@ -4,8 +4,11 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import type { Tables } from '@/types/database'
+import { kesintiDonemAuditDiffSatirlari, kesintiDonemAuditDegerGoster } from '@/lib/kesinti-donem-audit'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 type YD = Tables<'yevmiye_donem'> & { puantaj_sayisi: number }
@@ -18,6 +21,7 @@ interface Props {
   onAc:       (id: number) => Promise<{ hata?: string }>
   /** Kullanıcı rolü: yalnızca dönem listesi + detay linki */
   saltOkunur?: boolean
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function tarih(t: string | null) {
@@ -84,6 +88,7 @@ export default function YevmiyeDonemClient({
   onKapat,
   onAc,
   saltOkunur = false,
+  auditLoglarByRefId = {},
 }: Props) {
   const router = useRouter()
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
@@ -91,6 +96,7 @@ export default function YevmiyeDonemClient({
   const [formAcik, setFormAcik]       = useState(false)
   const [seciliDonem, setSeciliDonem] = useState<YD | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
 
   const tumYillar = useMemo(() => {
@@ -212,6 +218,11 @@ export default function YevmiyeDonemClient({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-2">
+                    <SaatGecmisDugmesi
+                      sayi={(auditLoglarByRefId[String(d.id)] ?? []).length}
+                      onClick={() => setGecmisRefId(String(d.id))}
+                      title="Dönem işlem geçmişi"
+                    />
                     <Link href={`/kesintiler/yevmiye/${d.id}`}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors"
                       title="Detay">
@@ -259,6 +270,15 @@ export default function YevmiyeDonemClient({
 
       <DonemForm open={formAcik && !saltOkunur} onClose={kapat} secili={seciliDonem}
         onSubmit={handleSubmit} isPending={isPending} hata={sunuciHata} />
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="Yevmiye Puantajı — Dönem Geçmişi"
+        diffSatirlari={kesintiDonemAuditDiffSatirlari}
+        degerGoster={kesintiDonemAuditDegerGoster}
+      />
     </div>
   )
 }

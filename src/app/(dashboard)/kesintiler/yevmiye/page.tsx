@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Tables } from '@/types/database'
 import YevmiyeDonemClient from '@/components/kesintiler/YevmiyeDonemClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { yevmiyeDonemEkle, yevmiyeDonemGuncelle, yevmiyeDonemKapat, yevmiyeDonemAc } from './actions'
 import { getAppAccess } from '@/lib/app-access'
 
@@ -24,6 +25,12 @@ export default async function YevmiyePage() {
 
   const donemler = (donemRaw ?? []).map(d => ({ ...d as Tables<'yevmiye_donem'>, puantaj_sayisi: sayiMap[d.id] ?? 0 }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'yevmiye_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <YevmiyeDonemClient
       donemler={donemler}
@@ -32,6 +39,7 @@ export default async function YevmiyePage() {
       onKapat={yevmiyeDonemKapat}
       onAc={yevmiyeDonemAc}
       saltOkunur={saltOkunur}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

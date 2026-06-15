@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DonemListClient, { type Donem } from '@/components/kesintiler/DonemListClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { donemEkle, donemGuncelle, donemKapat, donemAc, secimGetir, secimKaydet } from './actions'
 
 export default async function RmyPage() {
@@ -19,6 +20,12 @@ export default async function RmyPage() {
 
   const donemler: Donem[] = (donemRaw ?? []).map(d => ({ ...d, secim_sayisi: secimMap[d.id] ?? 0 }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'raporlu_memurlar_yeni_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <DonemListClient
       baslik="Raporlu Memurlar (RMY)"
@@ -33,6 +40,7 @@ export default async function RmyPage() {
       detayBase="/kesintiler/rmy"
       kuralMetni={'Bu ekranda statüsü Memur olan personelin izin durumu "iptal edildi" hariç olmak üzere izin türü Rapor ve Refakatçi Raporu olanlar listelenir.'}
       hideSecimColumn
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

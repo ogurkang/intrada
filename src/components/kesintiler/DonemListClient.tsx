@@ -4,7 +4,11 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { kesintiDonemAuditDiffSatirlari, kesintiDonemAuditDegerGoster } from '@/lib/kesinti-donem-audit'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
+import type { Tables } from '@/types/database'
 
 type DonemSortSutun = 'sira_no' | 'donem_adi' | 'baslangic_tarihi' | 'bitis_tarihi' | 'durum'
 type SortYon = 'asc' | 'desc'
@@ -64,6 +68,7 @@ interface Props {
   onSecimKaydet:(donem_id: number, secimler: { izin_sira_no: string; dahil: boolean }[]) => Promise<{ hata?: string }>
   /** Detay sayfası varsa base URL (örn. "/kesintiler/ayy"). Eklenince tabloya Hesap butonu eklenir. */
   detayBase?:  string
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function tarih(t: string | null) {
@@ -274,12 +279,14 @@ function DonemForm({
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export default function DonemListClient({
   baslik, kod, donemler, onEkle, onGuncelle, onKapat, onAc, onSecimGetir, onSecimKaydet, detayBase, kuralMetni, hideSecimColumn,
+  auditLoglarByRefId = {},
 }: Props) {
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
   const [secimAcik, setSecimAcik]     = useState(false)
   const [seciliDonem, setSeciliDonem] = useState<Donem | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
   const [sortSutun, setSortSutun]     = useState<DonemSortSutun>('baslangic_tarihi')
@@ -468,7 +475,12 @@ export default function DonemListClient({
                     </span>
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1">
+                      <SaatGecmisDugmesi
+                        sayi={(auditLoglarByRefId[String(d.id)] ?? []).length}
+                        onClick={() => setGecmisRefId(String(d.id))}
+                        title="Dönem işlem geçmişi"
+                      />
                       {detayBase && (
                         <Link href={`${detayBase}/${d.id}`}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -530,6 +542,15 @@ export default function DonemListClient({
           }}
         />
       )}
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik={`${baslik} — Dönem Geçmişi`}
+        diffSatirlari={kesintiDonemAuditDiffSatirlari}
+        degerGoster={kesintiDonemAuditDegerGoster}
+      />
     </div>
   )
 }

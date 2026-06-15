@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import EgitimDonemClient, { type EgitimDonem } from '@/components/egitim/EgitimDonemClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { egitimDonemEkle, egitimDonemGuncelle, egitimDonemKapat } from './actions'
 
 export default async function EgitimPage() {
@@ -24,12 +25,19 @@ export default async function EgitimPage() {
     egitim_sayisi:    sayiMap[d.id] ?? 0,
   }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'egitim_takvimi_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <EgitimDonemClient
       donemler={donemler}
       onEkle={egitimDonemEkle}
       onGuncelle={egitimDonemGuncelle}
       onKapat={egitimDonemKapat}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

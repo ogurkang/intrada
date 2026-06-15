@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DonemListClient, { type Donem } from '@/components/kesintiler/DonemListClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { donemEkle, donemGuncelle, donemKapat, donemAc, secimGetir, secimKaydet } from './actions'
 
 export default async function IzyPage() {
@@ -19,6 +20,12 @@ export default async function IzyPage() {
 
   const donemler: Donem[] = (donemRaw ?? []).map(d => ({ ...d, secim_sayisi: secimMap[d.id] ?? 0 }))
 
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'izinli_zabitalar_yeni_donem',
+    donemler.map(d => String(d.id)),
+  )
+
   return (
     <DonemListClient
       baslik="İzinli Zabıtalar (İZY)"
@@ -33,6 +40,7 @@ export default async function IzyPage() {
       onSecimGetir={secimGetir}
       onSecimKaydet={secimKaydet}
       detayBase="/kesintiler/izy"
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

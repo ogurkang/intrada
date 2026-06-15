@@ -3,6 +3,13 @@
 import { useState, useTransition, useMemo } from 'react'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { GozDetayLink, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import {
+  egitimDonemAuditDiffSatirlari,
+  egitimDonemAuditDegerGoster,
+} from '@/lib/egitim-donem-audit'
+import type { Tables } from '@/types/database'
 
 export interface EgitimDonem {
   id:               number
@@ -20,18 +27,26 @@ interface Props {
   onEkle:     (fd: FormData) => Promise<{ hata?: string }>
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onKapat:    (id: number)   => Promise<{ hata?: string }>
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function tarih(t: string) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
-export default function EgitimDonemClient({ donemler, onEkle, onGuncelle, onKapat }: Props) {
+export default function EgitimDonemClient({
+  donemler,
+  onEkle,
+  onGuncelle,
+  onKapat,
+  auditLoglarByRefId = {},
+}: Props) {
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<EgitimDonem | null>(null)
   const [hata, setHata]               = useState<string | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
 
   const tumYillar = useMemo(() => {
@@ -107,7 +122,7 @@ export default function EgitimDonemClient({ donemler, onEkle, onGuncelle, onKapa
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Bitiş</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Eğitim</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Durum</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">İşlem</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -134,17 +149,23 @@ export default function EgitimDonemClient({ donemler, onEkle, onGuncelle, onKapa
                     d.durum === 'Açık' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
                   }`}>{d.durum}</span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Link href={`/egitim/${d.id}`}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
-                      Detay
-                    </Link>
-                    <button onClick={() => duzenleAc(d)}
-                      className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Düzenle</button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1">
+                    <SaatGecmisDugmesi
+                      sayi={(auditLoglarByRefId[String(d.id)] ?? []).length}
+                      onClick={() => setGecmisRefId(String(d.id))}
+                      title="Dönem işlem geçmişi"
+                    />
+                    <GozDetayLink href={`/egitim/${d.id}`} title="Detay" />
+                    <KalemDuzenleDugmesi onClick={() => duzenleAc(d)} title="Düzenle" />
                     {d.durum === 'Açık' && (
                       <button onClick={() => handleKapat(d.id)} disabled={isPending}
-                        className="text-xs font-medium text-red-600 hover:text-red-800 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Kapat</button>
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                        title="Kapat">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                      </button>
                     )}
                   </div>
                 </td>
@@ -197,6 +218,15 @@ export default function EgitimDonemClient({ donemler, onEkle, onGuncelle, onKapa
           </div>
         </form>
       </Modal>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik="Eğitim Takvimi — Dönem Geçmişi"
+        diffSatirlari={egitimDonemAuditDiffSatirlari}
+        degerGoster={egitimDonemAuditDegerGoster}
+      />
     </div>
   )
 }

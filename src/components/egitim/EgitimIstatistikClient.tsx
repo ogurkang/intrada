@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import type { Tables } from '@/types/database'
 
 export interface IstatistikDonem {
   id:        number
@@ -33,6 +35,7 @@ interface Props {
   katilimSet:     Set<string>  // "sicil_no:egitim_id"
   donemId?:       number
   mudurlukMap?:   Record<string, string>
+  katilimAuditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
   onKatilimKaydet?: (egitim_id: number, donem_id: number, sicilNolar: string[], mudurlukMap: Record<string, string>) => Promise<{ hata?: string }>
 }
 
@@ -52,8 +55,60 @@ function programTur(p: string | null): string {
   return TUR_DIGER
 }
 
+function KatilimTikGecmis({ logs }: { logs: Tables<'personel_audit_log'>[] | undefined }) {
+  const [konum, setKonum] = useState<{ x: number; y: number } | null>(null)
+  const latest = logs?.[0]
+
+  const icerik = latest ? (
+    <>
+      <p className="font-medium text-white">{latest.islem}</p>
+      <p className="text-slate-200 mt-0.5">{latest.ozet}</p>
+      <p className="text-slate-400 mt-1 tabular-nums">
+        {new Date(latest.created_at).toLocaleString('tr-TR')}
+        {latest.actor_email ? ` · ${latest.actor_email}` : ''}
+      </p>
+    </>
+  ) : (
+    <p className="text-slate-300 italic">Kayıt yok</p>
+  )
+
+  const titleMetin = latest
+    ? `${latest.islem}: ${latest.ozet}`
+    : 'Kayıt yok'
+
+  return (
+    <>
+      <span
+        className="inline-flex cursor-help"
+        title={titleMetin}
+        onMouseEnter={e => {
+          const r = e.currentTarget.getBoundingClientRect()
+          setKonum({ x: r.left + r.width / 2, y: r.top })
+        }}
+        onMouseLeave={() => setKonum(null)}>
+        <svg className="w-4 h-4 mx-auto text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+      {konum && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[200] pointer-events-none w-max max-w-[240px] px-3 py-2 rounded-lg bg-slate-800 text-[11px] leading-snug shadow-lg border border-slate-700"
+          style={{ left: konum.x, top: konum.y, transform: 'translate(-50%, calc(-100% - 8px))' }}>
+          {icerik}
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-800"
+            aria-hidden
+          />
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
+
 export default function EgitimIstatistikClient({
-  donemler, seciliDonem, egitimler, personeller, katilimSet, donemId, mudurlukMap = {}, onKatilimKaydet,
+  donemler, seciliDonem, egitimler, personeller, katilimSet, donemId, mudurlukMap = {},
+  katilimAuditLoglarByRefId = {}, onKatilimKaydet,
 }: Props) {
   const [mudFiltre, setMudFiltre] = useState('')
   const [arama, setArama] = useState('')
@@ -294,6 +349,7 @@ export default function EgitimIstatistikClient({
                       </td>
                       {seciliEgitimler.map(e => {
                         const katildi = aktifKatilim.has(`${p.sicil_no}:${e.id}`)
+                        const refKey = `${p.sicil_no}:${e.id}`
                         return (
                           <td key={e.id} className="px-2 py-2 text-center border-r border-slate-100">
                             {isaretleMode ? (
@@ -303,9 +359,7 @@ export default function EgitimIstatistikClient({
                                   className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                               </label>
                             ) : katildi ? (
-                              <svg className="w-4 h-4 mx-auto text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
+                              <KatilimTikGecmis logs={katilimAuditLoglarByRefId[refKey]} />
                             ) : (
                               <span className="text-slate-200">—</span>
                             )}
