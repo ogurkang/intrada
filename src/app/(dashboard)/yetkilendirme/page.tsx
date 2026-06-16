@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail, godmodeSicilSet } from '@/lib/godmode-calisan'
 import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import YetkilendirmeClient from './YetkilendirmeClient'
 
 export const dynamic = 'force-dynamic'
@@ -59,12 +60,9 @@ export default async function YetkilendirmePage() {
   const calisanMap = new Map((calisanlar ?? []).map(c => [c.sicil_no, c]))
   const kadroMap = new Map((kadroOzet ?? []).map(k => [k.sicil_no, k]))
 
-  const memurSiciller = [...aktifSiciller].filter(sicil => {
-    const k = kadroMap.get(sicil) as { statu?: string } | undefined
-    return k?.statu === 'Memur'
-  })
+  const aktifKadroSiciller = [...aktifSiciller]
 
-  const memurlar = [...memurSiciller]
+  const kadroPersonel = aktifKadroSiciller
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
     .map(sicil_no => {
       const c = calisanMap.get(sicil_no)
@@ -77,14 +75,14 @@ export default async function YetkilendirmePage() {
       }
     })
 
-  const memurSicilSet = new Set(memurSiciller)
+  const kadroSicilSet = new Set(aktifKadroSiciller)
   const god = godmodeSicilSet()
 
   const firmaAktif = filterOutHiddenSystemByEmail(firmaRaw ?? []).filter(f => {
     const sicil = f.sicil_no?.trim()
     if (!sicil) return false
     if (!isFirmaCalisanAktif(f.ayrilis_tarihi)) return false
-    if (memurSicilSet.has(sicil)) return false
+    if (kadroSicilSet.has(sicil)) return false
     return true
   })
 
@@ -103,7 +101,7 @@ export default async function YetkilendirmePage() {
 
   const profilMap = new Map((profiller ?? []).map(p => [p.sicil_no, p]))
 
-  const birlesik = [...memurlar, ...firmaEk].sort(
+  const birlesik = [...kadroPersonel, ...firmaEk].sort(
     (a, b) => (parseInt(a.sicil_no, 10) || 0) - (parseInt(b.sicil_no, 10) || 0),
   )
 
@@ -111,6 +109,12 @@ export default async function YetkilendirmePage() {
     ...m,
     profil: profilMap.get(m.sicil_no) ?? null,
   }))
+
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'app_profiles',
+    satirlar.map(s => s.sicil_no),
+  )
 
   return (
     <div>
@@ -121,13 +125,13 @@ export default async function YetkilendirmePage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Aktif <strong>Memur</strong> kadrosu + <strong>ADABEL Personeli</strong> çalışanlar sekmesindeki aktif kayıtlar,
+          Aktif belediye personeli (tüm statüler) + <strong>ADABEL Personeli</strong> çalışanlar sekmesindeki aktif kayıtlar,
           sicil sırasıyla · Toplam{' '}
           <span className="font-semibold">{satirlar.length}</span> satır
         </p>
       </div>
 
-      <YetkilendirmeClient satirlar={satirlar} />
+      <YetkilendirmeClient satirlar={satirlar} auditLoglarByRefId={auditLoglarByRefId} />
     </div>
   )
 }

@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { appProfilGuncelle, appProfilOlustur, appProfilTopluAdmin } from './actions'
 import {
   MENU_YETKILENDIRME_MODULLERI,
   MENU_YETKILENDIRME_TABLO_MODULLERI,
   type MenuModulKey,
 } from '@/lib/menu-yetki'
-import type { Json } from '@/types/database'
+import { yetkiAuditDiffSatirlari, yetkiAuditDegerGoster } from '@/lib/yetkilendirme-audit'
+import type { Json, Tables } from '@/types/database'
 
 export type YetkiSatir = {
   sicil_no: string
@@ -69,13 +72,20 @@ function baslangicDraft(p: YetkiSatir['profil']): Draft {
 
 const SAYFA_BOYUTU = 10
 
-export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir[] }) {
+export default function YetkilendirmeClient({
+  satirlar,
+  auditLoglarByRefId = {},
+}: {
+  satirlar: YetkiSatir[]
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [basari, setBasari] = useState<string | null>(null)
   const [arama, setArama] = useState('')
   const [sayfa, setSayfa] = useState(1)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
 
   const veriImza = useMemo(
     () =>
@@ -258,7 +268,7 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <p className="text-sm text-slate-600">
-          <strong>Memur</strong> statülü aktif personel ile <strong>ADABEL Personeli</strong> ekranındaki çalışanlar
+          <strong>Tüm statülerdeki</strong> aktif belediye personeli ile <strong>ADABEL Personeli</strong> ekranındaki çalışanlar
           sekmesinde yer alan aktif çalışanlar aynı tabloda listelenir (sicil sırası). <strong>Terfi</strong> erişimi bu
           tabloda yok; Terfi personel yönetimi üzerinden yönetilir. Varsayılan:{' '}
           <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur işaretler).
@@ -421,14 +431,21 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
                     )}
                   </td>
                   <td className="sticky right-0 z-[5] bg-white border-l border-slate-200 px-2 py-1">
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => satirKaydet(s)}
-                      className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded"
-                    >
-                      {s.profil ? 'Kaydet' : 'Oluştur'}
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <SaatGecmisDugmesi
+                        sayi={(auditLoglarByRefId[s.sicil_no] ?? []).length}
+                        onClick={() => setGecmisRefId(s.sicil_no)}
+                        title="Yetkilendirme geçmişi"
+                      />
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => satirKaydet(s)}
+                        className="text-xs font-medium text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded"
+                      >
+                        {s.profil ? 'Kaydet' : 'Oluştur'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -466,6 +483,15 @@ export default function YetkilendirmeClient({ satirlar }: { satirlar: YetkiSatir
         e-posta uyumluysa <strong>Oluştur</strong> yeterli (UUID isteğe bağlı). Toplu yönetici için sol kutuyu
         işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
       </p>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+        baslik={gecmisRefId ? `Yetkilendirme Geçmişi — ${gecmisRefId}` : 'Yetkilendirme Geçmişi'}
+        diffSatirlari={yetkiAuditDiffSatirlari}
+        degerGoster={yetkiAuditDegerGoster}
+      />
     </div>
   )
 }

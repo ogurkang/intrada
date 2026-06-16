@@ -5,6 +5,10 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { authUserIdByEmail } from '@/lib/auth-admin-helpers'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { revalidatePath } from 'next/cache'
+import {
+  yetkiAuditSnapshot,
+  writeYetkilendirmeAuditLogSafe,
+} from '@/lib/yetkilendirme-audit'
 
 /** `MENU_YETKILENDIRME_TABLO_MODULLERI` ile aynı sıra/anahtarlar (Terfi tabloda yok). */
 const MENU_KEYS = [
@@ -55,11 +59,14 @@ export async function appProfilGuncelle(
 
   const { data: mevcutProfil } = await r.supabase
     .from('app_profiles')
-    .select('menu_izinleri')
+    .select('sicil_no, rol, menu_izinleri, hesap_aktif')
     .eq('id', profileId)
     .maybeSingle()
 
-  const prevMenu = (mevcutProfil?.menu_izinleri as Record<string, boolean> | null) ?? {}
+  if (!mevcutProfil) return { hata: 'Profil bulunamadı.' }
+
+  const prevMenu = (mevcutProfil.menu_izinleri as Record<string, boolean> | null) ?? {}
+  const oncekiSnap = yetkiAuditSnapshot(mevcutProfil)
   const formdan = menuFormdanOku(formData)
   /** Yetkilendirme tablosunda «Terfi» yok; mevcut `terfi` bayrağını koru */
   const menu_izinleri =
@@ -81,6 +88,16 @@ export async function appProfilGuncelle(
     .eq('id', profileId)
 
   if (error) return { hata: error.message }
+
+  const sonrakiSnap = yetkiAuditSnapshot({ rol, hesap_aktif, menu_izinleri })
+  await writeYetkilendirmeAuditLogSafe(r.supabase, {
+    sicil_no: mevcutProfil.sicil_no,
+    islem: 'Profil Güncelle',
+    ozet: `${mevcutProfil.sicil_no} yetkilendirme kaydı güncellendi`,
+    onceki: oncekiSnap,
+    sonraki: sonrakiSnap,
+  })
+
   revalidatePath('/yetkilendirme')
   return {}
 }
@@ -92,6 +109,11 @@ export async function appProfilTopluAdmin(profileIds: string[]): Promise<{ hata?
   const ids = profileIds.filter(id => /^[0-9a-f-]{36}$/i.test(id))
   if (!ids.length) return { hata: 'Geçerli profil seçilmedi.' }
 
+  const { data: mevcutlar } = await r.supabase
+    .from('app_profiles')
+    .select('id, sicil_no, rol, menu_izinleri, hesap_aktif')
+    .in('id', ids)
+
   const { error } = await r.supabase
     .from('app_profiles')
     .update({
@@ -102,6 +124,19 @@ export async function appProfilTopluAdmin(profileIds: string[]): Promise<{ hata?
     .in('id', ids)
 
   if (error) return { hata: error.message }
+
+  for (const p of mevcutlar ?? []) {
+    const oncekiSnap = yetkiAuditSnapshot(p)
+    const sonrakiSnap = yetkiAuditSnapshot({ rol: 'admin', hesap_aktif: p.hesap_aktif, menu_izinleri: {} })
+    await writeYetkilendirmeAuditLogSafe(r.supabase, {
+      sicil_no: p.sicil_no,
+      islem: 'Toplu Yönetici',
+      ozet: `${p.sicil_no} yönetici yapıldı (toplu işlem)`,
+      onceki: oncekiSnap,
+      sonraki: sonrakiSnap,
+    })
+  }
+
   revalidatePath('/yetkilendirme')
   return {}
 }
@@ -212,6 +247,15 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
   })
 
   if (error) return { hata: error.message }
+
+  await writeYetkilendirmeAuditLogSafe(r.supabase, {
+    sicil_no,
+    islem: 'Profil Oluştur',
+    ozet: `${sicil_no} için yetkilendirme profili oluşturuldu`,
+    onceki: null,
+    sonraki: yetkiAuditSnapshot({ rol, hesap_aktif, menu_izinleri }),
+  })
+
   revalidatePath('/yetkilendirme')
   return {}
 }
