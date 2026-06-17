@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import { personelDetayHref } from '@/lib/personel-link'
+import type { MahalleTanimSatir } from '@/lib/personel-adres'
+import PersonelAdresAlanlari from '@/components/personel/PersonelAdresAlanlari'
 import {
   GOREV_DURUMU_OPTIONS,
   GOREV_TURU_OPTIONS,
@@ -34,6 +36,7 @@ interface Props {
   onGuncelle: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   yerleskeSecenekleri?: { id: number; ad: string }[]
   seciliYerleskeId?: number | null
+  mahalleKayitlari?: MahalleTanimSatir[]
 }
 
 export default function PersonelKisiselDuzenleClient({
@@ -43,6 +46,7 @@ export default function PersonelKisiselDuzenleClient({
   onGuncelle,
   yerleskeSecenekleri = [],
   seciliYerleskeId = null,
+  mahalleKayitlari = [],
 }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
@@ -159,8 +163,12 @@ export default function PersonelKisiselDuzenleClient({
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Adres</label>
-              <input name="adresi" defaultValue={calisan.adresi ?? ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+              <PersonelAdresAlanlari
+                mahalleKayitlari={mahalleKayitlari}
+                initialMahalleId={(calisan as Calisan & { mahalle_id?: number | null }).mahalle_id ?? null}
+                initialAdresDetay={(calisan as Calisan & { adres_detay?: string | null }).adres_detay ?? null}
+                legacyAdresi={calisan.adresi}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Yakını</label>

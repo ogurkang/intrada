@@ -10,6 +10,7 @@ import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
+import { personelAdresFormdan } from '@/lib/personel-adres'
 import {
   fetchMudurlukYerleskeTanimSatirlari,
   gecerliYerleskeId,
@@ -42,6 +43,8 @@ const CALISAN_ALAN_ETIKETLERI: Record<string, string> = {
   askerlik_durumu:         'Askerlik Durumu',
   telefon:                 'Telefon',
   e_posta:                 'E-posta',
+  mahalle_id:              'Mahalle',
+  adres_detay:             'Adres Detayı',
   adresi:                  'Adres',
   yakini:                  'Yakını',
   yakini_telefonu:         'Yakını Telefonu',
@@ -113,6 +116,9 @@ export async function calisanGuncelle(
     return { hata: 'Seçilen yerleşke, görev müdürlüğü ile eşleşmiyor.' }
   }
 
+  const adresSonuc = await personelAdresFormdan(supabase, formData)
+  if ('hata' in adresSonuc) return { hata: adresSonuc.hata }
+
   const temel: Record<string, unknown> = {
     ad_soyad,
     tckn:             str(formData, 'tckn'),
@@ -126,7 +132,9 @@ export async function calisanGuncelle(
     askerlik_durumu:  str(formData, 'askerlik_durumu'),
     telefon:          str(formData, 'telefon'),
     e_posta:          str(formData, 'e_posta'),
-    adresi:           str(formData, 'adresi'),
+    mahalle_id:       adresSonuc.mahalle_id,
+    adres_detay:      adresSonuc.adres_detay,
+    adresi:           adresSonuc.adresi,
     yakini:           str(formData, 'yakini'),
     yakini_telefonu:  str(formData, 'yakini_telefonu'),
     memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),

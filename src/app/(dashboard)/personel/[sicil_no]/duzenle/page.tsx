@@ -13,6 +13,7 @@ import {
   mudurlukYerleskeHaritasi,
   yerleskeSecenekleri,
 } from '@/lib/yerleske-adresi'
+import { fetchAktifMahalleTanimlari } from '@/lib/personel-adres'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -67,6 +68,7 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
   const yerleskeOpts = yerleskeSecenekleri(yerleskeHarita, gorevMudurlugu)
   const kayitliYerleskeId = (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
   const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliYerleskeId)
+  const mahalleKayitlari = await fetchAktifMahalleTanimlari(supabase)
 
   return (
     <div>
@@ -92,6 +94,7 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
         onGuncelle={calisanGuncelle}
         yerleskeSecenekleri={yerleskeOpts}
         seciliYerleskeId={seciliYerleskeId}
+        mahalleKayitlari={mahalleKayitlari}
       />
     </div>
   )

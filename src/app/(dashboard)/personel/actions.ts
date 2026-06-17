@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
+import { personelAdresFormdan } from '@/lib/personel-adres'
 
 export async function calisanEkle(
   formData: FormData
@@ -38,6 +39,9 @@ export async function calisanEkle(
   }
   const hizmetDondur = gorev_turu === 'Aylıksız İzin'
 
+  const adresSonuc = await personelAdresFormdan(supabase, formData)
+  if ('hata' in adresSonuc) return { hata: adresSonuc.hata }
+
   const { data: inserted, error } = await supabase
     .from('calisan')
     .insert({
@@ -53,7 +57,9 @@ export async function calisanEkle(
       dogum_yeri:      str('dogum_yeri'),
       anne_adi:        str('anne_adi'),
       baba_adi:        str('baba_adi'),
-      adresi:          str('adresi'),
+      mahalle_id:      adresSonuc.mahalle_id,
+      adres_detay:     adresSonuc.adres_detay,
+      adresi:          adresSonuc.adresi,
       yakini:          str('yakini'),
       yakini_telefonu: str('yakini_telefonu'),
       askerlik_durumu: str('askerlik_durumu'),

@@ -82,6 +82,36 @@ export interface Database {
         }
         Relationships: []
       }
+      tanim_adres_mahalle: {
+        Row: {
+          id: number
+          il: string
+          ilce: string
+          mahalle_adi: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          il: string
+          ilce: string
+          mahalle_adi: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          il?: string
+          ilce?: string
+          mahalle_adi?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_kazanc_bilgisi: {
         Row: {
           id: number
@@ -720,7 +750,7 @@ export interface Database {
           sicil_no: string; public_id: string; ad_soyad: string; tckn: string | null; dogum_tarihi: string | null
           cinsiyet: string | null; kan_grubu: string | null; sgk_ssk_sicil_no: string | null; telefon: string | null
           e_posta: string | null; dogum_yeri: string | null; anne_adi: string | null
-          baba_adi: string | null; adresi: string | null; yakini: string | null
+          baba_adi: string | null; adresi: string | null; mahalle_id: number | null; adres_detay: string | null; yakini: string | null
           yakini_telefonu: string | null; askerlik_durumu: string | null
           memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
           hizmet_suresi_yil: number; hizmet_suresi_ay: number; hizmet_suresi_gun: number
@@ -732,7 +762,7 @@ export interface Database {
           sicil_no: string; ad_soyad: string; public_id?: string; tckn?: string | null; dogum_tarihi?: string | null
           cinsiyet?: string | null; kan_grubu?: string | null; sgk_ssk_sicil_no?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
-          baba_adi?: string | null; adresi?: string | null; yakini?: string | null
+          baba_adi?: string | null; adresi?: string | null; mahalle_id?: number | null; adres_detay?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
           memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
@@ -744,7 +774,7 @@ export interface Database {
           sicil_no?: string; public_id?: string; ad_soyad?: string; tckn?: string | null; dogum_tarihi?: string | null
           cinsiyet?: string | null; kan_grubu?: string | null; sgk_ssk_sicil_no?: string | null; telefon?: string | null
           e_posta?: string | null; dogum_yeri?: string | null; anne_adi?: string | null
-          baba_adi?: string | null; adresi?: string | null; yakini?: string | null
+          baba_adi?: string | null; adresi?: string | null; mahalle_id?: number | null; adres_detay?: string | null; yakini?: string | null
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
           memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number

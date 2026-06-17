@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
 import { personelDetayHref } from '@/lib/personel-link'
+import PersonelAdresAlanlari from '@/components/personel/PersonelAdresAlanlari'
+import type { MahalleTanimSatir } from '@/lib/personel-adres'
 import {
   GOREV_DURUMU_OPTIONS,
   GOREV_TURU_OPTIONS,
@@ -17,7 +19,7 @@ const CINSIYET = ['Erkek', 'Kadın']
 const KAN_GRUBU = ['A Rh+', 'A Rh-', 'B Rh+', 'B Rh-', 'AB Rh+', 'AB Rh-', '0 Rh+', '0 Rh-']
 const ASKERLIK = ['Yapıldı', 'Tecilli', 'Muaf', 'Yapılmadı', '—']
 
-export default function PersonelYeniClient() {
+export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitlari: MahalleTanimSatir[] }) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
@@ -167,10 +169,8 @@ export default function PersonelYeniClient() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Adresi</label>
-            <textarea name="adresi" rows={2}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-slate-500"
-              placeholder="Açık adres" />
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Adres</label>
+            <PersonelAdresAlanlari mahalleKayitlari={mahalleKayitlari} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
