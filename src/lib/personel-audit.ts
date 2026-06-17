@@ -1,5 +1,25 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+/** Audit log onceki/sonraki JSON alanlarını güvenli nesneye çevirir. */
+export function auditJsonKayit(v: unknown): Record<string, unknown> {
+  if (v == null) return {}
+  if (typeof v === 'string') {
+    const t = v.trim()
+    if (!t) return {}
+    try {
+      const parsed = JSON.parse(t) as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch {
+      return {}
+    }
+    return {}
+  }
+  if (typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>
+  return {}
+}
+
 export interface PersonelAuditWriteInput {
   sicil_no?: string | null
   modul: string

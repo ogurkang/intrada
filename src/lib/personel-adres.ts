@@ -22,6 +22,50 @@ export function personelAdresMetniOlustur(
   return detay ? `${temel} — ${detay}` : temel
 }
 
+/** Ekranda tek satırda: açık adres, mahalle, ilçe, il */
+export function personelAdresGosterimMetni(
+  mahalle: Pick<MahalleTanimSatir, 'mahalle_adi' | 'ilce' | 'il'> | null | undefined,
+  adresDetay: string | null | undefined,
+  legacyAdresi?: string | null,
+): string {
+  const detay = String(adresDetay ?? '').trim()
+  const parcalar: string[] = []
+  if (detay) parcalar.push(detay)
+  if (mahalle) {
+    parcalar.push(mahalle.mahalle_adi)
+    parcalar.push(mahalle.ilce)
+    parcalar.push(mahalle.il)
+  }
+  if (parcalar.length) return parcalar.join(', ')
+  const legacy = String(legacyAdresi ?? '').trim()
+  return legacy || '—'
+}
+
+export async function personelAdresDegerlerinden(
+  supabase: SupabaseClient,
+  mahalle_id: number | null,
+  adres_detay: string | null | undefined,
+): Promise<
+  | { mahalle_id: number | null; adres_detay: string | null; adresi: string | null }
+  | { hata: string }
+> {
+  const detay = String(adres_detay ?? '').trim() || null
+
+  if (mahalle_id == null) {
+    return { mahalle_id: null, adres_detay: detay, adresi: detay }
+  }
+
+  const mahalle = await mahalleKaydiGetir(supabase, mahalle_id)
+  if (!mahalle) return { hata: 'Seçilen mahalle tanımı bulunamadı.' }
+  if (!mahalle.aktif) return { hata: 'Seçilen mahalle tanımı pasif durumda.' }
+
+  return {
+    mahalle_id,
+    adres_detay: detay,
+    adresi: personelAdresMetniOlustur(mahalle, detay),
+  }
+}
+
 export function parseMahalleId(raw: unknown): number | null {
   const s = String(raw ?? '').trim()
   if (!s) return null
@@ -52,20 +96,7 @@ export async function personelAdresFormdan(
 > {
   const mahalle_id = parseMahalleId(formData.get('mahalle_id'))
   const adres_detay = String(formData.get('adres_detay') ?? '').trim() || null
-
-  if (mahalle_id == null) {
-    return { mahalle_id: null, adres_detay, adresi: adres_detay }
-  }
-
-  const mahalle = await mahalleKaydiGetir(supabase, mahalle_id)
-  if (!mahalle) return { hata: 'Seçilen mahalle tanımı bulunamadı.' }
-  if (!mahalle.aktif) return { hata: 'Seçilen mahalle tanımı pasif durumda.' }
-
-  return {
-    mahalle_id,
-    adres_detay,
-    adresi: personelAdresMetniOlustur(mahalle, adres_detay),
-  }
+  return personelAdresDegerlerinden(supabase, mahalle_id, adres_detay)
 }
 
 export async function fetchAktifMahalleTanimlari(supabase: SupabaseClient): Promise<MahalleTanimSatir[]> {

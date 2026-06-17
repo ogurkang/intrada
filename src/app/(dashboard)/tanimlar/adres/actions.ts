@@ -85,7 +85,7 @@ export async function adresMahalleEkle(fd: FormData): Promise<{ hata?: string }>
     data.id,
     'Ekle',
     `Mahalle tanımı eklendi (${input.mahalle_adi}, ${input.ilce}/${input.il}).`,
-    null,
+    {},
     tanimAdresAuditSnapshot(data),
   )
 
@@ -232,7 +232,7 @@ export async function adresMahalleExcelIceAktar(fd: FormData): Promise<AdresExce
       data.id,
       'Excel İçe Aktar',
       `Excel ile mahalle tanımı eklendi (${s.mahalle_adi}, ${s.ilce}/${s.il}).`,
-      null,
+      {},
       tanimAdresAuditSnapshot(data),
     )
     eklenen++

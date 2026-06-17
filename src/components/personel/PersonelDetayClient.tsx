@@ -67,6 +67,8 @@ interface Props {
   onKisiselGuncelle?: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
   saltOkunur?: boolean
+  /** Geçmiş sekmesi yalnızca admin / tam yetkili kullanıcıda */
+  gecmisGoster?: boolean
   yerleskeAdi?: string | null
   konumMetni?: string | null
 }
@@ -1295,17 +1297,22 @@ export default function PersonelDetayClient({
   tanimGostergeKha = null,
   terfiOncesiTarihce = [],
   saltOkunur = false,
+  gecmisGoster = true,
   yerleskeAdi = null,
   konumMetni = null,
 }: Props) {
   const searchParams = useSearchParams()
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
+  const sekmeler = useMemo(
+    () => (gecmisGoster ? SEKMELER : SEKMELER.filter(s => s !== 'Geçmiş')),
+    [gecmisGoster],
+  )
 
   useEffect(() => {
     const sekmeParam = String(searchParams.get('sekme') ?? '').trim().toLocaleLowerCase('tr-TR')
     if (!sekmeParam) return
     if (sekmeParam === 'gecmis') {
-      setAktif('Geçmiş')
+      if (gecmisGoster) setAktif('Geçmiş')
       return
     }
     if (sekmeParam === 'ogrenim') {
@@ -1319,7 +1326,14 @@ export default function PersonelDetayClient({
     if (sekmeParam === 'izin') {
       setAktif('İzin Bilgileri')
     }
-  }, [searchParams])
+  }, [searchParams, gecmisGoster])
+
+  useEffect(() => {
+    if (!gecmisGoster && aktif === 'Geçmiş') {
+      setAktif('Kişisel Bilgiler')
+    }
+  }, [gecmisGoster, aktif])
+
   const sicil = (calisan.sicil_no ?? '').trim()
   const duzenleSegment = encodeURIComponent((calisan as { public_id?: string }).public_id ?? sicil)
   const asilDolu = kadrolar.some(k => (k.asil ?? '').trim() === sicil && (k.durumu ?? '') === 'Dolu')
@@ -1375,7 +1389,7 @@ export default function PersonelDetayClient({
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="border-b border-slate-200 overflow-x-auto">
           <div className="flex min-w-max">
-            {SEKMELER.map(s => (
+            {sekmeler.map(s => (
               <button key={s} onClick={() => setAktif(s)}
                 className={`px-5 py-3.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
                   aktif === s

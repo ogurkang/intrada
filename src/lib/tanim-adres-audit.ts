@@ -1,3 +1,5 @@
+import { auditJsonKayit } from '@/lib/personel-audit'
+
 export const TANIM_ADRES_ALAN_ETIKETLERI: Record<string, string> = {
   il: 'İl',
   ilce: 'İlçe',
@@ -12,20 +14,26 @@ export function tanimAdresAuditDegerGoster(alan: string, deger: unknown): string
 }
 
 export function tanimAdresAuditDiffSatirlari(onceki: unknown, sonraki: unknown) {
-  const o = (onceki && typeof onceki === 'object' ? onceki : {}) as Record<string, unknown>
-  const s = (sonraki && typeof sonraki === 'object' ? sonraki : {}) as Record<string, unknown>
+  const o = auditJsonKayit(onceki)
+  const s = auditJsonKayit(sonraki)
   const alanlar = new Set([...Object.keys(o), ...Object.keys(s)])
   const out: { alan: string; etiket: string; onceki: unknown; sonraki: unknown }[] = []
+  const norm = (v: unknown) => {
+    if (typeof v === 'boolean') return v ? '1' : '0'
+    return v == null ? '' : String(v).trim()
+  }
+  const oBos = !Object.keys(o).some(k => norm(o[k]))
   for (const alan of alanlar) {
     const etiket = TANIM_ADRES_ALAN_ETIKETLERI[alan] ?? alan
     const eski = o[alan] ?? null
     const yeni = s[alan] ?? null
-    const norm = (v: unknown) => {
-      if (typeof v === 'boolean') return v ? '1' : '0'
-      return v == null ? '' : String(v).trim()
-    }
     if (norm(eski) === norm(yeni)) continue
-    out.push({ alan, etiket, onceki: eski, sonraki: yeni })
+    out.push({
+      alan,
+      etiket,
+      onceki: oBos && norm(yeni) ? '—' : eski,
+      sonraki: yeni,
+    })
   }
   return out.sort((a, b) => a.etiket.localeCompare(b.etiket, 'tr'))
 }

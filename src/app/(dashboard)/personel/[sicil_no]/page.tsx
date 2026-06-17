@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess } from '@/lib/app-access'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import PersonelDetayClient from '@/components/personel/PersonelDetayClient'
 import { calisanGuncelle } from './actions'
 import { loadPersonelDetayPageOrRedirect } from '@/lib/personel-detay-load'
@@ -35,6 +35,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : null
   const saltOkunur = access?.mode === 'kullanici'
+  const gecmisGoster = access ? isAdminLike(access) : true
   if (access?.mode === 'kullanici') {
     const own = access.sicilNo.trim()
     const card = (calisan.sicil_no ?? '').trim()
@@ -96,6 +97,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         terfiOncesiTarihce={rest.terfiOncesiTarihce}
         onKisiselGuncelle={saltOkunur ? undefined : calisanGuncelle}
         saltOkunur={saltOkunur}
+        gecmisGoster={gecmisGoster}
         yerleskeAdi={yerleskeAdi}
         konumMetni={konumMetni}
       />

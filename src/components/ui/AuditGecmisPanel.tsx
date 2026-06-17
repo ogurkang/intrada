@@ -135,7 +135,23 @@ export default function AuditGecmisPanel({
                         <tr className="bg-slate-50/60">
                           <td colSpan={4} className="px-4 py-4">
                             {diff.length === 0 ? (
-                              <p className="text-xs text-slate-500 italic">Alan bazlı değişiklik detayı yok.</p>
+                              <div className="text-xs text-slate-600 space-y-1.5">
+                                <p>
+                                  <span className="font-medium text-slate-700">İşlem:</span>{' '}
+                                  {log.islem || '—'}
+                                </p>
+                                <p>
+                                  <span className="font-medium text-slate-700">Özet:</span>{' '}
+                                  {log.ozet || '—'}
+                                </p>
+                                <p>
+                                  <span className="font-medium text-slate-700">İşlemi yapan:</span>{' '}
+                                  {log.actor_email ?? 'Sistem'}
+                                </p>
+                                {!log.ozet && !log.islem ? (
+                                  <p className="text-slate-500 italic">Alan bazlı değişiklik detayı yok.</p>
+                                ) : null}
+                              </div>
                             ) : (
                               <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
                                 <table className="w-full text-xs">

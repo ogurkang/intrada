@@ -43,7 +43,7 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
   const [{ data: egitimRaw }, { data: katilimRaw }, { data: kadroRaw }, { data: calisanRaw }] =
     await Promise.all([
       supabase.from('egitim_takvimi_egitim')
-        .select('id, egitim_adi, kisa_ad, kanal, sure_dakika, katilimci_sayisi, program')
+        .select('id, egitim_adi, kisa_ad, kanal, sure_dakika, katilimci_sayisi, program, egitim_baslangic, egitim_bitis')
         .eq('donem_id', seciliDonemId!)
         .order('egitim_baslangic'),
       supabase.from('egitim_istatistik_katilim')
@@ -64,6 +64,8 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
     sure_dakika:      e.sure_dakika ?? 0,
     katilimci_sayisi: e.katilimci_sayisi ?? 0,
     program:          e.program as string | null,
+    egitim_baslangic: e.egitim_baslangic,
+    egitim_bitis:     e.egitim_bitis,
   }))
 
   const katilimSet = new Set<string>(

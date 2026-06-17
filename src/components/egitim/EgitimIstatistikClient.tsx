@@ -19,6 +19,15 @@ export interface IstatistikEgitim {
   sure_dakika:      number
   katilimci_sayisi: number
   program:          string | null  // 'Program' | 'Diğer' | 'Evet' | 'Hayır'
+  egitim_baslangic: string | null
+  egitim_bitis:     string | null
+}
+
+function egitimAyNo(tarih: string | null | undefined): string {
+  if (!tarih) return '—'
+  const d = new Date(tarih)
+  if (Number.isNaN(d.getTime())) return '—'
+  return String(d.getMonth() + 1)
 }
 
 export interface IstatistikPersonel {
@@ -289,6 +298,29 @@ export default function EgitimIstatistikClient({
           <div className="overflow-x-auto">
             <table className="text-xs border-collapse" style={{ minWidth: `${seciliEgitimler.length * 80 + 260}px` }}>
               <thead>
+                {/* Ay numaraları (başlangıç tarihinden) */}
+                <tr className="bg-white border-b border-slate-100">
+                  <th className="sticky left-0 bg-white z-20 border-r border-slate-200" />
+                  <th className="border-r border-slate-200" />
+                  {seciliEgitimler.map(e => (
+                    <th key={`ay-${e.id}`} className="px-2 py-1 border-r border-slate-100 w-20">
+                      <p
+                        className="text-[11px] font-bold text-indigo-600 text-center"
+                        title={
+                          e.egitim_baslangic
+                            ? `Başlangıç: ${new Date(e.egitim_baslangic).toLocaleDateString('tr-TR')}${
+                                e.egitim_bitis
+                                  ? ` · Bitiş: ${new Date(e.egitim_bitis).toLocaleDateString('tr-TR')}`
+                                  : ''
+                              }`
+                            : 'Tarih tanımlı değil'
+                        }
+                      >
+                        {egitimAyNo(e.egitim_baslangic)}
+                      </p>
+                    </th>
+                  ))}
+                </tr>
                 {/* Eğitim başlıkları */}
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="sticky left-0 bg-slate-50 z-20 px-3 py-3 text-left font-semibold text-slate-600 min-w-48 border-r border-slate-200">
