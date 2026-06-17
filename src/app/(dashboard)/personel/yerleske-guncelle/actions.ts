@@ -4,7 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
-import { gecerliYerleskeId, mudurlukYerleskeHaritasi, fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import {
+  fetchMudurlukYerleskeTanimSatirlari,
+  gecerliYerleskeIdKaynak,
+  mudurlukYerleskeHaritasi,
+  sirketYerleskeHaritasi,
+} from '@/lib/yerleske-adresi'
+import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 import { writeFirmaAuditLogSafe, FIRMA_ALAN_ETIKETLERI } from '@/lib/firma-audit'
 import { alanDegisiklikleriHesapla, degisiklikPayload } from '@/lib/personel-audit'
 
@@ -69,15 +75,23 @@ export async function yerleskeGuncelleSatirKaydet(
   const supabase = await createClient()
 
   const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+  const sirketSatirlar = await fetchSirketYerleskeTanimSatirlari(supabase)
   const harita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const sirketHarita = sirketYerleskeHaritasi(sirketSatirlar)
 
   const mudurluk =
     kaynak === 'kadro'
       ? await kadroMudurlugu(supabase, id)
       : await firmaMudurlugu(supabase, Number(id))
 
-  if (yerleskeId != null && !gecerliYerleskeId(harita, mudurluk, yerleskeId)) {
-    return { hata: 'Seçilen yerleşke, personelin görev müdürlüğü ile eşleşmiyor.' }
+  const gorevYeri =
+    kaynak === 'firma' ? mudurluk : undefined
+
+  if (
+    yerleskeId != null &&
+    !gecerliYerleskeIdKaynak(harita, sirketHarita, kaynak, mudurluk, yerleskeId, gorevYeri)
+  ) {
+    return { hata: 'Seçilen yerleşke, personelin görev müdürlüğü / görev yeri ile eşleşmiyor.' }
   }
 
   if (kaynak === 'kadro') {
@@ -130,7 +144,9 @@ export async function yerleskeGuncelleTopluKaydet(
 
   const supabase = await createClient()
   const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+  const sirketSatirlar = await fetchSirketYerleskeTanimSatirlari(supabase)
   const harita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const sirketHarita = sirketYerleskeHaritasi(sirketSatirlar)
   const D = new Date().toISOString().slice(0, 10)
   const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
 
@@ -181,7 +197,17 @@ export async function yerleskeGuncelleTopluKaydet(
       mudurluk = firmaMudById.get(fid) ?? ''
     }
 
-    if (s.yerleske_adresi_id != null && !gecerliYerleskeId(harita, mudurluk, s.yerleske_adresi_id)) {
+    if (
+      s.yerleske_adresi_id != null &&
+      !gecerliYerleskeIdKaynak(
+        harita,
+        sirketHarita,
+        s.kaynak,
+        mudurluk,
+        s.yerleske_adresi_id,
+        s.kaynak === 'firma' ? mudurluk : undefined,
+      )
+    ) {
       const etiket = s.kaynak === 'kadro' ? s.sicil_no : `ADABEL #${s.firma_id}`
       return { hata: `${etiket}: yerleşke seçimi görev müdürlüğü ile uyumsuz.` }
     }

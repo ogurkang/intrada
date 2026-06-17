@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { personelDetayHref } from '@/lib/personel-link'
-import { normMudStr, type YerleskeSecenek } from '@/lib/yerleske-adresi'
+import { yerleskeSecenekleriKaynak, type YerleskeSecenek } from '@/lib/yerleske-adresi'
 import type { YerleskeGuncelleSatir, YerleskeKaynak } from '@/app/(dashboard)/personel/yerleske-guncelle/actions'
 import { trNormalize } from '@/lib/turkce-search'
 
@@ -34,6 +34,7 @@ export type YerleskeGuncelleListeSatir = {
 interface Props {
   data: YerleskeGuncelleListeSatir[]
   yerleskeHarita: Record<string, YerleskeSecenek[]>
+  sirketYerleskeHarita: Record<string, YerleskeSecenek[]>
   onSatirKaydet: (kaynak: YerleskeKaynak, id: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: YerleskeGuncelleSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
 }
@@ -51,15 +52,19 @@ function satirDetayHref(p: YerleskeGuncelleListeSatir): string {
 }
 
 function secenekler(
-  harita: Record<string, YerleskeSecenek[]>,
-  mudurlukAdi: string,
+  mudHarita: Record<string, YerleskeSecenek[]>,
+  sirketHarita: Record<string, YerleskeSecenek[]>,
+  p: YerleskeGuncelleListeSatir,
 ): YerleskeSecenek[] {
-  return harita[normMudStr(mudurlukAdi)] ?? []
+  const mudMap = new Map(Object.entries(mudHarita))
+  const sirketMap = new Map(Object.entries(sirketHarita))
+  return yerleskeSecenekleriKaynak(mudMap, sirketMap, p.kaynak, p.gorev_mudurlugu, p.gorev_yeri)
 }
 
 export default function YerleskeGuncelleClient({
   data,
   yerleskeHarita,
+  sirketYerleskeHarita,
   onSatirKaydet,
   onTopluKaydet,
 }: Props) {
@@ -156,7 +161,7 @@ export default function YerleskeGuncelleClient({
     disabled?: boolean,
     degisti?: boolean,
   ) {
-    const opts = secenekler(yerleskeHarita, p.gorev_mudurlugu)
+    const opts = secenekler(yerleskeHarita, sirketYerleskeHarita, p)
     return (
       <select
         value={value ?? ''}
@@ -319,7 +324,7 @@ export default function YerleskeGuncelleClient({
                           )
                         ) : (
                           <span className="text-slate-700">
-                            {secenekler(yerleskeHarita, p.gorev_mudurlugu).find(
+                            {secenekler(yerleskeHarita, sirketYerleskeHarita, p).find(
                               o => o.id === p.secili_yerleske_id,
                             )?.ad ?? '—'}
                           </span>

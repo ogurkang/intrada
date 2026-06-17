@@ -49,6 +49,88 @@ export function mudurlukYerleskeHaritasi(
   return byMud
 }
 
+export interface SirketYerleskeHaritaSatir {
+  sirket_adi: string
+  yerleske_adresi_id: number
+  yerleske_adi: string
+  yerleske_sira_no?: number | null
+}
+
+/** Şirket adı (normalize) → yerleşke seçenekleri (sıralı) — ADABEL görev yeri için */
+export function sirketYerleskeHaritasi(
+  satirlar: SirketYerleskeHaritaSatir[],
+): Map<string, YerleskeSecenek[]> {
+  const bySirket = new Map<string, YerleskeSecenek[]>()
+  const sorted = [...satirlar].sort((a, b) => {
+    const sa = a.sirket_adi.localeCompare(b.sirket_adi, 'tr')
+    if (sa !== 0) return sa
+    const ys = (a.yerleske_sira_no ?? 9999) - (b.yerleske_sira_no ?? 9999)
+    if (ys !== 0) return ys
+    return a.yerleske_adi.localeCompare(b.yerleske_adi, 'tr')
+  })
+  for (const r of sorted) {
+    const key = normMudStr(r.sirket_adi)
+    if (!bySirket.has(key)) bySirket.set(key, [])
+    const list = bySirket.get(key)!
+    if (!list.some(x => x.id === r.yerleske_adresi_id)) {
+      list.push({ id: r.yerleske_adresi_id, ad: r.yerleske_adi })
+    }
+  }
+  return bySirket
+}
+
+export type YerleskeKaynakTip = 'kadro' | 'firma'
+
+/** Kadro: müdürlük; ADABEL: önce şirket (görev yeri), gerekirse müdürlük yedek */
+export function yerleskeSecenekleriKaynak(
+  mudHarita: Map<string, YerleskeSecenek[]>,
+  sirketHarita: Map<string, YerleskeSecenek[]>,
+  kaynak: YerleskeKaynakTip,
+  gorevMudurlugu: string | null | undefined,
+  gorevYeri?: string | null | undefined,
+): YerleskeSecenek[] {
+  if (kaynak === 'firma') {
+    for (const ad of [gorevMudurlugu, gorevYeri]) {
+      const list = sirketHarita.get(normMudStr(ad))
+      if (list?.length) return list
+    }
+    return mudHarita.get(normMudStr(gorevMudurlugu)) ?? []
+  }
+  return mudHarita.get(normMudStr(gorevMudurlugu)) ?? []
+}
+
+export function gecerliYerleskeIdKaynak(
+  mudHarita: Map<string, YerleskeSecenek[]>,
+  sirketHarita: Map<string, YerleskeSecenek[]>,
+  kaynak: YerleskeKaynakTip,
+  gorevMudurlugu: string | null | undefined,
+  yerleskeId: number | null | undefined,
+  gorevYeri?: string | null | undefined,
+): boolean {
+  if (yerleskeId == null) return true
+  return yerleskeSecenekleriKaynak(mudHarita, sirketHarita, kaynak, gorevMudurlugu, gorevYeri).some(
+    y => y.id === yerleskeId,
+  )
+}
+
+export function etkinYerleskeIdKaynak(
+  mudHarita: Map<string, YerleskeSecenek[]>,
+  sirketHarita: Map<string, YerleskeSecenek[]>,
+  kaynak: YerleskeKaynakTip,
+  gorevMudurlugu: string | null | undefined,
+  kayitliId: number | null | undefined,
+  gorevYeri?: string | null | undefined,
+): number | null {
+  if (
+    kayitliId != null &&
+    gecerliYerleskeIdKaynak(mudHarita, sirketHarita, kaynak, gorevMudurlugu, kayitliId, gorevYeri)
+  ) {
+    return kayitliId
+  }
+  const list = yerleskeSecenekleriKaynak(mudHarita, sirketHarita, kaynak, gorevMudurlugu, gorevYeri)
+  return list[0]?.id ?? null
+}
+
 export function varsayilanYerleskeId(
   harita: Map<string, YerleskeSecenek[]>,
   mudurlukAdi: string | null | undefined,

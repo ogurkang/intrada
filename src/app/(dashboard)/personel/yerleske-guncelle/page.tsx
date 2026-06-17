@@ -8,11 +8,13 @@ import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { etiketAnahtari } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { TANIMSIZ_STATU_ETIKET, hazirlaStatuSirali } from '@/lib/statu-liste-siralama'
 import {
-  etkinYerleskeId,
+  etkinYerleskeIdKaynak,
   fetchMudurlukYerleskeTanimSatirlari,
   mudurlukYerleskeHaritasi,
+  sirketYerleskeHaritasi,
   type YerleskeSecenek,
 } from '@/lib/yerleske-adresi'
+import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 import { yerleskeGuncelleSatirKaydet, yerleskeGuncelleTopluKaydet } from './actions'
 import type { YerleskeGuncelleListeSatir } from '@/components/personel/YerleskeGuncelleClient'
 
@@ -32,6 +34,7 @@ export default async function YerleskeGuncellePage() {
     { data: tanimStatuRaw },
     { data: firmaRaw },
     tanimSatirlar,
+    sirketSatirlar,
   ] = await Promise.all([
     supabase
       .from('calisan')
@@ -47,11 +50,15 @@ export default async function YerleskeGuncellePage() {
       .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, ayrilis_tarihi, kuruma_giris_tarihi, e_posta, yerleske_adresi_id')
       .order('ad_soyad'),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
   ])
 
   const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const sirketYerleskeHarita = sirketYerleskeHaritasi(sirketSatirlar)
   const yerleskeHaritaObj: Record<string, YerleskeSecenek[]> = {}
   for (const [k, v] of yerleskeHarita) yerleskeHaritaObj[k] = v
+  const sirketYerleskeHaritaObj: Record<string, YerleskeSecenek[]> = {}
+  for (const [k, v] of sirketYerleskeHarita) sirketYerleskeHaritaObj[k] = v
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
   for (const r of phRaw ?? []) {
@@ -95,7 +102,14 @@ export default async function YerleskeGuncellePage() {
     const rawStatu = sec.statu
     const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
     const kayitliId = (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
-    const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliId)
+    const seciliYerleskeId = etkinYerleskeIdKaynak(
+      yerleskeHarita,
+      sirketYerleskeHarita,
+      'kadro',
+      gorevMudurlugu,
+      kayitliId,
+      c.gorev_yeri,
+    )
     const satir: YerleskeGuncelleListeSatir = {
       kayit_key: `kadro:${c.sicil_no}`,
       kaynak: 'kadro',
@@ -122,7 +136,14 @@ export default async function YerleskeGuncellePage() {
     .map(f => {
       const gorevMudurlugu = String(f.gorev_mudurlugu ?? '').trim()
       const kayitliId = (f as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
-      const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliId)
+      const seciliYerleskeId = etkinYerleskeIdKaynak(
+        yerleskeHarita,
+        sirketYerleskeHarita,
+        'firma',
+        gorevMudurlugu,
+        kayitliId,
+        gorevMudurlugu,
+      )
       return {
         kayit_key: `firma:${f.id}`,
         kaynak: 'firma' as const,
@@ -163,6 +184,7 @@ export default async function YerleskeGuncellePage() {
       <YerleskeGuncelleClient
         data={data}
         yerleskeHarita={yerleskeHaritaObj}
+        sirketYerleskeHarita={sirketYerleskeHaritaObj}
         onSatirKaydet={yerleskeGuncelleSatirKaydet}
         onTopluKaydet={yerleskeGuncelleTopluKaydet}
       />

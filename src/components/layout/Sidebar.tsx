@@ -61,14 +61,7 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? {
-          href: '/personel',
-          label: 'Çalışanlar',
-          children: [
-            { href: '/personel', label: 'Personel Listesi' },
-            { href: '/personel/yerleske-guncelle', label: 'Yerleşke Güncelle (Geçici)' },
-          ],
-        }
+      ? { href: '/personel', label: 'Çalışanlar' }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
   return [
