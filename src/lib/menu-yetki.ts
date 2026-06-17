@@ -14,6 +14,8 @@ export type MenuModulKey =
   | 'bildirim'
   | 'kesintiler'
   | 'egitim'
+  | 'iletisimYonetimi'
+  | 'stratejikYonetim'
   | 'yerelBilgi'
   | 'yetkilendirme'
   | 'tanimlar'
@@ -34,6 +36,8 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'bildirim', labelKisa: 'Bildirim', label: 'Bildirim', pathPrefixes: ['/bildirim'] },
   { key: 'kesintiler', labelKisa: 'Kesinti', label: 'Kesintiler', pathPrefixes: ['/kesintiler'] },
   { key: 'egitim', labelKisa: 'Eğitim', label: 'Eğitim', pathPrefixes: ['/egitim'] },
+  { key: 'iletisimYonetimi', labelKisa: 'İletişim', label: 'İletişim Yönetimi', pathPrefixes: ['/iletisim-yonetimi'] },
+  { key: 'stratejikYonetim', labelKisa: 'Stratejik', label: 'Stratejik Yönetim', pathPrefixes: ['/stratejik-yonetim'] },
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
@@ -153,6 +157,14 @@ export function kullaniciPathAllowed(
     return menuModulAcik('yerelBilgi', menuIzinleri)
   }
 
+  if (path.startsWith('/iletisim-yonetimi')) {
+    return menuModulAcik('iletisimYonetimi', menuIzinleri)
+  }
+
+  if (path.startsWith('/stratejik-yonetim')) {
+    return menuModulAcik('stratejikYonetim', menuIzinleri)
+  }
+
   return false
 }
 
@@ -181,6 +193,8 @@ export function sidebarGrupGoster(
     'Bildirim Yönetimi': 'bildirim',
     'Kesintiler Yönetimi': 'kesintiler',
     'Eğitim Yönetimi': 'egitim',
+    'İletişim Yönetimi': 'iletisimYonetimi',
+    'Stratejik Yönetim': 'stratejikYonetim',
     'Yerel Bilgi Yönetimi': 'yerelBilgi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',

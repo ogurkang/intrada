@@ -9,19 +9,10 @@ import {
   yetkiAuditSnapshot,
   writeYetkilendirmeAuditLogSafe,
 } from '@/lib/yetkilendirme-audit'
+import { MENU_YETKILENDIRME_TABLO_MODULLERI } from '@/lib/menu-yetki'
 
 /** `MENU_YETKILENDIRME_TABLO_MODULLERI` ile aynı sıra/anahtarlar (Terfi tabloda yok). */
-const MENU_KEYS = [
-  'personel',
-  'rapor',
-  'izin',
-  'bildirim',
-  'kesintiler',
-  'egitim',
-  'yerelBilgi',
-  'yetkilendirme',
-  'tanimlar',
-] as const
+const MENU_KEYS = MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => m.key)
 
 async function requireAdmin() {
   const supabase = await createClient()
