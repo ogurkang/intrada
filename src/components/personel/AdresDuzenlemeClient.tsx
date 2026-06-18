@@ -50,11 +50,15 @@ export default function AdresDuzenlemeClient({
   const [hata, setHata] = useState<string | null>(null)
   const [topluHata, setTopluHata] = useState<string | null>(null)
   const [topluBasari, setTopluBasari] = useState<string | null>(null)
+  const [gizliKeyler, setGizliKeyler] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
 
   const sirali = useMemo(
-    () => [...data].sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')),
-    [data],
+    () =>
+      [...data]
+        .filter(p => !gizliKeyler.has(p.kayit_key))
+        .sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr')),
+    [data, gizliKeyler],
   )
 
   const filtreli = useMemo(() => {
@@ -95,7 +99,12 @@ export default function AdresDuzenlemeClient({
       if (res.hata) setHata(res.hata)
       else {
         setDuzenlenenKey(null)
-        setInlineVeri({})
+        setInlineVeri(prev => {
+          const next = { ...prev }
+          delete next[p.kayit_key]
+          return next
+        })
+        setGizliKeyler(prev => new Set(prev).add(p.kayit_key))
         router.refresh()
       }
     })
@@ -117,12 +126,18 @@ export default function AdresDuzenlemeClient({
         adres_detay: String(v.adres_detay ?? '').trim() || null,
       }
     })
+    const kaydedilenKeyler = degistirilmis.map(p => p.kayit_key)
     startTransition(async () => {
       const res = await onTopluKaydet(satirlar)
       if (res.hata) setTopluHata(res.hata)
       else {
         setTopluBasari(`${res.kaydedilen ?? satirlar.length} kayıt güncellendi.`)
         setTopluVeri({})
+        setGizliKeyler(prev => {
+          const next = new Set(prev)
+          for (const k of kaydedilenKeyler) next.add(k)
+          return next
+        })
         router.refresh()
       }
     })
@@ -189,6 +204,21 @@ export default function AdresDuzenlemeClient({
           </button>
         </div>
       </div>
+
+      {gizliKeyler.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-sm">
+          <span>
+            Bu oturumda <strong>{gizliKeyler.size}</strong> kişi kaydedildi ve listeden çıkarıldı.
+          </span>
+          <button
+            type="button"
+            onClick={() => setGizliKeyler(new Set())}
+            className="text-xs font-medium text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+          >
+            Tümünü tekrar göster
+          </button>
+        </div>
+      )}
 
       {sekme === 'liste' && (
         <>
