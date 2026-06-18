@@ -25,6 +25,8 @@ export type AdresDuzenlemeListeSatir = {
 interface Props {
   data: AdresDuzenlemeListeSatir[]
   mahalleKayitlari: MahalleTanimSatir[]
+  tumGoster: boolean
+  adresliSayisi: number
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: AdresDuzenlemeSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
 }
@@ -38,6 +40,8 @@ function adresDegisti(eski: AdresDuzenlemeListeSatir, yeni: AdresInlineDeger): b
 export default function AdresDuzenlemeClient({
   data,
   mahalleKayitlari,
+  tumGoster,
+  adresliSayisi,
   onSatirKaydet,
   onTopluKaydet,
 }: Props) {
@@ -174,6 +178,11 @@ export default function AdresDuzenlemeClient({
           <p className="text-xs text-slate-500 mt-2">
             Mevcut adres gösterimi: açık adres, mahalle, ilçe, il sırasıyla listelenir.
           </p>
+          <p className="text-xs text-slate-500 mt-1">
+            {tumGoster
+              ? 'Tüm aktif personel gösteriliyor (adresi tanımlı olanlar dahil).'
+              : 'Yalnızca adresi henüz tanımlanmamış personel listeleniyor; adres kaydedildikçe liste azalır.'}
+          </p>
         </div>
         <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
           <button
@@ -205,20 +214,24 @@ export default function AdresDuzenlemeClient({
         </div>
       </div>
 
-      {gizliKeyler.size > 0 && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-sm">
-          <span>
-            Bu oturumda <strong>{gizliKeyler.size}</strong> kişi kaydedildi ve listeden çıkarıldı.
-          </span>
-          <button
-            type="button"
-            onClick={() => setGizliKeyler(new Set())}
-            className="text-xs font-medium text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
-          >
-            Tümünü tekrar göster
-          </button>
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-sm">
+        <span>
+          {tumGoster ? (
+            <>Tüm aktif personel gösteriliyor. Adresi tanımlı: <strong>{adresliSayisi}</strong>.</>
+          ) : (
+            <>Adresi tanımlanmış <strong>{adresliSayisi}</strong> kişi listede gösterilmiyor.</>
+          )}
+          {gizliKeyler.size > 0 && (
+            <> Bu oturumda <strong>{gizliKeyler.size}</strong> kişi kaydedildi.</>
+          )}
+        </span>
+        <Link
+          href={tumGoster ? '/personel/adres-duzenleme' : '/personel/adres-duzenleme?tumu=1'}
+          className="text-xs font-medium text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+        >
+          {tumGoster ? 'Sadece adresi eksik olanları göster' : 'Tümünü göster (adresli dahil)'}
+        </Link>
+      </div>
 
       {sekme === 'liste' && (
         <>

@@ -19,13 +19,20 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out
 }
 
-export default async function AdresDuzenlemePage() {
+interface Props {
+  searchParams?: Promise<{ tumu?: string }>
+}
+
+export default async function AdresDuzenlemePage({ searchParams }: Props) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : null
   if (access?.mode === 'kullanici') notFound()
+
+  const sp = await searchParams
+  const tumGoster = String(sp?.tumu ?? '') === '1'
 
   const D = new Date().toISOString().slice(0, 10)
 
@@ -48,10 +55,16 @@ export default async function AdresDuzenlemePage() {
   }
 
   const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw ?? [])
-  const aktifCalisanlar = calisanFiltreli.filter(c => {
+  const tumAktifCalisanlar = calisanFiltreli.filter(c => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
     return !sonAyrilis || sonAyrilis > D
   })
+
+  // Adresi (mahalle) atanmış personel kalıcı olarak listeden çıkar; liste gittikçe azalır.
+  const adresliSayisi = tumAktifCalisanlar.filter(c => c.mahalle_id != null).length
+  const aktifCalisanlar = tumGoster
+    ? tumAktifCalisanlar
+    : tumAktifCalisanlar.filter(c => c.mahalle_id == null)
 
   const mahalleKayitlari = await fetchAktifMahalleTanimlari(supabase)
   const mahalleById = new Map<number, MahalleTanimSatir>(
@@ -113,6 +126,8 @@ export default async function AdresDuzenlemePage() {
       <AdresDuzenlemeClient
         data={data}
         mahalleKayitlari={mahalleKayitlari}
+        tumGoster={tumGoster}
+        adresliSayisi={adresliSayisi}
         onSatirKaydet={adresDuzenlemeSatirKaydet}
         onTopluKaydet={adresDuzenlemeTopluKaydet}
       />
