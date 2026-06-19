@@ -34,7 +34,6 @@ export default function AdresIlIlceSecim({
           disabled={disabled}
           onChange={e => {
             onIlChange(e.target.value)
-            onIlceChange('')
           }}
           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:opacity-50"
         >

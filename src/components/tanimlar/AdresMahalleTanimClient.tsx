@@ -212,7 +212,10 @@ export default function AdresMahalleTanimClient({
           <AdresIlIlceSecim
             il={ekleIl}
             ilce={ekleIlce}
-            onIlChange={setEkleIl}
+            onIlChange={v => {
+              setEkleIl(v)
+              setEkleIlce('')
+            }}
             onIlceChange={setEkleIlce}
           />
           <div>
@@ -252,7 +255,10 @@ export default function AdresMahalleTanimClient({
             <AdresIlIlceSecim
               il={duzenleIl}
               ilce={duzenleIlce}
-              onIlChange={setDuzenleIl}
+              onIlChange={v => {
+                setDuzenleIl(v)
+                setDuzenleIlce('')
+              }}
               onIlceChange={setDuzenleIlce}
             />
             <div>
