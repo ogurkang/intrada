@@ -112,6 +112,90 @@ export interface Database {
         }
         Relationships: []
       }
+      iletisim_sms_ayar: {
+        Row: {
+          id: number
+          saglayici: string
+          api_base_url: string
+          kullanici_adi: string | null
+          sifre: string | null
+          originator: string | null
+          turkce_karakter: boolean
+          aktif: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          saglayici?: string
+          api_base_url?: string
+          kullanici_adi?: string | null
+          sifre?: string | null
+          originator?: string | null
+          turkce_karakter?: boolean
+          aktif?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          saglayici?: string
+          api_base_url?: string
+          kullanici_adi?: string | null
+          sifre?: string | null
+          originator?: string | null
+          turkce_karakter?: boolean
+          aktif?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iletisim_sms_log: {
+        Row: {
+          id: number
+          actor_id: string | null
+          actor_email: string | null
+          alici_sicil: string | null
+          alici_ad: string | null
+          telefon: string
+          mesaj: string
+          originator: string | null
+          durum: string
+          saglayici_mesaj_id: string | null
+          hata_kodu: string | null
+          hata_mesaji: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          actor_id?: string | null
+          actor_email?: string | null
+          alici_sicil?: string | null
+          alici_ad?: string | null
+          telefon: string
+          mesaj: string
+          originator?: string | null
+          durum?: string
+          saglayici_mesaj_id?: string | null
+          hata_kodu?: string | null
+          hata_mesaji?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          actor_id?: string | null
+          actor_email?: string | null
+          alici_sicil?: string | null
+          alici_ad?: string | null
+          telefon?: string
+          mesaj?: string
+          originator?: string | null
+          durum?: string
+          saglayici_mesaj_id?: string | null
+          hata_kodu?: string | null
+          hata_mesaji?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       tanim_kazanc_bilgisi: {
         Row: {
           id: number
