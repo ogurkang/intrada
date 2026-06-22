@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { fetchSmsAyar } from '@/lib/sms-ayar'
+import { fetchSmsSablonlari } from '@/lib/sms-sablon'
 import SmsAyarTanimClient from '@/components/iletisim/SmsAyarTanimClient'
-import { smsAyarKaydet, smsKrediSorgulaAction } from './actions'
+import SmsSablonTanimClient, { type SablonGorunum } from '@/components/iletisim/SmsSablonTanimClient'
+import { smsAyarKaydet, smsKrediSorgulaAction, sablonKaydet, sablonSil } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +18,14 @@ export default async function IletisimTanimlarPage() {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   if (!isAdminLike(access)) notFound()
 
-  const ayar = await fetchSmsAyar(supabase)
+  const [ayar, sablonlar] = await Promise.all([fetchSmsAyar(supabase), fetchSmsSablonlari(supabase)])
+  const sablonGorunum: SablonGorunum[] = sablonlar.map(s => ({
+    id: s.id,
+    tur: s.tur,
+    baslik: s.baslik,
+    metin: s.metin,
+    aktif: s.aktif,
+  }))
 
   return (
     <div>
@@ -36,18 +45,24 @@ export default async function IletisimTanimlarPage() {
         </p>
       </div>
 
-      <SmsAyarTanimClient
-        ayar={{
-          api_base_url: ayar?.api_base_url ?? 'https://www.mesajpaketi.com',
-          kullanici_adi: ayar?.kullanici_adi ?? '',
-          originator: ayar?.originator ?? '',
-          turkce_karakter: ayar?.turkce_karakter ?? true,
-          aktif: ayar?.aktif ?? false,
-          sifre_var: Boolean(ayar?.sifre),
-        }}
-        onKaydet={smsAyarKaydet}
-        onKrediSorgula={smsKrediSorgulaAction}
-      />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <SmsAyarTanimClient
+          ayar={{
+            api_base_url: ayar?.api_base_url ?? 'https://www.mesajpaketi.com',
+            kullanici_adi: ayar?.kullanici_adi ?? '',
+            originator: ayar?.originator ?? '',
+            originator2: ayar?.originator2 ?? '',
+            originator3: ayar?.originator3 ?? '',
+            turkce_karakter: ayar?.turkce_karakter ?? true,
+            aktif: ayar?.aktif ?? false,
+            sifre_var: Boolean(ayar?.sifre),
+          }}
+          onKaydet={smsAyarKaydet}
+          onKrediSorgula={smsKrediSorgulaAction}
+        />
+
+        <SmsSablonTanimClient sablonlar={sablonGorunum} onKaydet={sablonKaydet} onSil={sablonSil} />
+      </div>
     </div>
   )
 }

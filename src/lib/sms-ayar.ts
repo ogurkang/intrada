@@ -23,6 +23,17 @@ export function smsAyarToConfig(row: SmsAyarRow | null): SmsAyarConfig {
   }
 }
 
+/** Tanımlı (boş olmayan) originator başlıkları; ilki varsayılan. */
+export function smsOriginatorListesi(row: SmsAyarRow | null): string[] {
+  const adaylar = [row?.originator, row?.originator2, row?.originator3]
+  const out: string[] = []
+  for (const a of adaylar) {
+    const v = String(a ?? '').trim()
+    if (v && !out.includes(v)) out.push(v)
+  }
+  return out
+}
+
 export function smsAyarHazirMi(row: SmsAyarRow | null): boolean {
   return Boolean(
     row?.aktif &&

@@ -120,6 +120,8 @@ export interface Database {
           kullanici_adi: string | null
           sifre: string | null
           originator: string | null
+          originator2: string | null
+          originator3: string | null
           turkce_karakter: boolean
           aktif: boolean
           updated_at: string
@@ -131,6 +133,8 @@ export interface Database {
           kullanici_adi?: string | null
           sifre?: string | null
           originator?: string | null
+          originator2?: string | null
+          originator3?: string | null
           turkce_karakter?: boolean
           aktif?: boolean
           updated_at?: string
@@ -142,8 +146,40 @@ export interface Database {
           kullanici_adi?: string | null
           sifre?: string | null
           originator?: string | null
+          originator2?: string | null
+          originator3?: string | null
           turkce_karakter?: boolean
           aktif?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iletisim_sms_sablon: {
+        Row: {
+          id: number
+          tur: string
+          baslik: string
+          metin: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          tur?: string
+          baslik: string
+          metin: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          tur?: string
+          baslik?: string
+          metin?: string
+          aktif?: boolean
+          created_at?: string
           updated_at?: string
         }
         Relationships: []

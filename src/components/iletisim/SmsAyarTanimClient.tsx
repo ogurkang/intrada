@@ -7,6 +7,8 @@ export interface SmsAyarGorunum {
   api_base_url: string
   kullanici_adi: string
   originator: string
+  originator2: string
+  originator3: string
   turkce_karakter: boolean
   aktif: boolean
   sifre_var: boolean
@@ -53,7 +55,7 @@ export default function SmsAyarTanimClient({ ayar, onKaydet, onKrediSorgula }: P
   }
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
         <div>
           <h2 className="text-sm font-semibold text-slate-800">SMS Sağlayıcı (mesajpaketi.com)</h2>
@@ -98,13 +100,31 @@ export default function SmsAyarTanimClient({ ayar, onKaydet, onKrediSorgula }: P
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Gönderici Başlığı (Originator)</label>
-          <input
-            name="originator"
-            defaultValue={ayar.originator}
-            placeholder="Onaylı başlık (ör. BELEDIYE)"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-          />
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Gönderici Başlıkları (Originator)</label>
+          <p className="text-xs text-slate-500 mb-2">
+            En fazla 3 onaylı başlık tanımlayın. Gönderim ekranında hangisini kullanacağınızı seçebilirsiniz. İlk başlık
+            varsayılandır.
+          </p>
+          <div className="space-y-2">
+            <input
+              name="originator"
+              defaultValue={ayar.originator}
+              placeholder="1. Başlık (varsayılan)"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+            <input
+              name="originator2"
+              defaultValue={ayar.originator2}
+              placeholder="2. Başlık (opsiyonel)"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+            <input
+              name="originator3"
+              defaultValue={ayar.originator3}
+              placeholder="3. Başlık (opsiyonel)"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-5">

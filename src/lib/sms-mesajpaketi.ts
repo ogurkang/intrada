@@ -72,6 +72,23 @@ function singleTextXml(cfg: SmsAyarConfig, mesaj: string, numaralar: string[]): 
   ].join('')
 }
 
+function multiTextXml(cfg: SmsAyarConfig, ciftler: { telefon: string; mesaj: string }[]): string {
+  const action = cfg.turkceKarakter ? 22 : 11
+  const mesajlar = ciftler
+    .map(c => `<Message><Mesgbody>${xmlEscape(c.mesaj)}</Mesgbody><Number>${c.telefon}</Number></Message>`)
+    .join('')
+  return [
+    '<MultiTextSMS>',
+    `<UserName>${xmlEscape(cfg.kullaniciAdi)}</UserName>`,
+    `<PassWord>${xmlEscape(cfg.sifre)}</PassWord>`,
+    `<Action>${action}</Action>`,
+    `<Messages>${mesajlar}</Messages>`,
+    `<Originator>${xmlEscape(cfg.originator)}</Originator>`,
+    '<SDate></SDate>',
+    '</MultiTextSMS>',
+  ].join('')
+}
+
 function yanitYorumla(text: string): SmsGonderSonuc {
   const ham = String(text ?? '').trim()
   const idMatch = ham.match(/ID\s*:\s*(\d+)/i)
@@ -115,6 +132,26 @@ export async function smsGonderTekMetin(
 
   try {
     const xml = singleTextXml(cfg, mesaj, numaralar)
+    const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
+    return yanitYorumla(text)
+  } catch (err) {
+    return { ok: false, hata: err instanceof Error ? err.message : 'SMS gönderimi başarısız.' }
+  }
+}
+
+/** Her numaraya farklı (kişiselleştirilmiş) metin gönderir. */
+export async function smsGonderCokluMetin(
+  cfg: SmsAyarConfig,
+  ciftler: { telefon: string; mesaj: string }[],
+): Promise<SmsGonderSonuc> {
+  if (!cfg.kullaniciAdi || !cfg.sifre || !cfg.originator) {
+    return { ok: false, hata: 'SMS ayarları eksik (kullanıcı adı, şifre veya originator).' }
+  }
+  const gecerli = ciftler.filter(c => c.telefon && c.mesaj.trim())
+  if (!gecerli.length) return { ok: false, hata: 'Geçerli alıcı/mesaj yok.' }
+
+  try {
+    const xml = multiTextXml(cfg, gecerli)
     const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
     return yanitYorumla(text)
   } catch (err) {
