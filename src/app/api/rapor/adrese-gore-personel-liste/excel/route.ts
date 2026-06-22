@@ -7,7 +7,12 @@ import {
   type RaporPeriyot,
   type TanimStatuRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { adreseGorePersonelListeSnapshot, type AdreseGorePersonelListeSatir } from '@/lib/rapor-adrese-gore-personel-liste'
+import {
+  adreseGorePersonelListeSnapshot,
+  adreseGorePersonelListeFiltrele,
+  type AdreseGorePersonelListeSatir,
+  type PersonelAdresBilgi,
+} from '@/lib/rapor-adrese-gore-personel-liste'
 import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 
 const AYLAR_TR = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik']
@@ -39,43 +44,76 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
+    const il = String(searchParams.get('il') ?? '').trim()
+    const ilce = String(searchParams.get('ilce') ?? '').trim()
+    const mahalle = String(searchParams.get('mahalle') ?? '').trim()
     const D = periyotSonGunu(yil, periyot)
 
-    const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
-      supabase.from('tanim_statu').select('statu_adi, sira_no'),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, gorev_unvani, kadro_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-        .not('asil', 'is', null),
-      supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, adresi'),
-    ])
+    const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: mahalleRaw }] =
+      await Promise.all([
+        supabase.from('tanim_statu').select('statu_adi, sira_no'),
+        supabase
+          .from('kadro_hareketleri')
+          .select('asil, statu, gorev_unvani, kadro_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+          .not('asil', 'is', null),
+        supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, mahalle_id, adres_detay, adresi'),
+        supabase.from('tanim_adres_mahalle').select('id, il, ilce, mahalle_adi'),
+      ])
 
     const tanimStatuler: TanimStatuRow[] = (tanimStatuRaw ?? []) as TanimStatuRow[]
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
-    const calisanBySicil = new Map<string, CalisanRaporRow & { adresi?: string | null }>()
-    for (const c of calisanRaw ?? []) {
-      calisanBySicil.set(c.sicil_no, {
-        sicil_no: c.sicil_no,
-        ad_soyad: c.ad_soyad,
-        cinsiyet: c.cinsiyet,
-        adresi: c.adresi,
+
+    const mahalleById = new Map<number, { il: string; ilce: string; mahalle_adi: string }>()
+    for (const m of mahalleRaw ?? []) {
+      mahalleById.set(m.id, {
+        il: String(m.il ?? '').trim(),
+        ilce: String(m.ilce ?? '').trim(),
+        mahalle_adi: String(m.mahalle_adi ?? '').trim(),
       })
     }
 
-    const satirlar = adreseGorePersonelListeSnapshot({
+    const calisanBySicil = new Map<string, CalisanRaporRow>()
+    const adresBySicil = new Map<string, PersonelAdresBilgi>()
+    for (const c of calisanRaw ?? []) {
+      calisanBySicil.set(c.sicil_no, { sicil_no: c.sicil_no, ad_soyad: c.ad_soyad, cinsiyet: c.cinsiyet })
+      const m = c.mahalle_id != null ? mahalleById.get(c.mahalle_id) ?? null : null
+      adresBySicil.set(c.sicil_no, {
+        il: m?.il ?? '',
+        ilce: m?.ilce ?? '',
+        mahalle: m?.mahalle_adi ?? '',
+        adres_detay: String(c.adres_detay ?? '').trim(),
+        legacy_adresi: String(c.adresi ?? '').trim(),
+      })
+    }
+
+    const tumSatirlar = adreseGorePersonelListeSnapshot({
       D,
       tanimStatuler,
       kadro,
       calisanBySicil,
+      adresBySicil,
     })
+    const satirlar = adreseGorePersonelListeFiltrele(tumSatirlar, { il, ilce, mahalle })
 
     const label = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
+    const filtreParcalari = [il, ilce, mahalle].filter(Boolean)
+    const filtreEtiket = filtreParcalari.length ? `Filtre: ${filtreParcalari.join(' / ')}` : 'Filtre: Tümü'
+
     return raporExcelStandartResponse({
       baslik: 'Adrese Göre Personel Listesi',
-      donemEtiket: `Yıl: ${yil} · Sekme: ${label}`,
+      donemEtiket: `Yıl: ${yil} · Sekme: ${label} · ${filtreEtiket}`,
       anlikTarihEtiket: `Anlık görüntü tarihi: ${sonGunuMetin(D)}`,
-      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Görev Unvanı', 'Adres Bilgisi'],
-      satirlar: satirlar.map((s: AdreseGorePersonelListeSatir, i: number) => [i + 1, s.sicil_no, s.ad_soyad, s.gorev_unvani, s.adres]),
+      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Görev Unvanı', 'İl', 'İlçe', 'Mahalle', 'Açık Adres'],
+      satirlar: satirlar.map((s: AdreseGorePersonelListeSatir, i: number) => [
+        i + 1,
+        s.sicil_no,
+        s.ad_soyad,
+        s.gorev_unvani,
+        s.il,
+        s.ilce,
+        s.mahalle,
+        s.adres,
+      ]),
       sheetName: 'Adrese Göre Personel',
       downloadFileName: `Adrese_Gore_Personel_Listesi_${yil}_${label}.xlsx`,
     })

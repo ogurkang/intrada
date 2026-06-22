@@ -19,18 +19,21 @@ function sicilKarsilastir(a: string, b: string): number {
   return a.localeCompare(b, 'tr', { numeric: true })
 }
 
-function statuOncelik(statu: string): number {
-  const s = statu.trim().toLocaleLowerCase('tr-TR')
-  if (s === 'memur') return 0
-  if (s === 'sözleşmeli' || s === 'sozlesmeli') return 1
-  if (s === 'işçi' || s === 'isci') return 2
-  return 999
+export interface PersonelAdresBilgi {
+  il: string
+  ilce: string
+  mahalle: string
+  adres_detay: string
+  legacy_adresi: string
 }
 
 export interface AdreseGorePersonelListeSatir {
   sicil_no: string
   ad_soyad: string
   gorev_unvani: string
+  il: string
+  ilce: string
+  mahalle: string
   adres: string
   _statu_siralama: string
 }
@@ -42,13 +45,25 @@ function gorevUnvaniGrubu(unvan: string): number {
   return 2
 }
 
+/** Ekranda tek satırda: açık adres, mahalle, ilçe, il */
+export function adresGosterimMetni(b: PersonelAdresBilgi): string {
+  const parcalar: string[] = []
+  if (b.adres_detay) parcalar.push(b.adres_detay)
+  if (b.mahalle) parcalar.push(b.mahalle)
+  if (b.ilce) parcalar.push(b.ilce)
+  if (b.il) parcalar.push(b.il)
+  if (parcalar.length) return parcalar.join(', ')
+  return b.legacy_adresi || '—'
+}
+
 export function adreseGorePersonelListeSnapshot(input: {
   D: string
   tanimStatuler: TanimStatuRow[]
   kadro: KadroRaporRow[]
-  calisanBySicil: Map<string, CalisanRaporRow & { adresi?: string | null }>
+  calisanBySicil: Map<string, CalisanRaporRow>
+  adresBySicil: Map<string, PersonelAdresBilgi>
 }): AdreseGorePersonelListeSatir[] {
-  const { D, tanimStatuler, kadro, calisanBySicil } = input
+  const { D, tanimStatuler, kadro, calisanBySicil, adresBySicil } = input
   const etiketler = new Set((tanimStatuler ?? []).map(t => txt(t.statu_adi)).filter(Boolean))
   const byAsil = new Map<string, KadroRaporRow[]>()
 
@@ -73,32 +88,51 @@ export function adreseGorePersonelListeSnapshot(input: {
     const statu = mapped || rawStatu || '—'
     const gorevUnvani = txt(secilen.gorev_unvani) || txt(secilen.kadro_unvani) || '—'
     const adSoyad = txt(calisan.ad_soyad) || sicil
-    const adres = txt(calisan.adresi) || '—'
+
+    const adresBilgi: PersonelAdresBilgi =
+      adresBySicil.get(sicil) ?? { il: '', ilce: '', mahalle: '', adres_detay: '', legacy_adresi: '' }
+
     out.push({
       sicil_no: sicil,
       ad_soyad: adSoyad,
       gorev_unvani: gorevUnvani,
-      adres,
+      il: adresBilgi.il || '—',
+      ilce: adresBilgi.ilce || '—',
+      mahalle: adresBilgi.mahalle || '—',
+      adres: adresGosterimMetni(adresBilgi),
       _statu_siralama: statu,
     })
   }
 
   out.sort((a, b) => {
-    const ga = gorevUnvaniGrubu(a.gorev_unvani)
-    const gb = gorevUnvaniGrubu(b.gorev_unvani)
-    if (ga !== gb) return ga - gb
-    if (ga < 2 && !sameText(a.gorev_unvani, b.gorev_unvani)) {
-      return a.gorev_unvani.localeCompare(b.gorev_unvani, 'tr')
-    }
-    if (ga === 2) {
-      const oa = statuOncelik(a._statu_siralama)
-      const ob = statuOncelik(b._statu_siralama)
-      if (oa !== ob) return oa - ob
-    }
+    const ilBosA = a.il === '—'
+    const ilBosB = b.il === '—'
+    if (ilBosA !== ilBosB) return ilBosA ? 1 : -1
+    const il = a.il.localeCompare(b.il, 'tr')
+    if (il !== 0) return il
+    const ilce = a.ilce.localeCompare(b.ilce, 'tr')
+    if (ilce !== 0) return ilce
+    const mahalle = a.mahalle.localeCompare(b.mahalle, 'tr')
+    if (mahalle !== 0) return mahalle
     const sic = sicilKarsilastir(a.sicil_no, b.sicil_no)
     if (sic !== 0) return sic
     return a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
   })
 
   return out
+}
+
+export function adreseGorePersonelListeFiltrele(
+  satirlar: AdreseGorePersonelListeSatir[],
+  filtre: { il?: string; ilce?: string; mahalle?: string },
+): AdreseGorePersonelListeSatir[] {
+  const il = txt(filtre.il)
+  const ilce = txt(filtre.ilce)
+  const mahalle = txt(filtre.mahalle)
+  return satirlar.filter(s => {
+    if (il && !sameText(s.il, il)) return false
+    if (ilce && !sameText(s.ilce, ilce)) return false
+    if (mahalle && !sameText(s.mahalle, mahalle)) return false
+    return true
+  })
 }
