@@ -22,6 +22,7 @@ interface Props {
   cocukAdiBySicil?: Record<string, string>
   manuelAdet?: number
   gonderimAcik: boolean
+  bilgiMetni?: string
   onGonder: (input: SmsGonderInput) => Promise<SmsGonderActionSonuc>
   onBasarili?: () => void
 }
@@ -42,6 +43,7 @@ export default function SmsMesajGonderKutusu({
   cocukAdiBySicil,
   manuelAdet = 0,
   gonderimAcik,
+  bilgiMetni,
   onGonder,
   onBasarili,
 }: Props) {
@@ -129,6 +131,10 @@ export default function SmsMesajGonderKutusu({
         )}
       </div>
 
+      {bilgiMetni && (
+        <p className="text-xs text-sky-700 bg-sky-50 border border-sky-100 rounded-lg px-3 py-2">{bilgiMetni}</p>
+      )}
+
       <div>
         <textarea
           value={mesaj}
@@ -154,7 +160,9 @@ export default function SmsMesajGonderKutusu({
 
       {sonuc?.ok && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-          {sonuc.gonderilen} alıcıya gönderildi{sonuc.mesajId ? ` (ID: ${sonuc.mesajId})` : ''}.
+          {(sonuc.gonderilen ?? 0) > 0 && <>{sonuc.gonderilen} alıcıya gönderildi. </>}
+          {(sonuc.planlanan ?? 0) > 0 && <>{sonuc.planlanan} alıcıya doğum gününde iletilmek üzere planlandı. </>}
+          {sonuc.mesajId ? `(ID: ${sonuc.mesajId})` : ''}
         </div>
       )}
       {sonuc?.hata && (

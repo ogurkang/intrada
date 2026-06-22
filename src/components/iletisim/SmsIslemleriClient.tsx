@@ -37,25 +37,58 @@ const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ]
+const AYLAR_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
 
-const SEKMELER = [
-  { key: 'dogum', label: '🎂 Doğum Günü' },
-  { key: 'bebek', label: '👶 Hoş Geldin Bebek' },
-  { key: 'tekil', label: '✉️ Tekil Mesajlar' },
-] as const
+type WidgetKey = 'dogum' | 'bebek' | 'tekil'
+
+const KARTLAR: {
+  key: WidgetKey
+  baslik: string
+  aciklama: string
+  ikon: string
+  renk: string
+  ikonRenk: string
+  aktifRenk: string
+}[] = [
+  {
+    key: 'dogum',
+    baslik: 'Doğum Günü',
+    aciklama: 'Seçilen aydaki personele doğum gününde otomatik kutlama mesajı.',
+    ikon: '🎂',
+    renk: 'border-pink-200 bg-pink-50',
+    ikonRenk: 'bg-pink-100',
+    aktifRenk: 'ring-2 ring-pink-400 border-pink-300',
+  },
+  {
+    key: 'bebek',
+    baslik: 'Hoş Geldin Bebek',
+    aciklama: 'Yeni bebeği olan çalışanlara tebrik mesajı.',
+    ikon: '👶',
+    renk: 'border-sky-200 bg-sky-50',
+    ikonRenk: 'bg-sky-100',
+    aktifRenk: 'ring-2 ring-sky-400 border-sky-300',
+  },
+  {
+    key: 'tekil',
+    baslik: 'Tekil Mesajlar',
+    aciklama: 'Personel veya manuel numaralara serbest/şablonlu mesaj.',
+    ikon: '✉️',
+    renk: 'border-emerald-200 bg-emerald-50',
+    ikonRenk: 'bg-emerald-100',
+    aktifRenk: 'ring-2 ring-emerald-400 border-emerald-300',
+  },
+]
 
 function ayNo(tarih: string | null | undefined): number | null {
   if (!tarih) return null
-  const m = String(tarih).slice(5, 7)
-  const n = parseInt(m, 10)
+  const n = parseInt(String(tarih).slice(5, 7), 10)
   return Number.isFinite(n) && n >= 1 && n <= 12 ? n : null
 }
 
 function gunFarki(tarih: string): number {
   const d = new Date(tarih)
   if (Number.isNaN(d.getTime())) return Number.POSITIVE_INFINITY
-  const bugun = new Date()
-  return Math.floor((bugun.getTime() - d.getTime()) / 86400000)
+  return Math.floor((Date.now() - d.getTime()) / 86400000)
 }
 
 function benzersizSirali(arr: string[]): string[] {
@@ -70,28 +103,32 @@ export default function SmsIslemleriClient({
   gonderimAcik,
   onGonder,
 }: Props) {
-  const [sekme, setSekme] = useState<(typeof SEKMELER)[number]['key']>('dogum')
+  const [aktif, setAktif] = useState<WidgetKey>('dogum')
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-5">
-        {SEKMELER.map(s => (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {KARTLAR.map(k => (
           <button
-            key={s.key}
+            key={k.key}
             type="button"
-            onClick={() => setSekme(s.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
-              sekme === s.key
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            onClick={() => setAktif(k.key)}
+            className={`text-left rounded-xl border-2 p-5 transition-all hover:shadow-md ${k.renk} ${
+              aktif === k.key ? k.aktifRenk : 'opacity-80'
             }`}
           >
-            {s.label}
+            <div className="flex items-center gap-3 mb-2">
+              <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl ${k.ikonRenk}`}>
+                {k.ikon}
+              </span>
+              <h2 className="font-semibold text-slate-800">{k.baslik}</h2>
+            </div>
+            <p className="text-sm text-slate-500 leading-relaxed">{k.aciklama}</p>
           </button>
         ))}
       </div>
 
-      {sekme === 'dogum' && (
+      {aktif === 'dogum' && (
         <DogumGunuWidget
           personeller={personeller}
           sablonlar={sablonlar}
@@ -100,7 +137,7 @@ export default function SmsIslemleriClient({
           onGonder={onGonder}
         />
       )}
-      {sekme === 'bebek' && (
+      {aktif === 'bebek' && (
         <BebekWidget
           bebekler={bebekler}
           sablonlar={sablonlar}
@@ -109,7 +146,7 @@ export default function SmsIslemleriClient({
           onGonder={onGonder}
         />
       )}
-      {sekme === 'tekil' && (
+      {aktif === 'tekil' && (
         <TekilWidget
           personeller={personeller}
           sablonlar={sablonlar}
@@ -118,6 +155,30 @@ export default function SmsIslemleriClient({
           onGonder={onGonder}
         />
       )}
+    </div>
+  )
+}
+
+/* ---------------- Ay sekmeleri ---------------- */
+
+function AySekmeleri({ ay, onChange }: { ay: number; onChange: (a: number) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {AYLAR_KISA.map((a, i) => (
+        <button
+          key={a}
+          type="button"
+          onClick={() => onChange(i + 1)}
+          title={AYLAR[i]}
+          className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+            ay === i + 1
+              ? 'bg-slate-800 text-white border-slate-800'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          {a}
+        </button>
+      ))}
     </div>
   )
 }
@@ -145,23 +206,18 @@ function DogumGunuWidget({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-          <label className="text-sm text-slate-600">Doğum ayı:</label>
-          <select
-            value={ay}
-            onChange={e => {
-              setAy(Number(e.target.value))
+        <div className="p-4 border-b border-slate-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">Doğum ayı</span>
+            <span className="text-xs text-slate-400">{liste.length} kişi</span>
+          </div>
+          <AySekmeleri
+            ay={ay}
+            onChange={a => {
+              setAy(a)
               setSecili(new Set())
             }}
-            className="px-2 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-          >
-            {AYLAR.map((a, i) => (
-              <option key={a} value={i + 1}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs text-slate-400 ml-auto">{liste.length} kişi</span>
+          />
         </div>
         <SecimListesi
           satirlar={liste.map(p => ({
@@ -187,6 +243,7 @@ function DogumGunuWidget({
           baglam="dogum_gunu"
           sicilNolar={gonderilecek}
           gonderimAcik={gonderimAcik}
+          bilgiMetni="Mesajın başına otomatik 'Sayın {ad_soyad}' eklenir. Her kişiye kendi doğum gününde (09:00) iletilmek üzere planlanır."
           onGonder={onGonder}
           onBasarili={() => setSecili(new Set())}
         />
@@ -231,51 +288,47 @@ function BebekWidget({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
-          <select
-            value={mod}
-            onChange={e => {
-              setMod(e.target.value as 'ay' | 'gun')
-              setSecili(new Set())
-            }}
-            className="px-2 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-          >
-            <option value="ay">Aya göre</option>
-            <option value="gun">Son güne göre</option>
-          </select>
-          {mod === 'ay' ? (
+        <div className="p-4 border-b border-slate-100 space-y-3">
+          <div className="flex items-center gap-3">
             <select
-              value={ay}
+              value={mod}
               onChange={e => {
-                setAy(Number(e.target.value))
+                setMod(e.target.value as 'ay' | 'gun')
                 setSecili(new Set())
               }}
               className="px-2 py-2 border border-slate-300 rounded-lg text-sm bg-white"
             >
-              {AYLAR.map((a, i) => (
-                <option key={a} value={i + 1}>
-                  {a}
-                </option>
-              ))}
+              <option value="ay">Aya göre</option>
+              <option value="gun">Son güne göre</option>
             </select>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              Son
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={gun}
-                onChange={e => {
-                  setGun(Math.max(1, Number(e.target.value) || 1))
-                  setSecili(new Set())
-                }}
-                className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm"
-              />
-              gün
-            </div>
+            {mod === 'gun' && (
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                Son
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={gun}
+                  onChange={e => {
+                    setGun(Math.max(1, Number(e.target.value) || 1))
+                    setSecili(new Set())
+                  }}
+                  className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+                gün
+              </div>
+            )}
+            <span className="text-xs text-slate-400 ml-auto">{liste.length} kayıt</span>
+          </div>
+          {mod === 'ay' && (
+            <AySekmeleri
+              ay={ay}
+              onChange={a => {
+                setAy(a)
+                setSecili(new Set())
+              }}
+            />
           )}
-          <span className="text-xs text-slate-400 ml-auto">{liste.length} kayıt</span>
         </div>
         <SecimListesi
           satirlar={liste.map(b => ({
@@ -302,6 +355,7 @@ function BebekWidget({
           sicilNolar={gonderilecekSicil}
           cocukAdiBySicil={cocukAdiBySicil}
           gonderimAcik={gonderimAcik}
+          bilgiMetni="Mesajın başına otomatik 'Sayın {ad_soyad}' eklenir. {cocuk_adi} yer tutucusu bebeğin adıyla doldurulur."
           onGonder={onGonder}
           onBasarili={() => setSecili(new Set())}
         />

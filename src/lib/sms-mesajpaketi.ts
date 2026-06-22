@@ -47,6 +47,26 @@ export function gsmNormalize(raw: string | null | undefined): string | null {
   return null
 }
 
+/**
+ * Doğum gününe göre zamanlama tarihi (SDate, biçim GGAAYYYYSSdd) üretir.
+ * dogumTarihi: YYYY-MM-DD. Bugünse anında gönderim için boş sdate döner.
+ * Geçmiş bir güne denk gelirse gelecek yıla planlanır.
+ */
+export function dogumGunuSDate(dogumTarihi: string, saat = '0900'): { sdate: string; bugun: boolean } | null {
+  const mm = String(dogumTarihi ?? '').slice(5, 7)
+  const dd = String(dogumTarihi ?? '').slice(8, 10)
+  if (mm.length !== 2 || dd.length !== 2) return null
+  const now = new Date()
+  const ay = String(now.getMonth() + 1).padStart(2, '0')
+  const gun = String(now.getDate()).padStart(2, '0')
+  const bugunStr = `${now.getFullYear()}-${ay}-${gun}`
+  let yil = now.getFullYear()
+  const buYilStr = `${yil}-${mm}-${dd}`
+  if (buYilStr === bugunStr) return { sdate: '', bugun: true }
+  if (buYilStr < bugunStr) yil += 1
+  return { sdate: `${dd}${mm}${yil}${saat}`, bugun: false }
+}
+
 /** XML değerini bozabilecek karakterleri kaçışlar. */
 function xmlEscape(v: string): string {
   return String(v ?? '')
@@ -57,7 +77,12 @@ function xmlEscape(v: string): string {
     .replace(/'/g, '&apos;')
 }
 
-function singleTextXml(cfg: SmsAyarConfig, mesaj: string, numaralar: string[]): string {
+/** Zamanlanmış gönderim için SDate; boş/undefined ise anında gönderilir. Biçim: GGAAYYYYSSdd */
+function sdateNode(sdate?: string | null): string {
+  return `<SDate>${xmlEscape(String(sdate ?? '').trim())}</SDate>`
+}
+
+function singleTextXml(cfg: SmsAyarConfig, mesaj: string, numaralar: string[], sdate?: string | null): string {
   const action = cfg.turkceKarakter ? 2 : 1
   return [
     '<SingleTextSMS>',
@@ -67,12 +92,12 @@ function singleTextXml(cfg: SmsAyarConfig, mesaj: string, numaralar: string[]): 
     `<Mesgbody>${xmlEscape(mesaj)}</Mesgbody>`,
     `<Numbers>${numaralar.join(',')}</Numbers>`,
     `<Originator>${xmlEscape(cfg.originator)}</Originator>`,
-    '<SDate></SDate>',
+    sdateNode(sdate),
     '</SingleTextSMS>',
   ].join('')
 }
 
-function multiTextXml(cfg: SmsAyarConfig, ciftler: { telefon: string; mesaj: string }[]): string {
+function multiTextXml(cfg: SmsAyarConfig, ciftler: { telefon: string; mesaj: string }[], sdate?: string | null): string {
   const action = cfg.turkceKarakter ? 22 : 11
   const mesajlar = ciftler
     .map(c => `<Message><Mesgbody>${xmlEscape(c.mesaj)}</Mesgbody><Number>${c.telefon}</Number></Message>`)
@@ -84,7 +109,7 @@ function multiTextXml(cfg: SmsAyarConfig, ciftler: { telefon: string; mesaj: str
     `<Action>${action}</Action>`,
     `<Messages>${mesajlar}</Messages>`,
     `<Originator>${xmlEscape(cfg.originator)}</Originator>`,
-    '<SDate></SDate>',
+    sdateNode(sdate),
     '</MultiTextSMS>',
   ].join('')
 }
@@ -123,6 +148,7 @@ export async function smsGonderTekMetin(
   cfg: SmsAyarConfig,
   mesaj: string,
   numaralar: string[],
+  sdate?: string | null,
 ): Promise<SmsGonderSonuc> {
   if (!cfg.kullaniciAdi || !cfg.sifre || !cfg.originator) {
     return { ok: false, hata: 'SMS ayarları eksik (kullanıcı adı, şifre veya originator).' }
@@ -131,7 +157,7 @@ export async function smsGonderTekMetin(
   if (!numaralar.length) return { ok: false, hata: 'Geçerli alıcı numarası yok.' }
 
   try {
-    const xml = singleTextXml(cfg, mesaj, numaralar)
+    const xml = singleTextXml(cfg, mesaj, numaralar, sdate)
     const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
     return yanitYorumla(text)
   } catch (err) {
@@ -143,6 +169,7 @@ export async function smsGonderTekMetin(
 export async function smsGonderCokluMetin(
   cfg: SmsAyarConfig,
   ciftler: { telefon: string; mesaj: string }[],
+  sdate?: string | null,
 ): Promise<SmsGonderSonuc> {
   if (!cfg.kullaniciAdi || !cfg.sifre || !cfg.originator) {
     return { ok: false, hata: 'SMS ayarları eksik (kullanıcı adı, şifre veya originator).' }
@@ -151,7 +178,7 @@ export async function smsGonderCokluMetin(
   if (!gecerli.length) return { ok: false, hata: 'Geçerli alıcı/mesaj yok.' }
 
   try {
-    const xml = multiTextXml(cfg, gecerli)
+    const xml = multiTextXml(cfg, gecerli, sdate)
     const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
     return yanitYorumla(text)
   } catch (err) {

@@ -8,10 +8,12 @@ import {
   gsmNormalize,
   smsGonderTekMetin,
   smsGonderCokluMetin,
+  dogumGunuSDate,
   type SmsGonderSonuc,
 } from '@/lib/sms-mesajpaketi'
 import { sablonDoldur, ilkAd } from '@/lib/sms-sablon'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import type { TablesInsert } from '@/types/database'
 
 export interface SmsGonderInput {
   /** Şablon/serbest metin; {ad_soyad},{ad},{cocuk_adi} yer tutucuları doldurulur */
@@ -21,7 +23,7 @@ export interface SmsGonderInput {
   manuelNumaralar: string
   /** Hoş geldin bebek için sicil → çocuk adı */
   cocukAdiBySicil?: Record<string, string>
-  /** Log/özet bağlamı: 'dogum_gunu' | 'hosgeldin_bebek' | 'tekil' */
+  /** 'dogum_gunu' | 'hosgeldin_bebek' | 'tekil' */
   baglam?: string
 }
 
@@ -29,6 +31,7 @@ export interface SmsGonderActionSonuc {
   ok?: boolean
   hata?: string
   gonderilen?: number
+  planlanan?: number
   gecersiz?: string[]
   mesajId?: string
 }
@@ -40,6 +43,7 @@ interface Alici {
   ad: string | null
   telefon: string
   mesaj: string
+  sdate: string
 }
 
 export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderActionSonuc> {
@@ -62,22 +66,30 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
   }
   const config = smsAyarToConfig(ayar)
 
-  // Originator seçimi (tanımlı listeden)
   const originatorlar = smsOriginatorListesi(ayar)
   const secilenOriginator = String(input.originator ?? '').trim()
   if (secilenOriginator && originatorlar.includes(secilenOriginator)) {
     config.originator = secilenOriginator
   }
 
+  const baglam = input.baglam ?? 'tekil'
+  const hitapEkle = baglam === 'dogum_gunu' || baglam === 'hosgeldin_bebek'
+  const zamanla = baglam === 'dogum_gunu'
   const cocukAdiBySicil = input.cocukAdiBySicil ?? {}
   const gecersiz: string[] = []
   const alicilar: Alici[] = []
+
+  function hitapla(adSoyad: string | null, govde: string): string {
+    const ad = String(adSoyad ?? '').trim()
+    if (hitapEkle && ad) return `Sayın ${ad}\n${govde}`.trim()
+    return govde
+  }
 
   const sicilNolar = [...new Set((input.sicilNolar ?? []).map(s => String(s).trim()).filter(Boolean))]
   if (sicilNolar.length) {
     const { data: calisanRaw, error } = await supabase
       .from('calisan')
-      .select('sicil_no, ad_soyad, telefon')
+      .select('sicil_no, ad_soyad, telefon, dogum_tarihi')
       .in('sicil_no', sicilNolar)
     if (error) return { hata: error.message }
     for (const c of calisanRaw ?? []) {
@@ -86,12 +98,17 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
         gecersiz.push(`${c.ad_soyad ?? c.sicil_no} (telefon geçersiz/eksik)`)
         continue
       }
-      const mesaj = sablonDoldur(metin, {
+      const govde = sablonDoldur(metin, {
         ad_soyad: c.ad_soyad ?? '',
         ad: ilkAd(c.ad_soyad),
         cocuk_adi: cocukAdiBySicil[c.sicil_no] ?? '',
       })
-      alicilar.push({ sicil_no: c.sicil_no, ad: c.ad_soyad, telefon: gsm, mesaj })
+      let sdate = ''
+      if (zamanla && c.dogum_tarihi) {
+        const plan = dogumGunuSDate(String(c.dogum_tarihi).slice(0, 10))
+        if (plan && !plan.bugun) sdate = plan.sdate
+      }
+      alicilar.push({ sicil_no: c.sicil_no, ad: c.ad_soyad, telefon: gsm, mesaj: hitapla(c.ad_soyad, govde), sdate })
     }
   }
 
@@ -105,7 +122,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
       gecersiz.push(`${m} (numara geçersiz)`)
       continue
     }
-    alicilar.push({ sicil_no: null, ad: null, telefon: gsm, mesaj: sablonDoldur(metin, {}) })
+    alicilar.push({ sicil_no: null, ad: null, telefon: gsm, mesaj: sablonDoldur(metin, {}), sdate: '' })
   }
 
   // Telefona göre tekilleştir (personel kaydı öncelikli)
@@ -119,66 +136,91 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
     return { hata: 'Geçerli alıcı bulunamadı.', gecersiz: gecersiz.length ? gecersiz : undefined }
   }
 
-  // Tüm mesajlar aynıysa SingleText, farklıysa MultiText
-  const tekMetin = benzersiz.every(a => a.mesaj === benzersiz[0].mesaj)
-  let sonuc: SmsGonderSonuc
-  if (tekMetin) {
-    sonuc = await smsGonderTekMetin(config, benzersiz[0].mesaj, benzersiz.map(a => a.telefon))
-  } else {
-    sonuc = await smsGonderCokluMetin(
-      config,
-      benzersiz.map(a => ({ telefon: a.telefon, mesaj: a.mesaj })),
-    )
+  // SDate'e göre grupla (her grup tek API çağrısı)
+  const gruplar = new Map<string, Alici[]>()
+  for (const a of benzersiz) {
+    const list = gruplar.get(a.sdate) ?? []
+    list.push(a)
+    gruplar.set(a.sdate, list)
   }
 
+  const logKayitlari: TablesInsert<'iletisim_sms_log'>[] = []
   const now = new Date().toISOString()
-  const durum = sonuc.ok ? 'gonderildi' : 'basarisiz'
-  const logKayitlari = benzersiz.map(a => ({
-    actor_id: user.id,
-    actor_email: user.email ?? null,
-    alici_sicil: a.sicil_no,
-    alici_ad: a.ad,
-    telefon: a.telefon,
-    mesaj: a.mesaj,
-    originator: config.originator,
-    durum,
-    saglayici_mesaj_id: sonuc.mesajId ?? null,
-    hata_kodu: sonuc.hataKodu ?? null,
-    hata_mesaji: sonuc.ok ? null : sonuc.hata ?? null,
-    created_at: now,
-  }))
+  let gonderilen = 0
+  let planlanan = 0
+  let ilkMesajId: string | undefined
+  const hatalar: string[] = []
+
+  for (const [sdate, grup] of gruplar) {
+    const tekMetin = grup.every(a => a.mesaj === grup[0].mesaj)
+    let sonuc: SmsGonderSonuc
+    if (tekMetin) {
+      sonuc = await smsGonderTekMetin(config, grup[0].mesaj, grup.map(a => a.telefon), sdate || undefined)
+    } else {
+      sonuc = await smsGonderCokluMetin(
+        config,
+        grup.map(a => ({ telefon: a.telefon, mesaj: a.mesaj })),
+        sdate || undefined,
+      )
+    }
+
+    const durum = sonuc.ok ? (sdate ? 'planlandi' : 'gonderildi') : 'basarisiz'
+    if (sonuc.ok) {
+      if (sdate) planlanan += grup.length
+      else gonderilen += grup.length
+      if (!ilkMesajId) ilkMesajId = sonuc.mesajId
+    } else if (sonuc.hata) {
+      hatalar.push(sonuc.hata)
+    }
+
+    for (const a of grup) {
+      logKayitlari.push({
+        actor_id: user.id,
+        actor_email: user.email ?? null,
+        alici_sicil: a.sicil_no,
+        alici_ad: a.ad,
+        telefon: a.telefon,
+        mesaj: a.mesaj,
+        originator: config.originator,
+        durum,
+        saglayici_mesaj_id: sonuc.mesajId ?? null,
+        hata_kodu: sonuc.hataKodu ?? null,
+        hata_mesaji: sonuc.ok ? null : sonuc.hata ?? null,
+        created_at: now,
+      })
+    }
+  }
+
   const { error: logErr } = await supabase.from('iletisim_sms_log').insert(logKayitlari)
   if (logErr) console.error('SMS_LOG_INSERT', logErr.message)
 
+  const basariliToplam = gonderilen + planlanan
   const baglamEtiket =
-    input.baglam === 'dogum_gunu'
-      ? 'Doğum günü'
-      : input.baglam === 'hosgeldin_bebek'
-        ? 'Hoş geldin bebek'
-        : 'SMS'
+    baglam === 'dogum_gunu' ? 'Doğum günü' : baglam === 'hosgeldin_bebek' ? 'Hoş geldin bebek' : 'SMS'
   await writePersonelAuditLogSafe(supabase, {
     sicil_no: null,
     modul: 'iletisim_sms',
-    islem: sonuc.ok ? 'SMS Gönder' : 'SMS Gönder (Başarısız)',
-    ozet: sonuc.ok
-      ? `${baglamEtiket}: ${benzersiz.length} alıcıya SMS gönderildi (ID: ${sonuc.mesajId ?? '—'}).`
-      : `${baglamEtiket}: SMS gönderilemedi: ${sonuc.hata ?? '—'}`,
+    islem: basariliToplam ? 'SMS Gönder' : 'SMS Gönder (Başarısız)',
+    ozet: basariliToplam
+      ? `${baglamEtiket}: ${gonderilen} anında, ${planlanan} planlandı (toplam ${basariliToplam}).`
+      : `${baglamEtiket}: SMS gönderilemedi: ${hatalar.join('; ') || '—'}`,
     ref_table: 'iletisim_sms_log',
-    ref_id: sonuc.mesajId ?? null,
+    ref_id: ilkMesajId ?? null,
     onceki: null,
-    sonraki: { alici_sayisi: benzersiz.length, durum, baglam: input.baglam ?? 'tekil' },
+    sonraki: { gonderilen, planlanan, baglam },
   })
 
   revalidatePath(SAYFA)
   revalidatePath('/iletisim-yonetimi/gecmis-gonderimler')
 
-  if (!sonuc.ok) {
-    return { hata: sonuc.hata ?? 'SMS gönderilemedi.', gecersiz: gecersiz.length ? gecersiz : undefined }
+  if (!basariliToplam) {
+    return { hata: hatalar.join('; ') || 'SMS gönderilemedi.', gecersiz: gecersiz.length ? gecersiz : undefined }
   }
   return {
     ok: true,
-    gonderilen: benzersiz.length,
-    mesajId: sonuc.mesajId,
+    gonderilen,
+    planlanan,
+    mesajId: ilkMesajId,
     gecersiz: gecersiz.length ? gecersiz : undefined,
   }
 }
