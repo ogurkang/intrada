@@ -47,13 +47,7 @@ export default async function SmsGrupDetayPage({ params }: { params: Promise<{ i
         </Link>
       </div>
 
-      <SmsGrupDetayClient
-        grup={grup}
-        personeller={veri.personeller}
-        sablonlar={veri.sablonlar}
-        originatorlar={veri.originatorlar}
-        gonderimAcik={veri.gonderimAcik}
-      />
+      <SmsGrupDetayClient grup={grup} personeller={veri.personeller} />
     </div>
   )
 }

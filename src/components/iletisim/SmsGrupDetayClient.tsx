@@ -2,25 +2,20 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import SmsMesajGonderKutusu from './SmsMesajGonderKutusu'
-import { smsGonderAction } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/actions'
 import { grupSil, grupUyeleriKaydet, grupYenidenAdlandir } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/grup/actions'
 import type { SmsGrup } from '@/lib/sms-grup'
-import type { SmsPersonelSatir, SmsSablonSecenek } from '@/lib/sms-islemleri-tipleri'
+import type { SmsPersonelSatir } from '@/lib/sms-islemleri-tipleri'
 
 interface Props {
   grup: SmsGrup
   personeller: SmsPersonelSatir[]
-  sablonlar: SmsSablonSecenek[]
-  originatorlar: string[]
-  gonderimAcik: boolean
 }
 
 function benzersizSirali(arr: string[]): string[] {
   return [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 }
 
-export default function SmsGrupDetayClient({ grup, personeller, sablonlar, originatorlar, gonderimAcik }: Props) {
+export default function SmsGrupDetayClient({ grup, personeller }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [mesaj, setMesaj] = useState<string | null>(null)
@@ -218,24 +213,9 @@ export default function SmsGrupDetayClient({ grup, personeller, sablonlar, origi
         </div>
       </div>
 
-      {/* Mesaj gönder */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-800 mb-3">Gruba mesaj gönder</h3>
-        {!kaydedildiMi && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
-            Üye listesinde kaydedilmemiş değişiklikler var. Mesaj, ekrandaki güncel üye listesine gönderilir.
-          </p>
-        )}
-        <SmsMesajGonderKutusu
-          sablonlar={sablonlar}
-          izinliTurler={['genel', 'dogum_gunu', 'hosgeldin_bebek', 'evlilik']}
-          originatorlar={originatorlar}
-          baglam="grup"
-          sicilNolar={gecerliUyeler}
-          gonderimAcik={gonderimAcik}
-          onGonder={smsGonderAction}
-        />
-      </div>
+      <p className="text-xs text-slate-400">
+        Mesaj göndermek için <span className="font-medium text-slate-500">Grup Mesajları</span> ekranını kullanın.
+      </p>
     </div>
   )
 }

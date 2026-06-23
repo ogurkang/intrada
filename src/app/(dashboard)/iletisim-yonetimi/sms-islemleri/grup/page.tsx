@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { fetchSmsIslemleriVeri } from '@/lib/sms-islemleri-data'
 import { fetchSmsGruplari } from '@/lib/sms-grup'
 import SmsGrupListeClient from '@/components/iletisim/SmsGrupListeClient'
 
@@ -15,7 +16,7 @@ export default async function SmsGrupPage() {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   if (!isAdminLike(access)) notFound()
 
-  const gruplar = await fetchSmsGruplari(supabase)
+  const [veri, gruplar] = await Promise.all([fetchSmsIslemleriVeri(supabase), fetchSmsGruplari(supabase)])
 
   return (
     <div>
@@ -42,7 +43,13 @@ export default async function SmsGrupPage() {
         </Link>
       </div>
 
-      <SmsGrupListeClient gruplar={gruplar} />
+      <SmsGrupListeClient
+        gruplar={gruplar}
+        personeller={veri.personeller}
+        sablonlar={veri.sablonlar}
+        originatorlar={veri.originatorlar}
+        gonderimAcik={veri.gonderimAcik}
+      />
     </div>
   )
 }
