@@ -147,9 +147,9 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     accordion: true,
     items: [
       { href: '/iletisim-yonetimi/sms-islemleri', label: 'SMS İşlemleri' },
-      { href: '/iletisim-yonetimi/gecmis-gonderimler', label: 'Geçmiş Gönderimler' },
       { href: '/iletisim-yonetimi/e-posta-islemleri', label: 'E-posta İşlemleri' },
       { href: '/iletisim-yonetimi/tanimlar', label: 'Tanımlar' },
+      { href: '/iletisim-yonetimi/gecmis-gonderimler', label: 'Geçmiş Gönderimler' },
     ],
   },
   {

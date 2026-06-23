@@ -184,6 +184,48 @@ export interface Database {
         }
         Relationships: []
       }
+      iletisim_sms_grup: {
+        Row: {
+          id: number
+          ad: string
+          aciklama: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          ad: string
+          aciklama?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          ad?: string
+          aciklama?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iletisim_sms_grup_uye: {
+        Row: {
+          grup_id: number
+          sicil_no: string
+          created_at: string
+        }
+        Insert: {
+          grup_id: number
+          sicil_no: string
+          created_at?: string
+        }
+        Update: {
+          grup_id?: number
+          sicil_no?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       iletisim_sms_log: {
         Row: {
           id: number
