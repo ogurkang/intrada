@@ -23,6 +23,7 @@ interface Props {
   satirlar:    SatirVeri[]
   tumYillar:   number[]
   onKaydet:    (fd: FormData) => Promise<{ hata?: string }>
+  onYenidenHesapla?: () => Promise<{ hata?: string; guncellenen?: number; toplam?: number }>
   odakSicilNo?: string | null
   returnTo?: string | null
   canEdit?: boolean
@@ -37,7 +38,7 @@ function renkBg(kalan: number) {
 }
 
 export default function IzinHakYonetimClient({
-  yil, satirlar, tumYillar, onKaydet,
+  yil, satirlar, tumYillar, onKaydet, onYenidenHesapla,
   odakSicilNo, returnTo, canEdit = true,
   auditLoglarByRefId = {},
 }: Props) {
@@ -48,7 +49,24 @@ export default function IzinHakYonetimClient({
   const [seciliSatir, setSeciliSatir]      = useState<SatirVeri | null>(null)
   const [sunuciHata, setSunuciHata]        = useState<string | null>(null)
   const [gecmisRefId, setGecmisRefId]      = useState<string | null>(null)
+  const [hesapMesaj, setHesapMesaj]        = useState<string | null>(null)
   const [isPending, startTransition]       = useTransition()
+
+  function yenidenHesapla() {
+    if (!onYenidenHesapla) return
+    if (!window.confirm('Tüm personelin "Kullanılan" izin günü, izin hareketlerinden (Onaylandı/Değiştirildi) yeniden hesaplanacak. Devam edilsin mi?')) return
+    setSunuciHata(null)
+    setHesapMesaj(null)
+    startTransition(async () => {
+      const res = await onYenidenHesapla()
+      if (res.hata) {
+        setSunuciHata(res.hata)
+        return
+      }
+      setHesapMesaj(`Kullanılan günler yeniden hesaplandı (${res.guncellenen ?? 0}/${res.toplam ?? 0} kayıt).`)
+      router.refresh()
+    })
+  }
 
   const filtreli = useMemo(() => {
     let list = satirlar
@@ -130,6 +148,18 @@ export default function IzinHakYonetimClient({
               className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 w-48" />
           </div>
 
+          {/* Kullanılanı yeniden hesapla */}
+          {canEdit && onYenidenHesapla && (
+            <button onClick={yenidenHesapla} disabled={isPending}
+              title="Kullanılan izin günlerini izin hareketlerinden yeniden hesaplar (örn. Supabase'de elle düzeltilen kayıtlar için)."
+              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium whitespace-nowrap disabled:opacity-50">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15" />
+              </svg>
+              {isPending ? 'Hesaplanıyor…' : 'Kullanılanı Yeniden Hesapla'}
+            </button>
+          )}
+
           {/* Tekli ekle */}
           {canEdit && <button onClick={yeniEkleAc}
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium whitespace-nowrap">
@@ -140,6 +170,17 @@ export default function IzinHakYonetimClient({
           </button>}
         </div>
       </div>
+
+      {hesapMesaj && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-green-50 border-green-200 text-green-700">
+          {hesapMesaj}
+        </div>
+      )}
+      {sunuciHata && !modalAcik && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-red-50 border-red-200 text-red-700">
+          {sunuciHata}
+        </div>
+      )}
       {!canEdit && (
         <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-amber-50 border-amber-200 text-amber-700">
           Bu sayfada düzenleme yapmak için admin yetkisi gerekir.
