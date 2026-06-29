@@ -127,12 +127,13 @@ export default function YerleskeAdresineGorePersonelSayiClient({
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[720px]">
+              <table className="w-full text-sm border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">Sıra No</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700">Müdürlük Adı</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700">Yerleşke Adı</th>
+                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-20">Konum</th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-36">ADABEL Personel Sayısı</th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-40">Belediye Personel Sayısı</th>
                     <th className="text-center px-3 py-3 font-semibold text-slate-700 w-24">Toplam</th>
@@ -144,6 +145,7 @@ export default function YerleskeAdresineGorePersonelSayiClient({
                       <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{ri + 1}</td>
                       <td className="px-4 py-2.5 text-slate-800">{row.mudurlukAdi}</td>
                       <td className="px-4 py-2.5 text-slate-800">{row.yerleskeAdi}</td>
+                      <td className="px-3 py-2.5 text-center text-slate-700">{row.konum || '—'}</td>
                       <td className="px-3 py-2.5 text-center tabular-nums text-slate-800">{row.adabel}</td>
                       <td className="px-3 py-2.5 text-center tabular-nums text-slate-800">{row.belediye}</td>
                       <td className="px-3 py-2.5 text-center tabular-nums font-medium text-slate-900">{row.toplam}</td>
@@ -151,7 +153,7 @@ export default function YerleskeAdresineGorePersonelSayiClient({
                   ))}
                   <tr className="bg-slate-100 font-semibold border-t-2 border-slate-200">
                     <td className="px-3 py-3 text-center text-slate-500">—</td>
-                    <td className="px-4 py-3 text-slate-900" colSpan={2}>
+                    <td className="px-4 py-3 text-slate-900" colSpan={3}>
                       Toplam
                     </td>
                     <td className="px-3 py-3 text-center tabular-nums text-slate-900">{tablo.toplamAdabel}</td>

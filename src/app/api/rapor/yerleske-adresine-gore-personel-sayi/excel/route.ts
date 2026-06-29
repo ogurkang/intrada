@@ -31,8 +31,8 @@ const AYLAR_TR = [
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 
-/** Veri tablosu: A–F (Sıra No … Toplam) */
-const COL_LAST = 5
+/** Veri tablosu: A–G (Sıra No … Toplam) */
+const COL_LAST = 6
 
 function parseYil(v: string | null): number {
   const parsed = Number.parseInt(v ?? '', 10)
@@ -200,14 +200,15 @@ export async function GET(req: Request) {
         'Sıra No',
         'Müdürlük Adı',
         'Yerleşke Adı',
+        'Konum',
         'ADABEL Personel Sayısı',
         'Belediye Personel Sayısı',
         'Toplam',
       ]),
       ...snap.satirlar.map((s, i) =>
-        padRow(COL_LAST + 1, [i + 1, s.mudurlukAdi, s.yerleskeAdi, s.adabel, s.belediye, s.toplam]),
+        padRow(COL_LAST + 1, [i + 1, s.mudurlukAdi, s.yerleskeAdi, s.konum || '—', s.adabel, s.belediye, s.toplam]),
       ),
-      padRow(COL_LAST + 1, ['Toplam', '', '', toplamAdabel, toplamBelediye, toplamGenel]),
+      padRow(COL_LAST + 1, ['Toplam', '', '', '', toplamAdabel, toplamBelediye, toplamGenel]),
       padRow(COL_LAST + 1, ['']),
     ]
 
@@ -222,7 +223,7 @@ export async function GET(req: Request) {
       { s: { r: 1, c: 0 }, e: { r: 1, c: COL_LAST } },
       { s: { r: 2, c: 0 }, e: { r: 2, c: COL_LAST } },
       { s: { r: noteRow, c: 0 }, e: { r: noteRow, c: COL_LAST } },
-      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 2 } },
+      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 3 } },
     ]
 
     const gelenlerTitleRow = rows.length
@@ -254,6 +255,7 @@ export async function GET(req: Request) {
       { wch: 8 },
       { wch: 28 },
       { wch: 24 },
+      { wch: 10 },
       { wch: 22 },
       { wch: 24 },
       { wch: 10 },
@@ -274,7 +276,7 @@ export async function GET(req: Request) {
         const isHead = r === headerRow
         const isTotal = r === totalRow
         const inNameBlock = nameBlockRows.has(r)
-        const numCols = c >= 3 && c <= 5
+        const numCols = c >= 4 && c <= 6
 
         let horizontal: 'left' | 'center' | 'right' = 'center'
         if (isTitle || isNote) horizontal = 'center'

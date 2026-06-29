@@ -31,6 +31,7 @@ export interface YerleskePersonelSayiSatir {
   mudurlukAdi: string
   yerleskeId: number
   yerleskeAdi: string
+  konum: string
   adabel: number
   belediye: number
   toplam: number
@@ -83,6 +84,7 @@ function raporSatirlariniHazirla(
       mudurlukAdi: r.mudurluk_adi,
       yerleskeId: r.yerleske_adresi_id,
       yerleskeAdi: r.yerleske_adi,
+      konum: r.konum,
       adabel: 0,
       belediye: 0,
       toplam: 0,
@@ -134,6 +136,7 @@ export function yerleskePersonelSayiSnapshot(params: {
         mudurlukAdi: mudAdiById.get(mudId) ?? mudurlukAdi,
         yerleskeId: 0,
         yerleskeAdi: turAdi,
+        konum: 'Dış',
         adabel: 0,
         belediye: 0,
         toplam: 0,
