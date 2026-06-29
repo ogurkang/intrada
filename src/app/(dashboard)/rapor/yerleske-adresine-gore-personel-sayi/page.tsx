@@ -30,7 +30,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const RAPOR_ACIKLAMA =
-  'Müdürlük–yerleşke tanım satırlarında, seçili anlık görüntü tarihinde aktif personel sayıları. Belediye personeli: Memur, Sözleşmeli, İşçi, Geçici İşçi, Meclis Üyesi, Stajyer ve Belediye Başkanı (unvan). Kadro personelde yerleşke Görev Bilgileri kaydı; atanmamışsa müdürlüğün ilk yerleşkesi. ADABEL personelde yerleşke ataması; atanmamışsa müdürlüğün ilk yerleşkesi.'
+  'Müdürlük–yerleşke tanım satırlarında, seçili anlık görüntü tarihinde aktif personel sayıları. Belediye personeli: Memur, Sözleşmeli, İşçi, Geçici İşçi, Meclis Üyesi, Stajyer ve Belediye Başkanı (unvan). Kadro personelde yerleşke Görev Bilgileri kaydı; atanmamışsa müdürlüğün ilk yerleşkesi. ADABEL personelde yerleşke ataması; atanmamışsa müdürlüğün ilk yerleşkesi. Görev türü "Geçici Görevlendirme" veya "Kurum Görevlendirme" olan personel, müdürlüğünün altında yerleşke adı sütununda görevlendirme türü yazan ayrı bir satırda sayılır.'
 
 export default async function YerleskeAdresineGorePersonelSayiPage({
   searchParams,
@@ -61,7 +61,7 @@ export default async function YerleskeAdresineGorePersonelSayiPage({
         'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu, gorev_unvani',
       )
       .not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, yerleske_adresi_id'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_turu, yerleske_adresi_id'),
     supabase
       .from('firma_calisanlar')
       .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
@@ -109,6 +109,7 @@ export default async function YerleskeAdresineGorePersonelSayiPage({
   const calisanYerleske = (calisanRaw ?? []).map(c => ({
     sicil_no: c.sicil_no,
     yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
+    gorev_turu: (c as { gorev_turu?: string | null }).gorev_turu ?? null,
   }))
 
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]

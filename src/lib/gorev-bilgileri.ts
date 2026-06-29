@@ -3,6 +3,15 @@
 export const GOREV_TURU_OPTIONS = ['Çalışan', 'Aylıksız İzin', 'Geçici Görevlendirme', 'Kurum Görevlendirme', 'Yarı Zamanlı'] as const
 export type GorevTuru = (typeof GOREV_TURU_OPTIONS)[number]
 
+/** Görevlendirme sayılan türler — yerleşke/konum raporlarında otomatik "Dış" kabul edilir. */
+export const GOREVLENDIRME_TURLERI = ['Geçici Görevlendirme', 'Kurum Görevlendirme'] as const
+
+/** Personel görevlendirme türü mü? (rapor konumunu "Dış" yapan türler). */
+export function gorevlendirmeTuruMu(tur: string | null | undefined): boolean {
+  const t = (tur ?? '').trim()
+  return t === 'Geçici Görevlendirme' || t === 'Kurum Görevlendirme'
+}
+
 export const GOREV_DURUMU_OPTIONS = ['Diğer', 'Engelli', 'Eski Hükümlü'] as const
 export type GorevDurumu = (typeof GOREV_DURUMU_OPTIONS)[number]
 

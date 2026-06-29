@@ -12,6 +12,7 @@ import {
 import type { FirmaRaporRow, KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { etiketAnahtari, kadroBaslangic, kadroSatirAktifMi } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { trNormalize } from '@/lib/turkce-search'
+import { gorevlendirmeTuruMu } from '@/lib/gorev-bilgileri'
 
 export const BELEDIYE_STATU_ETIKETLERI = [
   'Memur',
@@ -38,6 +39,7 @@ export interface YerleskePersonelSayiSatir {
 export interface CalisanYerleskeRow {
   sicil_no: string
   yerleske_adresi_id: number | null
+  gorev_turu?: string | null
 }
 
 function personelMudurlukKadro(k: KadroRaporRow): string {
@@ -110,6 +112,38 @@ export function yerleskePersonelSayiSnapshot(params: {
   const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
   const mudIdMap = mudIdByAdi(tanimSatirlar)
   const yerleskeBySicil = new Map(calisanYerleske.map(c => [c.sicil_no, c.yerleske_adresi_id]))
+  const gorevTuruBySicil = new Map(calisanYerleske.map(c => [c.sicil_no, c.gorev_turu ?? null]))
+
+  // Müdürlük id → kanonik ad (görevlendirme satırlarında kullanılır).
+  const mudAdiById = new Map<number, string>()
+  for (const r of tanimSatirlar) {
+    if (!mudAdiById.has(r.mudurluk_id)) mudAdiById.set(r.mudurluk_id, r.mudurluk_adi)
+  }
+
+  // Görevlendirme türü (Geçici/Kurum) seçili personel: müdürlük × görev türü bazında
+  // ayrı sahte yerleşke satırlarında toplanır. Anahtar: `${mudId}|${türAdı}`.
+  const gorevMap = new Map<string, YerleskePersonelSayiSatir>()
+  function gorevArtir(mudurlukAdi: string, turAdi: string, tip: 'belediye' | 'adabel') {
+    const mudId = mudIdMap.get(normMudStr(mudurlukAdi))
+    if (!mudId) return
+    const key = `${mudId}|${turAdi}`
+    let row = gorevMap.get(key)
+    if (!row) {
+      row = {
+        mudurlukId: mudId,
+        mudurlukAdi: mudAdiById.get(mudId) ?? mudurlukAdi,
+        yerleskeId: 0,
+        yerleskeAdi: turAdi,
+        adabel: 0,
+        belediye: 0,
+        toplam: 0,
+      }
+      gorevMap.set(key, row)
+    }
+    if (tip === 'belediye') row.belediye++
+    else row.adabel++
+    row.toplam++
+  }
 
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const k of kadro) {
@@ -137,6 +171,11 @@ export function yerleskePersonelSayiSnapshot(params: {
     const sec = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
     if (!belediyePersoneliMi(sec.statu, sec.gorev_unvani, etiketler)) continue
     const mud = personelMudurlukKadro(sec)
+    const gt = gorevTuruBySicil.get(sicil)
+    if (gorevlendirmeTuruMu(gt)) {
+      gorevArtir(mud, String(gt).trim(), 'belediye')
+      continue
+    }
     const yId = etkinYerleskeId(yerleskeHarita, mud, yerleskeBySicil.get(sicil))
     artir(mud, yId, 'belediye')
   }
@@ -155,7 +194,36 @@ export function yerleskePersonelSayiSnapshot(params: {
     artir(mud, yId, 'adabel')
   }
 
-  const satirlar = [...satirMap.values()]
+  // Görevlendirme satırlarını, ait oldukları müdürlüğün normal yerleşke satırlarının
+  // hemen altına yerleştir (müdürlük satırları zaten ardışık).
+  const normalRows = [...satirMap.values()]
+  const gorevByMud = new Map<number, YerleskePersonelSayiSatir[]>()
+  for (const row of gorevMap.values()) {
+    const list = gorevByMud.get(row.mudurlukId) ?? []
+    list.push(row)
+    gorevByMud.set(row.mudurlukId, list)
+  }
+  for (const list of gorevByMud.values()) {
+    list.sort((a, b) => a.yerleskeAdi.localeCompare(b.yerleskeAdi, 'tr'))
+  }
+
+  const satirlar: YerleskePersonelSayiSatir[] = []
+  let prevMud: number | null = null
+  for (const row of normalRows) {
+    if (prevMud !== null && row.mudurlukId !== prevMud && gorevByMud.has(prevMud)) {
+      satirlar.push(...gorevByMud.get(prevMud)!)
+      gorevByMud.delete(prevMud)
+    }
+    satirlar.push(row)
+    prevMud = row.mudurlukId
+  }
+  if (prevMud !== null && gorevByMud.has(prevMud)) {
+    satirlar.push(...gorevByMud.get(prevMud)!)
+    gorevByMud.delete(prevMud)
+  }
+  // Normal satırı bulunmayan müdürlüklerin görevlendirme satırları (güvenlik amaçlı).
+  for (const list of gorevByMud.values()) satirlar.push(...list)
+
   return { satirlar }
 }
 

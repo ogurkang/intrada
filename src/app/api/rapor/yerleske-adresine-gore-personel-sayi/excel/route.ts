@@ -126,7 +126,7 @@ export async function GET(req: Request) {
           'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu, gorev_unvani',
         )
         .not('asil', 'is', null),
-      supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, yerleske_adresi_id'),
+      supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_turu, yerleske_adresi_id'),
       supabase
         .from('firma_calisanlar')
         .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
@@ -168,6 +168,7 @@ export async function GET(req: Request) {
     const calisanYerleske = (calisanRaw ?? []).map(c => ({
       sicil_no: c.sicil_no,
       yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
+      gorev_turu: (c as { gorev_turu?: string | null }).gorev_turu ?? null,
     }))
 
     const snap = yerleskePersonelSayiSnapshot({ D, tanimSatirlar, kadro, firma, calisanYerleske, etiketler })

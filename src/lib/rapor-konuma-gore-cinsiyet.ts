@@ -15,6 +15,7 @@ import {
   type MudurlukKonumTanimRow,
 } from '@/lib/mudurluk-konum'
 import { etkinYerleskeId } from '@/lib/yerleske-adresi'
+import { gorevlendirmeTuruMu } from '@/lib/gorev-bilgileri'
 
 export { mudurlukKonumHaritasi }
 
@@ -23,6 +24,7 @@ export interface CalisanKonumRaporRow {
   ad_soyad: string
   cinsiyet: string | null
   gorev_yeri?: string | null
+  gorev_turu?: string | null
   yerleske_adresi_id?: number | null
 }
 
@@ -111,11 +113,13 @@ export function konumCinsiyetSnapshot(input: KonumSnapshotInput): {
       mud,
       cal?.yerleske_adresi_id ?? null,
     )
-    const kon = personelKonumTipi(konumCtx, {
+    let kon = personelKonumTipi(konumCtx, {
       gorevYeri: cal?.gorev_yeri,
       gorevMudurlugu: mud,
       yerleskeId: yId,
     })
+    // Görevlendirme türü (Geçici/Kurum) seçili personel otomatik "Dış" sayılır.
+    if (gorevlendirmeTuruMu(cal?.gorev_turu)) kon = 'Dış'
     const col = cinsiyetKolon(cal?.cinsiyet)
     if (!col) continue
 

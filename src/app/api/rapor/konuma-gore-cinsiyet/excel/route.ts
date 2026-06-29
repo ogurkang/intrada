@@ -118,7 +118,7 @@ export async function GET(req: Request) {
           'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
         )
         .not('asil', 'is', null),
-      supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, yerleske_adresi_id'),
+      supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu, yerleske_adresi_id'),
       supabase
         .from('firma_calisanlar')
         .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
@@ -160,6 +160,7 @@ export async function GET(req: Request) {
         ad_soyad: c.ad_soyad,
         cinsiyet: c.cinsiyet,
         gorev_yeri: (c as { gorev_yeri?: string | null }).gorev_yeri ?? null,
+        gorev_turu: (c as { gorev_turu?: string | null }).gorev_turu ?? null,
         yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
       })
     }

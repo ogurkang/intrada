@@ -46,7 +46,7 @@ const MIN_YIL = 2000
 const MAX_YIL = 2035
 
 const KONUM_ACIKLAMA =
-  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü adı), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Eşleşmeyenler «Konum atanmamış» satırında listelenir.'
+  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü adı), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Görev türü "Geçici Görevlendirme" veya "Kurum Görevlendirme" olan personel otomatik «Dış» sayılır. Aylık sekmeler o ayın son günü anlık görüntüsüdür; YILLIK sekme 31 Aralık’tır. Eşleşmeyenler «Konum atanmamış» satırında listelenir.'
 
 export default async function KonumaGoreCinsiyetPage({
   searchParams,
@@ -78,7 +78,7 @@ export default async function KonumaGoreCinsiyetPage({
         'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
       )
       .not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, yerleske_adresi_id'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu, yerleske_adresi_id'),
     supabase
       .from('firma_calisanlar')
       .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
@@ -121,6 +121,7 @@ export default async function KonumaGoreCinsiyetPage({
       ad_soyad: c.ad_soyad,
       cinsiyet: c.cinsiyet,
       gorev_yeri: (c as { gorev_yeri?: string | null }).gorev_yeri ?? null,
+      gorev_turu: (c as { gorev_turu?: string | null }).gorev_turu ?? null,
       yerleske_adresi_id: (c as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
     })
   }
