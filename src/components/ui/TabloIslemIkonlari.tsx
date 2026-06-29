@@ -141,6 +141,31 @@ export function KalemDuzenleLink({
   )
 }
 
+export function IndirLink({
+  href,
+  title = 'İndir',
+  onClick,
+}: {
+  href: string
+  title?: string
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
+}) {
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      className={`${IKON_BTN} text-emerald-600 hover:bg-emerald-50`}
+      title={title}
+      aria-label={title}>
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 10l5 5 5-5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3" />
+      </svg>
+    </a>
+  )
+}
+
 function GozSvg() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1050,6 +1050,30 @@ export interface Database {
         }
         Relationships: [{ foreignKeyName: "personel_hareketleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
+      pasaport_islemleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          kadro_id: number | null; mudurluk: string | null; derece: string | null
+          unvan: string | null; statu: string | null
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          kadro_id?: number | null; mudurluk?: string | null; derece?: string | null
+          unvan?: string | null; statu?: string | null
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          kadro_id?: number | null; mudurluk?: string | null; derece?: string | null
+          unvan?: string | null; statu?: string | null
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: [{ foreignKeyName: "pasaport_islemleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
+      }
       personel_audit_log: {
         Row: {
           id: number; sicil_no: string | null; modul: string; islem: string; ozet: string

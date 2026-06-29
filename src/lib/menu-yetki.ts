@@ -135,7 +135,13 @@ export function kullaniciPathAllowed(
   if (path.startsWith('/bildirim')) {
     if (!menuModulAcik('bildirim', menuIzinleri)) return false
     if (path === '/bildirim' || path.startsWith('/bildirim/ogrenim')) return false
-    if (path.startsWith('/bildirim/aile') || path.startsWith('/bildirim/mal')) return true
+    if (
+      path.startsWith('/bildirim/aile') ||
+      path.startsWith('/bildirim/mal') ||
+      path.startsWith('/bildirim/pasaport')
+    ) {
+      return true
+    }
     return false
   }
 

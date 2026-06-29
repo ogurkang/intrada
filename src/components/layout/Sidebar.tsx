@@ -139,6 +139,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/bildirim/ogrenim', label: 'Öğrenim Bildirimi'},
       { href: '/bildirim/aile',    label: 'Aile Bildirimi'   },
       { href: '/bildirim/mal',     label: 'Mal Bildirimi'    },
+      { href: '/bildirim/pasaport',label: 'Pasaport İşlemleri'},
     ],
   },
   {
