@@ -3,7 +3,7 @@ import ModulHubClient from '@/components/ui/ModulHubClient'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { loadAuditLoglarByRefTables, hubSonIslemFromLogs, type ModulHubAuditTip } from '@/lib/hub-audit-load'
 
-const BILDIRIM_REF_TABLES = ['calisan_ogrenim', 'aile_bildirimi', 'mal_bildirimi'] as const
+const BILDIRIM_REF_TABLES = ['calisan_ogrenim', 'aile_bildirimi', 'mal_bildirimi', 'pasaport_islemleri'] as const
 
 export default async function BildirimHubPage() {
   const supabase = await createClient()
@@ -17,16 +17,21 @@ export default async function BildirimHubPage() {
   const malCountQ = kullaniciSicil
     ? supabase.from('mal_bildirimi').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('mal_bildirimi').select('*', { count: 'exact', head: true })
+  const pasaportCountQ = kullaniciSicil
+    ? supabase.from('pasaport_islemleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('pasaport_islemleri').select('*', { count: 'exact', head: true })
 
   const [
     { count: ogrenimSayisi },
     { count: aileSayisi },
     { count: malSayisi },
+    { count: pasaportSayisi },
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
     aileCountQ,
     malCountQ,
+    pasaportCountQ,
     loadAuditLoglarByRefTables(supabase, [...BILDIRIM_REF_TABLES]),
   ])
 
@@ -82,13 +87,30 @@ export default async function BildirimHubPage() {
         </svg>
       ),
     },
+    {
+      key: 'pasaport',
+      baslik: 'Pasaport İşlemleri',
+      aciklama: 'Yeşil pasaport başvuru formu oluşturma ve Word çıktısı',
+      href: '/bildirim/pasaport',
+      refTable: 'pasaport_islemleri' as const,
+      sayi: pasaportSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-violet-200 bg-violet-50',
+      ikonRenk: 'bg-violet-100 text-violet-600',
+      auditTip: 'pasaport' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+        </svg>
+      ),
+    },
   ]
 
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, aile ve mal bildirimleri yönetimi. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
-      gridClassName="grid grid-cols-1 md:grid-cols-3 gap-5"
+      aciklama="Öğrenim, aile, mal bildirimleri ve pasaport işlemleri yönetimi. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []
         return {
