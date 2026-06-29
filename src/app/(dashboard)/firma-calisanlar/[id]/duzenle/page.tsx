@@ -6,6 +6,14 @@ import { firmaGuncelle } from '../../actions'
 import { resolveFirmaCalisanSegmentToId } from '@/lib/firma-calisan-load'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 import { sortOgrenimIsimListesi } from '@/lib/ogrenim-sira'
+import {
+  etkinYerleskeIdKaynak,
+  fetchMudurlukYerleskeTanimSatirlari,
+  mudurlukYerleskeHaritasi,
+  sirketYerleskeHaritasi,
+  yerleskeSecenekleriKaynak,
+} from '@/lib/yerleske-adresi'
+import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 import type { Tables } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -34,12 +42,16 @@ export default async function FirmaPersonelDuzenlePage({
     { data: tanimOgr },
     { data: fcAyrilis },
     { data: khAyrilis },
+    tanimSatirlar,
+    sirketSatirlar,
   ] = await Promise.all([
     supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
     sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
     supabase.from('firma_calisanlar').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
     supabase.from('kadro_hareketleri').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
   ])
 
   const tanimSirketList = (tanimSirket ?? []).map((s: { sirket_adi: string }) => s.sirket_adi)
@@ -56,6 +68,25 @@ export default async function FirmaPersonelDuzenlePage({
 
   const k = row as Tables<'firma_calisanlar'>
   const detayHref = firmaCalisanDetayHref(k)
+
+  const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+  const sirketYerleskeHarita = sirketYerleskeHaritasi(sirketSatirlar)
+  const gorevMud = String(k.gorev_mudurlugu ?? '').trim()
+  const yerleskeSecenekleri = yerleskeSecenekleriKaynak(
+    yerleskeHarita,
+    sirketYerleskeHarita,
+    'firma',
+    gorevMud,
+    gorevMud,
+  )
+  const seciliYerleskeId = etkinYerleskeIdKaynak(
+    yerleskeHarita,
+    sirketYerleskeHarita,
+    'firma',
+    gorevMud,
+    (k as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
+    gorevMud,
+  )
 
   return (
     <div>
@@ -76,6 +107,8 @@ export default async function FirmaPersonelDuzenlePage({
         mudurluler={mudurluler}
         ogrenimler={ogrenimler}
         ayrilisNedenleri={ayrilisNedenleri as string[]}
+        yerleskeSecenekleri={yerleskeSecenekleri}
+        seciliYerleskeId={seciliYerleskeId}
         onGuncelle={firmaGuncelle}
       />
     </div>

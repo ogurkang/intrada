@@ -73,7 +73,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
   }
 
   const baglam = input.baglam ?? 'tekil'
-  const hitapEkle = baglam === 'dogum_gunu' || baglam === 'hosgeldin_bebek'
+  // Tüm gönderimlerde (tekil, grup, doğum günü, bebek) mesajın başına "Sayın {ad soyad}" eklenir.
   const zamanla = baglam === 'dogum_gunu'
   const cocukAdiBySicil = input.cocukAdiBySicil ?? {}
   const gecersiz: string[] = []
@@ -81,8 +81,10 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
 
   function hitapla(adSoyad: string | null, govde: string): string {
     const ad = String(adSoyad ?? '').trim()
-    if (hitapEkle && ad) return `Sayın ${ad}\n${govde}`.trim()
-    return govde
+    if (!ad) return govde
+    // Şablon zaten "Sayın ..." ile başlıyorsa tekrar ekleme.
+    if (/^\s*sayın\b/i.test(govde)) return govde
+    return `Sayın ${ad}\n${govde}`.trim()
   }
 
   const sicilNolar = [...new Set((input.sicilNolar ?? []).map(s => String(s).trim()).filter(Boolean))]

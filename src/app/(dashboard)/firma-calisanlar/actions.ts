@@ -14,6 +14,13 @@ import {
   degisiklikOzeti,
   degisiklikPayload,
 } from '@/lib/personel-audit'
+import {
+  fetchMudurlukYerleskeTanimSatirlari,
+  mudurlukYerleskeHaritasi,
+  sirketYerleskeHaritasi,
+  gecerliYerleskeIdKaynak,
+} from '@/lib/yerleske-adresi'
+import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 
 /** gg.aa.yyyy formatındaki tarihi yyyy-mm-dd'ye çevirir */
 function parseTarihFromNeden(neden: string | null): string | null {
@@ -144,6 +151,25 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     .eq('id', id)
     .maybeSingle()
 
+  const gorevMud = str(fd, 'gorev_mudurlugu')
+
+  const yerleskeRaw = String(fd.get('yerleske_adresi_id') ?? '').trim()
+  let yerleske_adresi_id: number | null = null
+  if (yerleskeRaw) {
+    const yId = Number(yerleskeRaw)
+    if (!Number.isInteger(yId) || yId <= 0) return { hata: 'Geçersiz yerleşke seçimi.' }
+    const [tanimSatirlar, sirketSatirlar] = await Promise.all([
+      fetchMudurlukYerleskeTanimSatirlari(supabase),
+      fetchSirketYerleskeTanimSatirlari(supabase),
+    ])
+    const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+    const sirketYerleskeHarita = sirketYerleskeHaritasi(sirketSatirlar)
+    if (!gecerliYerleskeIdKaynak(yerleskeHarita, sirketYerleskeHarita, 'firma', gorevMud, yId, gorevMud)) {
+      return { hata: 'Seçilen yerleşke, görev yeri ile eşleşmiyor.' }
+    }
+    yerleske_adresi_id = yId
+  }
+
   const guncelleme = {
     ad_soyad,
     sira_no:             str(fd, 'sira_no'),
@@ -155,11 +181,12 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     telefon:             str(fd, 'telefon'),
     e_posta:             str(fd, 'e_posta'),
     kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
-    gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
+    gorev_mudurlugu:     gorevMud,
     gorevi:              str(fd, 'gorevi'),
     meslegi:             str(fd, 'meslegi'),
     ayrilis_tarihi:      ayrilisTarihi,
     ayrilis_nedeni:      str(fd, 'ayrilis_nedeni'),
+    yerleske_adresi_id,
   }
 
   const { error } = await supabase.from('firma_calisanlar').update(guncelleme).eq('id', id)

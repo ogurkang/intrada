@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
+import type { YerleskeSecenek } from '@/lib/yerleske-adresi'
 
 type FC = Tables<'firma_calisanlar'>
 
@@ -13,10 +14,12 @@ interface Props {
   mudurluler: string[]
   ogrenimler: string[]
   ayrilisNedenleri: string[]
+  yerleskeSecenekleri: YerleskeSecenek[]
+  seciliYerleskeId: number | null
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
-export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogrenimler, ayrilisNedenleri, onGuncelle }: Props) {
+export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogrenimler, ayrilisNedenleri, yerleskeSecenekleri, seciliYerleskeId, onGuncelle }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -113,6 +116,21 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
                 <input name="gorev_mudurlugu" defaultValue={k.gorev_mudurlugu ?? ''}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                   placeholder="Tanımlar > Müdürlükler'den ekleyin" />
+              )}
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Yerleşke Adresi</label>
+              {yerleskeSecenekleri.length === 0 ? (
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  Görev yeri için tanımlı yerleşke yok.
+                </p>
+              ) : (
+                <select name="yerleske_adresi_id" defaultValue={seciliYerleskeId ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+                  {yerleskeSecenekleri.map(y => (
+                    <option key={y.id} value={y.id}>{y.ad}</option>
+                  ))}
+                </select>
               )}
             </div>
             <div>
