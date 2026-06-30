@@ -427,17 +427,17 @@ export default function AraziPuantajClient({
                   return aylar.map((ay, ayIdx) => (
                     <tr
                       key={`${p.sicil_no}-${ay.ayAdi}`}
-                      className={`hover:bg-slate-50 transition-colors ${ayIdx === 0 && pIdx > 0 ? 'border-t-2 border-slate-300' : ''}`}
+                      className={`hover:bg-slate-50 transition-colors ${ayIdx === aylar.length - 1 ? 'border-b-2 border-b-slate-400' : ''}`}
                     >
                       {ayIdx === 0 && (
                         <>
-                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 text-center border-r border-slate-200 align-middle">
+                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 text-center border-r border-slate-200 border-b-2 border-b-slate-400 align-middle">
                             {pIdx + 1}
                           </td>
-                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 text-center border-r border-slate-200 align-middle font-mono text-[10px]">
+                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 text-center border-r border-slate-200 border-b-2 border-b-slate-400 align-middle font-mono text-[10px]">
                             {p.sicil_no}
                           </td>
-                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 border-r border-slate-200 align-middle">
+                          <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 border-r border-slate-200 border-b-2 border-b-slate-400 align-middle">
                             <p className="font-medium text-slate-800 leading-tight">{p.ad_soyad ?? p.sicil_no}</p>
                             {hatalar[p.sicil_no] && <p className="text-red-500 text-[10px] mt-0.5">{hatalar[p.sicil_no]}</p>}
                           </td>
@@ -550,13 +550,13 @@ export default function AraziPuantajClient({
                       </td>
                       {ayIdx === 0 && (
                         <>
-                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 font-bold tabular-nums align-middle">
+                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 border-b-2 border-b-slate-400 font-bold tabular-nums align-middle">
                             {uctoplam}
                           </td>
-                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 font-bold tabular-nums align-middle">
+                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 border-b-2 border-b-slate-400 font-bold tabular-nums align-middle">
                             {p.oran || 0}
                           </td>
-                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 font-bold tabular-nums align-middle">
+                          <td rowSpan={aylar.length} className="px-2 py-1 text-center border-r border-slate-200 border-b-2 border-b-slate-400 font-bold tabular-nums align-middle">
                             {toplamDeger.toFixed(2)}
                           </td>
                         </>
