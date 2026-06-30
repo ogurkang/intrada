@@ -409,6 +409,46 @@ export interface Database {
           { foreignKeyName: 'tanim_sirket_yerleske_yerleske_adresi_id_fkey'; columns: ['yerleske_adresi_id']; isOneToOne: false; referencedRelation: 'tanim_yerleske_adresi'; referencedColumns: ['id'] },
         ]
       }
+      tanim_organizasyon: {
+        Row:    { id: number; organizasyon_adi: string; aktif: boolean; created_at: string }
+        Insert: { id?: number; organizasyon_adi: string; aktif?: boolean; created_at?: string }
+        Update: { id?: number; organizasyon_adi?: string; aktif?: boolean; created_at?: string }
+        Relationships: []
+      }
+      tanim_organizasyon_birim: {
+        Row: {
+          id: number
+          organizasyon_id: number
+          mudurluk_id: number | null
+          birim_turu: string
+          personel_sicil_no: string | null
+          ust_birim_id: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          organizasyon_id: number
+          mudurluk_id?: number | null
+          birim_turu?: string
+          personel_sicil_no?: string | null
+          ust_birim_id?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          organizasyon_id?: number
+          mudurluk_id?: number | null
+          birim_turu?: string
+          personel_sicil_no?: string | null
+          ust_birim_id?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'tanim_organizasyon_birim_organizasyon_id_fkey'; columns: ['organizasyon_id']; isOneToOne: false; referencedRelation: 'tanim_organizasyon'; referencedColumns: ['id'] },
+          { foreignKeyName: 'tanim_organizasyon_birim_mudurluk_id_fkey'; columns: ['mudurluk_id']; isOneToOne: false; referencedRelation: 'tanim_mudurluk'; referencedColumns: ['id'] },
+          { foreignKeyName: 'tanim_organizasyon_birim_ust_birim_id_fkey'; columns: ['ust_birim_id']; isOneToOne: false; referencedRelation: 'tanim_organizasyon_birim'; referencedColumns: ['id'] },
+        ]
+      }
       tanim_statu: {
         Row:    { id: number; sira_no: number | null; statu_adi: string; aktif: boolean; created_at: string }
         Insert: { id?: number; sira_no?: number | null; statu_adi: string; aktif?: boolean; created_at?: string }

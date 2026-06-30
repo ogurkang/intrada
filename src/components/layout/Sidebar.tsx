@@ -61,11 +61,7 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? {
-          href: '/personel',
-          label: 'Çalışanlar',
-          children: [{ href: '/personel/adres-duzenleme', label: 'Adres Düzenleme' }],
-        }
+      ? { href: '/personel', label: 'Çalışanlar' }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
   return [
@@ -271,6 +267,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/izin-kural', label: 'Yıllık İzin Kuralları' },
       { href: '/tanimlar/gosterge',  label: 'Gösterge Tanımları' },
       { href: '/tanimlar/sirket',    label: 'Şirket'             },
+      { href: '/tanimlar/organizasyon', label: 'Organizasyon'    },
     ],
   },
   {
