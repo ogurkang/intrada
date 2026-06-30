@@ -425,7 +425,10 @@ export default function AraziPuantajClient({
                   const maxDoldu = uctoplam >= MAX_ARAZI_GUN
                   const toplamDeger = uctoplam * (p.oran || 0)
                   return aylar.map((ay, ayIdx) => (
-                    <tr key={`${p.sicil_no}-${ay.ayAdi}`} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={`${p.sicil_no}-${ay.ayAdi}`}
+                      className={`hover:bg-slate-50 transition-colors ${ayIdx === 0 && pIdx > 0 ? 'border-t-2 border-slate-300' : ''}`}
+                    >
                       {ayIdx === 0 && (
                         <>
                           <td rowSpan={aylar.length} className="sticky left-0 bg-white z-10 px-3 py-2 text-center border-r border-slate-200 align-middle">

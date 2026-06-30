@@ -305,7 +305,7 @@ export default function YevmiyePuantajClient({ data, donemId, showAnaSayfaLink =
                   <th className="px-2 py-2 text-center font-semibold text-slate-600 w-10" title="Bayram Günü">B</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-300">
                 {personeller.map(p => (
                   <YevmiyeSatir
                     key={p.sicil_no}

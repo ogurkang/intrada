@@ -14,6 +14,8 @@ export async function getKullaniciGorevMudurlukleri(
     return { mudurlukler: [], tekSecimSaltOkunur: true }
   }
 
+  const set = new Set<string>()
+
   const { data, error } = await supabase
     .from('kadro_hareketleri')
     .select('gorev_mudurlugu, kadro_mudurlugu')
@@ -22,14 +24,29 @@ export async function getKullaniciGorevMudurlukleri(
 
   if (error) {
     console.error('getKullaniciGorevMudurlukleri', error.message)
-    return { mudurlukler: [], tekSecimSaltOkunur: true }
+  } else {
+    for (const row of data ?? []) {
+      const m = String(row.gorev_mudurlugu ?? row.kadro_mudurlugu ?? '').trim()
+      if (m) set.add(m)
+    }
   }
 
-  const set = new Set<string>()
-  for (const row of data ?? []) {
-    const m = String(row.gorev_mudurlugu ?? row.kadro_mudurlugu ?? '').trim()
-    if (m) set.add(m)
+  // ADABEL personeli (firma_calisanlar) kadro_hareketleri'nde yok; müdürlüğü orada tutulur.
+  const { data: firmaData, error: firmaErr } = await supabase
+    .from('firma_calisanlar')
+    .select('gorev_mudurlugu')
+    .eq('sicil_no', sn)
+    .is('ayrilis_tarihi', null)
+
+  if (firmaErr) {
+    console.error('getKullaniciGorevMudurlukleri firma', firmaErr.message)
+  } else {
+    for (const row of firmaData ?? []) {
+      const m = String(row.gorev_mudurlugu ?? '').trim()
+      if (m) set.add(m)
+    }
   }
+
   const mudurlukler = [...set].sort((a, b) => a.localeCompare(b, 'tr'))
   return {
     mudurlukler,

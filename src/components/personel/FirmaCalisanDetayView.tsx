@@ -18,12 +18,15 @@ interface Props {
   row: Tables<'firma_calisanlar'>
   auditLoglar?: Tables<'personel_audit_log'>[]
   yerleskeMap?: Record<number, string>
+  /** Kullanıcının kendi kartı (/personel/{sicil}): düzenleme ve liste navigasyonu gizlenir. */
+  saltOkunur?: boolean
 }
 
 export default function FirmaCalisanDetayView({
   row,
   auditLoglar = [],
   yerleskeMap = {},
+  saltOkunur = false,
 }: Props) {
   const [gecmisAcik, setGecmisAcik] = useState(false)
   const seg = routeSegment(row)
@@ -32,9 +35,13 @@ export default function FirmaCalisanDetayView({
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <Link href="/firma-calisanlar" className="hover:text-slate-800 transition-colors">
-          ADABEL Personeli
-        </Link>
+        {saltOkunur ? (
+          <span className="text-slate-500">Personel Kartım</span>
+        ) : (
+          <Link href="/firma-calisanlar" className="hover:text-slate-800 transition-colors">
+            ADABEL Personeli
+          </Link>
+        )}
         <span className="text-slate-300">/</span>
         <span className="text-slate-800 font-medium">{row.ad_soyad}</span>
       </nav>
@@ -62,16 +69,20 @@ export default function FirmaCalisanDetayView({
               </span>
             )}
           </button>
-          <Link
-            href={`/firma-calisanlar/${seg}/duzenle`}
-            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-            Değiştir
-          </Link>
-          <Link
-            href="/firma-calisanlar"
-            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-            ← Listeye Dön
-          </Link>
+          {!saltOkunur && (
+            <>
+              <Link
+                href={`/firma-calisanlar/${seg}/duzenle`}
+                className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                Değiştir
+              </Link>
+              <Link
+                href="/firma-calisanlar"
+                className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                ← Listeye Dön
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

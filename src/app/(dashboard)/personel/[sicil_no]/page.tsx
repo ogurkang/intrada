@@ -1,10 +1,12 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import PersonelDetayClient from '@/components/personel/PersonelDetayClient'
+import FirmaCalisanDetayView from '@/components/personel/FirmaCalisanDetayView'
 import { calisanGuncelle } from './actions'
-import { loadPersonelDetayPageOrRedirect } from '@/lib/personel-detay-load'
+import { fetchPersonelDetayPageData, resolvePersonelRouteSegment } from '@/lib/personel-detay-load'
+import { loadFirmaCalisanDetayPageData } from '@/lib/firma-calisan-load'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import {
   buildPersonelKonumCtx,
@@ -27,8 +29,9 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   const sp = await searchParams?.catch(() => ({} as { kaynak?: string }))
   const kaynak = sp?.kaynak ?? ''
 
-  const data = await loadPersonelDetayPageOrRedirect(supabase, rawSegment, kaynak)
-  const { calisan, ...rest } = data
+  const resolved = await resolvePersonelRouteSegment(supabase, rawSegment)
+  if ('redirect' in resolved) redirect(resolved.redirect)
+  const sicilSegment = resolved.sicil_no
 
   const {
     data: { user },
@@ -36,6 +39,33 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   const access = user ? await getAppAccess(supabase, user.id) : null
   const saltOkunur = access?.mode === 'kullanici'
   const gecmisGoster = access ? isAdminLike(access) : true
+
+  const data = await fetchPersonelDetayPageData(supabase, sicilSegment, kaynak)
+
+  // ADABEL personeli (firma_calisanlar) calisan'da yok → kendi kişi kartını göster.
+  if (!data) {
+    const { data: firmaAdaylar } = await supabase
+      .from('firma_calisanlar')
+      .select('id')
+      .eq('sicil_no', sicilSegment)
+      .order('kayit_zamani', { ascending: false })
+      .limit(1)
+    const firmaId = firmaAdaylar?.[0]?.id
+    if (firmaId == null) notFound()
+    if (access?.mode === 'kullanici' && access.sicilNo.trim() !== sicilSegment.trim()) notFound()
+    const detail = await loadFirmaCalisanDetayPageData(supabase, firmaId)
+    if (!detail) notFound()
+    return (
+      <FirmaCalisanDetayView
+        row={detail.row}
+        auditLoglar={gecmisGoster ? detail.auditLoglar : []}
+        yerleskeMap={detail.yerleskeMap}
+        saltOkunur={access?.mode === 'kullanici'}
+      />
+    )
+  }
+
+  const { calisan, ...rest } = data
   if (access?.mode === 'kullanici') {
     const own = access.sicilNo.trim()
     const card = (calisan.sicil_no ?? '').trim()
