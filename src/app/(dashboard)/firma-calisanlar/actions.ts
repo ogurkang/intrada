@@ -60,7 +60,10 @@ function tarih(fd: FormData, key: string): string | null {
   return str(fd, key)
 }
 
-/** Mevcut firma_calisanlar kayıtlarından bir sonraki ardışık sicil no'yu üretir. */
+/**
+ * Mevcut firma_calisanlar kayıtlarından bir sonraki ardışık sicil no'yu üretir.
+ * ADABEL sicilleri kadro sicilleriyle çakışmasın diye 'A' önekiyle döner (örn. "A124").
+ */
 async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
   const { data: rows } = await supabase
     .from('firma_calisanlar')
@@ -72,7 +75,7 @@ async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>
     const n = parseInt(String(r.sicil_no ?? '').replace(/\D/g, ''), 10)
     if (!isNaN(n) && n > maks) maks = n
   }
-  return String(maks + 1)
+  return `A${maks + 1}`
 }
 
 export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string }> {

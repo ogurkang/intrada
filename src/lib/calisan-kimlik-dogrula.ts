@@ -10,7 +10,8 @@ export function sicilNormalize(sicil: string): string {
 }
 
 /**
- * Şifre sıfırlama: e-posta + TCKN + sicil `calisan` ile uyuyorsa sicil_no döner.
+ * Şifre sıfırlama: e-posta + TCKN + sicil `calisan` (kadro/belediye) veya
+ * `firma_calisanlar` (ADABEL) ile uyuyorsa sicil_no döner.
  * Hatalı veya belirsiz durumda null (genel hata mesajı gösterilir).
  */
 export async function calisanBulSifreSifirlaIcin(
@@ -25,18 +26,28 @@ export async function calisanBulSifreSifirlaIcin(
 
   if (!email || tcknDigits.length !== 11 || !sicil) return null
 
-  const { data: rows, error } = await admin
+  const eslesir = (satir: { sicil_no: string | null; tckn: string | null }): boolean => {
+    if (!satir.sicil_no) return false
+    if (tcknRakamlar(satir.tckn ?? '') !== tcknDigits) return false
+    return sicilNormalize(satir.sicil_no) === sicil
+  }
+
+  // 1) Kadro/belediye personeli (calisan)
+  const { data: calRows } = await admin
     .from('calisan')
     .select('sicil_no, tckn, e_posta')
     .ilike('e_posta', email)
+  for (const row of calRows ?? []) {
+    if (eslesir(row)) return { sicil_no: row.sicil_no! }
+  }
 
-  if (error || !rows?.length) return null
-
-  for (const row of rows) {
-    const dbTckn = tcknRakamlar(row.tckn ?? '')
-    if (dbTckn !== tcknDigits) continue
-    if (sicilNormalize(row.sicil_no) !== sicil) continue
-    return { sicil_no: row.sicil_no }
+  // 2) ADABEL personeli (firma_calisanlar)
+  const { data: firmaRows } = await admin
+    .from('firma_calisanlar')
+    .select('sicil_no, tckn, e_posta')
+    .ilike('e_posta', email)
+  for (const row of firmaRows ?? []) {
+    if (eslesir(row)) return { sicil_no: row.sicil_no! }
   }
 
   return null

@@ -101,8 +101,14 @@ export default async function YetkilendirmePage() {
 
   const profilMap = new Map((profiller ?? []).map(p => [p.sicil_no, p]))
 
+  // ADABEL sicilleri "A" önekli; kadro sicillerinden sonra sayısal sıraya yerleşsinler.
+  const sicilSiraDeger = (s: string) => {
+    const m = s.match(/^A(\d+)/i)
+    if (m) return 1_000_000_000 + (parseInt(m[1], 10) || 0)
+    return parseInt(s, 10) || 0
+  }
   const birlesik = [...kadroPersonel, ...firmaEk].sort(
-    (a, b) => (parseInt(a.sicil_no, 10) || 0) - (parseInt(b.sicil_no, 10) || 0),
+    (a, b) => sicilSiraDeger(a.sicil_no) - sicilSiraDeger(b.sicil_no),
   )
 
   const satirlar = birlesik.map(m => ({
