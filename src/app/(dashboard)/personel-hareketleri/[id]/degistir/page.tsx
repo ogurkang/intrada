@@ -55,6 +55,7 @@ export default async function PersonelHareketiDegistirPage({
       .is('iptal_karar_no', null)
       .is('ayrilis_tarihi', null)
       .order('kadro_sira_no', { ascending: true }),
+    supabase.from('tanim_gosterge').select('derece, kademe, gosterge').eq('aktif', true),
   ])
 
   const personel = results[0]?.data ?? null
@@ -65,6 +66,7 @@ export default async function PersonelHareketiDegistirPage({
   const terfiSon = ((results[5]?.data ?? [])[0] ?? null) as TH | null
   const sonHareketRaw = ((results[6]?.data ?? [])[0] ?? null) as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null } | null
   const tumBosKadrolar = (results[7]?.data ?? []) as BosKadroSecenek[]
+  const gostergeler = (results[8]?.data ?? []) as { derece: number; kademe: number; gosterge: number }[]
 
   if (!personel) notFound()
 
@@ -138,6 +140,7 @@ export default async function PersonelHareketiDegistirPage({
       onaylayan={onaylayan}
       yardimcilar={yardimcilar}
       terfiSon={terfiSon}
+      gostergeler={gostergeler}
       ayrilisNedenleri={ayrilisNedenleri}
       sonHareketAyrilis={{
         tarih: sonHareketRaw?.ayrilis_tarihi ?? null,
