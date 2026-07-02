@@ -742,6 +742,9 @@ function IzinBilgileriTab({
   izinHaklari, izinHareketleri,
 }: { izinHaklari: IzinHak[]; izinHareketleri: IzinHareketi[] }) {
   const buYil = new Date().getFullYear()
+  type IzinSortKey = 'sira_no' | 'tur' | 'ayrilis' | 'baslama' | 'gun' | 'durum' | 'vekalet' | 'aciklama' | 'bilgi'
+  const [sortKey, setSortKey] = useState<IzinSortKey>('sira_no')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   const yillar = useMemo(() => {
     const set = new Set<number>()
@@ -761,7 +764,56 @@ function IzinBilgileriTab({
   const hakBuYil = izinHaklari.find(h => h.yil === secilenYil)
   const hareketlerBuYil = izinHareketleri
     .filter(h => h.yil === secilenYil && h.durum !== 'Taslak')
-    .sort((a, b) => parseInt(b.sira_no ?? '0') - parseInt(a.sira_no ?? '0'))
+    .sort((a, b) => {
+      const num = (v: string | null | undefined) => Number.parseInt(String(v ?? '0'), 10) || 0
+      const str = (v: string | null | undefined) => String(v ?? '').toLocaleLowerCase('tr-TR')
+      const time = (v: string | null | undefined) => (v ? new Date(v).getTime() : 0)
+
+      let cmp = 0
+      if (sortKey === 'sira_no') cmp = num(a.sira_no) - num(b.sira_no)
+      else if (sortKey === 'gun') cmp = (a.gun ?? 0) - (b.gun ?? 0)
+      else if (sortKey === 'ayrilis') cmp = time(a.ayrilis) - time(b.ayrilis)
+      else if (sortKey === 'baslama') cmp = time(a.baslama) - time(b.baslama)
+      else cmp = str(a[sortKey]).localeCompare(str(b[sortKey]), 'tr')
+
+      if (cmp === 0) cmp = num(a.sira_no) - num(b.sira_no)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
+  const siralamaDegistir = (key: IzinSortKey) => {
+    if (sortKey === key) {
+      setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortKey(key)
+    setSortDir(key === 'sira_no' ? 'desc' : 'asc')
+  }
+
+  const SiraliBaslik = ({
+    label,
+    keyName,
+    className,
+  }: {
+    label: string
+    keyName: IzinSortKey
+    className: string
+  }) => {
+    const aktif = sortKey === keyName
+    const ok = aktif ? (sortDir === 'asc' ? '▲' : '▼') : '↕'
+    return (
+      <th className={className}>
+        <button
+          type="button"
+          onClick={() => siralamaDegistir(keyName)}
+          className={`inline-flex items-center gap-1 hover:text-slate-800 ${aktif ? 'text-slate-800' : ''}`}
+          title="Sırala"
+        >
+          <span>{label}</span>
+          <span className="text-[10px]">{ok}</span>
+        </button>
+      </th>
+    )
+  }
 
   const devreden  = hakBuYil?.devreden_gun  ?? 0
   const hakEdilen = hakBuYil?.hak_edilen_gun ?? 0
@@ -809,15 +861,15 @@ function IzinBilgileriTab({
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Sıra No</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Tür</th>
-                  <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Ayrılış</th>
-                  <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Başlama</th>
-                  <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Gün</th>
-                  <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Durum</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Vekalet</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Açıklama</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Bilgi</th>
+                  <SiraliBaslik keyName="sira_no" label="Sıra No" className="text-left px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="tur" label="Tür" className="text-left px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="ayrilis" label="Ayrılış" className="text-center px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="baslama" label="Başlama" className="text-center px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="gun" label="Gün" className="text-center px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="durum" label="Durum" className="text-center px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="vekalet" label="Vekalet" className="text-left px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="aciklama" label="Açıklama" className="text-left px-4 py-2.5 font-semibold text-slate-600" />
+                  <SiraliBaslik keyName="bilgi" label="Bilgi" className="text-left px-4 py-2.5 font-semibold text-slate-600" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

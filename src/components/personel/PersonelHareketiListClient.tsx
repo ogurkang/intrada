@@ -9,8 +9,8 @@ interface HareketSatir {
   sicil_no:          string
   ad_soyad:          string
   hareket_tipi:      string | null
-  kadro_id:          number
-  kadro_rol:         'asil' | 'vekil'
+  kadro_id:          number | null
+  kadro_rol:         'asil' | 'vekil' | 'yok'
   yururluk_tarihi:   string | null
   ise_baslama_tarihi: string | null
   ayrilis_tarihi:    string | null
@@ -20,6 +20,8 @@ interface HareketSatir {
   eski_unvan:        string | null
   aciklama:          string | null
   kayit_zamani:      string
+  hareket_id:        number | null
+  salt_okunur:       boolean
 }
 
 interface Props {
@@ -69,7 +71,17 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
   }, [hareketler, arama, tipFiltre, yilFiltre])
 
   function satirAcYeniSekme(h: HareketSatir) {
-    const href = `/personel-hareketleri/${h.sicil_no}/goruntule?kadro_id=${h.kadro_id}&rol=${h.kadro_rol}&popup=1`
+    if (h.hareket_id && h.hareket_id > 0) {
+      const href = `/personel-hareketleri/${h.hareket_id}/goruntule?popup=1`
+      const w = window.open(href, '_blank')
+      if (!w) router.push(href)
+      return
+    }
+    const q =
+      h.kadro_id && h.kadro_id > 0
+        ? `?kadro_id=${h.kadro_id}&rol=${h.kadro_rol}&popup=1`
+        : '?popup=1'
+    const href = `/personel-hareketleri/${h.sicil_no}/goruntule${q}`
     const w = window.open(href, '_blank')
     if (!w) router.push(href)
   }
@@ -152,9 +164,16 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
                 <td className="px-4 py-3 font-medium text-slate-800">{h.ad_soyad}</td>
                 <td className="px-4 py-3">
                   {h.hareket_tipi ? (
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${HAREKET_RENK[h.hareket_tipi] ?? 'bg-slate-100 text-slate-600'}`}>
-                      {h.hareket_tipi}
-                    </span>
+                    <>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${HAREKET_RENK[h.hareket_tipi] ?? 'bg-slate-100 text-slate-600'}`}>
+                        {h.hareket_tipi}
+                      </span>
+                      {h.salt_okunur && (
+                        <span className="inline-flex ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                          Salt Okunur
+                        </span>
+                      )}
+                    </>
                   ) : '—'}
                 </td>
                 <td className="px-4 py-3 text-center text-xs tabular-nums text-slate-500">

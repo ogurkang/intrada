@@ -13,6 +13,7 @@ import {
 import type { Tables } from '@/types/database'
 
 type Calisan = Tables<'calisan'>
+type PH = Tables<'personel_hareketleri'>
 
 export const PERSONEL_HAREKET_SABLON_URL = '/templates/personel_hareketler_formu.xlsx'
 export const PERSONEL_HAREKET_SABLON_SAYFA = '2019'
@@ -206,6 +207,109 @@ export function personelHareketFormVerisiOlustur(input: {
   }
 }
 
+export function personelHareketFormVerisiKayittan(input: {
+  personel: Pick<Calisan, 'sicil_no' | 'ad_soyad' | 'dogum_yeri' | 'dogum_tarihi' | 'askerlik_durumu' | 'hizmet_suresi_yil'>
+  hareket: PH
+  dogumYeriTarihi: string
+  ogrenimDurumu?: string | null
+  teklifEdenAd?: string | null
+}): PersonelHareketFormVerisi {
+  const h = input.hareket
+  const secim = String(h.hareket_tipi ?? '')
+  const tip =
+    secim === 'IlkAtanma'
+      ? 'İlk Atanma'
+      : secim === 'YerDegistirme'
+        ? 'Yer Değiştirme'
+        : secim === 'Yukselme'
+          ? 'Yükselme'
+          : secim
+
+  const eski: PersonelHareketEskiYeni = {
+    sinif: String(h.eski_sinif ?? ''),
+    gorev_yeri: String(h.eski_gorev_yeri ?? ''),
+    unvan: String(h.eski_unvan ?? ''),
+    kadro_derecesi: String(h.eski_kadro_derecesi ?? ''),
+    kha_derece: String(h.eski_kha_derece ?? ''),
+    kha_kademe: String(h.eski_kha_kademe ?? ''),
+    ekea_derece: String(h.eski_ekea_derece ?? ''),
+    ekea_kademe: String(h.eski_ekea_kademe ?? ''),
+    kha_tarihi: '',
+    ekea_tarihi: '',
+    kidem_yili: String(h.eski_kidem_yili ?? ''),
+    kidem_tarihi: '',
+    iyi_hal_terfi_tarihi: '',
+    ek_gosterge: String(h.eski_ek_gosterge ?? ''),
+    ek_odeme: String(h.eski_ek_odeme ?? ''),
+    oht: String(h.eski_oht ?? ''),
+    igz: String(h.eski_igz ?? ''),
+    sds_orani: '',
+  }
+
+  const yeni: PersonelHareketEskiYeni = {
+    sinif: String(h.yeni_sinif ?? ''),
+    gorev_yeri: String(h.yeni_gorev_yeri ?? ''),
+    unvan: String(h.yeni_unvan ?? ''),
+    kadro_derecesi: String(h.yeni_kadro_derecesi ?? ''),
+    kha_derece: String(h.yeni_kha_derece ?? ''),
+    kha_kademe: String(h.yeni_kha_kademe ?? ''),
+    ekea_derece: String(h.yeni_ekea_derece ?? ''),
+    ekea_kademe: String(h.yeni_ekea_kademe ?? ''),
+    kha_tarihi: '',
+    ekea_tarihi: '',
+    kidem_yili: String(h.yeni_kidem_yili ?? ''),
+    kidem_tarihi: '',
+    iyi_hal_terfi_tarihi: '',
+    ek_gosterge: String(h.yeni_ek_gosterge ?? ''),
+    ek_odeme: String(h.yeni_ek_odeme ?? ''),
+    oht: String(h.yeni_oht ?? ''),
+    igz: String(h.yeni_igz ?? ''),
+    sds_orani: '',
+  }
+
+  const kYili =
+    input.personel.hizmet_suresi_yil != null && Number.isFinite(input.personel.hizmet_suresi_yil)
+      ? String(input.personel.hizmet_suresi_yil)
+      : ''
+
+  return {
+    personel: input.personel,
+    dogumYeriTarihi: input.dogumYeriTarihi,
+    ogrenimDurumu: input.ogrenimDurumu ?? '',
+    onaylayan: String(h.onaylayan ?? ''),
+    hareketTipiSecim: secim,
+    hareketTipiText: tip,
+    yururluk_tarihi: fmtPersonelHareketTarih(h.yururluk_tarihi),
+    adaylik_suresi: String(h.adaylik_suresi ?? ''),
+    asli_memuriyete_atanma_tarihi: fmtPersonelHareketTarih(h.asli_memuriyete_atanma_tarihi),
+    eski,
+    yeni,
+    yeniKhaDK: [yeni.kha_derece, yeni.kha_kademe].filter(Boolean).join('/'),
+    yeniEkeaDK: [yeni.ekea_derece, yeni.ekea_kademe].filter(Boolean).join('/'),
+    yeni_kha_tarihi: '',
+    yeni_ekea_tarihi: '',
+    yeni_kidem_yili: yeni.kidem_yili,
+    yeni_kidem_tarihi: '',
+    yeni_iyi_hal_terfi_tarihi: '',
+    yeni_ek_gosterge: yeni.ek_gosterge,
+    yeni_ek_odeme: yeni.ek_odeme,
+    yeni_oht: yeni.oht,
+    yeni_igz: yeni.igz,
+    yeni_sds_orani: yeni.sds_orani,
+    dayanak: String(h.dayanak ?? ''),
+    aciklama: String(h.aciklama ?? ''),
+    teklifEdenAd: String(input.teklifEdenAd ?? ''),
+    ise_baslama_tarihi: fmtPersonelHareketTarih(h.ise_baslama_tarihi),
+    ayrilis_tarihi: fmtPersonelHareketTarih(h.ayrilis_tarihi),
+    kayit_tarihi: fmtPersonelHareketTarih(h.kayit_tarihi),
+    kayit_no: String(h.kayit_no ?? ''),
+    dagitim: String(h.dagitim_mudurlukleri ?? ''),
+    eski_g_ayligi: '',
+    yeni_g_ayligi: '',
+    k_yili: kYili,
+  }
+}
+
 /** ExcelJS ile şablon doldurma — kenarlık ve biçim şablonda kalır (aile bildirimi ile aynı yaklaşım). */
 export function personelHareketExcelDoldurExcelJs(ws: Worksheet, v: PersonelHareketFormVerisi) {
   const set = (addr: string, value: string | number | null | undefined) => {
@@ -219,7 +323,7 @@ export function personelHareketExcelDoldurExcelJs(ws: Worksheet, v: PersonelHare
   }
 
   mark('C5', v.hareketTipiSecim === 'IlkAtanma')
-  mark('G5', v.hareketTipiSecim === 'YerDegistirme')
+  mark('F5', v.hareketTipiSecim === 'YerDegistirme')
   mark('K5', v.hareketTipiSecim === 'Yukselme')
 
   set('A8', v.personel.ad_soyad)
@@ -262,7 +366,7 @@ export function personelHareketExcelDoldurExcelJs(ws: Worksheet, v: PersonelHare
 
   set('A22', v.dayanak)
   set('A25', v.aciklama)
-  set('A27', v.teklifEdenAd)
+  set('A28', v.teklifEdenAd)
   set('A35', v.onaylayan)
   set('G27', v.ise_baslama_tarihi)
   set('J27', v.ayrilis_tarihi)

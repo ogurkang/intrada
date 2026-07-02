@@ -16,20 +16,30 @@ export default async function PersonelHareketiGoruntulePage({
   params,
   searchParams,
 }: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string }> }) {
-  const { id: sicil_no } = await params
-  if (!sicil_no?.trim()) notFound()
+  const { id: rawId } = await params
+  const idText = String(rawId ?? '').trim()
+  if (!idText) notFound()
   const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string }))
   const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
   const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
   const popup = String(sp?.popup ?? '').trim()
 
   const supabase = await createClient()
+  const idNum = Number.parseInt(idText, 10)
 
-  const [
-    { data: calisan },
-    { data: phRows },
-    { data: ogrenimRows },
-  ] = await Promise.all([
+  let hareket: PH | null = null
+  let sicil_no = idText
+  if (Number.isFinite(idNum) && idNum > 0) {
+    const { data: byId } = await supabase
+      .from('personel_hareketleri')
+      .select('*')
+      .eq('id', idNum)
+      .maybeSingle()
+    hareket = (byId ?? null) as PH | null
+    if (hareket?.sicil_no) sicil_no = hareket.sicil_no
+  }
+
+  const [{ data: calisan }, { data: phRows }, { data: ogrenimRows }] = await Promise.all([
     supabase.from('calisan').select('*').eq('sicil_no', sicil_no).single(),
     supabase
       .from('personel_hareketleri')
@@ -40,7 +50,7 @@ export default async function PersonelHareketiGoruntulePage({
     supabase.from('calisan_ogrenim').select('ogrenim_turu').eq('sicil_no', sicil_no).eq('aktif', true).limit(1),
   ])
 
-  const hareket = (phRows ?? [])[0] as PH | null
+  if (!hareket) hareket = ((phRows ?? [])[0] ?? null) as PH | null
   if (!calisan) notFound()
   if (!hareket) {
     const to = Number.isFinite(seciliKadroId) && seciliKadroId > 0

@@ -85,6 +85,7 @@ export default async function PersonelHareketiDegistirPage({
           return true
         })
       : undefined) ?? kadroListesi[0] ?? null
+  const saltOkunur = !seciliKadro
   const personelStatu = String(seciliKadro?.statu ?? '').trim()
   const bosKadrolar = personelStatu
     ? tumBosKadrolar.filter(k => String(k.statu ?? '').trim() === personelStatu)
@@ -149,6 +150,7 @@ export default async function PersonelHareketiDegistirPage({
       seciliKadroRol={seciliRol === 'vekil' ? 'vekil' : 'asil'}
       bosKadrolar={bosKadrolar}
       popup={popup}
+      saltOkunur={saltOkunur}
       onKaydet={personelHareketiEkle}
     />
   )

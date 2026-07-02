@@ -33,6 +33,7 @@ interface Props {
   ayrilisNedenleri: string[]
   sonHareketAyrilis?: { tarih: string | null; nedeni: string | null }
   popup?: boolean
+  saltOkunur?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
 
@@ -51,12 +52,14 @@ export default function PersonelHareketiDegistirClient({
   ayrilisNedenleri,
   sonHareketAyrilis,
   popup = false,
+  saltOkunur = false,
   onKaydet,
 }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement | null>(null)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [kaydedildi, setKaydedildi] = useState(false)
   const [kadroSecModalAcik, setKadroSecModalAcik] = useState(false)
   const [kadroArama, setKadroArama] = useState('')
 
@@ -166,6 +169,7 @@ export default function PersonelHareketiDegistirClient({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (saltOkunur) return
     setHata(null)
     const fd = new FormData(e.currentTarget)
     const hareketTipi = String(fd.get('hareket_tipi') ?? '').trim()
@@ -187,18 +191,27 @@ export default function PersonelHareketiDegistirClient({
     onKaydet(fd).then(res => {
       setIsPending(false)
       if (res.hata) setHata(res.hata)
-      else if (popup && typeof window !== 'undefined' && window.opener) {
+      else {
+        setKaydedildi(true)
         try {
-          window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, window.location.origin)
+          if (typeof window !== 'undefined' && window.opener) {
+            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, window.location.origin)
+          }
         } catch {
-          window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, '*')
+          if (typeof window !== 'undefined' && window.opener) {
+            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, '*')
+          }
         }
-        window.close()
-        setTimeout(() => {
-          if (document.visibilityState === 'visible') router.push('/personel-hareketleri')
-        }, 300)
-      } else router.push('/personel-hareketleri')
+      }
     })
+  }
+
+  function handleKapat() {
+    if (popup && typeof window !== 'undefined' && window.opener) {
+      window.close()
+      return
+    }
+    router.push('/personel-hareketleri')
   }
 
   function formVerisiOlustur() {
@@ -294,6 +307,18 @@ export default function PersonelHareketiDegistirClient({
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+        {saltOkunur && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Bu personelin aktif kadro/vekalet kaydı bulunmadığı için form salt okunur açıldı.
+            Excel ve Word indirilebilir, değişiklik kaydedilemez.
+          </div>
+        )}
+        {kaydedildi && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Kayıt başarıyla tamamlandı. İsterseniz belgeyi indirip ardından formu kapatabilirsiniz.
+          </div>
+        )}
+        <fieldset disabled={saltOkunur} className="space-y-6 disabled:opacity-95">
         {/* Hareket Tipi */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Hareket Tipi</h2>
@@ -647,16 +672,26 @@ export default function PersonelHareketiDegistirClient({
         {hata && (
           <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{hata}</p>
         )}
+        </fieldset>
 
         <div className="flex justify-end gap-3">
           <Link href="/personel-hareketleri"
             className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">
             İptal
           </Link>
-          <button type="submit" disabled={isPending}
+          <button type="submit" disabled={isPending || saltOkunur}
             className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
+          {kaydedildi && (
+            <button
+              type="button"
+              onClick={handleKapat}
+              className="px-4 py-2 text-sm font-medium text-rose-700 border border-rose-300 rounded-lg hover:bg-rose-50"
+            >
+              Kapat
+            </button>
+          )}
           <button
             type="button"
             onClick={handleWordIndir}

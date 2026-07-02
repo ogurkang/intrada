@@ -3,6 +3,12 @@
 import Link from 'next/link'
 import { toGgAayyyy } from '@/lib/tarih'
 import type { Tables } from '@/types/database'
+import {
+  PERSONEL_HAREKET_SABLON_SAYFA,
+  PERSONEL_HAREKET_SABLON_URL,
+  personelHareketExcelDoldurExcelJs,
+  personelHareketFormVerisiKayittan,
+} from '@/lib/personel-hareket-belge'
 
 type Calisan = Tables<'calisan'>
 type PH = Tables<'personel_hareketleri'>
@@ -48,11 +54,53 @@ export default function PersonelHareketiGoruntuleClient({
   const dogumTarihi = toGgAayyyy(personel.dogum_tarihi)
   const dogumYeriTarihi = [dogumYeri, dogumTarihi].filter(Boolean).join(' ')
 
+  async function handleExcelIndir() {
+    try {
+      const veri = personelHareketFormVerisiKayittan({
+        personel,
+        hareket,
+        dogumYeriTarihi,
+        ogrenimDurumu,
+        teklifEdenAd,
+      })
+      const ExcelJS = (await import('exceljs')).default
+      const resp = await fetch(PERSONEL_HAREKET_SABLON_URL)
+      if (!resp.ok) return
+      const buffer = await resp.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws = wb.getWorksheet(PERSONEL_HAREKET_SABLON_SAYFA) ?? wb.worksheets[0]
+      if (!ws) return
+      personelHareketExcelDoldurExcelJs(ws, veri)
+      const out = await wb.xlsx.writeBuffer()
+      const blob = new Blob([out], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `personel-hareketi-${personel.sicil_no}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      // sessiz kal: görüntüleme ekranında indirmenin ana akışı bozulmasın
+    }
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Personel Hareketi - Görüntüle</h1>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExcelIndir}
+            className="px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50"
+          >
+            Excel İndir
+          </button>
           <Link href={degistirHref}
             className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             Değiştir
