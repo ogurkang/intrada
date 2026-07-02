@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const supabase = await createClient()
     const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
       supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu').not('asil', 'is', null),
-      supabase.from('calisan').select('sicil_no, ad_soyad, kan_grubu'),
+      supabase.from('calisan').select('sicil_no, ad_soyad, kan_grubu, telefon'),
     ])
     const byAsil = new Map<string, KadroRaporRow[]>()
     for (const k of (kadroRaw ?? []) as KadroRaporRow[]) {
@@ -34,12 +34,13 @@ export async function GET(req: Request) {
         if (!c) return null
         const kg = c.kan_grubu?.trim() || 'Belirtilmemiş'
         if (seciliSet.size > 0 && !seciliSet.has(kg)) return null
-        return { sicil_no: sicil, ad_soyad: c.ad_soyad, kan_grubu: kg }
+        return { sicil_no: sicil, ad_soyad: c.ad_soyad, telefon: c.telefon?.trim() || '—', kan_grubu: kg }
       })
       .filter(Boolean)
       .sort((a, b) => a!.sicil_no.localeCompare(b!.sicil_no, 'tr', { numeric: true })) as {
       sicil_no: string
       ad_soyad: string
+      telefon: string
       kan_grubu: string
     }[]
     const periodLabel = periyot === 'yillik' ? 'YILLIK' : String(periyot)
@@ -47,8 +48,8 @@ export async function GET(req: Request) {
       baslik: 'Kan Grubuna Göre Personel Listesi',
       donemEtiket: `Yıl: ${yil} · Sekme: ${periodLabel}`,
       anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
-      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kan Grubu'],
-      satirlar: satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.kan_grubu]),
+      kolonlar: ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Telefon', 'Kan Grubu'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.sicil_no, r.ad_soyad, r.telefon, r.kan_grubu]),
       sheetName: 'Kan Grubu',
       downloadFileName: 'Kan_Grubuna_Gore_Personel_Listesi.xlsx',
     })

@@ -32,7 +32,7 @@ export default async function KanGrubunaGorePersonelListePage({
   const supabase = await createClient()
   const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
     supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu').not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad, kan_grubu'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, kan_grubu, telefon'),
   ])
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const k of (kadroRaw ?? []) as KadroRaporRow[]) {
@@ -50,10 +50,10 @@ export default async function KanGrubunaGorePersonelListePage({
       if (!c) return null
       const kg = c.kan_grubu?.trim() || 'Belirtilmemiş'
       if (seciliSet.size > 0 && !seciliSet.has(kg)) return null
-      return { sicil_no: sicil, ad_soyad: c.ad_soyad, kan_grubu: kg }
+      return { sicil_no: sicil, ad_soyad: c.ad_soyad, telefon: c.telefon?.trim() || '—', kan_grubu: kg }
     })
     .filter(Boolean)
-    .sort((a, b) => a!.sicil_no.localeCompare(b!.sicil_no, 'tr', { numeric: true })) as { sicil_no: string; ad_soyad: string; kan_grubu: string }[]
+    .sort((a, b) => a!.sicil_no.localeCompare(b!.sicil_no, 'tr', { numeric: true })) as { sicil_no: string; ad_soyad: string; telefon: string; kan_grubu: string }[]
 
   const excelK = seciliKanlar.length ? `&k=${encodeURIComponent(seciliKanlar.join(','))}` : ''
   return (
@@ -94,6 +94,7 @@ export default async function KanGrubunaGorePersonelListePage({
               <th className="px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Sicil No</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Adı Soyadı</th>
+              <th className="px-3 py-3 text-left font-semibold text-slate-700">Telefon</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Kan Grubu</th>
             </tr>
           </thead>
@@ -103,6 +104,7 @@ export default async function KanGrubunaGorePersonelListePage({
                 <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.sicil_no}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.ad_soyad}</td>
+                <td className="px-3 py-2.5 text-slate-800">{r.telefon}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.kan_grubu}</td>
               </tr>
             ))}

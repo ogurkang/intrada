@@ -33,6 +33,7 @@ interface Props {
   ayrilisNedenleri: string[]
   sonHareketAyrilis?: { tarih: string | null; nedeni: string | null }
   popup?: boolean
+  yeniKayit?: boolean
   saltOkunur?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
@@ -52,6 +53,7 @@ export default function PersonelHareketiDegistirClient({
   ayrilisNedenleri,
   sonHareketAyrilis,
   popup = false,
+  yeniKayit = false,
   saltOkunur = false,
   onKaydet,
 }: Props) {
@@ -299,7 +301,9 @@ export default function PersonelHareketiDegistirClient({
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Personel Hareketi - Değiştir</h1>
+        <h1 className="text-2xl font-bold text-slate-800">
+          {yeniKayit ? 'Personel Hareketi - Yeni Kayıt' : 'Personel Hareketi - Değiştir'}
+        </h1>
         <Link href="/personel-hareketleri"
           className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
           ← Listeye Dön
@@ -311,6 +315,11 @@ export default function PersonelHareketiDegistirClient({
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Bu personelin aktif kadro/vekalet kaydı bulunmadığı için form salt okunur açıldı.
             Excel ve Word indirilebilir, değişiklik kaydedilemez.
+          </div>
+        )}
+        {yeniKayit && !saltOkunur && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Yeni personel hareketi oluşturuyorsunuz. Formu doldurup kaydedebilirsiniz.
           </div>
         )}
         {kaydedildi && (

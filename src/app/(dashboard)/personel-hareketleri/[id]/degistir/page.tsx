@@ -12,13 +12,14 @@ type BosKadroSecenek = Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kad
 export default async function PersonelHareketiDegistirPage({
   params,
   searchParams,
-}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string }> }) {
+}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string; yeni?: string }> }) {
   const { id: sicil_no } = await params
   if (!sicil_no?.trim()) notFound()
-  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string }))
+  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string; yeni?: string }))
   const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
   const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
   const popup = String(sp?.popup ?? '').trim() === '1'
+  const yeniKayit = String(sp?.yeni ?? '').trim() === '1'
 
   const supabase = await createClient()
 
@@ -85,7 +86,7 @@ export default async function PersonelHareketiDegistirPage({
           return true
         })
       : undefined) ?? kadroListesi[0] ?? null
-  const saltOkunur = !seciliKadro
+  const saltOkunur = !yeniKayit && !seciliKadro
   const personelStatu = String(seciliKadro?.statu ?? '').trim()
   const bosKadrolar = personelStatu
     ? tumBosKadrolar.filter(k => String(k.statu ?? '').trim() === personelStatu)
@@ -150,6 +151,7 @@ export default async function PersonelHareketiDegistirPage({
       seciliKadroRol={seciliRol === 'vekil' ? 'vekil' : 'asil'}
       bosKadrolar={bosKadrolar}
       popup={popup}
+      yeniKayit={yeniKayit}
       saltOkunur={saltOkunur}
       onKaydet={personelHareketiEkle}
     />

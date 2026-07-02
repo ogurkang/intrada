@@ -30,7 +30,7 @@ export default async function PersonelHareketiListPage() {
   ;(calisanRaw ?? []).forEach(c => { adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
 
   type Satir = {
-    id: number; sicil_no: string; ad_soyad: string; hareket_tipi: string | null;
+    rowKey: string; sicil_no: string; ad_soyad: string; hareket_tipi: string | null;
     kadro_id: number | null; kadro_rol: 'asil' | 'vekil' | 'yok';
     yururluk_tarihi: string | null; ise_baslama_tarihi: string | null;
     ayrilis_tarihi: string | null; yeni_gorev_yeri: string | null;
@@ -44,7 +44,7 @@ export default async function PersonelHareketiListPage() {
   kadrolar.forEach(k => {
     if (k.asil) {
       satirlar.push({
-        id:                  k.id * 10 + 1,
+        rowKey:              `kadro-${k.id}-asil`,
         sicil_no:            k.asil,
         ad_soyad:            adMap[k.asil] ?? k.asil,
         hareket_tipi:        k.gelis_nedeni ?? k.durumu,
@@ -65,7 +65,7 @@ export default async function PersonelHareketiListPage() {
     }
     if (k.vekil) {
       satirlar.push({
-        id:                  k.id * 10 + 2,
+        rowKey:              `kadro-${k.id}-vekil`,
         sicil_no:            k.vekil,
         ad_soyad:            adMap[k.vekil] ?? k.vekil,
         hareket_tipi:        'Vekalet',
@@ -95,7 +95,7 @@ export default async function PersonelHareketiListPage() {
     const sicil = String(h.sicil_no ?? '').trim()
     if (!sicil) continue
     satirlar.push({
-      id: hid,
+      rowKey: `hareket-${hid}`,
       sicil_no: sicil,
       ad_soyad: adMap[sicil] ?? sicil,
       hareket_tipi: h.hareket_tipi ?? null,
