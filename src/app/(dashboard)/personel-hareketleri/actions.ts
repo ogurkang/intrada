@@ -106,10 +106,32 @@ async function kadroAtamasiniGuncelle(
   },
 ): Promise<{ hata?: string }> {
   const sicil = String(input.sicil_no ?? '').trim()
-  if (!sicil || !input.onceki_kadro_id) return {}
+  if (!sicil) return {}
+
+  const yeniKadroId = input.yeni_kadro_id
+
+  // İlk atama: önceki kadro yok, boş kadroya asil atama
+  if (!input.onceki_kadro_id) {
+    if (!yeniKadroId) return {}
+    const { data: yeni, error: yeniErr } = await supabase
+      .from('kadro_hareketleri')
+      .select('id, asil, vekil, durumu')
+      .eq('id', yeniKadroId)
+      .limit(1)
+      .maybeSingle()
+    if (yeniErr) return { hata: yeniErr.message }
+    if (!yeni) return { hata: 'Yeni kadro kaydı bulunamadı.' }
+    if ((yeni.durumu ?? '').trim() !== 'Boş') return { hata: 'Seçilen kadro artık boş değil. Lütfen listeyi yenileyin.' }
+
+    const { error: yeniUpErr } = await supabase
+      .from('kadro_hareketleri')
+      .update({ asil: sicil, durumu: 'Dolu' })
+      .eq('id', yeni.id)
+    if (yeniUpErr) return { hata: yeniUpErr.message }
+    return {}
+  }
 
   const oncekiRol = input.onceki_kadro_rol
-  const yeniKadroId = input.yeni_kadro_id
   if (yeniKadroId && yeniKadroId === input.onceki_kadro_id) return {}
 
   const { data: onceki, error: oncekiErr } = await supabase

@@ -180,6 +180,16 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     return m
   }, [personeller])
 
+  const unvanSinifMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of unvanlar) {
+      const ad = txt(u.unvan_adi)
+      const sinif = txt(u.sinif_adi)
+      if (ad && sinif) m.set(ad, sinif)
+    }
+    return m
+  }, [unvanlar])
+
   const kadroFallbackBySiraNo = useMemo(() => {
     const m = new Map<string, { unvan: string; gorevUnvan: string; mudurluk: string; gorevMudurluk: string }>()
     for (const k of data) {
@@ -201,6 +211,11 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     if (unvan || gorevUnvan) return { unvan, gorevUnvan }
     const fb = kadroFallbackBySiraNo.get(txt(k.kadro_sira_no))
     return { unvan: fb?.unvan ?? '', gorevUnvan: fb?.gorevUnvan ?? '' }
+  }
+
+  function kadroSinifMetni(k: Kadro): string {
+    const unvan = kadroUnvanMetni(k)
+    return unvanSinifMap.get(unvan.unvan) ?? unvanSinifMap.get(unvan.gorevUnvan) ?? '—'
   }
 
   function kadroMudurlukMetni(k: Kadro): { mudurluk: string; gorevMudurluk: string } {
@@ -348,6 +363,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       'Sıra No',
       'Kadro Sıra No',
       'Kadro Derecesi',
+      'Sınıf',
       'Kadro Ünvanı',
       'Kadro Müdürlüğü',
       'Asil Personel',
@@ -358,6 +374,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     const satirlar = excelKayitlari.map((k, idx) => {
       const kadroUnvani = (k.kadro_unvani ?? '').trim() || '—'
       const kadroMudurlugu = (k.kadro_mudurlugu ?? '').trim() || '—'
+      const sinif = kadroSinifMetni(k)
       const asil = k.asil ? `${adMap[k.asil] ?? k.asil}\n${k.asil}` : '—'
       const vekil = k.vekil ? `${adMap[k.vekil] ?? k.vekil}\n${k.vekil}` : '—'
 
@@ -365,6 +382,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
         idx + 1,
         k.kadro_sira_no ?? '—',
         k.kadro_derecesi ?? '—',
+        sinif,
         kadroUnvani,
         kadroMudurlugu,
         asil,
@@ -375,11 +393,12 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     const aoa: (string | number)[][] = [[baslik], kolonBasliklari, ...satirlar]
 
     const ws = XLSX.utils.aoa_to_sheet(aoa)
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }]
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]
     ws['!cols'] = [
       { wch: 5 },
       { wch: 10 },
       { wch: 10 },
+      { wch: 14 },
       { wch: 28 },
       { wch: 22 },
       { wch: 22 },
@@ -583,6 +602,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                     />
                   </div>
                 </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sınıf</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">
                   <div className="inline-flex items-center gap-1.5">
                     Kadro / Görev Ünvanı
@@ -659,7 +679,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtreli.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-16 text-slate-400">
+                <tr><td colSpan={10} className="text-center py-16 text-slate-400">
                   {aramaQ ? 'Arama sonucu bulunamadı.' : 'Kadro kaydı yok.'}
                 </td></tr>
               )}
@@ -675,6 +695,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                   <td className="px-4 py-3 text-slate-500 tabular-nums">{idx + 1}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{k.kadro_sira_no ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs tabular-nums">{k.kadro_derecesi ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{kadroSinifMetni(k)}</td>
                   <td className="px-4 py-3">
                     <span className="font-medium text-slate-800">{unvan.unvan || '—'}</span>
                     {unvan.gorevUnvan && unvan.gorevUnvan !== unvan.unvan && (

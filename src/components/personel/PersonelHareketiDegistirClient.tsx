@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { dogrulaAyrilisAlanlari } from '@/lib/personel-ayrilis'
+import { trNormalize } from '@/lib/turkce-search'
 import {
   PERSONEL_HAREKET_SABLON_SAYFA,
   PERSONEL_HAREKET_SABLON_URL,
@@ -18,8 +19,55 @@ type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
 
+type DurumBilgi = {
+  gorev_yeri: string
+  unvan: string
+  sinif: string
+  kadro_derecesi: string
+  kadro_sira_no: string
+  kadro_durumu: string
+  kha_derece: string
+  kha_kademe: string
+  kha_tarihi: string
+  ekea_derece: string
+  ekea_kademe: string
+  ekea_tarihi: string
+  kidem_yili: string
+  kidem_tarihi: string
+  iyi_hal_terfi_tarihi: string
+  ek_gosterge: string
+  ek_odeme: string
+  oht: string
+  igz: string
+  sds_orani: string
+}
+
+const BOS_DURUM: DurumBilgi = {
+  gorev_yeri: '',
+  unvan: '',
+  sinif: '',
+  kadro_derecesi: '',
+  kadro_sira_no: '',
+  kadro_durumu: '',
+  kha_derece: '',
+  kha_kademe: '',
+  kha_tarihi: '',
+  ekea_derece: '',
+  ekea_kademe: '',
+  ekea_tarihi: '',
+  kidem_yili: '',
+  kidem_tarihi: '',
+  iyi_hal_terfi_tarihi: '',
+  ek_gosterge: '',
+  ek_odeme: '',
+  oht: '',
+  igz: '',
+  sds_orani: '',
+}
+
 interface Props {
-  personel: Calisan
+  personel: Calisan | null
+  personeller?: { sicil_no: string; ad_soyad: string }[]
   ogrenimDurumu?: string | null
   seciliKadro: KH | null
   seciliKadroRol: 'asil' | 'vekil'
@@ -40,6 +88,7 @@ interface Props {
 
 export default function PersonelHareketiDegistirClient({
   personel,
+  personeller = [],
   ogrenimDurumu = null,
   seciliKadro,
   seciliKadroRol,
@@ -64,31 +113,37 @@ export default function PersonelHareketiDegistirClient({
   const [kaydedildi, setKaydedildi] = useState(false)
   const [kadroSecModalAcik, setKadroSecModalAcik] = useState(false)
   const [kadroArama, setKadroArama] = useState('')
+  const [personelArama, setPersonelArama] = useState('')
+  const [personelAramaAcik, setPersonelAramaAcik] = useState(false)
 
   const { eski, yeni } = useMemo(() => {
+    if (yeniKayit) {
+      return { eski: BOS_DURUM, yeni: BOS_DURUM }
+    }
+
     const k = seciliKadro
 
     const mud = k?.gorev_mudurlugu ?? k?.kadro_mudurlugu ?? ''
     const unvan = k?.gorev_unvani ?? k?.kadro_unvani ?? ''
     const sinif = unvanlar.find(u => u.ad === (k?.kadro_unvani ?? k?.gorev_unvani ?? ''))?.sinif ?? ''
-    const derece = k?.kadro_derecesi ?? ''
-    const siraNo = k?.kadro_sira_no ?? ''
+    const derece = String(k?.kadro_derecesi ?? '')
+    const siraNo = String(k?.kadro_sira_no ?? '')
     const kadroDurumu = k?.durumu ?? ''
     const terfi = {
-      kha_derece: terfiSon?.kha_derece ?? '',
-      kha_kademe: terfiSon?.kha_kademe ?? '',
+      kha_derece: String(terfiSon?.kha_derece ?? ''),
+      kha_kademe: String(terfiSon?.kha_kademe ?? ''),
       kha_tarihi: terfiSon?.kha_tarihi ?? '',
-      ekea_derece: terfiSon?.ekea_derece ?? '',
-      ekea_kademe: terfiSon?.ekea_kademe ?? '',
+      ekea_derece: String(terfiSon?.ekea_derece ?? ''),
+      ekea_kademe: String(terfiSon?.ekea_kademe ?? ''),
       ekea_tarihi: terfiSon?.ekea_tarihi ?? '',
-      kidem_yili: terfiSon?.kidem_yili ?? '',
+      kidem_yili: String(terfiSon?.kidem_yili ?? ''),
       kidem_tarihi: terfiSon?.kidem_tarihi ?? '',
       iyi_hal_terfi_tarihi: terfiSon?.iyi_hal_terfi_tarihi ?? '',
-      ek_gosterge: terfiSon?.ek_gosterge ?? '',
-      ek_odeme: terfiSon?.ek_odeme ?? '',
-      oht: terfiSon?.oht ?? '',
-      igz: terfiSon?.yan_odeme ?? '',
-      sds_orani: terfiSon?.sds_orani ?? '',
+      ek_gosterge: String(terfiSon?.ek_gosterge ?? ''),
+      ek_odeme: String(terfiSon?.ek_odeme ?? ''),
+      oht: String(terfiSon?.oht ?? ''),
+      igz: String(terfiSon?.yan_odeme ?? ''),
+      sds_orani: String(terfiSon?.sds_orani ?? ''),
     }
 
     return {
@@ -111,17 +166,37 @@ export default function PersonelHareketiDegistirClient({
         ...terfi,
       },
     }
-  }, [seciliKadro, unvanlar, terfiSon])
+  }, [seciliKadro, unvanlar, terfiSon, yeniKayit])
 
-  const dogumTarihiFmt = personel.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : ''
-  const dogumYeriTarihi = [personel.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ')
-  const [yeniGorevYeriState, setYeniGorevYeriState] = useState(yeni.gorev_yeri ?? '')
-  const [yeniKadroIdState, setYeniKadroIdState] = useState<number | null>(seciliKadro?.id ?? null)
-  const [yeniKadroSiraNoState, setYeniKadroSiraNoState] = useState(yeniKadroIdState ? (seciliKadro?.kadro_sira_no ?? '') : '')
-  const [yeniKadroDurumuState, setYeniKadroDurumuState] = useState(seciliKadro?.durumu ?? '')
-  const [yeniUnvanState, setYeniUnvanState] = useState(yeni.unvan ?? '')
-  const [yeniSinifState, setYeniSinifState] = useState(yeni.sinif ?? '')
-  const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeni.kadro_derecesi ?? '')
+  const filtreliPersoneller = useMemo(() => {
+    const q = trNormalize(personelArama)
+    if (!q) return personeller.slice(0, 12)
+    return personeller
+      .filter(p => trNormalize(p.sicil_no).includes(q) || trNormalize(p.ad_soyad).includes(q))
+      .slice(0, 12)
+  }, [personeller, personelArama])
+
+  const formKilitli = saltOkunur
+  const detayKilitli = saltOkunur || (yeniKayit && !personel)
+
+  const dogumTarihiFmt = personel?.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : ''
+  const dogumYeriTarihi = personel ? [personel.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ') : ''
+  const [yeniGorevYeriState, setYeniGorevYeriState] = useState(yeniKayit ? '' : (yeni.gorev_yeri ?? ''))
+  const [yeniKadroIdState, setYeniKadroIdState] = useState<number | null>(yeniKayit ? null : (seciliKadro?.id ?? null))
+  const [yeniKadroSiraNoState, setYeniKadroSiraNoState] = useState(yeniKayit ? '' : (yeniKadroIdState ? (seciliKadro?.kadro_sira_no ?? '') : ''))
+  const [yeniKadroDurumuState, setYeniKadroDurumuState] = useState(yeniKayit ? '' : (seciliKadro?.durumu ?? ''))
+  const [yeniUnvanState, setYeniUnvanState] = useState(yeniKayit ? '' : (yeni.unvan ?? ''))
+  const [yeniSinifState, setYeniSinifState] = useState(yeniKayit ? '' : (yeni.sinif ?? ''))
+  const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeniKayit ? '' : (yeni.kadro_derecesi ?? ''))
+
+  function personelSec(sicil: string) {
+    const q = popup ? '&popup=1' : ''
+    router.push(`/personel-hareketleri/${encodeURIComponent(sicil)}/degistir?yeni=1${q}`)
+  }
+
+  function personelDegistir() {
+    router.push(`/personel-hareketleri/ekle${popup ? '?popup=1' : ''}`)
+  }
   const bosKadrolarSirali = useMemo(() => {
     return [...bosKadrolar].sort((a, b) => {
       const aNo = Number.parseInt(String(a.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
@@ -172,6 +247,10 @@ export default function PersonelHareketiDegistirClient({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (saltOkunur) return
+    if (!personel) {
+      setHata('Lütfen kişisel bilgiler bölümünden personel seçiniz.')
+      return
+    }
     setHata(null)
     const fd = new FormData(e.currentTarget)
     const hareketTipi = String(fd.get('hareket_tipi') ?? '').trim()
@@ -217,7 +296,7 @@ export default function PersonelHareketiDegistirClient({
   }
 
   function formVerisiOlustur() {
-    if (!formRef.current) return null
+    if (!formRef.current || !personel) return null
     const fd = new FormData(formRef.current)
     return personelHareketFormVerisiOlustur({
       fd,
@@ -237,7 +316,7 @@ export default function PersonelHareketiDegistirClient({
 
   async function handleExcelIndir() {
     const veri = formVerisiOlustur()
-    if (!veri) return
+    if (!veri || !personel) return
     setHata(null)
 
     try {
@@ -278,7 +357,7 @@ export default function PersonelHareketiDegistirClient({
 
   async function handleWordIndir() {
     const veri = formVerisiOlustur()
-    if (!veri) return
+    if (!veri || !personel) return
     setHata(null)
     try {
       const { Packer } = await import('docx')
@@ -319,7 +398,9 @@ export default function PersonelHareketiDegistirClient({
         )}
         {yeniKayit && !saltOkunur && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Yeni personel hareketi oluşturuyorsunuz. Formu doldurup kaydedebilirsiniz.
+            {personel
+              ? 'Yeni personel hareketi oluşturuyorsunuz. ESKİ alan boş; YENİ bölümünü doldurup kaydedin. Boş kadro seçimi ile personeli kadroya atayabilirsiniz.'
+              : 'Kişisel bilgiler bölümünden personel seçin; ardından YENİ bölümünü doldurarak kayıt oluşturun.'}
           </div>
         )}
         {kaydedildi && (
@@ -327,7 +408,7 @@ export default function PersonelHareketiDegistirClient({
             Kayıt başarıyla tamamlandı. İsterseniz belgeyi indirip ardından formu kapatabilirsiniz.
           </div>
         )}
-        <fieldset disabled={saltOkunur} className="space-y-6 disabled:opacity-95">
+        <fieldset disabled={formKilitli} className="space-y-6 disabled:opacity-95">
         {/* Hareket Tipi */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Hareket Tipi</h2>
@@ -352,12 +433,50 @@ export default function PersonelHareketiDegistirClient({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">1. Adı, Soyadı</label>
-              <input type="text" value={personel.ad_soyad ?? ''} readOnly
-                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
+              {yeniKayit && !personel ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="İsim veya sicil no ile ara…"
+                    value={personelArama}
+                    onChange={e => { setPersonelArama(e.target.value); setPersonelAramaAcik(true) }}
+                    onFocus={() => setPersonelAramaAcik(true)}
+                    onBlur={() => setTimeout(() => setPersonelAramaAcik(false), 200)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+                  />
+                  {personelAramaAcik && filtreliPersoneller.length > 0 && (
+                    <ul className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filtreliPersoneller.map(p => (
+                        <li key={p.sicil_no}>
+                          <button
+                            type="button"
+                            onMouseDown={() => personelSec(p.sicil_no)}
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm"
+                          >
+                            <span className="font-medium text-slate-800">{p.ad_soyad}</span>
+                            <span className="text-slate-400 text-xs ml-2">{p.sicil_no}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input type="text" value={personel?.ad_soyad ?? ''} readOnly
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
+                  {yeniKayit && personel && (
+                    <button type="button" onClick={personelDegistir}
+                      className="text-xs text-slate-500 hover:text-slate-700 whitespace-nowrap px-2 py-1 border border-slate-200 rounded">
+                      Değiştir
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">2. Sicil No</label>
-              <input type="text" value={personel.sicil_no} readOnly
+              <input type="text" value={personel?.sicil_no ?? ''} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
             </div>
             <div>
@@ -373,7 +492,11 @@ export default function PersonelHareketiDegistirClient({
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">6. Asli Memurluğa Atanma Tarihi</label>
               <input name="asli_memuriyete_atanma_tarihi" type="date"
-                defaultValue={(seciliKadro?.memuriyet_tarihi ?? '').toString().slice(0, 10)}
+                defaultValue={(
+                  yeniKayit
+                    ? (personel?.memuriyet_tarihi ?? personel?.kuruma_giris_tarihi ?? '')
+                    : (seciliKadro?.memuriyet_tarihi ?? '')
+                ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
@@ -383,12 +506,14 @@ export default function PersonelHareketiDegistirClient({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">8. Askerlik Durumu</label>
-              <input type="text" value={personel.askerlik_durumu ?? ''} readOnly
+              <input type="text" value={personel?.askerlik_durumu ?? ''} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
             </div>
           </div>
         </div>
+        </fieldset>
 
+        <fieldset disabled={detayKilitli} className="space-y-6 disabled:opacity-95">
         {/* Durum Bilgileri ESKİ / YENİ */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">Durum Bilgileri</h2>
@@ -626,18 +751,24 @@ export default function PersonelHareketiDegistirClient({
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">İşe başladığı tarih</label>
               <input name="ise_baslama_tarihi" type="date"
-                defaultValue={(seciliKadro?.memuriyet_tarihi ?? '').toString().slice(0, 10)}
+                defaultValue={(
+                  yeniKayit
+                    ? (personel?.memuriyet_tarihi ?? personel?.kuruma_giris_tarihi ?? '')
+                    : (seciliKadro?.memuriyet_tarihi ?? '')
+                ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Ayrıldığı tarih</label>
               <input name="ayrilis_tarihi" type="date"
-                defaultValue={(sonHareketAyrilis?.tarih ?? seciliKadro?.ayrilis_tarihi ?? '').toString().slice(0, 10)}
+                defaultValue={(
+                  yeniKayit ? '' : (sonHareketAyrilis?.tarih ?? seciliKadro?.ayrilis_tarihi ?? '')
+                ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Ayrılış Nedeni</label>
-              <select name="ayrilis_nedeni" defaultValue={sonHareketAyrilis?.nedeni ?? ''}
+              <select name="ayrilis_nedeni" defaultValue={yeniKayit ? '' : (sonHareketAyrilis?.nedeni ?? '')}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white">
                 <option value="">Seçiniz</option>
                 {ayrilisNedenleri.map(n => (
@@ -659,7 +790,11 @@ export default function PersonelHareketiDegistirClient({
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Yürürlük Tarihi</label>
               <input name="yururluk_tarihi" type="date"
-                defaultValue={(seciliKadro?.memuriyet_tarihi ?? seciliKadro?.kuruma_giris_tarihi ?? '').toString().slice(0, 10)}
+                defaultValue={(
+                  yeniKayit
+                    ? ''
+                    : (seciliKadro?.memuriyet_tarihi ?? seciliKadro?.kuruma_giris_tarihi ?? '')
+                ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
           </div>
@@ -688,7 +823,7 @@ export default function PersonelHareketiDegistirClient({
             className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">
             İptal
           </Link>
-          <button type="submit" disabled={isPending || saltOkunur}
+          <button type="submit" disabled={isPending || detayKilitli}
             className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
