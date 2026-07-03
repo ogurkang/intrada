@@ -113,6 +113,7 @@ export default function PersonelHareketiDegistirClient({
   const [kaydedildi, setKaydedildi] = useState(false)
   const [kadroSecModalAcik, setKadroSecModalAcik] = useState(false)
   const [kadroArama, setKadroArama] = useState('')
+  const [yeniBolumKey, setYeniBolumKey] = useState(0)
   const [personelArama, setPersonelArama] = useState('')
   const [personelAramaAcik, setPersonelAramaAcik] = useState(false)
 
@@ -188,6 +189,13 @@ export default function PersonelHareketiDegistirClient({
   const [yeniUnvanState, setYeniUnvanState] = useState(yeniKayit ? '' : (yeni.unvan ?? ''))
   const [yeniSinifState, setYeniSinifState] = useState(yeniKayit ? '' : (yeni.sinif ?? ''))
   const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeniKayit ? '' : (yeni.kadro_derecesi ?? ''))
+  const [yeniKadroRolState, setYeniKadroRolState] = useState<'asil' | 'vekil'>(yeniKayit ? 'asil' : seciliKadroRol)
+  const [yeniGirisVarsayilan, setYeniGirisVarsayilan] = useState<DurumBilgi>(yeniKayit ? BOS_DURUM : yeni)
+
+  function kadroRolDegistir(rol: 'asil' | 'vekil') {
+    setYeniKadroRolState(rol)
+    kadroyuBosalt()
+  }
 
   function personelSec(sicil: string) {
     const q = popup ? '&popup=1' : ''
@@ -197,6 +205,7 @@ export default function PersonelHareketiDegistirClient({
   function personelDegistir() {
     router.push(`/personel-hareketleri/ekle${popup ? '?popup=1' : ''}`)
   }
+
   const bosKadrolarSirali = useMemo(() => {
     return [...bosKadrolar].sort((a, b) => {
       const aNo = Number.parseInt(String(a.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
@@ -241,6 +250,8 @@ export default function PersonelHareketiDegistirClient({
     setYeniSinifState('')
     setYeniKadroDerecesiState('')
     setYeniGorevYeriState('')
+    setYeniGirisVarsayilan(BOS_DURUM)
+    setYeniBolumKey(k => k + 1)
     setKadroSecModalAcik(false)
   }
 
@@ -554,9 +565,36 @@ export default function PersonelHareketiDegistirClient({
                 </div>
               </div>
             </div>
-            <div>
+            <div key={yeniBolumKey}>
               <h3 className="text-xs font-semibold text-indigo-600 uppercase mb-3">YENİ</h3>
               <div className="space-y-2">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Kadro İlişki Tipi</label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={yeniKadroRolState === 'asil'}
+                        onChange={() => kadroRolDegistir('asil')}
+                        className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <span className="text-sm text-slate-700">Asil</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={yeniKadroRolState === 'vekil'}
+                        onChange={() => kadroRolDegistir('vekil')}
+                        className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <span className="text-sm text-slate-700">Vekil</span>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Kadro seçiminde yalnızca statüsü Memur ve durumu boş olan kadrolar listelenir. Asil veya vekil seçiminiz kayıt sonrası kadro hareketlerine yansır.
+                  </p>
+                  <input type="hidden" name="yeni_kadro_rol" value={yeniKadroRolState} />
+                </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-0.5">Görev Müdürlüğü</label>
                   <select name="yeni_gorev_yeri" value={yeniGorevYeriState} onChange={(e) => setYeniGorevYeriState(e.target.value)}
@@ -607,18 +645,18 @@ export default function PersonelHareketiDegistirClient({
                   <div className="grid grid-cols-2 gap-1">
                     <div>
                       <label className="block text-xs text-slate-500 mb-0.5">KHA D/K (D)</label>
-                      <input name="yeni_kha_derece" type="text" defaultValue={yeni.kha_derece}
+                      <input name="yeni_kha_derece" type="text" defaultValue={yeniGirisVarsayilan.kha_derece}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-0.5">KHA D/K (K)</label>
-                      <input name="yeni_kha_kademe" type="text" defaultValue={yeni.kha_kademe}
+                      <input name="yeni_kha_kademe" type="text" defaultValue={yeniGirisVarsayilan.kha_kademe}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">KHA Tarihi</label>
-                    <input name="yeni_kha_tarihi" type="date" defaultValue={(yeni.kha_tarihi ?? '').toString().slice(0, 10)}
+                    <input name="yeni_kha_tarihi" type="date" defaultValue={(yeniGirisVarsayilan.kha_tarihi ?? '').toString().slice(0, 10)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                 </div>
@@ -626,62 +664,62 @@ export default function PersonelHareketiDegistirClient({
                   <div className="grid grid-cols-2 gap-1">
                     <div>
                       <label className="block text-xs text-slate-500 mb-0.5">EKEA D/K (D)</label>
-                      <input name="yeni_ekea_derece" type="text" defaultValue={yeni.ekea_derece}
+                      <input name="yeni_ekea_derece" type="text" defaultValue={yeniGirisVarsayilan.ekea_derece}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-0.5">EKEA D/K (K)</label>
-                      <input name="yeni_ekea_kademe" type="text" defaultValue={yeni.ekea_kademe}
+                      <input name="yeni_ekea_kademe" type="text" defaultValue={yeniGirisVarsayilan.ekea_kademe}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">EKEA Tarihi</label>
-                    <input name="yeni_ekea_tarihi" type="date" defaultValue={(yeni.ekea_tarihi ?? '').toString().slice(0, 10)}
+                    <input name="yeni_ekea_tarihi" type="date" defaultValue={(yeniGirisVarsayilan.ekea_tarihi ?? '').toString().slice(0, 10)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Kıdem Yılı</label>
-                    <input name="yeni_kidem_yili" type="text" defaultValue={yeni.kidem_yili}
+                    <input name="yeni_kidem_yili" type="text" defaultValue={yeniGirisVarsayilan.kidem_yili}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Kıdem Tarihi</label>
-                    <input name="yeni_kidem_tarihi" type="date" defaultValue={(yeni.kidem_tarihi ?? '').toString().slice(0, 10)}
+                    <input name="yeni_kidem_tarihi" type="date" defaultValue={(yeniGirisVarsayilan.kidem_tarihi ?? '').toString().slice(0, 10)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">İyi Hal Tarihi</label>
-                    <input name="yeni_iyi_hal_terfi_tarihi" type="date" defaultValue={(yeni.iyi_hal_terfi_tarihi ?? '').toString().slice(0, 10)}
+                    <input name="yeni_iyi_hal_terfi_tarihi" type="date" defaultValue={(yeniGirisVarsayilan.iyi_hal_terfi_tarihi ?? '').toString().slice(0, 10)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Ek Gösterge</label>
-                    <input name="yeni_ek_gosterge" type="text" defaultValue={yeni.ek_gosterge}
+                    <input name="yeni_ek_gosterge" type="text" defaultValue={yeniGirisVarsayilan.ek_gosterge}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Ek Ödeme</label>
-                    <input name="yeni_ek_odeme" type="text" defaultValue={yeni.ek_odeme}
+                    <input name="yeni_ek_odeme" type="text" defaultValue={yeniGirisVarsayilan.ek_odeme}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">ÖHT</label>
-                    <input name="yeni_oht" type="text" defaultValue={yeni.oht}
+                    <input name="yeni_oht" type="text" defaultValue={yeniGirisVarsayilan.oht}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Yan Ödeme</label>
-                    <input name="yeni_igz" type="text" defaultValue={yeni.igz}
+                    <input name="yeni_igz" type="text" defaultValue={yeniGirisVarsayilan.igz}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">SDS</label>
-                    <input name="yeni_sds_orani" type="text" defaultValue={yeni.sds_orani}
+                    <input name="yeni_sds_orani" type="text" defaultValue={yeniGirisVarsayilan.sds_orani}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                   </div>
                 </div>
@@ -783,9 +821,9 @@ export default function PersonelHareketiDegistirClient({
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Kayıt No</label>
-              <input name="kayit_no" type="text"
-                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
+              <label className="block text-xs font-medium text-slate-500 mb-1">İşlem No</label>
+              <input type="text" readOnly value="Kayıt sonrası atanır (PH#…)"
+                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-400" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Yürürlük Tarihi</label>
@@ -857,7 +895,7 @@ export default function PersonelHareketiDegistirClient({
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Sadece Durumu Boş Olanlar)</h3>
+              <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Memur · durumu boş)</h3>
               <button type="button" onClick={() => setKadroSecModalAcik(false)} className="text-sm text-slate-500 hover:text-slate-700">Kapat</button>
             </div>
             <div className="px-4 py-3 border-b border-slate-100 space-y-2">

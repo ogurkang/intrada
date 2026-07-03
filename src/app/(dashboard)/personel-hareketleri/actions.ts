@@ -19,6 +19,7 @@ import {
   degisiklikOzeti,
   degisiklikPayload,
 } from '@/lib/personel-audit'
+import { personelHareketIslemNoUret } from '@/lib/personel-hareket-islem-no'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -49,6 +50,17 @@ function trTarih(v: string | null): string {
   if (!v) return ''
   const [y, m, d] = v.slice(0, 10).split('-')
   return d && m && y ? `${d}.${m}.${y}` : v
+}
+
+function hedefKadroKaydi(input: {
+  onceki_kadro_id: number | null
+  onceki_kadro_rol: 'asil' | 'vekil'
+  yeni_kadro_id: number | null
+  yeni_kadro_rol: 'asil' | 'vekil'
+}): { kadro_id: number | null; kadro_rol: 'asil' | 'vekil' | null } {
+  if (input.yeni_kadro_id) return { kadro_id: input.yeni_kadro_id, kadro_rol: input.yeni_kadro_rol }
+  if (input.onceki_kadro_id) return { kadro_id: input.onceki_kadro_id, kadro_rol: input.onceki_kadro_rol }
+  return { kadro_id: null, kadro_rol: null }
 }
 
 function str(fd: FormData, key: string): string | null {
@@ -103,32 +115,55 @@ async function kadroAtamasiniGuncelle(
     onceki_kadro_id: number | null
     onceki_kadro_rol: 'asil' | 'vekil'
     yeni_kadro_id: number | null
+    yeni_kadro_rol: 'asil' | 'vekil'
   },
 ): Promise<{ hata?: string }> {
   const sicil = String(input.sicil_no ?? '').trim()
   if (!sicil) return {}
 
   const yeniKadroId = input.yeni_kadro_id
+  const yeniRol = input.yeni_kadro_rol === 'vekil' ? 'vekil' : 'asil'
 
-  // İlk atama: önceki kadro yok, boş kadroya asil atama
-  if (!input.onceki_kadro_id) {
-    if (!yeniKadroId) return {}
+  async function yeniKadroyaAta(kadroId: number): Promise<{ hata?: string }> {
     const { data: yeni, error: yeniErr } = await supabase
       .from('kadro_hareketleri')
       .select('id, asil, vekil, durumu')
-      .eq('id', yeniKadroId)
+      .eq('id', kadroId)
       .limit(1)
       .maybeSingle()
     if (yeniErr) return { hata: yeniErr.message }
     if (!yeni) return { hata: 'Yeni kadro kaydı bulunamadı.' }
-    if ((yeni.durumu ?? '').trim() !== 'Boş') return { hata: 'Seçilen kadro artık boş değil. Lütfen listeyi yenileyin.' }
+
+    const mevcutAsil = String(yeni.asil ?? '').trim()
+    const mevcutVekil = String(yeni.vekil ?? '').trim()
+    const yeniUpdate: { asil?: string | null; vekil?: string | null; durumu?: 'Dolu' | 'Vekil' | 'Boş' } = {}
+
+    if (yeniRol === 'asil') {
+      if ((yeni.durumu ?? '').trim() !== 'Boş' || mevcutAsil || mevcutVekil) {
+        return { hata: 'Seçilen kadro boş olmalıdır. Lütfen listeyi yenileyin.' }
+      }
+      yeniUpdate.asil = sicil
+      yeniUpdate.durumu = 'Dolu'
+    } else {
+      if ((yeni.durumu ?? '').trim() !== 'Boş' || mevcutAsil || mevcutVekil) {
+        return { hata: 'Seçilen kadro boş olmalıdır. Lütfen listeyi yenileyin.' }
+      }
+      yeniUpdate.vekil = sicil
+      yeniUpdate.durumu = 'Vekil'
+    }
 
     const { error: yeniUpErr } = await supabase
       .from('kadro_hareketleri')
-      .update({ asil: sicil, durumu: 'Dolu' })
+      .update(yeniUpdate)
       .eq('id', yeni.id)
     if (yeniUpErr) return { hata: yeniUpErr.message }
     return {}
+  }
+
+  // İlk atama: önceki kadro yok
+  if (!input.onceki_kadro_id) {
+    if (!yeniKadroId) return {}
+    return yeniKadroyaAta(yeniKadroId)
   }
 
   const oncekiRol = input.onceki_kadro_rol
@@ -160,32 +195,7 @@ async function kadroAtamasiniGuncelle(
   if (oncekiUpErr) return { hata: oncekiUpErr.message }
 
   if (!yeniKadroId) return {}
-
-  const { data: yeni, error: yeniErr } = await supabase
-    .from('kadro_hareketleri')
-    .select('id, asil, vekil, durumu')
-    .eq('id', yeniKadroId)
-    .limit(1)
-    .maybeSingle()
-  if (yeniErr) return { hata: yeniErr.message }
-  if (!yeni) return { hata: 'Yeni kadro kaydı bulunamadı.' }
-  if ((yeni.durumu ?? '').trim() !== 'Boş') return { hata: 'Seçilen yeni kadro artık boş değil. Lütfen listeyi yenileyin.' }
-
-  const yeniUpdate: { asil?: string | null; vekil?: string | null; durumu?: 'Dolu' | 'Vekil' | 'Boş' } = {}
-  if (oncekiRol === 'asil') yeniUpdate.asil = sicil
-  else yeniUpdate.vekil = sicil
-
-  const yeniAsilSon = oncekiRol === 'asil' ? sicil : String(yeni.asil ?? '').trim()
-  const yeniVekilSon = oncekiRol === 'vekil' ? sicil : String(yeni.vekil ?? '').trim()
-  yeniUpdate.durumu = yeniAsilSon ? 'Dolu' : (yeniVekilSon ? 'Vekil' : 'Boş')
-
-  const { error: yeniUpErr } = await supabase
-    .from('kadro_hareketleri')
-    .update(yeniUpdate)
-    .eq('id', yeni.id)
-  if (yeniUpErr) return { hata: yeniUpErr.message }
-
-  return {}
+  return yeniKadroyaAta(yeniKadroId)
 }
 
 async function kadroMudurlukleriniEsitle(
@@ -281,15 +291,25 @@ export async function personelHareketiGuncelle(
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
+  const yeni_kadro_rol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
   const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
   const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
   const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
   if (ayrilisHata) return { hata: ayrilisHata }
 
+  const kadroKaydi = hedefKadroKaydi({
+    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+    onceki_kadro_rol,
+    yeni_kadro_id,
+    yeni_kadro_rol,
+  })
+
   const guncellemePayload = {
     hareket_tipi,
     yururluk_tarihi:       tarihStr(formData, 'yururluk_tarihi'),
     kadro_sira_no:         str(formData, 'kadro_sira_no'),
+    kadro_id:              kadroKaydi.kadro_id,
+    kadro_rol:             kadroKaydi.kadro_rol,
     yeni_gorev_yeri:       str(formData, 'yeni_gorev_yeri'),
     yeni_unvan:            str(formData, 'yeni_unvan'),
     yeni_sinif:            str(formData, 'yeni_sinif'),
@@ -314,6 +334,11 @@ export async function personelHareketiGuncelle(
     .update(guncellemePayload).eq('id', id).select('public_id').single()
 
   if (error) return { hata: error.message }
+
+  await supabase
+    .from('personel_hareketleri')
+    .update({ kayit_no: personelHareketIslemNoUret(id) })
+    .eq('id', id)
 
   if (sicil_no) {
     const degisiklikler = alanDegisiklikleriHesapla(oncekiHareket, guncellemePayload, HAREKET_ALAN_ETIKETLERI)
@@ -350,6 +375,7 @@ export async function personelHareketiGuncelle(
       onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
       onceki_kadro_rol,
       yeni_kadro_id,
+      yeni_kadro_rol,
     })
     if (kadroAtama.hata) return { hata: kadroAtama.hata }
     const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)
@@ -415,15 +441,25 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
+  const yeni_kadro_rol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
   const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
   const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
   const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
   if (ayrilisHata) return { hata: ayrilisHata }
 
+  const kadroKaydi = hedefKadroKaydi({
+    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+    onceki_kadro_rol,
+    yeni_kadro_id,
+    yeni_kadro_rol,
+  })
+
   const { data: inserted, error } = await supabase.from('personel_hareketleri').insert({
     sicil_no,
     hareket_tipi,
     kadro_sira_no,
+    kadro_id:                       kadroKaydi.kadro_id,
+    kadro_rol:                      kadroKaydi.kadro_rol,
     yururluk_tarihi:                tarihStr(formData, 'yururluk_tarihi'),
     adaylik_suresi:                 str(formData, 'adaylik_suresi'),
     asli_memuriyete_atanma_tarihi:  tarihStr(formData, 'asli_memuriyete_atanma_tarihi'),
@@ -461,12 +497,19 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     ayrilis_tarihi,
     ayrilis_nedeni,
     kayit_tarihi:                   tarihStr(formData, 'kayit_tarihi'),
-    kayit_no:                       str(formData, 'kayit_no'),
+    kayit_no:                       null,
     dagitim_mudurlukleri:           (formData.getAll('dagitim_mudurlukleri') as string[]).filter(Boolean).join('; ') || null,
     kayit_zamani:                   new Date().toISOString(),
   }).select('id, public_id').single()
 
   if (error) return { hata: error.message }
+
+  if (inserted?.id) {
+    await supabase
+      .from('personel_hareketleri')
+      .update({ kayit_no: personelHareketIslemNoUret(inserted.id) })
+      .eq('id', inserted.id)
+  }
 
   const ayrilisOzet = ayrilis_tarihi && ayrilis_nedeni
     ? ` Ayrılış kaydedildi (${ayrilis_nedeni}, ${trTarih(ayrilis_tarihi)}).`
@@ -509,6 +552,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
       onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
       onceki_kadro_rol,
       yeni_kadro_id,
+      yeni_kadro_rol,
     })
     if (kadroAtama.hata) return { hata: kadroAtama.hata }
     const kadroSync = await kadroMudurlukleriniEsitle(supabase, sicil_no, kadro_sira_no, yeni_gorev_yeri)

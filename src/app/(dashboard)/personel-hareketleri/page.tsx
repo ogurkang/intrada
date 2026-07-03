@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import PersonelHareketiListClient from '@/components/personel/PersonelHareketiListClient'
+import { personelHareketIslemNo } from '@/lib/personel-hareket-islem-no'
 import type { Tables } from '@/types/database'
 
 type KH = Tables<'kadro_hareketleri'>
@@ -19,7 +20,7 @@ export default async function PersonelHareketiListPage() {
       .select('sicil_no, ad_soyad'),
     supabase
       .from('personel_hareketleri')
-      .select('id, sicil_no, hareket_tipi, yururluk_tarihi, ise_baslama_tarihi, ayrilis_tarihi, yeni_gorev_yeri, yeni_unvan, eski_gorev_yeri, eski_unvan, aciklama, kayit_zamani')
+      .select('id, sicil_no, hareket_tipi, kadro_id, kadro_rol, yururluk_tarihi, ise_baslama_tarihi, ayrilis_tarihi, yeni_gorev_yeri, yeni_unvan, eski_gorev_yeri, eski_unvan, aciklama, kayit_zamani')
       .order('kayit_zamani', { ascending: false }),
   ])
 
@@ -37,9 +38,18 @@ export default async function PersonelHareketiListPage() {
     yeni_unvan: string | null; eski_gorev_yeri: string | null;
     eski_unvan: string | null; aciklama: string | null; kayit_zamani: string;
     hareket_id: number | null; salt_okunur: boolean;
+    ph_kadro_id: number | null; ph_kadro_rol: 'asil' | 'vekil' | null;
+    islem_no: string;
   }
 
   const satirlar: Satir[] = []
+
+  const kadroPhId = new Map<number, number>()
+  for (const h of hareketler) {
+    const kid = (h as { kadro_id?: number | null }).kadro_id
+    const hid = (h as { id?: number }).id
+    if (kid && hid && !kadroPhId.has(kid)) kadroPhId.set(kid, hid)
+  }
 
   kadrolar.forEach(k => {
     if (k.asil) {
@@ -61,6 +71,9 @@ export default async function PersonelHareketiListPage() {
         kayit_zamani:        k.created_at ?? k.updated_at,
         hareket_id:          null,
         salt_okunur:         false,
+        ph_kadro_id:         null,
+        ph_kadro_rol:        null,
+        islem_no:            personelHareketIslemNo(kadroPhId.get(k.id) ?? null),
       })
     }
     if (k.vekil) {
@@ -82,6 +95,9 @@ export default async function PersonelHareketiListPage() {
         kayit_zamani:        k.created_at ?? k.updated_at,
         hareket_id:          null,
         salt_okunur:         false,
+        ph_kadro_id:         null,
+        ph_kadro_rol:        null,
+        islem_no:            personelHareketIslemNo(kadroPhId.get(k.id) ?? null),
       })
     }
   })
@@ -112,6 +128,9 @@ export default async function PersonelHareketiListPage() {
       kayit_zamani: h.kayit_zamani ?? new Date(0).toISOString(),
       hareket_id: hid,
       salt_okunur: true,
+      ph_kadro_id: (h as { kadro_id?: number | null }).kadro_id ?? null,
+      ph_kadro_rol: ((h as { kadro_rol?: string | null }).kadro_rol === 'vekil' ? 'vekil' : (h as { kadro_rol?: string | null }).kadro_rol === 'asil' ? 'asil' : null),
+      islem_no: personelHareketIslemNo(hid),
     })
   }
 

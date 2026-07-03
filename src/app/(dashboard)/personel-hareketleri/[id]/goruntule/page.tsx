@@ -1,57 +1,122 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import PersonelHareketiGoruntuleClient from '@/components/personel/PersonelHareketiGoruntuleClient'
+import { kadroRolDogrula, sentetikHareketKadrodan } from '@/lib/personel-hareket-kadro'
+import { personelHareketIslemNo } from '@/lib/personel-hareket-islem-no'
 import type { Tables } from '@/types/database'
 
 type PH = Tables<'personel_hareketleri'>
 type Calisan = Tables<'calisan'>
+type KH = Tables<'kadro_hareketleri'>
 
-const HAREKET_TIPI_LABEL: Record<string, string> = {
-  IlkAtanma: 'İlk Atanma',
-  YerDegistirme: 'Yer Değiştirme',
-  Yukselme: 'Yükselme',
+type Sp = { kadro_id?: string; rol?: string; popup?: string }
+
+async function phKaydiKadroIdIle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string,
+  kadroId: number,
+): Promise<PH | null> {
+  const { data, error } = await supabase
+    .from('personel_hareketleri')
+    .select('*')
+    .eq('sicil_no', sicil_no)
+    .eq('kadro_id', kadroId)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) return null
+  return (data ?? null) as PH | null
 }
 
 export default async function PersonelHareketiGoruntulePage({
   params,
   searchParams,
-}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string }> }) {
+}: { params: Promise<{ id: string }>; searchParams?: Promise<Sp> }) {
   const { id: rawId } = await params
   const idText = String(rawId ?? '').trim()
   if (!idText) notFound()
-  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string }))
-  const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
-  const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
-  const popup = String(sp?.popup ?? '').trim()
+
+  let sp: Sp = {}
+  try {
+    sp = (await searchParams) ?? {}
+  } catch {
+    sp = {}
+  }
+
+  const seciliKadroId = Number.parseInt(String(sp.kadro_id ?? ''), 10)
+  const seciliRol = String(sp.rol ?? '').trim().toLowerCase()
+  const popup = String(sp.popup ?? '').trim()
 
   const supabase = await createClient()
   const idNum = Number.parseInt(idText, 10)
 
   let hareket: PH | null = null
-  let sicil_no = idText
+  let sicil_no = ''
+  let kadroKayit: KH | null = null
+
+  // 1) URL yolu sayısal personel_hareketleri id ise doğrudan o kayıt
   if (Number.isFinite(idNum) && idNum > 0) {
     const { data: byId } = await supabase
       .from('personel_hareketleri')
       .select('*')
       .eq('id', idNum)
       .maybeSingle()
-    hareket = (byId ?? null) as PH | null
-    if (hareket?.sicil_no) sicil_no = hareket.sicil_no
+    if (byId) {
+      hareket = byId as PH
+      sicil_no = hareket.sicil_no
+      if (hareket.kadro_id) {
+        const { data: kh } = await supabase
+          .from('kadro_hareketleri')
+          .select('*')
+          .eq('id', hareket.kadro_id)
+          .maybeSingle()
+        kadroKayit = (kh ?? null) as KH | null
+      }
+    }
   }
 
-  const [{ data: calisan }, { data: phRows }, { data: ogrenimRows }] = await Promise.all([
-    supabase.from('calisan').select('*').eq('sicil_no', sicil_no).single(),
-    supabase
-      .from('personel_hareketleri')
+  // 2) Kadro satırı tıklaması: sicil + kadro_id + rol ile eşleştir
+  if (!hareket && Number.isFinite(seciliKadroId) && seciliKadroId > 0) {
+    sicil_no = idText
+    const { data: kadro } = await supabase
+      .from('kadro_hareketleri')
       .select('*')
-      .eq('sicil_no', sicil_no)
-      .order('kayit_zamani', { ascending: false })
-      .limit(1),
+      .eq('id', seciliKadroId)
+      .maybeSingle()
+    if (!kadro) notFound()
+    kadroKayit = kadro as KH
+
+    const dogrulanmisRol = kadroRolDogrula(kadroKayit, sicil_no, seciliRol)
+    if (!dogrulanmisRol) notFound()
+
+    hareket = await phKaydiKadroIdIle(supabase, sicil_no, seciliKadroId)
+
+    if (!hareket && kadroKayit.kadro_sira_no) {
+      const { data: phBySira } = await supabase
+        .from('personel_hareketleri')
+        .select('*')
+        .eq('sicil_no', sicil_no)
+        .eq('kadro_sira_no', kadroKayit.kadro_sira_no)
+        .order('kayit_zamani', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      hareket = (phBySira ?? null) as PH | null
+    }
+
+    if (!hareket) {
+      hareket = sentetikHareketKadrodan(kadroKayit, sicil_no, dogrulanmisRol)
+    }
+  }
+
+  if (!sicil_no) sicil_no = idText
+
+  const [{ data: calisan }, { data: ogrenimRows }] = await Promise.all([
+    supabase.from('calisan').select('*').eq('sicil_no', sicil_no).maybeSingle(),
     supabase.from('calisan_ogrenim').select('ogrenim_turu').eq('sicil_no', sicil_no).eq('aktif', true).limit(1),
   ])
 
-  if (!hareket) hareket = ((phRows ?? [])[0] ?? null) as PH | null
   if (!calisan) notFound()
+
   if (!hareket) {
     const to = Number.isFinite(seciliKadroId) && seciliKadroId > 0
       ? `/personel-hareketleri/${sicil_no}/degistir?kadro_id=${seciliKadroId}&rol=${encodeURIComponent(seciliRol || '')}${popup ? '&popup=1' : ''}`
@@ -59,20 +124,29 @@ export default async function PersonelHareketiGoruntulePage({
     redirect(to)
   }
 
+  const kadroIdGosterim = kadroKayit?.id ?? hareket.kadro_id ?? (Number.isFinite(seciliKadroId) ? seciliKadroId : null)
+  const kadroRolGosterim = hareket.kadro_rol ?? seciliRol
+  const islemNo = personelHareketIslemNo(hareket.id, hareket.kayit_no)
+
   let kadroLabel = hareket.kadro_sira_no ?? '—'
-  if (Number.isFinite(seciliKadroId) && seciliKadroId > 0) {
+  if (kadroKayit) {
+    const unvan = kadroKayit.gorev_unvani ?? kadroKayit.kadro_unvani ?? ''
+    const mud = kadroKayit.gorev_mudurlugu ?? kadroKayit.kadro_mudurlugu ?? ''
+    const rolEtiket = kadroRolGosterim === 'vekil' ? 'Vekil' : kadroRolGosterim === 'asil' ? 'Asil' : ''
+    const no = kadroKayit.kadro_sira_no ?? hareket.kadro_sira_no
+    kadroLabel = `${no ?? '—'} – ${unvan} (${mud})${rolEtiket ? ' – ' + rolEtiket : ''}`
+  } else if (Number.isFinite(seciliKadroId) && seciliKadroId > 0) {
     const { data: khRows } = await supabase
       .from('kadro_hareketleri')
-      .select('kadro_sira_no, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil')
+      .select('kadro_sira_no, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu')
       .eq('id', seciliKadroId)
       .limit(1)
     const kh = (khRows ?? [])[0]
     if (kh) {
-      const unvan = (kh as { gorev_unvani?: string; kadro_unvani?: string }).gorev_unvani ?? (kh as { kadro_unvani?: string }).kadro_unvani ?? ''
-      const mud = (kh as { kadro_mudurlugu?: string; gorev_mudurlugu?: string }).kadro_mudurlugu ?? (kh as { gorev_mudurlugu?: string }).gorev_mudurlugu ?? ''
+      const unvan = kh.gorev_unvani ?? kh.kadro_unvani ?? ''
+      const mud = kh.kadro_mudurlugu ?? kh.gorev_mudurlugu ?? ''
       const rol = seciliRol === 'asil' ? 'Asil' : seciliRol === 'vekil' ? 'Vekil' : ''
-      const no = (kh as { kadro_sira_no?: string | null }).kadro_sira_no ?? hareket.kadro_sira_no
-      kadroLabel = `${no ?? '—'} – ${unvan} (${mud})${rol ? ' – ' + rol : ''}`
+      kadroLabel = `${kh.kadro_sira_no ?? hareket.kadro_sira_no} – ${unvan} (${mud})${rol ? ' – ' + rol : ''}`
     }
   } else if (hareket.kadro_sira_no) {
     const { data: khRows } = await supabase
@@ -81,11 +155,11 @@ export default async function PersonelHareketiGoruntulePage({
       .eq('kadro_sira_no', hareket.kadro_sira_no)
     const kh = (khRows ?? []).find(
       (r: { asil: string | null; vekil: string | null }) =>
-        (r.asil ?? '').trim() === sicil_no || (r.vekil ?? '').trim() === sicil_no
+        (r.asil ?? '').trim() === sicil_no || (r.vekil ?? '').trim() === sicil_no,
     ) ?? (khRows ?? [])[0]
     if (kh) {
-      const unvan = (kh as { gorev_unvani?: string; kadro_unvani?: string }).gorev_unvani ?? (kh as { kadro_unvani?: string }).kadro_unvani ?? ''
-      const mud = (kh as { kadro_mudurlugu?: string; gorev_mudurlugu?: string }).kadro_mudurlugu ?? (kh as { gorev_mudurlugu?: string }).gorev_mudurlugu ?? ''
+      const unvan = kh.gorev_unvani ?? kh.kadro_unvani ?? ''
+      const mud = kh.kadro_mudurlugu ?? kh.gorev_mudurlugu ?? ''
       const rol = ((kh as { asil?: string }).asil ?? '').trim() === sicil_no ? 'Asil' : ((kh as { vekil?: string }).vekil ?? '').trim() === sicil_no ? 'Vekil' : ''
       kadroLabel = `${hareket.kadro_sira_no} – ${unvan} (${mud})${rol ? ' – ' + rol : ''}`
     }
@@ -96,8 +170,10 @@ export default async function PersonelHareketiGoruntulePage({
     : ''
 
   const ogrenimDurumu = (ogrenimRows ?? [])[0]?.ogrenim_turu ?? null
-  const degistirHref = Number.isFinite(seciliKadroId) && seciliKadroId > 0
-    ? `/personel-hareketleri/${sicil_no}/degistir?kadro_id=${seciliKadroId}&rol=${encodeURIComponent(seciliRol || '')}${popup ? '&popup=1' : ''}`
+  const degistirKadroId = kadroIdGosterim ?? seciliKadroId
+  const degistirRol = kadroRolGosterim || seciliRol
+  const degistirHref = Number.isFinite(degistirKadroId) && (degistirKadroId as number) > 0
+    ? `/personel-hareketleri/${sicil_no}/degistir?kadro_id=${degistirKadroId}&rol=${encodeURIComponent(degistirRol || '')}${popup ? '&popup=1' : ''}`
     : `/personel-hareketleri/${sicil_no}/degistir${popup ? '?popup=1' : ''}`
 
   return (
@@ -105,6 +181,7 @@ export default async function PersonelHareketiGoruntulePage({
       personel={calisan as Calisan}
       hareket={hareket}
       kadroLabel={kadroLabel}
+      islemNo={islemNo}
       teklifEdenAd={teklifAd}
       ogrenimDurumu={ogrenimDurumu}
       degistirHref={degistirHref}

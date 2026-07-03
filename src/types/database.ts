@@ -1030,6 +1030,7 @@ export interface Database {
       personel_hareketleri: {
         Row: {
           id: number; public_id: string; sicil_no: string; hareket_tipi: string | null; kadro_sira_no: string | null
+          kadro_id: number | null; kadro_rol: string | null
           yururluk_tarihi: string | null; adaylik_suresi: string | null
           asli_memuriyete_atanma_tarihi: string | null; eski_gorev_yeri: string | null
           eski_unvan: string | null; eski_sinif: string | null; eski_kadro_derecesi: string | null
@@ -1050,6 +1051,7 @@ export interface Database {
         }
         Insert: {
           id?: number; public_id?: string; sicil_no: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
+          kadro_id?: number | null; kadro_rol?: string | null
           yururluk_tarihi?: string | null; adaylik_suresi?: string | null
           asli_memuriyete_atanma_tarihi?: string | null; eski_gorev_yeri?: string | null
           eski_unvan?: string | null; eski_sinif?: string | null; eski_kadro_derecesi?: string | null
@@ -1070,6 +1072,7 @@ export interface Database {
         }
         Update: {
           id?: number; public_id?: string; sicil_no?: string; hareket_tipi?: string | null; kadro_sira_no?: string | null
+          kadro_id?: number | null; kadro_rol?: string | null
           yururluk_tarihi?: string | null; adaylik_suresi?: string | null
           asli_memuriyete_atanma_tarihi?: string | null; eski_gorev_yeri?: string | null
           eski_unvan?: string | null; eski_sinif?: string | null; eski_kadro_derecesi?: string | null

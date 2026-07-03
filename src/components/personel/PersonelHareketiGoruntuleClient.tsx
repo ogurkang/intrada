@@ -3,12 +3,6 @@
 import Link from 'next/link'
 import { toGgAayyyy } from '@/lib/tarih'
 import type { Tables } from '@/types/database'
-import {
-  PERSONEL_HAREKET_SABLON_SAYFA,
-  PERSONEL_HAREKET_SABLON_URL,
-  personelHareketExcelDoldurExcelJs,
-  personelHareketFormVerisiKayittan,
-} from '@/lib/personel-hareket-belge'
 
 type Calisan = Tables<'calisan'>
 type PH = Tables<'personel_hareketleri'>
@@ -37,6 +31,7 @@ interface Props {
   personel: Calisan
   hareket: PH
   kadroLabel: string
+  islemNo: string
   teklifEdenAd: string
   ogrenimDurumu?: string | null
   degistirHref: string
@@ -46,6 +41,7 @@ export default function PersonelHareketiGoruntuleClient({
   personel,
   hareket,
   kadroLabel,
+  islemNo,
   teklifEdenAd,
   ogrenimDurumu = null,
   degistirHref,
@@ -56,7 +52,8 @@ export default function PersonelHareketiGoruntuleClient({
 
   async function handleExcelIndir() {
     try {
-      const veri = personelHareketFormVerisiKayittan({
+      const belge = await import('@/lib/personel-hareket-belge')
+      const veri = belge.personelHareketFormVerisiKayittan({
         personel,
         hareket,
         dogumYeriTarihi,
@@ -64,14 +61,14 @@ export default function PersonelHareketiGoruntuleClient({
         teklifEdenAd,
       })
       const ExcelJS = (await import('exceljs')).default
-      const resp = await fetch(PERSONEL_HAREKET_SABLON_URL)
+      const resp = await fetch(belge.PERSONEL_HAREKET_SABLON_URL)
       if (!resp.ok) return
       const buffer = await resp.arrayBuffer()
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(buffer)
-      const ws = wb.getWorksheet(PERSONEL_HAREKET_SABLON_SAYFA) ?? wb.worksheets[0]
+      const ws = wb.getWorksheet(belge.PERSONEL_HAREKET_SABLON_SAYFA) ?? wb.worksheets[0]
       if (!ws) return
-      personelHareketExcelDoldurExcelJs(ws, veri)
+      belge.personelHareketExcelDoldurExcelJs(ws, veri)
       const out = await wb.xlsx.writeBuffer()
       const blob = new Blob([out], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -137,6 +134,9 @@ export default function PersonelHareketiGoruntuleClient({
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">İşlem yapılacak kadro</h2>
           <p className="text-slate-700">{kadroLabel}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            İşlem No: <span className="font-mono font-medium">{islemNo}</span>
+          </p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -209,7 +209,7 @@ export default function PersonelHareketiGoruntuleClient({
             <AlanGoster etiket="Ayrıldığı tarih" deger={tarih(hareket.ayrilis_tarihi)} />
             <AlanGoster etiket="Ayrılış Nedeni" deger={hareket.ayrilis_nedeni} />
             <AlanGoster etiket="Kayıt Tarihi" deger={tarih(hareket.kayit_tarihi)} />
-            <AlanGoster etiket="Kayıt No" deger={hareket.kayit_no} />
+            <AlanGoster etiket="İşlem No" deger={islemNo} />
             <AlanGoster etiket="Yürürlük Tarihi" deger={tarih(hareket.yururluk_tarihi)} />
           </div>
           {hareket.dagitim_mudurlukleri && (

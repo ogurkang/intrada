@@ -22,6 +22,9 @@ interface HareketSatir {
   kayit_zamani:      string
   hareket_id:        number | null
   salt_okunur:       boolean
+  ph_kadro_id:       number | null
+  ph_kadro_rol:      'asil' | 'vekil' | null
+  islem_no:          string
 }
 
 interface Props {
@@ -62,7 +65,8 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
       if (q && !(
         trNormalize(h.ad_soyad).includes(q) ||
         trNormalize(h.sicil_no).includes(q) ||
-        trNormalize(h.yeni_gorev_yeri).includes(q)
+        trNormalize(h.yeni_gorev_yeri).includes(q) ||
+        trNormalize(h.islem_no).includes(q)
       )) return false
       if (tipFiltre && (h.hareket_tipi ?? '') !== tipFiltre) return false
       if (yilFiltre && !h.yururluk_tarihi?.startsWith(yilFiltre)) return false
@@ -72,7 +76,11 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
 
   function satirAcYeniSekme(h: HareketSatir) {
     if (h.hareket_id && h.hareket_id > 0) {
-      const href = `/personel-hareketleri/${h.hareket_id}/goruntule?popup=1`
+      const kadroQ =
+        h.ph_kadro_id && h.ph_kadro_id > 0
+          ? `kadro_id=${h.ph_kadro_id}&rol=${encodeURIComponent(h.ph_kadro_rol ?? '')}&`
+          : ''
+      const href = `/personel-hareketleri/${h.hareket_id}/goruntule?${kadroQ}popup=1`
       const w = window.open(href, '_blank')
       if (!w) router.push(href)
       return
@@ -151,6 +159,7 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">İşlem No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-24">Sicil</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">Hareket Tipi</th>
@@ -161,7 +170,7 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan={8} className="text-center py-14 text-slate-400">Kayıt bulunamadı.</td></tr>
             )}
             {filtreli.map((h, idx) => (
               <tr
@@ -170,6 +179,7 @@ export default function PersonelHareketiListClient({ hareketler, hareketTipleri 
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <td className="px-4 py-3 text-center text-xs text-slate-400">{idx + 1}</td>
+                <td className="px-4 py-3 text-center font-mono text-xs text-slate-600">{h.islem_no}</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{h.sicil_no}</td>
                 <td className="px-4 py-3 font-medium text-slate-800">{h.ad_soyad}</td>
                 <td className="px-4 py-3">

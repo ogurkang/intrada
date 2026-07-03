@@ -64,6 +64,7 @@ type DurumFiltre = (typeof DURUM_FILTRELER)[number]
 
 type ColumnFilterKey =
   | 'kadro_derecesi'
+  | 'sinif'
   | 'kadro_gorev_unvani'
   | 'mudurluk'
   | 'statu'
@@ -75,6 +76,7 @@ type ColumnFilters = Record<ColumnFilterKey, string[]>
 
 const BOS_KOLON_FILTRE: ColumnFilters = {
   kadro_derecesi: [],
+  sinif: [],
   kadro_gorev_unvani: [],
   mudurluk: [],
   statu: [],
@@ -229,6 +231,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
   const filtreOpsiyonlari = useMemo(() => {
     const degerler = {
       kadro_derecesi: new Set<string>(),
+      sinif: new Set<string>(),
       kadro_gorev_unvani: new Set<string>(),
       mudurluk: new Set<string>(),
       statu: new Set<string>(),
@@ -239,6 +242,8 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
 
     for (const k of data) {
       if (k.kadro_derecesi) degerler.kadro_derecesi.add(k.kadro_derecesi)
+
+      degerler.sinif.add(kadroSinifMetni(k))
 
       const unvan = [k.kadro_unvani, k.gorev_unvani]
         .filter(Boolean)
@@ -262,6 +267,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
 
     return {
       kadro_derecesi: [...degerler.kadro_derecesi].sort((a, b) => trNumericCollator.compare(a, b)),
+      sinif: [...degerler.sinif].sort((a, b) => a.localeCompare(b, 'tr')),
       kadro_gorev_unvani: [...degerler.kadro_gorev_unvani].sort((a, b) => a.localeCompare(b, 'tr')),
       mudurluk: [...degerler.mudurluk].sort((a, b) => a.localeCompare(b, 'tr')),
       statu: [...degerler.statu].sort((a, b) => a.localeCompare(b, 'tr')),
@@ -269,7 +275,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       vekil: [...degerler.vekil].sort((a, b) => a.localeCompare(b, 'tr')),
       durumu: [...degerler.durumu].sort((a, b) => a.localeCompare(b, 'tr')),
     }
-  }, [data, adMap])
+  }, [data, adMap, unvanSinifMap])
 
   function toggleKolonFiltre(key: ColumnFilterKey, value: string) {
     setKolonFiltre(prev => {
@@ -309,6 +315,9 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     }
     if (kolonFiltre.kadro_derecesi.length > 0) {
       list = list.filter(k => kolonFiltre.kadro_derecesi.includes(k.kadro_derecesi ?? ''))
+    }
+    if (kolonFiltre.sinif.length > 0) {
+      list = list.filter(k => kolonFiltre.sinif.includes(kadroSinifMetni(k)))
     }
     if (kolonFiltre.kadro_gorev_unvani.length > 0) {
       list = list.filter(k => {
@@ -602,7 +611,18 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
                     />
                   </div>
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sınıf</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">
+                  <div className="inline-flex items-center gap-1.5">
+                    Sınıf
+                    <HeaderMultiSelectFilter
+                      title="Sınıf"
+                      options={filtreOpsiyonlari.sinif}
+                      selected={kolonFiltre.sinif}
+                      onToggle={v => toggleKolonFiltre('sinif', v)}
+                      onClear={() => setKolonFiltre(prev => ({ ...prev, sinif: [] }))}
+                    />
+                  </div>
+                </th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">
                   <div className="inline-flex items-center gap-1.5">
                     Kadro / Görev Ünvanı

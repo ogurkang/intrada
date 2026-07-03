@@ -8,6 +8,39 @@ type BosKadroSecenek = Pick<
   'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'
 >
 
+const BOS_KADRO_SELECT =
+  'id, kadro_sira_no, kadro_derecesi, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu'
+
+async function yukleBosKadrolar(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
+): Promise<BosKadroSecenek[]> {
+  const batchSize = 1000
+  let from = 0
+  const out: BosKadroSecenek[] = []
+
+  while (true) {
+    const to = from + batchSize - 1
+    const { data, error } = await supabase
+      .from('kadro_hareketleri')
+      .select(BOS_KADRO_SELECT)
+      .eq('statu', 'Memur')
+      .eq('durumu', 'Boş')
+      .is('iptal_karar_tarihi', null)
+      .is('iptal_karar_no', null)
+      .is('ayrilis_tarihi', null)
+      .order('kadro_sira_no', { ascending: true })
+      .range(from, to)
+    if (error) throw error
+
+    const rows = (data ?? []) as BosKadroSecenek[]
+    out.push(...rows)
+    if (rows.length < batchSize) break
+    from += batchSize
+  }
+
+  return out
+}
+
 export type PersonelHareketDegistirVeri = {
   personel: Tables<'calisan'> | null
   personeller: { sicil_no: string; ad_soyad: string }[]
@@ -43,7 +76,7 @@ export async function yuklePersonelHareketDegistirVeri(
     ogrenimRes,
     terfiRes,
     sonHareketRes,
-    bosKadroRes,
+    tumBosKadrolar,
     gostergeRes,
     personelListeRes,
   ] = await Promise.all([
@@ -81,21 +114,13 @@ export async function yuklePersonelHareketDegistirVeri(
           .order('kayit_zamani', { ascending: false })
           .limit(1)
       : Promise.resolve({ data: [] as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null }[] }),
-    supabase
-      .from('kadro_hareketleri')
-      .select('id, kadro_sira_no, kadro_derecesi, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu')
-      .eq('durumu', 'Boş')
-      .is('iptal_karar_tarihi', null)
-      .is('iptal_karar_no', null)
-      .is('ayrilis_tarihi', null)
-      .order('kadro_sira_no', { ascending: true }),
+    yukleBosKadrolar(supabase),
     supabase.from('tanim_gosterge').select('derece, kademe, gosterge').eq('aktif', true),
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
   ])
 
   const personel = personelRes.data ?? null
   const kadrolar = (kadroRes.data ?? []) as KH[]
-  const tumBosKadrolar = (bosKadroRes.data ?? []) as BosKadroSecenek[]
   const personeller = (personelListeRes.data ?? []) as { sicil_no: string; ad_soyad: string }[]
   const terfiSon = ((terfiRes.data ?? [])[0] ?? null) as TH | null
   const sonHareketRaw = ((sonHareketRes.data ?? [])[0] ?? null) as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null } | null
@@ -117,12 +142,7 @@ export async function yuklePersonelHareketDegistirVeri(
           : undefined) ?? kadroListesi[0] ?? null)
       : null
 
-  const personelStatu = String(seciliKadroHam?.statu ?? 'Memur').trim()
-  const bosKadrolar = yeniKayit
-    ? tumBosKadrolar.filter(k => String(k.statu ?? 'Memur').trim() === 'Memur')
-    : personelStatu
-      ? tumBosKadrolar.filter(k => String(k.statu ?? '').trim() === personelStatu)
-      : tumBosKadrolar
+  const bosKadrolar = tumBosKadrolar
 
   const mudurlukler = (mudurlukRes.data ?? []).map(m => m.mudurluk_adi).filter(Boolean)
   const unvanlar = (unvanRes.data ?? []).map(u => ({ id: u.id, ad: u.unvan_adi, sinif: u.sinif_adi })).filter(u => u.ad)
