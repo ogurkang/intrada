@@ -1144,36 +1144,36 @@ export interface Database {
       terfi_hareketleri: {
         Row: {
           id: number; sicil_no: string; ad_soyad: string | null; rol: string | null
-          kadro_sira_no: string | null; unvan: string | null; mudurluk: string | null
+          kadro_id: number | null; kadro_sira_no: string | null; unvan: string | null; mudurluk: string | null
           gorev_ayligi_derece: string | null; gorev_ayligi_kademe: string | null
           kha_derece: string | null; kha_kademe: string | null; kha_tarihi: string | null
           ekea_derece: string | null; ekea_kademe: string | null; ekea_tarihi: string | null
           kidem_yili: string | null; kidem_tarihi: string | null
           iyi_hal_terfi_tarihi: string | null; ek_gosterge: string | null
           ek_odeme: string | null; oht: string | null; yan_odeme: string | null
-          sds_orani: string | null; kayit_zamani: string
+          sds_orani: string | null; kayit_zamani: string; kapsam_disi: boolean
         }
         Insert: {
           id?: number; sicil_no: string; ad_soyad?: string | null; rol?: string | null
-          kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
+          kadro_id?: number | null; kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
           gorev_ayligi_derece?: string | null; gorev_ayligi_kademe?: string | null
           kha_derece?: string | null; kha_kademe?: string | null; kha_tarihi?: string | null
           ekea_derece?: string | null; ekea_kademe?: string | null; ekea_tarihi?: string | null
           kidem_yili?: string | null; kidem_tarihi?: string | null
           iyi_hal_terfi_tarihi?: string | null; ek_gosterge?: string | null
           ek_odeme?: string | null; oht?: string | null; yan_odeme?: string | null
-          sds_orani?: string | null; kayit_zamani?: string
+          sds_orani?: string | null; kayit_zamani?: string; kapsam_disi?: boolean
         }
         Update: {
           id?: number; sicil_no?: string; ad_soyad?: string | null; rol?: string | null
-          kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
+          kadro_id?: number | null; kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
           gorev_ayligi_derece?: string | null; gorev_ayligi_kademe?: string | null
           kha_derece?: string | null; kha_kademe?: string | null; kha_tarihi?: string | null
           ekea_derece?: string | null; ekea_kademe?: string | null; ekea_tarihi?: string | null
           kidem_yili?: string | null; kidem_tarihi?: string | null
           iyi_hal_terfi_tarihi?: string | null; ek_gosterge?: string | null
           ek_odeme?: string | null; oht?: string | null; yan_odeme?: string | null
-          sds_orani?: string | null; kayit_zamani?: string
+          sds_orani?: string | null; kayit_zamani?: string; kapsam_disi?: boolean
         }
         Relationships: [{ foreignKeyName: "terfi_hareketleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }

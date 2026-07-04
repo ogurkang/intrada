@@ -14,6 +14,8 @@ import {
   personelHareketWordBelgesi,
   type GostergeKayit,
 } from '@/lib/personel-hareket-belge'
+import { personelHareketPersonelYukle } from '@/app/(dashboard)/personel-hareketleri/actions'
+import type { BosKadroSecenek } from '@/lib/personel-hareket-degistir-yukle'
 
 type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
@@ -71,7 +73,7 @@ interface Props {
   ogrenimDurumu?: string | null
   seciliKadro: KH | null
   seciliKadroRol: 'asil' | 'vekil'
-  bosKadrolar: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'>[]
+  bosKadrolar: BosKadroSecenek[]
   mudurlukler: string[]
   unvanlar: { id: number; ad: string; sinif: string | null }[]
   onaylayan: string
@@ -82,6 +84,7 @@ interface Props {
   sonHareketAyrilis?: { tarih: string | null; nedeni: string | null }
   popup?: boolean
   yeniKayit?: boolean
+  initialHareketTipi?: string
   saltOkunur?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
@@ -103,6 +106,7 @@ export default function PersonelHareketiDegistirClient({
   sonHareketAyrilis,
   popup = false,
   yeniKayit = false,
+  initialHareketTipi = '',
   saltOkunur = false,
   onKaydet,
 }: Props) {
@@ -116,6 +120,14 @@ export default function PersonelHareketiDegistirClient({
   const [yeniBolumKey, setYeniBolumKey] = useState(0)
   const [personelArama, setPersonelArama] = useState('')
   const [personelAramaAcik, setPersonelAramaAcik] = useState(false)
+  const [personelState, setPersonelState] = useState<Calisan | null>(personel)
+  const [ogrenimState, setOgrenimState] = useState<string | null>(ogrenimDurumu)
+  const [bosKadrolarState, setBosKadrolarState] = useState(bosKadrolar)
+  const [terfiSonState, setTerfiSonState] = useState<TH | null>(terfiSon)
+  const [hareketTipiState, setHareketTipiState] = useState(initialHareketTipi)
+  const [personelYukleniyor, setPersonelYukleniyor] = useState(false)
+
+  const personelAktif = personelState
 
   const { eski, yeni } = useMemo(() => {
     if (yeniKayit) {
@@ -131,20 +143,20 @@ export default function PersonelHareketiDegistirClient({
     const siraNo = String(k?.kadro_sira_no ?? '')
     const kadroDurumu = k?.durumu ?? ''
     const terfi = {
-      kha_derece: String(terfiSon?.kha_derece ?? ''),
-      kha_kademe: String(terfiSon?.kha_kademe ?? ''),
-      kha_tarihi: terfiSon?.kha_tarihi ?? '',
-      ekea_derece: String(terfiSon?.ekea_derece ?? ''),
-      ekea_kademe: String(terfiSon?.ekea_kademe ?? ''),
-      ekea_tarihi: terfiSon?.ekea_tarihi ?? '',
-      kidem_yili: String(terfiSon?.kidem_yili ?? ''),
-      kidem_tarihi: terfiSon?.kidem_tarihi ?? '',
-      iyi_hal_terfi_tarihi: terfiSon?.iyi_hal_terfi_tarihi ?? '',
-      ek_gosterge: String(terfiSon?.ek_gosterge ?? ''),
-      ek_odeme: String(terfiSon?.ek_odeme ?? ''),
-      oht: String(terfiSon?.oht ?? ''),
-      igz: String(terfiSon?.yan_odeme ?? ''),
-      sds_orani: String(terfiSon?.sds_orani ?? ''),
+      kha_derece: String(terfiSonState?.kha_derece ?? ''),
+      kha_kademe: String(terfiSonState?.kha_kademe ?? ''),
+      kha_tarihi: terfiSonState?.kha_tarihi ?? '',
+      ekea_derece: String(terfiSonState?.ekea_derece ?? ''),
+      ekea_kademe: String(terfiSonState?.ekea_kademe ?? ''),
+      ekea_tarihi: terfiSonState?.ekea_tarihi ?? '',
+      kidem_yili: String(terfiSonState?.kidem_yili ?? ''),
+      kidem_tarihi: terfiSonState?.kidem_tarihi ?? '',
+      iyi_hal_terfi_tarihi: terfiSonState?.iyi_hal_terfi_tarihi ?? '',
+      ek_gosterge: String(terfiSonState?.ek_gosterge ?? ''),
+      ek_odeme: String(terfiSonState?.ek_odeme ?? ''),
+      oht: String(terfiSonState?.oht ?? ''),
+      igz: String(terfiSonState?.yan_odeme ?? ''),
+      sds_orani: String(terfiSonState?.sds_orani ?? ''),
     }
 
     return {
@@ -167,7 +179,7 @@ export default function PersonelHareketiDegistirClient({
         ...terfi,
       },
     }
-  }, [seciliKadro, unvanlar, terfiSon, yeniKayit])
+  }, [seciliKadro, unvanlar, terfiSonState, yeniKayit])
 
   const filtreliPersoneller = useMemo(() => {
     const q = trNormalize(personelArama)
@@ -178,10 +190,10 @@ export default function PersonelHareketiDegistirClient({
   }, [personeller, personelArama])
 
   const formKilitli = saltOkunur
-  const detayKilitli = saltOkunur || (yeniKayit && !personel)
+  const detayKilitli = saltOkunur || (yeniKayit && !personelAktif)
 
-  const dogumTarihiFmt = personel?.dogum_tarihi ? new Date(personel.dogum_tarihi).toLocaleDateString('tr-TR') : ''
-  const dogumYeriTarihi = personel ? [personel.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ') : ''
+  const dogumTarihiFmt = personelAktif?.dogum_tarihi ? new Date(personelAktif.dogum_tarihi).toLocaleDateString('tr-TR') : ''
+  const dogumYeriTarihi = personelAktif ? [personelAktif.dogum_yeri, dogumTarihiFmt].filter(Boolean).join(' ') : ''
   const [yeniGorevYeriState, setYeniGorevYeriState] = useState(yeniKayit ? '' : (yeni.gorev_yeri ?? ''))
   const [yeniKadroIdState, setYeniKadroIdState] = useState<number | null>(yeniKayit ? null : (seciliKadro?.id ?? null))
   const [yeniKadroSiraNoState, setYeniKadroSiraNoState] = useState(yeniKayit ? '' : (yeniKadroIdState ? (seciliKadro?.kadro_sira_no ?? '') : ''))
@@ -197,17 +209,51 @@ export default function PersonelHareketiDegistirClient({
     kadroyuBosalt()
   }
 
-  function personelSec(sicil: string) {
-    const q = popup ? '&popup=1' : ''
-    router.push(`/personel-hareketleri/${encodeURIComponent(sicil)}/degistir?yeni=1${q}`)
+  async function personelSec(sicil: string) {
+    const ozet = personeller.find(p => p.sicil_no === sicil)
+    if (ozet) {
+      setPersonelState({
+        sicil_no: ozet.sicil_no,
+        ad_soyad: ozet.ad_soyad,
+      } as Calisan)
+    }
+    setPersonelYukleniyor(true)
+    setHata(null)
+    try {
+      const res = await personelHareketPersonelYukle(sicil)
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      if (res.personel) setPersonelState(res.personel)
+      if (res.ogrenimDurumu !== undefined) setOgrenimState(res.ogrenimDurumu ?? null)
+      if (res.bosKadrolar) setBosKadrolarState(res.bosKadrolar)
+      if (res.terfiSon !== undefined) setTerfiSonState(res.terfiSon ?? null)
+      setPersonelArama('')
+      setPersonelAramaAcik(false)
+      const q = new URLSearchParams()
+      q.set('yeni', '1')
+      if (hareketTipiState) q.set('hareket_tipi', hareketTipiState)
+      if (popup) q.set('popup', '1')
+      window.history.replaceState(null, '', `/personel-hareketleri/${encodeURIComponent(sicil)}/degistir?${q}`)
+    } finally {
+      setPersonelYukleniyor(false)
+    }
   }
 
   function personelDegistir() {
-    router.push(`/personel-hareketleri/ekle${popup ? '?popup=1' : ''}`)
+    setPersonelState(null)
+    setOgrenimState(null)
+    setTerfiSonState(null)
+    const q = new URLSearchParams()
+    if (popup) q.set('popup', '1')
+    if (hareketTipiState) q.set('hareket_tipi', hareketTipiState)
+    const qs = q.toString()
+    window.history.replaceState(null, '', `/personel-hareketleri/ekle${qs ? `?${qs}` : ''}`)
   }
 
   const bosKadrolarSirali = useMemo(() => {
-    return [...bosKadrolar].sort((a, b) => {
+    return [...bosKadrolarState].sort((a, b) => {
       const aNo = Number.parseInt(String(a.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
       const bNo = Number.parseInt(String(b.kadro_sira_no ?? '').replace(/[^\d-]/g, ''), 10)
       const aOk = Number.isFinite(aNo)
@@ -217,7 +263,7 @@ export default function PersonelHareketiDegistirClient({
       if (bOk) return 1
       return String(a.kadro_sira_no ?? '').localeCompare(String(b.kadro_sira_no ?? ''), 'tr')
     })
-  }, [bosKadrolar])
+  }, [bosKadrolarState])
   const bosKadrolarFiltreli = useMemo(() => {
     const q = kadroArama.trim().toLocaleLowerCase('tr-TR')
     if (!q) return bosKadrolarSirali
@@ -258,7 +304,7 @@ export default function PersonelHareketiDegistirClient({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (saltOkunur) return
-    if (!personel) {
+    if (!personelAktif) {
       setHata('Lütfen kişisel bilgiler bölümünden personel seçiniz.')
       return
     }
@@ -278,7 +324,7 @@ export default function PersonelHareketiDegistirClient({
       return
     }
     setIsPending(true)
-    fd.set('sicil_no', personel.sicil_no)
+    fd.set('sicil_no', personelAktif.sicil_no)
     fd.set('kadro_sira_no', yeniKadroSiraNoState)
     onKaydet(fd).then(res => {
       setIsPending(false)
@@ -307,13 +353,13 @@ export default function PersonelHareketiDegistirClient({
   }
 
   function formVerisiOlustur() {
-    if (!formRef.current || !personel) return null
+    if (!formRef.current || !personelAktif) return null
     const fd = new FormData(formRef.current)
     return personelHareketFormVerisiOlustur({
       fd,
-      personel,
+      personel: personelAktif,
       dogumYeriTarihi,
-      ogrenimDurumu,
+      ogrenimDurumu: ogrenimState,
       onaylayan,
       yardimcilar,
       eski,
@@ -327,7 +373,7 @@ export default function PersonelHareketiDegistirClient({
 
   async function handleExcelIndir() {
     const veri = formVerisiOlustur()
-    if (!veri || !personel) return
+    if (!veri || !personelAktif) return
     setHata(null)
 
     try {
@@ -355,7 +401,7 @@ export default function PersonelHareketiDegistirClient({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `personel-hareketi-${personel.sicil_no}.xlsx`
+      a.download = `personel-hareketi-${personelAktif.sicil_no}.xlsx`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -368,7 +414,7 @@ export default function PersonelHareketiDegistirClient({
 
   async function handleWordIndir() {
     const veri = formVerisiOlustur()
-    if (!veri || !personel) return
+    if (!veri || !personelAktif) return
     setHata(null)
     try {
       const { Packer } = await import('docx')
@@ -377,7 +423,7 @@ export default function PersonelHareketiDegistirClient({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `personel-hareketi-${personel.sicil_no}.docx`
+      a.download = `personel-hareketi-${personelAktif.sicil_no}.docx`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -409,7 +455,7 @@ export default function PersonelHareketiDegistirClient({
         )}
         {yeniKayit && !saltOkunur && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            {personel
+            {personelAktif
               ? 'Yeni personel hareketi oluşturuyorsunuz. ESKİ alan boş; YENİ bölümünü doldurup kaydedin. Boş kadro seçimi ile personeli kadroya atayabilirsiniz.'
               : 'Kişisel bilgiler bölümünden personel seçin; ardından YENİ bölümünü doldurarak kayıt oluşturun.'}
           </div>
@@ -431,6 +477,8 @@ export default function PersonelHareketiDegistirClient({
             ].map(({ v, l }) => (
               <label key={v} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="hareket_tipi" value={v}
+                  checked={hareketTipiState === v}
+                  onChange={() => setHareketTipiState(v)}
                   className="rounded border-slate-300 text-slate-600 focus:ring-slate-500" />
                 <span className="text-sm text-slate-700">{l}</span>
               </label>
@@ -444,12 +492,13 @@ export default function PersonelHareketiDegistirClient({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">1. Adı, Soyadı</label>
-              {yeniKayit && !personel ? (
+              {yeniKayit && !personelAktif ? (
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="İsim veya sicil no ile ara…"
+                    placeholder={personelYukleniyor ? 'Personel yükleniyor…' : 'İsim veya sicil no ile ara…'}
                     value={personelArama}
+                    disabled={personelYukleniyor}
                     onChange={e => { setPersonelArama(e.target.value); setPersonelAramaAcik(true) }}
                     onFocus={() => setPersonelAramaAcik(true)}
                     onBlur={() => setTimeout(() => setPersonelAramaAcik(false), 200)}
@@ -474,9 +523,9 @@ export default function PersonelHareketiDegistirClient({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <input type="text" value={personel?.ad_soyad ?? ''} readOnly
+                  <input type="text" value={personelAktif?.ad_soyad ?? (personelYukleniyor ? 'Yükleniyor…' : '')} readOnly
                     className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
-                  {yeniKayit && personel && (
+                  {yeniKayit && personelAktif && (
                     <button type="button" onClick={personelDegistir}
                       className="text-xs text-slate-500 hover:text-slate-700 whitespace-nowrap px-2 py-1 border border-slate-200 rounded">
                       Değiştir
@@ -487,7 +536,7 @@ export default function PersonelHareketiDegistirClient({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">2. Sicil No</label>
-              <input type="text" value={personel?.sicil_no ?? ''} readOnly
+              <input type="text" value={personelAktif?.sicil_no ?? ''} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
             </div>
             <div>
@@ -505,19 +554,19 @@ export default function PersonelHareketiDegistirClient({
               <input name="asli_memuriyete_atanma_tarihi" type="date"
                 defaultValue={(
                   yeniKayit
-                    ? (personel?.memuriyet_tarihi ?? personel?.kuruma_giris_tarihi ?? '')
+                    ? (personelAktif?.memuriyet_tarihi ?? personelAktif?.kuruma_giris_tarihi ?? '')
                     : (seciliKadro?.memuriyet_tarihi ?? '')
                 ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">7. Öğrenim Durumu</label>
-              <input type="text" value={ogrenimDurumu ?? ''} readOnly
+              <input type="text" value={ogrenimState ?? ''} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">8. Askerlik Durumu</label>
-              <input type="text" value={personel?.askerlik_durumu ?? ''} readOnly
+              <input type="text" value={personelAktif?.askerlik_durumu ?? ''} readOnly
                 className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
             </div>
           </div>
@@ -791,7 +840,7 @@ export default function PersonelHareketiDegistirClient({
               <input name="ise_baslama_tarihi" type="date"
                 defaultValue={(
                   yeniKayit
-                    ? (personel?.memuriyet_tarihi ?? personel?.kuruma_giris_tarihi ?? '')
+                    ? (personelAktif?.memuriyet_tarihi ?? personelAktif?.kuruma_giris_tarihi ?? '')
                     : (seciliKadro?.memuriyet_tarihi ?? '')
                 ).toString().slice(0, 10)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />

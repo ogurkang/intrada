@@ -7,14 +7,15 @@ import { yuklePersonelHareketDegistirVeri } from '@/lib/personel-hareket-degisti
 export default async function PersonelHareketiDegistirPage({
   params,
   searchParams,
-}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string; yeni?: string }> }) {
+}: { params: Promise<{ id: string }>; searchParams?: Promise<{ kadro_id?: string; rol?: string; popup?: string; yeni?: string; hareket_tipi?: string }> }) {
   const { id: sicil_no } = await params
   if (!sicil_no?.trim()) notFound()
-  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string; yeni?: string }))
+  const sp = await searchParams?.catch(() => ({} as { kadro_id?: string; rol?: string; popup?: string; yeni?: string; hareket_tipi?: string }))
   const seciliKadroId = Number.parseInt(String(sp?.kadro_id ?? ''), 10)
   const seciliRol = String(sp?.rol ?? '').trim().toLowerCase()
   const popup = String(sp?.popup ?? '').trim() === '1'
   const yeniKayit = String(sp?.yeni ?? '').trim() === '1'
+  const initialHareketTipi = String(sp?.hareket_tipi ?? '').trim()
 
   const supabase = await createClient()
   const veri = await yuklePersonelHareketDegistirVeri(supabase, sicil_no, {
@@ -32,6 +33,7 @@ export default async function PersonelHareketiDegistirPage({
       {...veri}
       popup={popup}
       yeniKayit={yeniKayit}
+      initialHareketTipi={initialHareketTipi}
       saltOkunur={saltOkunur}
       onKaydet={personelHareketiEkle}
     />

@@ -1,9 +1,10 @@
 import type { Tables } from '@/types/database'
 import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
+import { terfiKaydiBul } from '@/lib/terfi-kadro-esleme'
 
 type KH = Tables<'kadro_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
-type BosKadroSecenek = Pick<
+export type BosKadroSecenek = Pick<
   KH,
   'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'
 >
@@ -61,9 +62,10 @@ export type PersonelHareketDegistirVeri = {
 export async function yuklePersonelHareketDegistirVeri(
   supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
   sicil_no: string | null,
-  opts?: { yeniKayit?: boolean; seciliKadroId?: number; seciliRol?: string },
+  opts?: { yeniKayit?: boolean; hafif?: boolean; seciliKadroId?: number; seciliRol?: string },
 ): Promise<PersonelHareketDegistirVeri> {
   const yeniKayit = opts?.yeniKayit ?? false
+  const hafif = opts?.hafif ?? false
   const sicil = sicil_no?.trim() ?? ''
   const seciliKadroId = opts?.seciliKadroId ?? NaN
   const seciliRol = String(opts?.seciliRol ?? '').trim().toLowerCase()
@@ -74,7 +76,6 @@ export async function yuklePersonelHareketDegistirVeri(
     mudurlukRes,
     unvanRes,
     ogrenimRes,
-    terfiRes,
     sonHareketRes,
     tumBosKadrolar,
     gostergeRes,
@@ -104,9 +105,6 @@ export async function yuklePersonelHareketDegistirVeri(
           .limit(1)
       : Promise.resolve({ data: [] as { ogrenim_turu?: string | null; okul_adi?: string | null }[] }),
     sicil
-      ? supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil).order('kayit_zamani', { ascending: false }).limit(1)
-      : Promise.resolve({ data: [] as TH[] }),
-    sicil
       ? supabase
           .from('personel_hareketleri')
           .select('ayrilis_tarihi, ayrilis_nedeni')
@@ -114,7 +112,7 @@ export async function yuklePersonelHareketDegistirVeri(
           .order('kayit_zamani', { ascending: false })
           .limit(1)
       : Promise.resolve({ data: [] as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null }[] }),
-    yukleBosKadrolar(supabase),
+    hafif ? Promise.resolve([] as BosKadroSecenek[]) : yukleBosKadrolar(supabase),
     supabase.from('tanim_gosterge').select('derece, kademe, gosterge').eq('aktif', true),
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
   ])
@@ -122,7 +120,6 @@ export async function yuklePersonelHareketDegistirVeri(
   const personel = personelRes.data ?? null
   const kadrolar = (kadroRes.data ?? []) as KH[]
   const personeller = (personelListeRes.data ?? []) as { sicil_no: string; ad_soyad: string }[]
-  const terfiSon = ((terfiRes.data ?? [])[0] ?? null) as TH | null
   const sonHareketRaw = ((sonHareketRes.data ?? [])[0] ?? null) as { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null } | null
 
   const vekiller = kadrolar.filter(k => (k.vekil ?? '').trim() === sicil)
@@ -141,6 +138,17 @@ export async function yuklePersonelHareketDegistirVeri(
             })
           : undefined) ?? kadroListesi[0] ?? null)
       : null
+
+  const terfiRol = seciliKadroHam
+    ? (seciliRol === 'vekil' ? 'vekil' : 'asil')
+    : null
+  const terfiSon = sicil
+    ? await terfiKaydiBul(supabase, sicil, {
+        kadro_id: seciliKadroHam?.id ?? null,
+        kadro_rol: terfiRol,
+        kadro_sira_no: seciliKadroHam?.kadro_sira_no ?? null,
+      })
+    : null
 
   const bosKadrolar = tumBosKadrolar
 

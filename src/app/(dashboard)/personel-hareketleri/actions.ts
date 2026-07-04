@@ -20,6 +20,11 @@ import {
   degisiklikPayload,
 } from '@/lib/personel-audit'
 import { personelHareketIslemNoUret } from '@/lib/personel-hareket-islem-no'
+import {
+  type PersonelHareketDegistirVeri,
+  yuklePersonelHareketDegistirVeri,
+} from '@/lib/personel-hareket-degistir-yukle'
+import { terfiKaydiBul, terfiRolEtiketi, type TerfiKadroBaglam } from '@/lib/terfi-kadro-esleme'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -79,20 +84,52 @@ async function terfiSenkronPersonelHareketinden(
   sicil_no: string,
   hareketId: number,
   guncelleme: Record<string, string | null>,
+  ctx: TerfiKadroBaglam,
 ): Promise<string | undefined> {
-  const { data: sonTerfi } = await supabase
-    .from('terfi_hareketleri')
-    .select(`id, ${TERFI_AUDIT_SELECT}`)
-    .eq('sicil_no', sicil_no)
-    .order('kayit_zamani', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (!sonTerfi?.id) return undefined
+  const rolEtiket = terfiRolEtiketi(ctx.kadro_rol)
+  let sonTerfi = await terfiKaydiBul(supabase, sicil_no, ctx)
+
+  if (!sonTerfi?.id) {
+    const { data: calisan } = await supabase
+      .from('calisan')
+      .select('ad_soyad')
+      .eq('sicil_no', sicil_no)
+      .maybeSingle()
+    const { data: inserted, error: insertErr } = await supabase
+      .from('terfi_hareketleri')
+      .insert({
+        sicil_no,
+        ad_soyad: calisan?.ad_soyad ?? null,
+        rol: rolEtiket,
+        kadro_id: ctx.kadro_id ?? null,
+        kadro_sira_no: ctx.kadro_sira_no ?? null,
+        ...guncelleme,
+      })
+      .select(`id, ${TERFI_AUDIT_SELECT}`)
+      .single()
+    if (insertErr) return insertErr.message
+    sonTerfi = inserted as NonNullable<typeof sonTerfi>
+    await logTerfiDegisiklikSafe(supabase, {
+      sicil_no,
+      terfiId: inserted!.id,
+      islem: 'Hareket Senkron',
+      ozetBaslik: 'Personel hareketi ile yeni terfi kaydı oluşturuldu',
+      onceki: {},
+      sonraki: terfiAuditSnapshot({ ...inserted, ...guncelleme }, TERFI_KATSAYI_ALAN_ETIKETLERI),
+      ozetEk: hareketId > 0 ? `(hareket #${hareketId})` : undefined,
+    })
+    return undefined
+  }
 
   const oncekiSnap = terfiAuditSnapshot(sonTerfi, TERFI_KATSAYI_ALAN_ETIKETLERI)
+  const metaGuncelleme: Record<string, string | number | null> = {}
+  if (rolEtiket && !sonTerfi.rol) metaGuncelleme.rol = rolEtiket
+  if (ctx.kadro_sira_no && !sonTerfi.kadro_sira_no) metaGuncelleme.kadro_sira_no = ctx.kadro_sira_no
+  if (ctx.kadro_id && !sonTerfi.kadro_id) metaGuncelleme.kadro_id = ctx.kadro_id
+
   const { error: terfiErr } = await supabase
     .from('terfi_hareketleri')
-    .update(guncelleme)
+    .update({ ...metaGuncelleme, ...guncelleme })
     .eq('id', sonTerfi.id)
   if (terfiErr) return terfiErr.message
 
@@ -102,10 +139,22 @@ async function terfiSenkronPersonelHareketinden(
     islem: 'Hareket Senkron',
     ozetBaslik: 'Personel hareketi ile terfi senkronize edildi',
     onceki: oncekiSnap,
-    sonraki: terfiAuditSnapshot({ ...sonTerfi, ...guncelleme }, TERFI_KATSAYI_ALAN_ETIKETLERI),
+    sonraki: terfiAuditSnapshot({ ...sonTerfi, ...metaGuncelleme, ...guncelleme }, TERFI_KATSAYI_ALAN_ETIKETLERI),
     ozetEk: hareketId > 0 ? `(hareket #${hareketId})` : undefined,
   })
   return undefined
+}
+
+/** Yeni kayıt ekranında personel seçimi — tam sayfa yenilemesi olmadan veri yükler */
+export async function personelHareketPersonelYukle(
+  sicil_no: string,
+): Promise<{ hata?: string } & Partial<PersonelHareketDegistirVeri>> {
+  const sicil = String(sicil_no ?? '').trim()
+  if (!sicil) return { hata: 'Sicil no gerekli.' }
+  const supabase = await createClient()
+  const veri = await yuklePersonelHareketDegistirVeri(supabase, sicil, { yeniKayit: true, hafif: false })
+  if (!veri.personel) return { hata: 'Personel bulunamadı.' }
+  return veri
 }
 
 async function kadroAtamasiniGuncelle(
@@ -398,6 +447,10 @@ export async function personelHareketiGuncelle(
       ek_odeme: yeni_ek_odeme,
       ek_gosterge: yeni_ek_gosterge,
       sds_orani: yeni_sds_orani,
+    }, {
+      kadro_id: kadroKaydi.kadro_id,
+      kadro_rol: kadroKaydi.kadro_rol,
+      kadro_sira_no: kadro_sira_no,
     })
     if (terfiHata) return { hata: terfiHata }
   }
@@ -574,6 +627,10 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     ek_odeme: yeni_ek_odeme,
     ek_gosterge: yeni_ek_gosterge,
     sds_orani: yeni_sds_orani,
+  }, {
+    kadro_id: kadroKaydi.kadro_id,
+    kadro_rol: kadroKaydi.kadro_rol,
+    kadro_sira_no: kadro_sira_no,
   })
   if (terfiHata) return { hata: terfiHata }
 

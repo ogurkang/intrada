@@ -32,6 +32,10 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
     sicil_no,
     ad_soyad:               str(fd, 'ad_soyad'),
     rol:                    str(fd, 'rol'),
+    kadro_id: (() => {
+      const n = Number.parseInt(String(fd.get('kadro_id') ?? ''), 10)
+      return Number.isFinite(n) && n > 0 ? n : null
+    })(),
     kadro_sira_no:          str(fd, 'kadro_sira_no'),
     unvan:                  str(fd, 'unvan'),
     mudurluk:               str(fd, 'mudurluk'),
@@ -158,6 +162,9 @@ export interface TerfiSatir {
   id?: number | null
   sicil_no:             string
   ad_soyad:             string | null
+  rol?:                 string | null
+  kadro_id?:            number | null
+  kadro_sira_no?:       string | null
   gorev_ayligi_derece:  string | null
   gorev_ayligi_kademe:  string | null
   kha_derece:           string | null
@@ -245,8 +252,9 @@ export async function terfiTopluKaydet(
         .from('terfi_hareketleri')
         .insert({
           sicil_no: s.sicil_no,
-          rol: null,
-          kadro_sira_no: null,
+          rol: s.rol ?? null,
+          kadro_id: s.kadro_id ?? null,
+          kadro_sira_no: s.kadro_sira_no ?? null,
           unvan: null,
           mudurluk: null,
           ...payload,
@@ -272,4 +280,116 @@ export async function terfiTopluKaydet(
     await revalidatePersonelDetayPaths(sicil)
   }
   return { kaydedilen: satirlar.length }
+}
+
+/** Eşleşmemiş terfi kaydını seçilen kadro hareketine bağlar */
+export async function terfiKadroyaBagla(
+  terfiId: number,
+  kadroId: number,
+): Promise<{ hata?: string }> {
+  const id = Number(terfiId)
+  const khId = Number(kadroId)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Geçersiz terfi kaydı.' }
+  if (!Number.isFinite(khId) || khId <= 0) return { hata: 'Kadro seçimi zorunludur.' }
+
+  const supabase = await createClient()
+
+  const { data: terfi, error: terfiErr } = await supabase
+    .from('terfi_hareketleri')
+    .select('id, sicil_no, ad_soyad, kadro_id, rol, kadro_sira_no')
+    .eq('id', id)
+    .maybeSingle()
+  if (terfiErr) return { hata: terfiErr.message }
+  if (!terfi) return { hata: 'Terfi kaydı bulunamadı.' }
+
+  const { data: kh, error: khErr } = await supabase
+    .from('kadro_hareketleri')
+    .select('id, asil, vekil, kadro_sira_no, kadro_unvani, ayrilis_tarihi')
+    .eq('id', khId)
+    .maybeSingle()
+  if (khErr) return { hata: khErr.message }
+  if (!kh) return { hata: 'Kadro kaydı bulunamadı.' }
+
+  const sicil = String(terfi.sicil_no ?? '').trim()
+  let rol: 'Asil' | 'Vekil' | null = null
+  if ((kh.asil ?? '').trim() === sicil) rol = 'Asil'
+  else if ((kh.vekil ?? '').trim() === sicil) rol = 'Vekil'
+  if (!rol) return { hata: 'Seçilen kadro bu personelin sicil no\'su ile eşleşmiyor.' }
+
+  const { data: baskaTerfi } = await supabase
+    .from('terfi_hareketleri')
+    .select('id')
+    .eq('kadro_id', khId)
+    .neq('id', id)
+    .maybeSingle()
+  if (baskaTerfi?.id) {
+    return { hata: `Bu kadro zaten ${baskaTerfi.id} numaralı terfi kaydına bağlı.` }
+  }
+
+  const guncelleme = {
+    kadro_id: khId,
+    rol,
+    kadro_sira_no: kh.kadro_sira_no ?? null,
+  }
+
+  const { error: updErr } = await supabase
+    .from('terfi_hareketleri')
+    .update(guncelleme)
+    .eq('id', id)
+  if (updErr) return { hata: updErr.message }
+
+  await writeTerfiAuditLogSafe(supabase, {
+    sicil_no: sicil,
+    terfiId: id,
+    islem: 'Kadro Bağla',
+    ozet: `Terfi kaydı kadro #${khId} (${rol}, sıra ${kh.kadro_sira_no ?? '—'}) ile eşleştirildi.`,
+    onceki: terfiAuditSnapshot(terfi, TERFI_ALAN_ETIKETLERI),
+    sonraki: terfiAuditSnapshot({ ...terfi, ...guncelleme }, TERFI_ALAN_ETIKETLERI),
+  })
+
+  revalidateTerfiRoutes()
+  await revalidatePersonelDetayPaths(sicil)
+  return {}
+}
+
+/** Geçmiş/ayrılmış eşleşmemiş terfi kaydını listeden çıkarır (silmez) */
+export async function terfiKapsamDisiYap(
+  terfiId: number,
+  sicil_no: string,
+): Promise<{ hata?: string }> {
+  const id = Number(terfiId)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Geçersiz terfi kaydı.' }
+  const sicil = String(sicil_no ?? '').trim()
+  if (!sicil) return { hata: 'Sicil no gerekli.' }
+
+  const supabase = await createClient()
+  const { data: mevcut, error: selErr } = await supabase
+    .from('terfi_hareketleri')
+    .select('id, sicil_no, ad_soyad, kadro_id, kapsam_disi')
+    .eq('id', id)
+    .maybeSingle()
+  if (selErr) return { hata: selErr.message }
+  if (!mevcut) return { hata: 'Terfi kaydı bulunamadı.' }
+  if (mevcut.sicil_no !== sicil) return { hata: 'Sicil no uyuşmuyor.' }
+  if (mevcut.kadro_id != null) return { hata: 'Kadroya bağlı kayıt kapsam dışı yapılamaz.' }
+  if (mevcut.kapsam_disi) return {}
+
+  const { error: updErr } = await supabase
+    .from('terfi_hareketleri')
+    .update({ kapsam_disi: true })
+    .eq('id', id)
+  if (updErr) return { hata: updErr.message }
+
+  await writeTerfiAuditLogSafe(supabase, {
+    sicil_no: sicil,
+    terfiId: id,
+    islem: 'Kapsam Dışı',
+    ozet: `Terfi kaydı geçmiş/ayrılmış kayıt olarak işaretlendi (T#${id}).`,
+    onceki: terfiAuditSnapshot(mevcut, TERFI_ALAN_ETIKETLERI),
+    sonraki: terfiAuditSnapshot({ ...mevcut, kapsam_disi: true }, TERFI_ALAN_ETIKETLERI),
+  })
+
+  revalidateTerfiRoutes()
+  await revalidatePersonelDetayPaths(sicil)
+  return {}
 }

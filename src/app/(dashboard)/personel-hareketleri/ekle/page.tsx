@@ -6,19 +6,21 @@ import { yuklePersonelHareketDegistirVeri } from '@/lib/personel-hareket-degisti
 export default async function PersonelHareketiEklePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ popup?: string }>
+  searchParams?: Promise<{ popup?: string; hareket_tipi?: string }>
 }) {
-  const sp = await searchParams?.catch(() => ({} as { popup?: string }))
+  const sp = await searchParams?.catch(() => ({} as { popup?: string; hareket_tipi?: string }))
   const popup = String(sp?.popup ?? '').trim() === '1'
+  const initialHareketTipi = String(sp?.hareket_tipi ?? '').trim()
 
   const supabase = await createClient()
-  const veri = await yuklePersonelHareketDegistirVeri(supabase, null, { yeniKayit: true })
+  const veri = await yuklePersonelHareketDegistirVeri(supabase, null, { yeniKayit: true, hafif: true })
 
   return (
     <PersonelHareketiDegistirClient
       {...veri}
       popup={popup}
       yeniKayit
+      initialHareketTipi={initialHareketTipi}
       saltOkunur={false}
       onKaydet={personelHareketiEkle}
     />

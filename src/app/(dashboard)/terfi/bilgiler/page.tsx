@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import TerfiClient from '@/components/personel/TerfiClient'
-import { terfiEkle, terfiGuncelle, terfiSil, terfiTopluKaydet } from '../actions'
+import { terfiEkle, terfiGuncelle, terfiSil, terfiTopluKaydet, terfiKadroyaBagla, terfiKapsamDisiYap } from '../actions'
+import { terfiKayitlariIndeksle, terfiKaydiEsle } from '@/lib/terfi-kadro-esleme'
 import type { Tables } from '@/types/database'
 
 export default async function TerfiBilgilerPage() {
@@ -48,12 +49,7 @@ export default async function TerfiBilgilerPage() {
   const calisanMap = new Map((calisanlar ?? []).map((c) => [c.sicil_no, c]))
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
 
-  const terfiMap: Record<string, Tables<'terfi_hareketleri'>> = {}
-  for (const k of kayitlar ?? []) {
-    if (!terfiMap[k.sicil_no] || k.kayit_zamani > terfiMap[k.sicil_no].kayit_zamani) {
-      terfiMap[k.sicil_no] = k
-    }
-  }
+  const terfiIndeks = terfiKayitlariIndeksle((kayitlar ?? []) as Tables<'terfi_hareketleri'>[])
 
   const memurSiciller = [...aktifSiciller].filter((sicil) => {
     const k = kadroMap.get(sicil) as { statu?: string } | undefined
@@ -61,7 +57,7 @@ export default async function TerfiBilgilerPage() {
   })
 
   const ogrenimTuruBySicil = new Map<string, string>()
-  const khRows: { id: number; asil: string | null; vekil: string | null; kadro_derecesi: string | null; ayrilis_tarihi: string | null }[] = []
+  const khRows: { id: number; asil: string | null; vekil: string | null; kadro_derecesi: string | null; kadro_sira_no: string | null; ayrilis_tarihi: string | null }[] = []
 
   if (memurSiciller.length > 0) {
     const [ogRes, khRes] = await Promise.all([
@@ -73,7 +69,7 @@ export default async function TerfiBilgilerPage() {
         .order('kayit_zamani', { ascending: false }),
       supabase
         .from('kadro_hareketleri')
-        .select('id, asil, vekil, kadro_derecesi, ayrilis_tarihi')
+        .select('id, asil, vekil, kadro_derecesi, kadro_sira_no, ayrilis_tarihi')
         .or(
           memurSiciller.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','),
         ),
@@ -93,12 +89,94 @@ export default async function TerfiBilgilerPage() {
         asil: r.asil,
         vekil: r.vekil,
         kadro_derecesi: r.kadro_derecesi,
+        kadro_sira_no: r.kadro_sira_no ?? null,
         ayrilis_tarihi: r.ayrilis_tarihi ?? null,
       })
     }
   }
 
   type KadroRol = 'Asil' | 'Vekil'
+  type KadroSecenek = {
+    id: number
+    rol: KadroRol
+    kadro_sira_no: string | null
+    kadro_derecesi: string | null
+    label: string
+  }
+  const kadroSecenekleriBySicil: Record<string, KadroSecenek[]> = {}
+
+  for (const r of khRows) {
+    if (!aktifMi(r.ayrilis_tarihi)) continue
+    const baseLabel = (sira: string | null, derece: string | null, rol: KadroRol) =>
+      `${rol} · Sıra ${sira ?? '—'} · Derece ${derece ?? '—'}`
+    if (r.asil) {
+      const sicil = r.asil
+      if (!kadroSecenekleriBySicil[sicil]) kadroSecenekleriBySicil[sicil] = []
+      kadroSecenekleriBySicil[sicil].push({
+        id: r.id,
+        rol: 'Asil',
+        kadro_sira_no: r.kadro_sira_no,
+        kadro_derecesi: r.kadro_derecesi,
+        label: baseLabel(r.kadro_sira_no, r.kadro_derecesi, 'Asil'),
+      })
+    }
+    if (r.vekil) {
+      const sicil = r.vekil
+      if (!kadroSecenekleriBySicil[sicil]) kadroSecenekleriBySicil[sicil] = []
+      kadroSecenekleriBySicil[sicil].push({
+        id: r.id,
+        rol: 'Vekil',
+        kadro_sira_no: r.kadro_sira_no,
+        kadro_derecesi: r.kadro_derecesi,
+        label: baseLabel(r.kadro_sira_no, r.kadro_derecesi, 'Vekil'),
+      })
+    }
+  }
+
+  const eslesmemis = ((kayitlar ?? []) as Tables<'terfi_hareketleri'>[])
+    .filter(k => k.kadro_id == null && !k.kapsam_disi)
+    .sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, 'tr') || a.id - b.id)
+
+  const eslesmemisSiciller = [...new Set(eslesmemis.map(e => e.sicil_no))]
+  const kadrosuzSiciller = eslesmemisSiciller.filter(s => !(kadroSecenekleriBySicil[s]?.length))
+  if (kadrosuzSiciller.length > 0) {
+    const { data: ekKhRes } = await supabase
+      .from('kadro_hareketleri')
+      .select('id, asil, vekil, kadro_derecesi, kadro_sira_no, ayrilis_tarihi')
+      .or(kadrosuzSiciller.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','))
+    for (const r of ekKhRes ?? []) {
+      if (!aktifMi(r.ayrilis_tarihi)) continue
+      const baseLabel = (sira: string | null, derece: string | null, rol: KadroRol) =>
+        `${rol} · Sıra ${sira ?? '—'} · Derece ${derece ?? '—'}`
+      if (r.asil && kadrosuzSiciller.includes(r.asil)) {
+        const sicil = r.asil
+        if (!kadroSecenekleriBySicil[sicil]) kadroSecenekleriBySicil[sicil] = []
+        if (!kadroSecenekleriBySicil[sicil].some(x => x.id === r.id)) {
+          kadroSecenekleriBySicil[sicil].push({
+            id: r.id,
+            rol: 'Asil',
+            kadro_sira_no: r.kadro_sira_no ?? null,
+            kadro_derecesi: r.kadro_derecesi,
+            label: baseLabel(r.kadro_sira_no ?? null, r.kadro_derecesi, 'Asil'),
+          })
+        }
+      }
+      if (r.vekil && kadrosuzSiciller.includes(r.vekil)) {
+        const sicil = r.vekil
+        if (!kadroSecenekleriBySicil[sicil]) kadroSecenekleriBySicil[sicil] = []
+        if (!kadroSecenekleriBySicil[sicil].some(x => x.id === r.id)) {
+          kadroSecenekleriBySicil[sicil].push({
+            id: r.id,
+            rol: 'Vekil',
+            kadro_sira_no: r.kadro_sira_no ?? null,
+            kadro_derecesi: r.kadro_derecesi,
+            label: baseLabel(r.kadro_sira_no ?? null, r.kadro_derecesi, 'Vekil'),
+          })
+        }
+      }
+    }
+  }
+
   const memurlar: {
     liste_satir_id: string
     sicil_no: string
@@ -109,6 +187,8 @@ export default async function TerfiBilgilerPage() {
     ogrenim_turu: string | null
     kadro_rolu: KadroRol | null
     kadro_derecesi: string | null
+    kadro_sira_no: string | null
+    kadro_id: number | null
   }[] = []
 
   for (const sicil_no of [...memurSiciller].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))) {
@@ -119,15 +199,14 @@ export default async function TerfiBilgilerPage() {
       ad_soyad: c?.ad_soyad ?? k?.ad_soyad ?? sicil_no,
       gorev_unvani: k?.gorev_unvani ?? null,
       gorev_mudurlugu: k?.gorev_mudurlugu ?? null,
-      terfi: terfiMap[sicil_no] ?? null,
       ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
     }
 
-    const hits: { khId: number; rol: KadroRol; kadro_derecesi: string | null }[] = []
+    const hits: { khId: number; rol: KadroRol; kadro_derecesi: string | null; kadro_sira_no: string | null }[] = []
     for (const r of khRows) {
       if (!aktifMi(r.ayrilis_tarihi)) continue
-      if (r.asil === sicil_no) hits.push({ khId: r.id, rol: 'Asil', kadro_derecesi: r.kadro_derecesi })
-      if (r.vekil === sicil_no) hits.push({ khId: r.id, rol: 'Vekil', kadro_derecesi: r.kadro_derecesi })
+      if (r.asil === sicil_no) hits.push({ khId: r.id, rol: 'Asil', kadro_derecesi: r.kadro_derecesi, kadro_sira_no: r.kadro_sira_no })
+      if (r.vekil === sicil_no) hits.push({ khId: r.id, rol: 'Vekil', kadro_derecesi: r.kadro_derecesi, kadro_sira_no: r.kadro_sira_no })
     }
 
     if (hits.length === 0) {
@@ -136,18 +215,25 @@ export default async function TerfiBilgilerPage() {
         .filter(r => r.asil === sicil_no || r.vekil === sicil_no)
         .sort((a, b) => b.id - a.id)[0]
       if (fallback) {
+        const rol = fallback.asil === sicil_no ? 'Asil' : 'Vekil'
         memurlar.push({
           ...base,
           liste_satir_id: `${sicil_no}-kh${fallback.id}-fallback`,
-          kadro_rolu: fallback.asil === sicil_no ? 'Asil' : 'Vekil',
+          terfi: terfiKaydiEsle(terfiIndeks, sicil_no, rol, fallback.kadro_sira_no, fallback.id),
+          kadro_rolu: rol,
           kadro_derecesi: fallback.kadro_derecesi,
+          kadro_sira_no: fallback.kadro_sira_no,
+          kadro_id: fallback.id,
         })
       } else {
         memurlar.push({
           ...base,
           liste_satir_id: `${sicil_no}-yok`,
+          terfi: null,
           kadro_rolu: null,
           kadro_derecesi: null,
+          kadro_sira_no: null,
+          kadro_id: null,
         })
       }
     } else {
@@ -155,8 +241,11 @@ export default async function TerfiBilgilerPage() {
         memurlar.push({
           ...base,
           liste_satir_id: `${sicil_no}-kh${h.khId}-${h.rol}`,
+          terfi: terfiKaydiEsle(terfiIndeks, sicil_no, h.rol, h.kadro_sira_no, h.khId),
           kadro_rolu: h.rol,
           kadro_derecesi: h.kadro_derecesi,
+          kadro_sira_no: h.kadro_sira_no,
+          kadro_id: h.khId,
         })
       }
     }
@@ -172,10 +261,14 @@ export default async function TerfiBilgilerPage() {
         mudurluk: null,
       }))}
       memurlar={memurlar}
+      eslesmemis={eslesmemis}
+      kadroSecenekleriBySicil={kadroSecenekleriBySicil}
       onEkle={terfiEkle}
       onGuncelle={terfiGuncelle}
       onSil={terfiSil}
       onTopluKaydet={terfiTopluKaydet}
+      onKadroyaBagla={terfiKadroyaBagla}
+      onKapsamDisiYap={terfiKapsamDisiYap}
       auditLoglarByTerfiId={auditLoglarByTerfiId}
     />
   )

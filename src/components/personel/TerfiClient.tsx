@@ -9,6 +9,7 @@ import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
 import TerfiGecmisPanel from '@/components/personel/TerfiGecmisPanel'
+import { terfiIslemNo } from '@/lib/terfi-islem-no'
 
 type TH = Tables<'terfi_hareketleri'>
 
@@ -24,16 +25,30 @@ interface MemurSatir {
   ogrenim_turu?: string | null
   kadro_rolu?: 'Asil' | 'Vekil' | null
   kadro_derecesi?: string | null
+  kadro_sira_no?: string | null
+  kadro_id?: number | null
+}
+
+interface KadroSecenek {
+  id: number
+  rol: 'Asil' | 'Vekil'
+  kadro_sira_no: string | null
+  kadro_derecesi: string | null
+  label: string
 }
 
 interface Props {
   kayitlar:    TH[]
   calisanlar:  Calisan[]
   memurlar?:   MemurSatir[]
+  eslesmemis?: TH[]
+  kadroSecenekleriBySicil?: Record<string, KadroSecenek[]>
   onEkle:      (fd: FormData) => Promise<{ hata?: string }>
   onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
   onSil:       (id: number, sicil_no: string) => Promise<{ hata?: string }>
   onTopluKaydet?: (satirlar: TerfiSatir[]) => Promise<{ hata?: string; kaydedilen?: number }>
+  onKadroyaBagla?: (terfiId: number, kadroId: number) => Promise<{ hata?: string }>
+  onKapsamDisiYap?: (terfiId: number, sicil_no: string) => Promise<{ hata?: string }>
   sabitSicil?: string
   auditLoglarByTerfiId?: Record<string, Tables<'personel_audit_log'>[]>
 }
@@ -129,15 +144,20 @@ export default function TerfiClient({
   kayitlar,
   calisanlar,
   memurlar,
+  eslesmemis = [],
+  kadroSecenekleriBySicil = {},
   onEkle,
   onGuncelle,
   onSil,
   onTopluKaydet,
+  onKadroyaBagla,
+  onKapsamDisiYap,
   sabitSicil,
   auditLoglarByTerfiId = {},
 }: Props) {
   const router = useRouter()
   const showMemurMeta = !sabitSicil && Array.isArray(memurlar) && memurlar.length > 0
+  const showEslesmemis = !sabitSicil && eslesmemis.length > 0 && (!!onKadroyaBagla || !!onKapsamDisiYap)
   const listeKolonSayisi =
     (sabitSicil ? 0 : 3 + (showMemurMeta ? 2 : 0)) + 11 + 1
   const [sekme, setSekme]            = useState<'liste' | 'toplu'>('liste')
@@ -154,16 +174,52 @@ export default function TerfiClient({
   const [duzenlenenRowKey, setDuzenlenenRowKey] = useState<string | null>(null)
   const [inlineVeri, setInlineVeri] = useState<Record<string, Record<string, string>>>({})
   const [gecmisTerfi, setGecmisTerfi] = useState<{ id: number; ad_soyad: string } | null>(null)
+  const [baglaKadroId, setBaglaKadroId] = useState<Record<number, string>>({})
+  const [baglaHata, setBaglaHata] = useState<string | null>(null)
+  const [baglaBasari, setBaglaBasari] = useState<string | null>(null)
 
-  function topluGuncelle(sicil_no: string, alan: string, deger: string) {
+  function handleKapsamDisiYap(terfiId: number, sicilNo: string, adSoyad: string) {
+    if (!onKapsamDisiYap) return
+    if (!confirm(`${adSoyad} (${terfiIslemNo(terfiId)}) kaydı geçmiş/ayrılmış olarak işaretlenecek. Eşleşmemiş listeden kaldırılır, veritabanında saklanır. Onaylıyor musunuz?`)) return
+    setBaglaHata(null)
+    setBaglaBasari(null)
+    startTransition(async () => {
+      const res = await onKapsamDisiYap(terfiId, sicilNo)
+      if (res.hata) setBaglaHata(res.hata)
+      else {
+        setBaglaBasari('Kayıt kapsam dışı olarak işaretlendi.')
+        router.refresh()
+      }
+    })
+  }
+  function handleKadroyaBagla(terfiId: number) {
+    if (!onKadroyaBagla) return
+    const khId = Number.parseInt(baglaKadroId[terfiId] ?? '', 10)
+    if (!Number.isFinite(khId) || khId <= 0) {
+      setBaglaHata('Lütfen kadro seçin.')
+      return
+    }
+    setBaglaHata(null)
+    setBaglaBasari(null)
+    startTransition(async () => {
+      const res = await onKadroyaBagla(terfiId, khId)
+      if (res.hata) setBaglaHata(res.hata)
+      else {
+        setBaglaBasari('Kadro bağlantısı kaydedildi.')
+        router.refresh()
+      }
+    })
+  }
+
+  function topluGuncelle(rowKey: string, alan: string, deger: string) {
     setTopluVeri(prev => ({
       ...prev,
-      [sicil_no]: { ...(prev[sicil_no] ?? {}), [alan]: deger },
+      [rowKey]: { ...(prev[rowKey] ?? {}), [alan]: deger },
     }))
   }
 
   function topluDegerAl(m: MemurSatir, alan: string): string {
-    const lokal = topluVeri[m.sicil_no] as Record<string, string> | undefined
+    const lokal = topluVeri[m.liste_satir_id] as Record<string, string> | undefined
     if (lokal && alan in lokal) return lokal[alan] ?? ''
     // Combined DK fields
     if (alan === 'dk_ga')   return [m.terfi?.gorev_ayligi_derece, m.terfi?.gorev_ayligi_kademe].filter(Boolean).join('/') 
@@ -195,6 +251,8 @@ export default function TerfiClient({
     ogrenim_turu?: string | null
     kadro_rolu?: 'Asil' | 'Vekil' | null
     kadro_derecesi?: string | null
+    kadro_sira_no?: string | null
+    kadro_id?: number | null
   }
   const listRows = useMemo((): ListRow[] => {
     if (sabitSicil) {
@@ -218,6 +276,8 @@ export default function TerfiClient({
         ogrenim_turu: m.ogrenim_turu ?? null,
         kadro_rolu: m.kadro_rolu ?? null,
         kadro_derecesi: m.kadro_derecesi ?? null,
+        kadro_sira_no: m.kadro_sira_no ?? null,
+        kadro_id: m.kadro_id ?? null,
       }))
     }
     return filtreli.map(r => ({
@@ -308,6 +368,9 @@ export default function TerfiClient({
     const fd = new FormData()
     fd.set('sicil_no', row.sicil_no)
     fd.set('ad_soyad', row.ad_soyad)
+    if (row.kadro_rolu) fd.set('rol', row.kadro_rolu)
+    if (row.kadro_sira_no) fd.set('kadro_sira_no', row.kadro_sira_no)
+    if (row.kadro_id) fd.set('kadro_id', String(row.kadro_id))
     Object.entries(v).forEach(([k, val]) => fd.set(k, val))
     setHata(null)
     startTransition(async () => {
@@ -364,10 +427,10 @@ export default function TerfiClient({
     if (!onTopluKaydet || !memurlar) return
     setTopluHata(null); setTopluBasari(null)
     const degistirilmis = memurlar
-      .filter(m => topluVeri[m.sicil_no] && Object.keys(topluVeri[m.sicil_no]).length > 0)
+      .filter(m => topluVeri[m.liste_satir_id] && Object.keys(topluVeri[m.liste_satir_id]).length > 0)
     if (!degistirilmis.length) { setTopluHata('Değişiklik yapılmadı.'); return }
     const satirlar: TerfiSatir[] = degistirilmis.map(m => {
-      const lokal = (topluVeri[m.sicil_no] ?? {}) as Record<string, string>
+      const lokal = (topluVeri[m.liste_satir_id] ?? {}) as Record<string, string>
       const mevcut = m.terfi
       // Parse combined D/K inputs
       const [gaDer, gaKad]   = parseDK(lokal.dk_ga   ?? `${mevcut?.gorev_ayligi_derece ?? ''}/${mevcut?.gorev_ayligi_kademe ?? ''}`)
@@ -380,6 +443,9 @@ export default function TerfiClient({
         id:                   mevcut?.id,
         sicil_no:             m.sicil_no,
         ad_soyad:             m.ad_soyad,
+        rol:                  m.kadro_rolu ?? mevcut?.rol ?? null,
+        kadro_id:             m.kadro_id ?? mevcut?.kadro_id ?? null,
+        kadro_sira_no:        m.kadro_sira_no ?? mevcut?.kadro_sira_no ?? null,
         gorev_ayligi_derece:  'dk_ga'   in lokal ? gaDer  : mevcut?.gorev_ayligi_derece ?? null,
         gorev_ayligi_kademe:  'dk_ga'   in lokal ? gaKad  : mevcut?.gorev_ayligi_kademe ?? null,
         kha_derece:           'dk_kha'  in lokal ? khaDer : mevcut?.kha_derece          ?? null,
@@ -487,7 +553,7 @@ export default function TerfiClient({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {memurlar.map((m, i) => {
-                  const degisti = !!topluVeri[m.sicil_no] && Object.keys(topluVeri[m.sicil_no]).length > 0
+                  const degisti = !!topluVeri[m.liste_satir_id] && Object.keys(topluVeri[m.liste_satir_id]).length > 0
                   const ogTxt = m.ogrenim_turu?.trim()
                   return (
                     <tr key={m.liste_satir_id} className={degisti ? 'bg-blue-50' : 'hover:bg-slate-50'}>
@@ -508,7 +574,7 @@ export default function TerfiClient({
                       </td>
                       {TOPLU_ALANLAR.map(a => {
                         const isDk = 'tipo' in a && a.tipo === 'dk'
-                        const changed = !!(topluVeri[m.sicil_no] && a.key in (topluVeri[m.sicil_no] as Record<string, unknown>))
+                        const changed = !!(topluVeri[m.liste_satir_id] && a.key in (topluVeri[m.liste_satir_id] as Record<string, unknown>))
                         const baseCls = `px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 ${
                           changed ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'
                         }`
@@ -517,10 +583,10 @@ export default function TerfiClient({
                           return (
                             <td key={a.key} className="px-1 py-1">
                               <div className="flex gap-0.5 justify-center items-center">
-                                <input type="text" value={der ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${e.target.value}/${kad ?? ''}`)}
+                                <input type="text" value={der ?? ''} onChange={e => topluGuncelle(m.liste_satir_id, a.key, `${e.target.value}/${kad ?? ''}`)}
                                   className={`w-8 min-w-0 ${baseCls}`} placeholder="D" />
                                 <span className="text-slate-400">/</span>
-                                <input type="text" value={kad ?? ''} onChange={e => topluGuncelle(m.sicil_no, a.key, `${der ?? ''}/${e.target.value}`)}
+                                <input type="text" value={kad ?? ''} onChange={e => topluGuncelle(m.liste_satir_id, a.key, `${der ?? ''}/${e.target.value}`)}
                                   className={`w-8 min-w-0 ${baseCls}`} placeholder="K" />
                               </div>
                             </td>
@@ -534,7 +600,7 @@ export default function TerfiClient({
                             <input
                               type={isDate ? 'date' : 'text'}
                               value={dateVal}
-                              onChange={e => topluGuncelle(m.sicil_no, a.key, e.target.value)}
+                              onChange={e => topluGuncelle(m.liste_satir_id, a.key, e.target.value)}
                               className={`w-full ${baseCls}`}
                               style={{ minWidth: a.w }}
                             />
@@ -626,6 +692,10 @@ export default function TerfiClient({
                           {ogTxt || '—'}
                         </span>
                       )}
+                      <span className="block text-[10px] text-slate-400 mt-0.5">
+                        {terfiIslemNo(r?.id)}
+                        {row.kadro_sira_no ? ` · Kadro ${row.kadro_sira_no}` : ''}
+                      </span>
                     </td>
                   )}
                   {showMemurMeta && (
@@ -905,6 +975,91 @@ export default function TerfiClient({
         </form>
       </Modal>
       </>
+      )}
+
+      {showEslesmemis && (
+        <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-900 mb-1">
+            Eşleşmemiş Terfi Kayıtları ({eslesmemis.length})
+          </h2>
+          <p className="text-xs text-amber-800 mb-4">
+            Bu kayıtlar veritabanında duruyor ancak aktif kadro satırına otomatik bağlanamadı.
+            Aktif görevi varsa kadro seçip &quot;Bağla&quot; deyin; ayrılmış veya geçmiş kayıtlar için &quot;Yok say&quot; kullanın.
+          </p>
+          {baglaHata && (
+            <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{baglaHata}</p>
+          )}
+          {baglaBasari && (
+            <p className="mb-3 text-sm text-green-800 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">{baglaBasari}</p>
+          )}
+          <div className="bg-white rounded-lg border border-amber-100 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                  <th className="px-3 py-2 font-semibold text-slate-600">Kayıt</th>
+                  <th className="px-3 py-2 font-semibold text-slate-600">Sicil</th>
+                  <th className="px-3 py-2 font-semibold text-slate-600">Ad Soyad</th>
+                  <th className="px-3 py-2 font-semibold text-slate-600">Mevcut Rol / Sıra</th>
+                  <th className="px-3 py-2 font-semibold text-slate-600">Kadro Seç</th>
+                  <th className="px-3 py-2 font-semibold text-slate-600">İşlem</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {eslesmemis.map(t => {
+                  const secenekler = kadroSecenekleriBySicil[t.sicil_no] ?? []
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 font-mono text-slate-600">{terfiIslemNo(t.id)}</td>
+                      <td className="px-3 py-2 font-mono text-slate-600">{t.sicil_no}</td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{t.ad_soyad ?? '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">
+                        {[t.rol, t.kadro_sira_no].filter(Boolean).join(' · ') || '—'}
+                      </td>
+                      <td className="px-3 py-2">
+                        {secenekler.length === 0 ? (
+                          <span className="text-xs text-slate-400">Aktif kadro bulunamadı</span>
+                        ) : (
+                          <select
+                            value={baglaKadroId[t.id] ?? ''}
+                            onChange={e => setBaglaKadroId(prev => ({ ...prev, [t.id]: e.target.value }))}
+                            className="w-full min-w-[12rem] px-2 py-1.5 border border-slate-300 rounded text-sm bg-white"
+                          >
+                            <option value="">Kadro seçin…</option>
+                            {secenekler.map(s => (
+                              <option key={s.id} value={String(s.id)}>{s.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={isPending || secenekler.length === 0}
+                            onClick={() => handleKadroyaBagla(t.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-amber-900 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50"
+                          >
+                            Bağla
+                          </button>
+                          {onKapsamDisiYap && (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() => handleKapsamDisiYap(t.id, t.sicil_no, t.ad_soyad ?? t.sicil_no)}
+                              className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                            >
+                              Yok say
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       <TerfiGecmisPanel
