@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   const takvimGun = Math.floor(
     (new Date(donem.bitis_tarihi).setHours(0, 0, 0, 0) - new Date(donem.baslangic_tarihi).setHours(0, 0, 0, 0)) / 86_400_000
   ) + 1
-  const donemMetin = `Dönem: ${tarih(donem.baslangic_tarihi)} - ${tarih(donem.bitis_tarihi)} (${takvimGun} gün)`
+  const donemMetin = `Dönem: ${tarih(donem.baslangic_tarihi)} - ${tarih(donem.bitis_tarihi)} (${takvimGun} gün) · Tür: ${String(donem.donem_turu ?? 'normal')}`
 
   const { data: secimRaw } = await supabase
     .from('aylik_yemek_yeni_secim')
@@ -54,7 +54,11 @@ export async function GET(request: NextRequest) {
   const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donemId, donem, tatiller, memo)
   const prevIzBySiraNo = memo.prevIzDoneme.get(donemId) ?? {}
   const prevPersonelIzOverflowBySicilNo = memo.prevPersonelIzOverflow.get(donemId) ?? {}
-  const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+  const onceki = await ayyGetOncekiDonem(
+    supabase,
+    donem.baslangic_tarihi,
+    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+  )
 
   const sonuc = ayyHesapla({
     donemBas: donem.baslangic_tarihi,
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
   function satir(p: { sira_no_seq: number; sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; hamIzin: number; YG: number; K: number; SD: number; isZabita?: boolean }) {
     const vals = [p.sira_no_seq, p.sicil_no, p.ad_soyad, p.unvan, p.OD, p.hamIzin, p.IZ, p.YG, p.K, p.SD]
     if (p.isZabita) {
-      return vals.map((v, i) => ({ v, t: typeof v === 'number' ? 'n' : 's', s: kalinStil }))
+      return vals.map((v) => ({ v, t: typeof v === 'number' ? 'n' : 's', s: kalinStil }))
     }
     return vals
   }

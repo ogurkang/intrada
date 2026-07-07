@@ -6,13 +6,14 @@ export const TERFI_DONEM_ALAN_ETIKETLERI: Record<string, string> = {
   yil: 'Yıl',
   sira_no: 'Sıra No',
   donem_adi: 'Dönem Adı',
+  donem_turu: 'Dönem Türü',
   baslangic_tarihi: 'Başlangıç Tarihi',
   bitis_tarihi: 'Bitiş Tarihi',
   durum: 'Durum',
 }
 
 export const TERFI_DONEM_AUDIT_SELECT =
-  'yil, sira_no, donem_adi, baslangic_tarihi, bitis_tarihi, durum'
+  'yil, sira_no, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi, durum'
 
 const TARIH_ALANLARI = new Set(['baslangic_tarihi', 'bitis_tarihi'])
 

@@ -103,7 +103,7 @@ export default function AyyDetayClient({ donemId }: Props) {
   const [data, setData] = useState<AyyDetayData | null>(null)
   const [hata, setHata] = useState<string | null>(null)
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [ozetData, setOzetData] = useState<{ donem: { id: number; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı' }; sonuc: Awaited<ReturnType<typeof ayyHesapla>>; tatilSayisi: number } | null>(null)
+  const [ozetData, setOzetData] = useState<{ donem: { id: number; donem_adi: string | null; donem_turu?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı' }; sonuc: Awaited<ReturnType<typeof ayyHesapla>>; tatilSayisi: number } | null>(null)
   const [izinDuzenleAcik, setIzinDuzenleAcik] = useState(false)
   const [excelMenuAcik, setExcelMenuAcik] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -242,7 +242,7 @@ export default function AyyDetayClient({ donemId }: Props) {
         </Link>
         <span className="text-slate-300">/</span>
         <span className="text-slate-800 font-medium">
-          {data.donem.donem_adi ?? `Dönem #${donemId}`}
+          {(data.donem.donem_adi ?? `Dönem #${donemId}`) + ` (${String(data.donem.donem_turu ?? 'normal')})`}
         </span>
         {data.donem.durum && (
           <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${

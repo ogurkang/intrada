@@ -14,6 +14,7 @@ import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 export type AyyDonemRow = {
   id: number
   donem_adi: string | null
+  donem_turu?: 'normal' | 'fark' | string | null
   baslangic_tarihi: string
   bitis_tarihi: string
   durum?: string | null
@@ -80,10 +81,12 @@ export async function ayyGetMemurSozlesmeliSiciller(supabase: SupabaseClient): P
 export async function ayyGetOncekiDonem(
   supabase: SupabaseClient,
   baslangicTarihi: string,
+  donemTuru: string = 'normal',
 ): Promise<AyyDonemRow | null> {
   const { data } = await supabase
     .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, baslangic_tarihi, bitis_tarihi, durum, kapatildi_at')
+    .select('id, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi, durum, kapatildi_at')
+    .eq('donem_turu', donemTuru)
     .lt('bitis_tarihi', baslangicTarihi)
     .order('bitis_tarihi', { ascending: false })
     .limit(1)
@@ -94,7 +97,7 @@ export async function ayyGetOncekiDonem(
 export async function ayyLoadDonem(supabase: SupabaseClient, donemId: number): Promise<AyyDonemRow | null> {
   const { data } = await supabase
     .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, baslangic_tarihi, bitis_tarihi, durum, kapatildi_at')
+    .select('id, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi, durum, kapatildi_at')
     .eq('id', donemId)
     .maybeSingle()
   return data as AyyDonemRow | null
@@ -165,7 +168,8 @@ export async function ayySdSonrakiDonemIcin(
   memo: HavuzMemo,
 ): Promise<Record<string, number>> {
   if (memo.sdSonrakiDoneme.has(donemId)) return memo.sdSonrakiDoneme.get(donemId)!
-  const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+  const donemTuru = String(donem.donem_turu ?? 'normal').trim() || 'normal'
+  const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi, donemTuru)
   if (!prev) {
     memo.sdSonrakiDoneme.set(donemId, {})
     return {}
@@ -173,7 +177,7 @@ export async function ayySdSonrakiDonemIcin(
   const prevPool = await ayyBuildIzinHavuzu(supabase, prev.id, prev, memo)
   const odPrevPrev = await ayySdSonrakiDonemIcin(supabase, prev.id, prev, tatiller, memo)
   const izinler = await ayyIzinDbToAyyIzinRow(supabase, prevPool)
-  const prevOnceki = await ayyGetOncekiDonem(supabase, prev.baslangic_tarihi)
+  const prevOnceki = await ayyGetOncekiDonem(supabase, prev.baslangic_tarihi, donemTuru)
   const sonuc = ayyHesapla({
     donemBas: prev.baslangic_tarihi,
     donemBit: prev.bitis_tarihi,
@@ -264,7 +268,11 @@ export async function ayyBuildIzinHavuzu(
     return []
   }
   const sicilList = [...memur]
-  const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+  const prev = await ayyGetOncekiDonem(
+    supabase,
+    donem.baslangic_tarihi,
+    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+  )
 
   const rowsA = await queryIzinA(supabase, memur, sicilList, donem, prev)
 

@@ -10,7 +10,7 @@ import { kesintiDonemAuditDiffSatirlari, kesintiDonemAuditDegerGoster } from '@/
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 import type { Tables } from '@/types/database'
 
-type DonemSortSutun = 'sira_no' | 'donem_adi' | 'baslangic_tarihi' | 'bitis_tarihi' | 'durum'
+type DonemSortSutun = 'sira_no' | 'donem_adi' | 'donem_turu' | 'baslangic_tarihi' | 'bitis_tarihi' | 'durum'
 type SortYon = 'asc' | 'desc'
 
 function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
@@ -35,6 +35,7 @@ export interface Donem {
   yil:              number
   sira_no:          string | null
   donem_adi:        string | null
+  donem_turu?:      'normal' | 'fark' | string | null
   baslangic_tarihi: string
   bitis_tarihi:     string
   durum:            'Açık' | 'Kapalı'
@@ -218,10 +219,10 @@ function SecimModal({
 
 // ─── Dönem Formu ─────────────────────────────────────────────────────────────
 function DonemForm({
-  open, onClose, secili, onSubmit, isPending, hata,
+  open, onClose, secili, onSubmit, isPending, hata, showDonemTuru = false,
 }: {
   open: boolean; onClose: () => void; secili: Donem | null
-  onSubmit: (fd: FormData) => Promise<void>; isPending: boolean; hata: string | null
+  onSubmit: (fd: FormData) => Promise<void>; isPending: boolean; hata: string | null; showDonemTuru?: boolean
 }) {
   const d = secili
   const buYil = new Date().getFullYear()
@@ -248,6 +249,21 @@ function DonemForm({
             placeholder="Ocak 2024"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
         </div>
+        {showDonemTuru && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Dönem Türü *</label>
+            <select
+              name="donem_turu"
+              required
+              defaultValue={String(d?.donem_turu ?? 'normal')}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+            >
+              <option value="normal">Normal</option>
+              <option value="fark">Fark</option>
+            </select>
+            <p className="text-xs text-slate-400 mt-1">OD/SD zinciri yalnızca aynı tür dönemler arasında işler.</p>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Başlangıç *</label>
@@ -281,6 +297,7 @@ export default function DonemListClient({
   baslik, kod, donemler, onEkle, onGuncelle, onKapat, onAc, onSecimGetir, onSecimKaydet, detayBase, kuralMetni, hideSecimColumn,
   auditLoglarByRefId = {},
 }: Props) {
+  const showDonemTuru = kod === 'AYY'
   const [yilFiltre, setYilFiltre]     = useState(new Date().getFullYear())
   const [durumFiltre, setDurumFiltre] = useState<'Tümü' | 'Açık' | 'Kapalı'>('Tümü')
   const [formAcik, setFormAcik]       = useState(false)
@@ -308,6 +325,8 @@ export default function DonemListClient({
         fark = (a.sira_no ?? '').localeCompare(b.sira_no ?? '', 'tr', { numeric: true })
       } else if (sortSutun === 'donem_adi') {
         fark = (a.donem_adi ?? '').localeCompare(b.donem_adi ?? '', 'tr')
+      } else if (sortSutun === 'donem_turu') {
+        fark = String(a.donem_turu ?? 'normal').localeCompare(String(b.donem_turu ?? 'normal'), 'tr')
       } else if (sortSutun === 'baslangic_tarihi') {
         fark = a.baslangic_tarihi.localeCompare(b.baslangic_tarihi)
       } else if (sortSutun === 'bitis_tarihi') {
@@ -416,10 +435,12 @@ export default function DonemListClient({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {(['sira_no', 'donem_adi', 'baslangic_tarihi', 'bitis_tarihi'] as DonemSortSutun[]).map((s, i) => {
-                  const labels: Record<string, string> = { sira_no: 'Sıra No', donem_adi: 'Dönem Adı', baslangic_tarihi: 'Başlangıç', bitis_tarihi: 'Bitiş' }
-                  const widths: Record<string, string> = { sira_no: 'w-24', baslangic_tarihi: 'w-28', bitis_tarihi: 'w-28' }
-                  const center = i >= 2
+                {((showDonemTuru
+                  ? ['sira_no', 'donem_adi', 'donem_turu', 'baslangic_tarihi', 'bitis_tarihi']
+                  : ['sira_no', 'donem_adi', 'baslangic_tarihi', 'bitis_tarihi']) as DonemSortSutun[]).map((s) => {
+                  const labels: Record<string, string> = { sira_no: 'Sıra No', donem_adi: 'Dönem Adı', donem_turu: 'Tür', baslangic_tarihi: 'Başlangıç', bitis_tarihi: 'Bitiş' }
+                  const widths: Record<string, string> = { sira_no: 'w-24', donem_turu: 'w-24', baslangic_tarihi: 'w-28', bitis_tarihi: 'w-28' }
+                  const center = s === 'baslangic_tarihi' || s === 'bitis_tarihi' || s === 'donem_turu'
                   const aktif = sortSutun === s
                   return (
                     <th key={s}
@@ -444,7 +465,7 @@ export default function DonemListClient({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtreli.length === 0 && (
-                <tr><td colSpan={hideSecimColumn ? 6 : 7} className="text-center py-14 text-slate-400">{yilFiltre} yılında dönem kaydı yok.</td></tr>
+                <tr><td colSpan={hideSecimColumn ? (showDonemTuru ? 7 : 6) : (showDonemTuru ? 8 : 7)} className="text-center py-14 text-slate-400">{yilFiltre} yılında dönem kaydı yok.</td></tr>
               )}
               {filtreli.map(d => (
                 <tr
@@ -457,6 +478,15 @@ export default function DonemListClient({
                 >
                   <td className="px-4 py-3 font-mono text-xs text-slate-500">{d.sira_no ?? '—'}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{d.donem_adi ?? `${d.yil} Dönemi`}</td>
+                  {showDonemTuru && (
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                        String(d.donem_turu ?? 'normal') === 'fark' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {String(d.donem_turu ?? 'normal') === 'fark' ? 'Fark' : 'Normal'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">{tarih(d.baslangic_tarihi)}</td>
                   <td className="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">{tarih(d.bitis_tarihi)}</td>
                   {!hideSecimColumn && (
@@ -527,7 +557,7 @@ export default function DonemListClient({
 
       <DonemForm
         open={formAcik} onClose={formKapat} secili={seciliDonem}
-        onSubmit={handleSubmit} isPending={isPending} hata={sunuciHata}
+        onSubmit={handleSubmit} isPending={isPending} hata={sunuciHata} showDonemTuru={showDonemTuru}
       />
 
       {!hideSecimColumn && (

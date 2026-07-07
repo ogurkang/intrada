@@ -26,7 +26,7 @@ export interface AyyDetayIzin {
 }
 
 export interface AyyDetayData {
-  donem:    { id: number; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı' }
+  donem:    { id: number; donem_adi: string | null; donem_turu?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı' }
   aday:     AyyDetayIzin[]
   islenecek: AyyDetayIzin[]
 }
@@ -74,6 +74,7 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
     donem: {
       id: donem.id,
       donem_adi: donem.donem_adi,
+      donem_turu: donem.donem_turu ?? 'normal',
       baslangic_tarihi: donem.baslangic_tarihi,
       bitis_tarihi: donem.bitis_tarihi,
       durum: donem.durum as 'Açık' | 'Kapalı' | undefined,
@@ -107,7 +108,11 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
   const odBySiraNo = await ayySdSonrakiDonemIcin(supabase, donem_id, donem, tatiller, memo)
   const prevIzBySiraNo = memo.prevIzDoneme.get(donem_id) ?? {}
   const prevPersonelIzOverflowBySicilNo = memo.prevPersonelIzOverflow.get(donem_id) ?? {}
-  const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi)
+  const onceki = await ayyGetOncekiDonem(
+    supabase,
+    donem.baslangic_tarihi,
+    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+  )
   const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
   const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
 
@@ -133,6 +138,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
     donem: {
       id: donem.id,
       donem_adi: donem.donem_adi,
+      donem_turu: donem.donem_turu ?? 'normal',
       baslangic_tarihi: donem.baslangic_tarihi,
       bitis_tarihi: donem.bitis_tarihi,
       durum: donem.durum as 'Açık' | 'Kapalı' | undefined,

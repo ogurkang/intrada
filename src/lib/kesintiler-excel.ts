@@ -53,6 +53,53 @@ export function mergeSatir(text: string, colCount: number, opts?: { gri?: boolea
   return [ilk, ...diger]
 }
 
+export type ImzaRol = { etiket: string; ad: string }
+
+/** Seçili imza rolleri için sütun başlangıç indeksleri (eşit bölünür). */
+function imzaSutunBaslangiclari(colCount: number, rolSayisi: number): number[] {
+  if (rolSayisi <= 0) return []
+  const baslangiclar: number[] = [0]
+  let pos = 0
+  for (let i = 0; i < rolSayisi; i++) {
+    const genislik = i === rolSayisi - 1 ? colCount - pos : Math.floor(colCount / rolSayisi)
+    if (i > 0) baslangiclar.push(pos)
+    pos += genislik
+  }
+  return baslangiclar
+}
+
+/** Seçili roller için imza satırı (etiket veya ad). */
+export function imzaSatiriSecili(
+  colCount: number,
+  roller: ImzaRol[],
+  mod: 'etiket' | 'ad',
+  bold = false,
+): (string | XLSX.CellObject)[] {
+  const stil = { ...DOLGU_YOK_STIL, ...(bold ? { font: { bold: true } } : {}) }
+  const baslangiclar = imzaSutunBaslangiclari(colCount, roller.length)
+  const row: (string | XLSX.CellObject)[] = []
+  for (let i = 0; i < colCount; i++) {
+    const rolIdx = baslangiclar.findIndex((start, idx) => {
+      const sonraki = idx < baslangiclar.length - 1 ? baslangiclar[idx + 1] : colCount
+      return i >= start && i < sonraki
+    })
+    const metin = rolIdx >= 0 && i === baslangiclar[rolIdx]
+      ? (mod === 'etiket' ? roller[rolIdx].etiket : roller[rolIdx].ad)
+      : ''
+    row.push({ v: metin, t: 's' as const, s: stil })
+  }
+  return row
+}
+
+/** Seçili roller için imza merge aralıkları */
+export function imzaMergelerSecili(rowIdx: number, colCount: number, rolSayisi: number): XLSX.Range[] {
+  const baslangiclar = imzaSutunBaslangiclari(colCount, rolSayisi)
+  return baslangiclar.map((start, idx) => {
+    const bitis = idx < baslangiclar.length - 1 ? baslangiclar[idx + 1] - 1 : colCount - 1
+    return { s: { r: rowIdx, c: start }, e: { r: rowIdx, c: bitis } }
+  })
+}
+
 /** İmza satırı: 3 eşit sütunda PUANTÖR | BİRİM AMİRİ | MÜDÜR */
 export function imzaSatiri(colCount: number, labels: [string, string, string], bold = false): (string | XLSX.CellObject)[] {
   const c1 = Math.floor(colCount / 3)

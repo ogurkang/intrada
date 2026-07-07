@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
-import { applyBordersToRows, imzaMergeler, imzaSatiri, mergeSatir } from '@/lib/kesintiler-excel'
+import { applyBordersToRows, imzaMergelerSecili, imzaSatiriSecili, mergeSatir, type ImzaRol } from '@/lib/kesintiler-excel'
 import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
 import { izinKodlariBySicilGunFromHareketler } from '@/lib/arazi-izin-gunleri'
 import { haftaSonuIzinHucreKodu } from '@/lib/puantaj-hafta-sonu-izin'
@@ -327,11 +327,16 @@ export async function GET(request: NextRequest) {
         if (c.sicil_no) imzaAdMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
       })
     }
-    const imzaAdlar: [string, string, string] = [
-      puantorSicil ? (imzaAdMap[puantorSicil] ?? puantorSicil) : '',
-      birimAmiriSicil ? (imzaAdMap[birimAmiriSicil] ?? birimAmiriSicil) : '',
-      mudurSicil ? (imzaAdMap[mudurSicil] ?? mudurSicil) : '',
-    ]
+    const imzaRoller: ImzaRol[] = []
+    if (puantorSicil) {
+      imzaRoller.push({ etiket: 'PUANTÖR', ad: imzaAdMap[puantorSicil] ?? puantorSicil })
+    }
+    if (birimAmiriSicil) {
+      imzaRoller.push({ etiket: 'BİRİM AMİRİ', ad: imzaAdMap[birimAmiriSicil] ?? birimAmiriSicil })
+    }
+    if (mudurSicil) {
+      imzaRoller.push({ etiket: 'MÜDÜR', ad: imzaAdMap[mudurSicil] ?? mudurSicil })
+    }
 
     const colCount = 3 + gunler.length + 10
     const rows: (string | number | XLSX.CellObject)[][] = []
@@ -399,17 +404,21 @@ export async function GET(request: NextRequest) {
       mergeRows.push(rows.length - 1)
     }
 
-    const imzaLabelsR = rows.length
-    rows.push(imzaSatiri(colCount, ['PUANTÖR', 'BİRİM AMİRİ', 'MÜDÜR'], true))
-    const imzaNamesR = rows.length
-    rows.push(imzaSatiri(colCount, imzaAdlar, false))
+    let imzaLabelsR: number | null = null
+    let imzaNamesR: number | null = null
+    if (imzaRoller.length > 0) {
+      imzaLabelsR = rows.length
+      rows.push(imzaSatiriSecili(colCount, imzaRoller, 'etiket', true))
+      imzaNamesR = rows.length
+      rows.push(imzaSatiriSecili(colCount, imzaRoller, 'ad', false))
+    }
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     const merges: XLSX.Range[] = [
       ...mergeRows.map(r => ({ s: { r, c: 0 }, e: { r, c: colCount - 1 } })),
-      ...imzaMergeler(imzaLabelsR, colCount),
-      ...imzaMergeler(imzaNamesR, colCount),
     ]
+    if (imzaLabelsR != null) merges.push(...imzaMergelerSecili(imzaLabelsR, colCount, imzaRoller.length))
+    if (imzaNamesR != null) merges.push(...imzaMergelerSecili(imzaNamesR, colCount, imzaRoller.length))
 
     let personRowIdx = 7
     for (const _p of personeller) {

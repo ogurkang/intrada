@@ -23,27 +23,30 @@ async function ayyDonemAcilisKontrolu(
 ): Promise<string | null> {
   const { data: donem, error: donemErr } = await supabase
     .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, baslangic_tarihi, bitis_tarihi')
+    .select('id, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi')
     .eq('id', donemId)
     .maybeSingle()
   if (donemErr) return donemErr.message
   if (!donem) return 'Dönem bulunamadı.'
 
+  const donemTuru = String((donem as { donem_turu?: string }).donem_turu ?? 'normal').trim() || 'normal'
   const { data: acikDonem } = await supabase
     .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi')
+    .select('id, donem_adi, donem_turu')
     .eq('durum', 'Açık')
+    .eq('donem_turu', donemTuru)
     .neq('id', donemId)
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle()
   if (acikDonem) {
-    return `Önce ${acikDonem.donem_adi ?? `#${acikDonem.id}`} açık dönemini kapatın.`
+    return `Önce ${acikDonem.donem_adi ?? `#${acikDonem.id}`} (${acikDonem.donem_turu ?? 'normal'}) açık dönemini kapatın.`
   }
 
   const { data: oncekiDonem } = await supabase
     .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, bitis_tarihi, kapatildi_at')
+    .select('id, donem_adi, donem_turu, bitis_tarihi, kapatildi_at')
+    .eq('donem_turu', donemTuru)
     .lt('bitis_tarihi', donem.baslangic_tarihi)
     .order('bitis_tarihi', { ascending: false })
     .limit(1)
@@ -92,6 +95,7 @@ export function makeDonemActions(
       yil,
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
+      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: str(fd, 'donem_turu') ?? 'normal' } : {}),
       baslangic_tarihi,
       bitis_tarihi,
       durum:            'Açık' as const,
@@ -126,6 +130,7 @@ export function makeDonemActions(
       yil:              parseInt(String(fd.get('yil') ?? '0'), 10),
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
+      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: str(fd, 'donem_turu') ?? 'normal' } : {}),
       baslangic_tarihi: str(fd, 'baslangic_tarihi'),
       bitis_tarihi:     str(fd, 'bitis_tarihi'),
     }
@@ -319,7 +324,7 @@ export function makeDonemActions(
 
     // Çalışan adlarını eşle
     const sicilNolar = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))]
-    let adMap: Record<string, string> = {}
+    const adMap: Record<string, string> = {}
     if (sicilNolar.length > 0) {
       const { data: calisanlar } = await supabase
         .from('calisan')

@@ -1358,17 +1358,17 @@ export interface Database {
       aylik_yemek_yeni_donem: {
         Row: {
           id: number; yil: number; sira_no: string | null; donem_adi: string | null
-          baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'
+          donem_turu: 'normal' | 'fark'; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'
           ihb_az_row: number | null; created_at: string; kapatildi_at: string | null
         }
         Insert: {
           id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null
-          baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'
+          donem_turu?: 'normal' | 'fark'; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'
           ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null
         }
         Update: {
           id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null
-          baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'
+          donem_turu?: 'normal' | 'fark'; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'
           ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null
         }
         Relationships: []
@@ -1618,9 +1618,9 @@ export interface Database {
     // ─────────────────── KESİNTİLER ─────────────────────
 
       aylik_yemek_yeni_donem: {
-        Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; ihb_az_row: number | null; created_at: string; kapatildi_at: string | null }
-        Insert: { id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
-        Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
+        Row:    { id: number; yil: number; sira_no: string | null; donem_adi: string | null; donem_turu: 'normal' | 'fark'; baslangic_tarihi: string; bitis_tarihi: string; durum: 'Açık' | 'Kapalı'; ihb_az_row: number | null; created_at: string; kapatildi_at: string | null }
+        Insert: { id?: number; yil: number; sira_no?: string | null; donem_adi?: string | null; donem_turu?: 'normal' | 'fark'; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
+        Update: { id?: number; yil?: number; sira_no?: string | null; donem_adi?: string | null; donem_turu?: 'normal' | 'fark'; baslangic_tarihi?: string; bitis_tarihi?: string; durum?: 'Açık' | 'Kapalı'; ihb_az_row?: number | null; created_at?: string; kapatildi_at?: string | null }
         Relationships: []
       }
       aylik_yemek_yeni_secim: {
