@@ -1,13 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import GorevTuruneGoreCalisanClient from '@/components/rapor/GorevTuruneGoreCalisanClient'
 import type { GorevTuruSatir } from '@/components/rapor/GorevTuruneGoreCalisanClient'
+import { GOREV_TURU_RAPOR_TURLERI } from '@/lib/gorev-bilgileri'
 import {
   kadroBaslangic,
   kadroSatirAktifMi,
   type KadroRaporRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
-
-const HEDEF_TURLER = ['Geçici Görevlendirme', 'Kurum Görevlendirme']
 
 function formatTarih(s: string | null | undefined): string {
   if (!s) return '—'
@@ -26,7 +25,7 @@ export default async function GorevTuruneGoreCalisanPage() {
     (supabase as any)
       .from('calisan')
       .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi, gorev_turu_aciklama')
-      .in('gorev_turu', HEDEF_TURLER),
+      .in('gorev_turu', [...GOREV_TURU_RAPOR_TURLERI]),
     supabase
       .from('kadro_hareketleri')
       .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')

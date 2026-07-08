@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
+import { GOREV_TURU_RAPOR_TURLERI } from '@/lib/gorev-bilgileri'
 import {
   kadroBaslangic,
   kadroSatirAktifMi,
   type KadroRaporRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
-
-const HEDEF_TURLER = ['Geçici Görevlendirme', 'Kurum Görevlendirme']
 
 function formatTarih(s: string | null | undefined): string {
   if (!s) return '—'
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
     (supabase as any)
       .from('calisan')
       .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi, gorev_turu_aciklama')
-      .in('gorev_turu', HEDEF_TURLER),
+      .in('gorev_turu', [...GOREV_TURU_RAPOR_TURLERI]),
     supabase
       .from('kadro_hareketleri')
       .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
@@ -97,7 +96,7 @@ export async function GET(request: NextRequest) {
   satirlar.sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }))
 
   const baslik = turFiltre ? `Görev Türüne Göre Çalışan — ${turFiltre}` : 'Görev Türüne Göre Çalışan Bilgisi'
-  const headers = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Statü', 'Müdürlük', 'Görevlendirme Türü', 'Görevlendirildiği Kurum', 'Başlangıç', 'Bitiş']
+  const headers = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Statü', 'Müdürlük', 'Görev Türü', 'Görevlendirildiği Kurum', 'Başlangıç', 'Bitiş']
   const colCount = headers.length
 
   const rows: (string | number | XLSX.CellObject)[][] = []

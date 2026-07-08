@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
+import { GOREV_TURU_RAPOR_TURLERI } from '@/lib/gorev-bilgileri'
 
 export interface GorevTuruSatir {
   sicil_no:   string
@@ -34,7 +35,11 @@ function turBadge(tur: string) {
     return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Geçici</span>
   if (tur === 'Kurum Görevlendirme')
     return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Kurum</span>
-  return <span className="text-slate-500 text-xs">{tur}</span>
+  if (tur === 'Aylıksız İzin')
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">Aylıksız İzin</span>
+  if (tur === 'Yarı Zamanlı')
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800">Yarı Zamanlı</span>
+  return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{tur}</span>
 }
 
 export default function GorevTuruneGoreCalisanClient({
@@ -121,7 +126,7 @@ export default function GorevTuruneGoreCalisanClient({
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Görev Türüne Göre Çalışan Bilgisi</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Geçici Görevlendirme ve Kurum Görevlendirme türündeki personel listesi
+            Görev türü &quot;Çalışan&quot; olmayan personel listesi (aylıksız izin, yarı zamanlı, görevlendirme vb.)
           </p>
         </div>
         <div className="shrink-0">
@@ -149,8 +154,9 @@ export default function GorevTuruneGoreCalisanClient({
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             <option value="">Tümü</option>
-            <option value="Geçici Görevlendirme">Geçici Görevlendirme</option>
-            <option value="Kurum Görevlendirme">Kurum Görevlendirme</option>
+            {GOREV_TURU_RAPOR_TURLERI.map(tur => (
+              <option key={tur} value={tur}>{tur}</option>
+            ))}
           </select>
         </div>
 
@@ -208,7 +214,7 @@ export default function GorevTuruneGoreCalisanClient({
       {/* Tablo */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-700">Görevlendirme Listesi</span>
+          <span className="text-sm font-medium text-slate-700">Görev Türü Listesi</span>
           <span className="text-xs text-slate-400">{satirlar.length} toplam kayıt</span>
         </div>
         <div className="overflow-x-auto">
@@ -229,7 +235,7 @@ export default function GorevTuruneGoreCalisanClient({
                   Müdürlük <SortIcon dir={sortKey === 'mudurluk' ? sortDir : null} />
                 </th>
                 <th className={`${thClass('gorev_turu')} w-36`} onClick={() => handleSort('gorev_turu')}>
-                  Görevlendirme Türü <SortIcon dir={sortKey === 'gorev_turu' ? sortDir : null} />
+                  Görev Türü <SortIcon dir={sortKey === 'gorev_turu' ? sortDir : null} />
                 </th>
                 <th className={`${thClass('aciklama')} min-w-[160px]`} onClick={() => handleSort('aciklama')}>
                   Görevlendirildiği Kurum <SortIcon dir={sortKey === 'aciklama' ? sortDir : null} />

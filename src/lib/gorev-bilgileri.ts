@@ -6,6 +6,9 @@ export type GorevTuru = (typeof GOREV_TURU_OPTIONS)[number]
 /** Görevlendirme sayılan türler — yerleşke/konum raporlarında otomatik "Dış" kabul edilir. */
 export const GOREVLENDIRME_TURLERI = ['Geçici Görevlendirme', 'Kurum Görevlendirme'] as const
 
+/** "Çalışan" dışındaki görev türleri — Görev Türüne Göre Çalışan Bilgisi raporunda listelenir. */
+export const GOREV_TURU_RAPOR_TURLERI = GOREV_TURU_OPTIONS.filter(t => t !== 'Çalışan')
+
 /** Personel görevlendirme türü mü? (rapor konumunu "Dış" yapan türler). */
 export function gorevlendirmeTuruMu(tur: string | null | undefined): boolean {
   const t = (tur ?? '').trim()
