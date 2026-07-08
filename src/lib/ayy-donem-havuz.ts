@@ -11,6 +11,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 
+export type AyyDonemTuru = 'normal' | 'fark'
+
+export function ayyDonemTuruNorm(v: unknown): AyyDonemTuru {
+  return String(v ?? 'normal').trim() === 'fark' ? 'fark' : 'normal'
+}
+
 export type AyyDonemRow = {
   id: number
   donem_adi: string | null
@@ -81,7 +87,7 @@ export async function ayyGetMemurSozlesmeliSiciller(supabase: SupabaseClient): P
 export async function ayyGetOncekiDonem(
   supabase: SupabaseClient,
   baslangicTarihi: string,
-  donemTuru: string = 'normal',
+  donemTuru: AyyDonemTuru = 'normal',
 ): Promise<AyyDonemRow | null> {
   const { data } = await supabase
     .from('aylik_yemek_yeni_donem')
@@ -168,7 +174,7 @@ export async function ayySdSonrakiDonemIcin(
   memo: HavuzMemo,
 ): Promise<Record<string, number>> {
   if (memo.sdSonrakiDoneme.has(donemId)) return memo.sdSonrakiDoneme.get(donemId)!
-  const donemTuru = String(donem.donem_turu ?? 'normal').trim() || 'normal'
+  const donemTuru = ayyDonemTuruNorm(donem.donem_turu)
   const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi, donemTuru)
   if (!prev) {
     memo.sdSonrakiDoneme.set(donemId, {})
@@ -271,7 +277,7 @@ export async function ayyBuildIzinHavuzu(
   const prev = await ayyGetOncekiDonem(
     supabase,
     donem.baslangic_tarihi,
-    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+    ayyDonemTuruNorm(donem.donem_turu),
   )
 
   const rowsA = await queryIzinA(supabase, memur, sicilList, donem, prev)

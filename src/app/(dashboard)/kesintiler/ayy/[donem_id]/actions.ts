@@ -6,6 +6,7 @@ import {
   ayyBuildIzinHavuzu,
   ayyGetMemurSozlesmeliSiciller,
   ayyGetOncekiDonem,
+  ayyDonemTuruNorm,
   ayyIzinDbToAyyIzinRow,
   ayyLoadDonem,
   ayyLoadStatuBazliPersonel,
@@ -111,7 +112,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
   const onceki = await ayyGetOncekiDonem(
     supabase,
     donem.baslangic_tarihi,
-    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+    ayyDonemTuruNorm(donem.donem_turu),
   )
   const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
   const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)

@@ -14,6 +14,14 @@ export {
   donemAuditDegerGoster as kesintiDonemAuditDegerGoster,
 }
 
+/** Yalnızca aylik_yemek_yeni_donem tablosunda bulunan donem_turu alanı */
+export const KESINTI_AYY_DONEM_AUDIT_SELECT =
+  'yil, sira_no, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi, durum'
+
+export function kesintiDonemAuditSelect(refTable: string): string {
+  return refTable === 'aylik_yemek_yeni_donem' ? KESINTI_AYY_DONEM_AUDIT_SELECT : TERFI_DONEM_AUDIT_SELECT
+}
+
 export async function writeKesintiDonemAuditLogSafe(
   supabase: SupabaseClient,
   input: {
@@ -45,7 +53,7 @@ export async function fetchKesintiDonemAuditRow(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase as any)
     .from(refTable)
-    .select(TERFI_DONEM_AUDIT_SELECT)
+    .select(kesintiDonemAuditSelect(refTable))
     .eq('id', id)
     .maybeSingle()
   return data ? donemAuditSnapshot(data as Record<string, unknown>) : null

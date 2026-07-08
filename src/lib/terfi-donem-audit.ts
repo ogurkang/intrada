@@ -13,7 +13,7 @@ export const TERFI_DONEM_ALAN_ETIKETLERI: Record<string, string> = {
 }
 
 export const TERFI_DONEM_AUDIT_SELECT =
-  'yil, sira_no, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi, durum'
+  'yil, sira_no, donem_adi, baslangic_tarihi, bitis_tarihi, durum'
 
 const TARIH_ALANLARI = new Set(['baslangic_tarihi', 'bitis_tarihi'])
 

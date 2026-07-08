@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   ayyBuildIzinHavuzu,
   ayyGetOncekiDonem,
+  ayyDonemTuruNorm,
   ayyIzinDbToAyyIzinRow,
   ayyLoadDonem,
   ayyLoadTatiller,
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
   const onceki = await ayyGetOncekiDonem(
     supabase,
     donem.baslangic_tarihi,
-    String(donem.donem_turu ?? 'normal').trim() || 'normal',
+    ayyDonemTuruNorm(donem.donem_turu),
   )
 
   const sonuc = ayyHesapla({

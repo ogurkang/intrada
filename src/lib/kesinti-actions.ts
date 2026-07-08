@@ -2,10 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { IzinSatir } from '@/components/kesintiler/DonemListClient'
 import {
-  KESINTI_DONEM_AUDIT_SELECT,
+  kesintiDonemAuditSelect,
   kesintiDonemAuditSnapshot,
   writeKesintiDonemAuditLogSafe,
 } from '@/lib/kesinti-donem-audit'
+import { ayyDonemTuruNorm } from '@/lib/ayy-donem-havuz'
 
 type DonemTablo = 'aylik_yemek_yeni_donem' | 'raporlu_memurlar_yeni_donem' | 'izinli_vekiller_yeni_donem' | 'izinli_zabitalar_yeni_donem'
 type SecimTablo = 'aylik_yemek_yeni_secim' | 'raporlu_memurlar_yeni_secim' | 'izinli_vekiller_yeni_secim' | 'izinli_zabitalar_yeni_secim'
@@ -29,7 +30,7 @@ async function ayyDonemAcilisKontrolu(
   if (donemErr) return donemErr.message
   if (!donem) return 'Dönem bulunamadı.'
 
-  const donemTuru = String((donem as { donem_turu?: string }).donem_turu ?? 'normal').trim() || 'normal'
+  const donemTuru = ayyDonemTuruNorm(donem.donem_turu)
   const { data: acikDonem } = await supabase
     .from('aylik_yemek_yeni_donem')
     .select('id, donem_adi, donem_turu')
@@ -78,10 +79,10 @@ export function makeDonemActions(
     const supabase = await createClient()
     const { data } = await supabase
       .from(donemTablo)
-      .select(KESINTI_DONEM_AUDIT_SELECT)
+      .select(kesintiDonemAuditSelect(donemTablo))
       .eq('id', id)
       .maybeSingle()
-    return data ? kesintiDonemAuditSnapshot(data as Record<string, unknown>) : null
+    return data ? kesintiDonemAuditSnapshot(data as unknown as Record<string, unknown>) : null
   }
 
   async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
@@ -95,7 +96,7 @@ export function makeDonemActions(
       yil,
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
-      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: str(fd, 'donem_turu') ?? 'normal' } : {}),
+      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: ayyDonemTuruNorm(str(fd, 'donem_turu')) } : {}),
       baslangic_tarihi,
       bitis_tarihi,
       durum:            'Açık' as const,
@@ -130,7 +131,7 @@ export function makeDonemActions(
       yil:              parseInt(String(fd.get('yil') ?? '0'), 10),
       sira_no:          str(fd, 'sira_no'),
       donem_adi:        str(fd, 'donem_adi'),
-      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: str(fd, 'donem_turu') ?? 'normal' } : {}),
+      ...(donemTablo === 'aylik_yemek_yeni_donem' ? { donem_turu: ayyDonemTuruNorm(str(fd, 'donem_turu')) } : {}),
       baslangic_tarihi: str(fd, 'baslangic_tarihi'),
       bitis_tarihi:     str(fd, 'bitis_tarihi'),
     }
