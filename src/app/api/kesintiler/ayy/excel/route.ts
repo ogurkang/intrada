@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
     odBySiraNo,
     prevIzBySiraNo,
     prevPersonelIzOverflowBySicilNo,
+    donemTuru: ayyDonemTuruNorm(donem.donem_turu),
     oncekiDonem: onceki
       ? {
           baslangic_tarihi: onceki.baslangic_tarihi,

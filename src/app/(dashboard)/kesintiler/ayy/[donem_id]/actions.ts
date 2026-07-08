@@ -125,6 +125,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
     odBySiraNo,
     prevIzBySiraNo,
     prevPersonelIzOverflowBySicilNo,
+    donemTuru: ayyDonemTuruNorm(donem.donem_turu),
     oncekiDonem: onceki
       ? {
           baslangic_tarihi: onceki.baslangic_tarihi,

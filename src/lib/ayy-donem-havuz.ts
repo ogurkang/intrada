@@ -190,6 +190,7 @@ export async function ayySdSonrakiDonemIcin(
     izinler,
     tatiller,
     odBySiraNo: odPrevPrev,
+    donemTuru,
     oncekiDonem: prevOnceki
       ? {
           baslangic_tarihi: prevOnceki.baslangic_tarihi,
