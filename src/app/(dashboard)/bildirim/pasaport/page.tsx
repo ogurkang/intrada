@@ -17,20 +17,22 @@ export default async function PasaportIslemleriPage() {
 
   let q = supabase
     .from('pasaport_islemleri')
-    .select('id, sicil_no, ad_soyad, unvan, mudurluk, created_at')
+    .select('id, sicil_no, ad_soyad, unvan, mudurluk, personel_durum, created_at')
     .order('created_at', { ascending: false })
     .limit(300)
 
   if (kullaniciSicil) q = q.eq('sicil_no', kullaniciSicil)
 
-  const { data: kayitlarRaw } = await q
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: kayitlarRaw } = await (q as any)
 
-  const kayitlar: PasaportListeKayit[] = (kayitlarRaw ?? []).map(k => ({
+  const kayitlar: PasaportListeKayit[] = ((kayitlarRaw ?? []) as any[]).map(k => ({
     id: k.id,
-    sicil_no: k.sicil_no,
+    sicil_no: k.sicil_no ?? null,
     ad_soyad: k.ad_soyad,
     mudurluk: k.mudurluk,
     unvan: k.unvan,
+    personel_durum: k.personel_durum === 'ayrilan' ? 'ayrilan' : 'calisan',
   }))
 
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(

@@ -2,6 +2,10 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PasaportFormClient from '@/components/bildirim/PasaportFormClient'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import {
+  pasaportAyrilisNedeniNorm,
+  pasaportPersonelDurumNorm,
+} from '@/lib/pasaport-belge'
 import { getPasaportPersonel, type PasaportPersonel } from '@/lib/pasaport-personel'
 import { pasaportGuncelle } from '../../actions'
 
@@ -15,9 +19,12 @@ export default async function Page({ params }: Props) {
   if (!Number.isFinite(id)) notFound()
 
   const supabase = await createClient()
-  const { data: kayit } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: kayit } = await (supabase as any)
     .from('pasaport_islemleri')
-    .select('id, sicil_no, kadro_id')
+    .select(
+      'id, sicil_no, ad_soyad, tckn, kadro_id, derece, unvan, personel_durum, ayrilis_nedeni',
+    )
     .eq('id', id)
     .maybeSingle()
 
@@ -27,14 +34,19 @@ export default async function Page({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const personelDurum = pasaportPersonelDurumNorm(kayit.personel_durum)
 
   if (!isAdminLike(access)) {
+    if (personelDurum === 'ayrilan') notFound()
     if (access.mode !== 'kullanici') notFound()
-    if (String(access.sicilNo).trim() !== String(kayit.sicil_no).trim()) notFound()
+    if (String(access.sicilNo).trim() !== String(kayit.sicil_no ?? '').trim()) notFound()
   }
 
-  const kendi = await getPasaportPersonel(supabase, String(kayit.sicil_no).trim())
-  const personeller: PasaportPersonel[] = kendi ? [kendi] : []
+  let personeller: PasaportPersonel[] = []
+  if (personelDurum === 'calisan' && kayit.sicil_no) {
+    const kendi = await getPasaportPersonel(supabase, String(kayit.sicil_no).trim())
+    personeller = kendi ? [kendi] : []
+  }
 
   async function guncelle(fd: FormData) {
     'use server'
@@ -45,9 +57,18 @@ export default async function Page({ params }: Props) {
     <PasaportFormClient
       mode="edit"
       personeller={personeller}
-      sabitSicil={String(kayit.sicil_no).trim()}
+      sabitSicil={personelDurum === 'calisan' ? String(kayit.sicil_no ?? '').trim() : undefined}
       baslangicKadroId={kayit.kadro_id}
+      baslangic={{
+        personel_durum: personelDurum,
+        ayrilis_nedeni: pasaportAyrilisNedeniNorm(kayit.ayrilis_nedeni),
+        ad_soyad: kayit.ad_soyad ?? '',
+        unvan: kayit.unvan ?? '',
+        derece: kayit.derece ?? '',
+        tckn: kayit.tckn ?? '',
+      }}
       kayitId={id}
+      ayrilanIzinli={isAdminLike(access)}
       onKaydet={guncelle}
     />
   )

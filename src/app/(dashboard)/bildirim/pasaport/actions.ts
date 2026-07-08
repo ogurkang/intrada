@@ -5,7 +5,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
-import { PASAPORT_DERECE_UYARI, pasaportDereceUygunMu } from '@/lib/pasaport-belge'
+import {
+  PASAPORT_DERECE_UYARI,
+  pasaportAyrilisNedeniNorm,
+  pasaportDereceUygunMu,
+  pasaportPersonelDurumNorm,
+  pasaportTcknGecerliMi,
+  type PasaportAyrilisNedeni,
+  type PasaportPersonelDurum,
+} from '@/lib/pasaport-belge'
 import { memurStatuMu } from '@/lib/pasaport-personel'
 
 export interface PasaportActionSonuc {
@@ -19,6 +27,10 @@ interface KadroSnapshot {
   unvan: string
   mudurluk: string
   statu: string
+}
+
+function str(fd: FormData, key: string): string {
+  return String(fd.get(key) ?? '').trim()
 }
 
 /** Seçilen kadronun (kadro_hareketleri.id) personele aitliğini + memur + derece uygunluğunu doğrular. */
@@ -57,6 +69,31 @@ async function kadrodanSnapshot(
   }
 }
 
+function ayrilanAlanlariDogrula(fd: FormData):
+  | {
+      ad_soyad: string
+      unvan: string
+      derece: string
+      tckn: string
+      ayrilis_nedeni: PasaportAyrilisNedeni
+    }
+  | { hata: string } {
+  const ad_soyad = str(fd, 'ad_soyad')
+  const unvan = str(fd, 'unvan')
+  const derece = str(fd, 'derece')
+  const tckn = str(fd, 'tckn')
+  const ayrilis_nedeni = pasaportAyrilisNedeniNorm(str(fd, 'ayrilis_nedeni'))
+
+  if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
+  if (!unvan) return { hata: 'Kadro (unvan) zorunludur.' }
+  if (!derece) return { hata: 'Derece zorunludur.' }
+  if (!pasaportDereceUygunMu(derece)) return { hata: PASAPORT_DERECE_UYARI }
+  if (!pasaportTcknGecerliMi(tckn)) return { hata: 'T.C. kimlik numarası 11 rakam olmalıdır.' }
+  if (!ayrilis_nedeni) return { hata: 'Ayrılış nedeni (emekli / istifa) seçilmelidir.' }
+
+  return { ad_soyad, unvan, derece, tckn, ayrilis_nedeni }
+}
+
 export async function pasaportEkle(formData: FormData): Promise<PasaportActionSonuc> {
   const supabase = await createClient()
   const {
@@ -65,7 +102,60 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
   if (!user) return { hata: 'Oturum gerekli.' }
 
   const access = await getAppAccess(supabase, user.id)
-  let sicil = String(formData.get('sicil_no') ?? '').trim()
+  const personelDurum: PasaportPersonelDurum = pasaportPersonelDurumNorm(
+    str(formData, 'personel_durum'),
+  )
+
+  if (personelDurum === 'ayrilan') {
+    if (!isAdminLike(access)) return { hata: 'Ayrılan personel formu için yetkiniz yok.' }
+
+    const alan = ayrilanAlanlariDogrula(formData)
+    if ('hata' in alan) return { hata: alan.hata }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: inserted, error } = await (supabase as any)
+      .from('pasaport_islemleri')
+      .insert({
+        sicil_no: null,
+        ad_soyad: alan.ad_soyad,
+        tckn: alan.tckn,
+        kadro_id: null,
+        mudurluk: null,
+        derece: alan.derece,
+        unvan: alan.unvan,
+        statu: null,
+        personel_durum: 'ayrilan',
+        ayrilis_nedeni: alan.ayrilis_nedeni,
+        created_by: user.id,
+        created_by_email: user.email ?? null,
+      })
+      .select('id')
+      .single()
+
+    if (error) return { hata: error.message }
+
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no: null,
+      modul: 'pasaport',
+      islem: 'Ekle',
+      ozet: `${alan.ad_soyad} (ayrılan / ${alan.ayrilis_nedeni}) için yeşil pasaport başvuru formu oluşturuldu.`,
+      ref_table: 'pasaport_islemleri',
+      ref_id: String(inserted?.id ?? ''),
+      sonraki: {
+        personel_durum: 'ayrilan',
+        ayrilis_nedeni: alan.ayrilis_nedeni,
+        derece: alan.derece,
+        unvan: alan.unvan,
+        ad_soyad: alan.ad_soyad,
+        tckn: alan.tckn,
+      },
+    })
+
+    revalidatePath('/bildirim/pasaport')
+    return { ok: true }
+  }
+
+  let sicil = str(formData, 'sicil_no')
   const kadroId = parseInt(String(formData.get('kadro_id') ?? ''), 10)
 
   if (!isAdminLike(access)) {
@@ -86,7 +176,8 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
     .maybeSingle()
   if (!calisan) return { hata: 'Personel bulunamadı.' }
 
-  const { data: inserted, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: inserted, error } = await (supabase as any)
     .from('pasaport_islemleri')
     .insert({
       sicil_no: sicil,
@@ -97,6 +188,8 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
       derece: snap.derece,
       unvan: snap.unvan,
       statu: snap.statu,
+      personel_durum: 'calisan',
+      ayrilis_nedeni: null,
       created_by: user.id,
       created_by_email: user.email ?? null,
     })
@@ -112,7 +205,7 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
     ozet: `${calisan.ad_soyad ?? sicil} için yeşil pasaport başvuru formu oluşturuldu.`,
     ref_table: 'pasaport_islemleri',
     ref_id: String(inserted?.id ?? ''),
-    sonraki: snap,
+    sonraki: { ...snap, personel_durum: 'calisan' },
   })
 
   revalidatePath('/bildirim/pasaport')
@@ -131,20 +224,77 @@ export async function pasaportGuncelle(
 
   const access = await getAppAccess(supabase, user.id)
 
-  const { data: kayit } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: kayit } = await (supabase as any)
     .from('pasaport_islemleri')
-    .select('id, sicil_no, ad_soyad, kadro_id, derece, unvan, mudurluk, statu')
+    .select(
+      'id, sicil_no, ad_soyad, tckn, kadro_id, derece, unvan, mudurluk, statu, personel_durum, ayrilis_nedeni',
+    )
     .eq('id', id)
     .maybeSingle()
   if (!kayit) return { hata: 'Kayıt bulunamadı.' }
 
+  const kayitDurum = pasaportPersonelDurumNorm(kayit.personel_durum)
+
   if (!isAdminLike(access)) {
     if (
+      kayitDurum === 'ayrilan' ||
       access.mode !== 'kullanici' ||
-      String(access.sicilNo ?? '').trim() !== String(kayit.sicil_no).trim()
+      String(access.sicilNo ?? '').trim() !== String(kayit.sicil_no ?? '').trim()
     ) {
       return { hata: 'Bu kaydı düzenleme yetkiniz yok.' }
     }
+  }
+
+  if (kayitDurum === 'ayrilan') {
+    const alan = ayrilanAlanlariDogrula(formData)
+    if ('hata' in alan) return { hata: alan.hata }
+
+    const onceki = {
+      personel_durum: 'ayrilan',
+      ayrilis_nedeni: kayit.ayrilis_nedeni,
+      derece: kayit.derece,
+      unvan: kayit.unvan,
+      ad_soyad: kayit.ad_soyad,
+      tckn: kayit.tckn,
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('pasaport_islemleri')
+      .update({
+        ad_soyad: alan.ad_soyad,
+        tckn: alan.tckn,
+        derece: alan.derece,
+        unvan: alan.unvan,
+        ayrilis_nedeni: alan.ayrilis_nedeni,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (error) return { hata: error.message }
+
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no: null,
+      modul: 'pasaport',
+      islem: 'Güncelle',
+      ozet: `${alan.ad_soyad} (ayrılan) pasaport formu güncellendi.`,
+      ref_table: 'pasaport_islemleri',
+      ref_id: String(id),
+      onceki,
+      sonraki: {
+        personel_durum: 'ayrilan',
+        ayrilis_nedeni: alan.ayrilis_nedeni,
+        derece: alan.derece,
+        unvan: alan.unvan,
+        ad_soyad: alan.ad_soyad,
+        tckn: alan.tckn,
+      },
+    })
+
+    revalidatePath('/bildirim/pasaport')
+    revalidatePath(`/bildirim/pasaport/${id}`)
+    return { ok: true }
   }
 
   const kadroId = parseInt(String(formData.get('kadro_id') ?? ''), 10)
@@ -160,9 +310,11 @@ export async function pasaportGuncelle(
     unvan: kayit.unvan,
     mudurluk: kayit.mudurluk,
     statu: kayit.statu,
+    personel_durum: 'calisan',
   }
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from('pasaport_islemleri')
     .update({
       kadro_id: snap.kadro_id,
@@ -184,7 +336,7 @@ export async function pasaportGuncelle(
     ref_table: 'pasaport_islemleri',
     ref_id: String(id),
     onceki,
-    sonraki: snap,
+    sonraki: { ...snap, personel_durum: 'calisan' },
   })
 
   revalidatePath('/bildirim/pasaport')

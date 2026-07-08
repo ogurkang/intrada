@@ -25,10 +25,11 @@ export default async function PasaportYeniPage() {
         personeller={personeller}
         sabitSicil={sicil}
         onKaydet={pasaportEkle}
+        ayrilanIzinli={false}
       />
     )
   }
 
   const personeller = await listPasaportPersonel(supabase)
-  return <PasaportFormClient mode="create" personeller={personeller} onKaydet={pasaportEkle} />
+  return <PasaportFormClient mode="create" personeller={personeller} onKaydet={pasaportEkle} ayrilanIzinli />
 }

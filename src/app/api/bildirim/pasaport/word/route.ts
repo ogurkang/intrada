@@ -9,6 +9,7 @@ import {
   PASAPORT_MAKAM,
   pasaportBelgeAlanlari,
   pasaportDereceUygunMu,
+  pasaportGorevCumlesiSonu,
   pasaportTarihFormat,
 } from '@/lib/pasaport-belge'
 
@@ -42,9 +43,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Kayıt belirtilmedi.' }, { status: 400 })
     }
 
-    const { data: kayit } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: kayit } = await (supabase as any)
       .from('pasaport_islemleri')
-      .select('id, sicil_no, ad_soyad, tckn, mudurluk, derece, unvan, created_at')
+      .select(
+        'id, sicil_no, ad_soyad, tckn, mudurluk, derece, unvan, personel_durum, ayrilis_nedeni, created_at',
+      )
       .eq('id', id)
       .maybeSingle()
 
@@ -55,6 +59,7 @@ export async function GET(req: Request) {
     if (!isAdminLike(access)) {
       if (
         access.mode !== 'kullanici' ||
+        !kayit.sicil_no ||
         String(access.sicilNo ?? '').trim() !== String(kayit.sicil_no).trim()
       ) {
         return NextResponse.json({ error: 'Bu işlem için yetkiniz yok.' }, { status: 403 })
@@ -69,17 +74,29 @@ export async function GET(req: Request) {
       ? pasaportTarihFormat(new Date(kayit.created_at))
       : pasaportTarihFormat()
 
-    const alanlar = pasaportBelgeAlanlari(
-      {
-        sicil_no: kayit.sicil_no,
-        ad_soyad: kayit.ad_soyad,
-        tckn: kayit.tckn,
-        mudurluk: kayit.mudurluk ?? '',
-        derece: kayit.derece ?? '',
-        unvan: kayit.unvan ?? '',
-      },
-      tarih,
-    )
+    const alanlar = pasaportBelgeAlanlari(kayit, tarih)
+    const sonCumle = pasaportGorevCumlesiSonu(alanlar.personelDurum, alanlar.ayrilisNedeni)
+
+    const ilkParagrafChildren =
+      alanlar.personelDurum === 'ayrilan'
+        ? [
+            run('Belediyenizde '),
+            run(alanlar.derece),
+            run(' dereceli '),
+            run(alanlar.unvan),
+            run(` ${sonCumle}`),
+          ]
+        : [
+            run('Belediyenizde '),
+            run(alanlar.mudurlukBaz),
+            run(' Müdürlüğünde '),
+            run(alanlar.sicil_no),
+            run(' sicil numarası ile '),
+            run(alanlar.derece),
+            run(' dereceli '),
+            run(alanlar.unvan),
+            run(` ${sonCumle}`),
+          ]
 
     const doc = new Document({
       sections: [
@@ -106,17 +123,7 @@ export async function GET(req: Request) {
               alignment: AlignmentType.JUSTIFIED,
               indent: { firstLine: 708 },
               spacing: { after: 200, line: 360 },
-              children: [
-                run('Belediyenizde '),
-                run(alanlar.mudurlukBaz),
-                run(' Müdürlüğünde '),
-                run(alanlar.sicil_no),
-                run(' sicil numarası ile '),
-                run(alanlar.derece),
-                run(' dereceli '),
-                run(alanlar.unvan),
-                run(' kadrosunda olarak çalışmaktayım.'),
-              ],
+              children: ilkParagrafChildren,
             }),
             new Paragraph({
               alignment: AlignmentType.JUSTIFIED,
@@ -142,8 +149,8 @@ export async function GET(req: Request) {
     })
 
     const buf = await Packer.toBuffer(doc)
-
-    const filename = `Yesil_Pasaport_Basvuru_${kayit.sicil_no}.docx`
+    const safeKey = alanlar.sicil_no || alanlar.tckn || String(kayit.id)
+    const filename = `Yesil_Pasaport_Basvuru_${safeKey}.docx`
     const encodedFilename = encodeURIComponent(filename)
 
     return new NextResponse(new Uint8Array(buf), {

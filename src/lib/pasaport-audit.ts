@@ -1,6 +1,10 @@
 /** Pasaport işlemleri audit geçmişi — alan etiketleri ve değer gösterimi. */
 
 const ALANLAR: { alan: string; etiket: string }[] = [
+  { alan: 'personel_durum', etiket: 'Durum' },
+  { alan: 'ayrilis_nedeni', etiket: 'Ayrılış Nedeni' },
+  { alan: 'ad_soyad', etiket: 'Ad Soyad' },
+  { alan: 'tckn', etiket: 'T.C. Kimlik No' },
   { alan: 'derece', etiket: 'Kadro Derecesi' },
   { alan: 'unvan', etiket: 'Ünvan' },
   { alan: 'mudurluk', etiket: 'Müdürlük' },
@@ -36,5 +40,10 @@ export function pasaportAuditDegerGoster(alan: string, deger: unknown): string {
   const v = deger == null ? '' : String(deger).trim()
   if (!v) return '—'
   if (alan === 'derece') return `${v}. derece`
+  if (alan === 'personel_durum') return v === 'ayrilan' ? 'Ayrılan' : 'Çalışan'
+  if (alan === 'ayrilis_nedeni') {
+    if (v === 'emekli') return 'Emekli'
+    if (v === 'istifa') return 'İstifa'
+  }
   return v
 }

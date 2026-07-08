@@ -10,10 +10,38 @@ export const PASAPORT_UYGUN_DERECELER = [1, 2, 3] as const
 
 export const PASAPORT_DERECE_UYARI = 'Yeşil pasaport için kadro derecesi yetersiz.'
 
+export type PasaportPersonelDurum = 'calisan' | 'ayrilan'
+export type PasaportAyrilisNedeni = 'emekli' | 'istifa'
+
+export const PASAPORT_PERSONEL_DURUM_ETIKET: Record<PasaportPersonelDurum, string> = {
+  calisan: 'Çalışan',
+  ayrilan: 'Ayrılan',
+}
+
+export const PASAPORT_AYRILIS_NEDENI_ETIKET: Record<PasaportAyrilisNedeni, string> = {
+  emekli: 'Emekli',
+  istifa: 'İstifa',
+}
+
 /** Kadro derecesi yeşil pasaport için uygun mu? (yalnızca 1, 2 veya 3). */
 export function pasaportDereceUygunMu(derece: string | null | undefined): boolean {
   const n = parseInt(String(derece ?? '').trim(), 10)
   return Number.isFinite(n) && (PASAPORT_UYGUN_DERECELER as readonly number[]).includes(n)
+}
+
+/** 11 haneli yalnızca rakam TCKN. */
+export function pasaportTcknGecerliMi(tckn: string | null | undefined): boolean {
+  return /^\d{11}$/.test(String(tckn ?? '').trim())
+}
+
+export function pasaportPersonelDurumNorm(v: unknown): PasaportPersonelDurum {
+  return String(v ?? '').trim() === 'ayrilan' ? 'ayrilan' : 'calisan'
+}
+
+export function pasaportAyrilisNedeniNorm(v: unknown): PasaportAyrilisNedeni | null {
+  const t = String(v ?? '').trim()
+  if (t === 'emekli' || t === 'istifa') return t
+  return null
 }
 
 /** Müdürlük adından sondaki "Müdürlüğü" ekini çıkarır: "Yapı Kontrol Müdürlüğü" → "Yapı Kontrol". */
@@ -39,27 +67,43 @@ export interface PasaportBelgeAlanlari {
   unvan: string
   tckn: string
   ad_soyad: string
+  personelDurum: PasaportPersonelDurum
+  ayrilisNedeni: PasaportAyrilisNedeni | null
 }
 
-/** Personel + tarih bilgisinden dilekçe alanlarını hazırlar (altı çizili gösterilecek değerler). */
+/** Personel + tarih bilgisinden dilekçe alanlarını hazırlar. */
 export function pasaportBelgeAlanlari(
   p: {
-    sicil_no: string
+    sicil_no: string | null
     ad_soyad: string
     tckn: string | null
-    mudurluk: string
-    derece: string
-    unvan: string
+    mudurluk: string | null
+    derece: string | null
+    unvan: string | null
+    personel_durum?: string | null
+    ayrilis_nedeni?: string | null
   },
   tarih: string = pasaportTarihFormat(),
 ): PasaportBelgeAlanlari {
   return {
     tarih,
     mudurlukBaz: mudurlukBaz(p.mudurluk),
-    sicil_no: p.sicil_no,
-    derece: p.derece,
-    unvan: p.unvan,
+    sicil_no: String(p.sicil_no ?? '').trim(),
+    derece: String(p.derece ?? '').trim(),
+    unvan: String(p.unvan ?? '').trim(),
     tckn: p.tckn ?? '',
     ad_soyad: p.ad_soyad,
+    personelDurum: pasaportPersonelDurumNorm(p.personel_durum),
+    ayrilisNedeni: pasaportAyrilisNedeniNorm(p.ayrilis_nedeni),
   }
+}
+
+/** Dilekçe ilk paragrafının son kısmı (çalışıyorum / emekli oldum / istifa ettim). */
+export function pasaportGorevCumlesiSonu(
+  durum: PasaportPersonelDurum,
+  neden: PasaportAyrilisNedeni | null,
+): string {
+  if (durum === 'ayrilan' && neden === 'emekli') return 'kadrosunda iken emekli oldum.'
+  if (durum === 'ayrilan' && neden === 'istifa') return 'kadrosunda iken istifa ettim.'
+  return 'kadrosunda olarak çalışmaktayım.'
 }
