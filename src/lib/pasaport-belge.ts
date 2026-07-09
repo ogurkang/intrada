@@ -5,6 +5,9 @@ export const PASAPORT_BIRIM = '(İnsan Kaynakları ve Eğitim Müdürlüğü)'
 export const PASAPORT_KONU_METNI =
   'Yeşil pasaport ile ilgili başvuru formu işlemlerimin yürütülmesini arz ederim.'
 
+/** Dilekçe alt bilgisinde telefon etiketi (TC satırıyla aynı hizada). */
+export const PASAPORT_TELEFON_ETIKET = 'Telefon'
+
 /** Yeşil pasaport başvurusuna uygun kadro dereceleri (1, 2, 3). */
 export const PASAPORT_UYGUN_DERECELER = [1, 2, 3] as const
 

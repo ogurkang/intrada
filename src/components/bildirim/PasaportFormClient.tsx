@@ -10,6 +10,7 @@ import {
   PASAPORT_DERECE_UYARI,
   PASAPORT_KONU_METNI,
   PASAPORT_MAKAM,
+  PASAPORT_TELEFON_ETIKET,
   PASAPORT_UYGUN_DERECELER,
   mudurlukBaz,
   pasaportAyrilisNedeniNorm,
@@ -484,18 +485,21 @@ export default function PasaportFormClient({
             )}
             <p className="mt-4 text-justify indent-8">{PASAPORT_KONU_METNI}</p>
             <div className="flex justify-between items-baseline mt-20">
+              <span>{PASAPORT_TELEFON_ETIKET}</span>
+              <span>
+                {personelDurum === 'ayrilan' ? manuelTckn || '—' : secili?.tckn || '—'}
+              </span>
+            </div>
+            <div className="flex justify-between items-baseline">
               <span>
                 {personelDurum === 'ayrilan'
                   ? manuelTelefon || '—'
                   : secili?.telefon?.trim() || '—'}
               </span>
-              <span>
-                {personelDurum === 'ayrilan' ? manuelTckn || '—' : secili?.tckn || '—'}
+              <span className="font-semibold">
+                {personelDurum === 'ayrilan' ? manuelAdSoyad : secili?.ad_soyad}
               </span>
             </div>
-            <p className="text-right font-semibold">
-              {personelDurum === 'ayrilan' ? manuelAdSoyad : secili?.ad_soyad}
-            </p>
           </div>
         </div>
       ) : null}

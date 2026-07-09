@@ -7,6 +7,7 @@ import {
   PASAPORT_DERECE_UYARI,
   PASAPORT_KONU_METNI,
   PASAPORT_MAKAM,
+  PASAPORT_TELEFON_ETIKET,
   pasaportBelgeAlanlari,
   pasaportDereceUygunMu,
   pasaportGorevCumlesiSonu,
@@ -54,7 +55,7 @@ function imzaTablosu(telefon: string, tckn: string, adSoyad: string): Table {
             children: [
               new Paragraph({
                 alignment: AlignmentType.LEFT,
-                children: [run(telefon)],
+                children: [run(PASAPORT_TELEFON_ETIKET)],
               }),
             ],
           }),
@@ -74,7 +75,12 @@ function imzaTablosu(telefon: string, tckn: string, adSoyad: string): Table {
         children: [
           new TableCell({
             borders: hucreKenar,
-            children: [new Paragraph({ children: [run('')] })],
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                children: [run(telefon)],
+              }),
+            ],
           }),
           new TableCell({
             borders: hucreKenar,
