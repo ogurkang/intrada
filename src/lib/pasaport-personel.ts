@@ -17,6 +17,7 @@ export interface PasaportPersonel {
   sicil_no: string
   ad_soyad: string
   tckn: string | null
+  telefon: string | null
   /** Personelin memur statüsündeki kadroları (form için seçilebilir). */
   kadrolar: PasaportKadro[]
 }
@@ -87,13 +88,14 @@ export async function listPasaportPersonel(
 
   const { data: calisanlar } = await supabase
     .from('calisan')
-    .select('sicil_no, ad_soyad, tckn')
+    .select('sicil_no, ad_soyad, tckn, telefon')
     .in('sicil_no', siciller)
 
   const list: PasaportPersonel[] = (calisanlar ?? []).map(c => ({
     sicil_no: c.sicil_no,
     ad_soyad: c.ad_soyad ?? c.sicil_no,
     tckn: c.tckn ?? null,
+    telefon: c.telefon ?? null,
     kadrolar: sicilMemurKadrolari(c.sicil_no, kadrolarBySicil.get(c.sicil_no) ?? []),
   }))
 
@@ -112,7 +114,7 @@ export async function getPasaportPersonel(
 
   const { data: calisan } = await supabase
     .from('calisan')
-    .select('sicil_no, ad_soyad, tckn')
+    .select('sicil_no, ad_soyad, tckn, telefon')
     .eq('sicil_no', sicil)
     .maybeSingle()
 
@@ -129,6 +131,7 @@ export async function getPasaportPersonel(
     sicil_no: calisan.sicil_no,
     ad_soyad: calisan.ad_soyad ?? calisan.sicil_no,
     tckn: calisan.tckn ?? null,
+    telefon: calisan.telefon ?? null,
     kadrolar: sicilMemurKadrolari(sicil, kadrolar),
   }
 }

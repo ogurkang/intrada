@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx'
+import { AlignmentType, BorderStyle, Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from 'docx'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import {
@@ -26,6 +26,71 @@ function bosSatir(): Paragraph {
   return new Paragraph({ spacing: { after: 200 }, children: [run('')] })
 }
 
+const KENAR_YOK = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+
+function imzaTablosu(telefon: string, tckn: string, adSoyad: string): Table {
+  const hucreKenar = {
+    top: KENAR_YOK,
+    bottom: KENAR_YOK,
+    left: KENAR_YOK,
+    right: KENAR_YOK,
+  }
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: KENAR_YOK,
+      bottom: KENAR_YOK,
+      left: KENAR_YOK,
+      right: KENAR_YOK,
+      insideHorizontal: KENAR_YOK,
+      insideVertical: KENAR_YOK,
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: hucreKenar,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                children: [run(telefon)],
+              }),
+            ],
+          }),
+          new TableCell({
+            borders: hucreKenar,
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [run(tckn)],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: hucreKenar,
+            children: [new Paragraph({ children: [run('')] })],
+          }),
+          new TableCell({
+            borders: hucreKenar,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [run(adSoyad, { bold: true })],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
 export async function GET(req: Request) {
   try {
     const supabase = await createClient()
@@ -47,7 +112,7 @@ export async function GET(req: Request) {
     const { data: kayit } = await (supabase as any)
       .from('pasaport_islemleri')
       .select(
-        'id, sicil_no, ad_soyad, tckn, mudurluk, derece, unvan, personel_durum, ayrilis_nedeni, created_at',
+        'id, sicil_no, ad_soyad, tckn, telefon, mudurluk, derece, unvan, personel_durum, ayrilis_nedeni, created_at',
       )
       .eq('id', id)
       .maybeSingle()
@@ -133,16 +198,7 @@ export async function GET(req: Request) {
             }),
             bosSatir(),
             bosSatir(),
-            bosSatir(),
-            bosSatir(),
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              children: [run(alanlar.tckn)],
-            }),
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              children: [run(alanlar.ad_soyad, { bold: true })],
-            }),
+            imzaTablosu(alanlar.telefon, alanlar.tckn, alanlar.ad_soyad),
           ],
         },
       ],

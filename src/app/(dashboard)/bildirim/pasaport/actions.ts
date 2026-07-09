@@ -11,6 +11,8 @@ import {
   pasaportDereceUygunMu,
   pasaportPersonelDurumNorm,
   pasaportTcknGecerliMi,
+  pasaportTelefonGecerliMi,
+  pasaportTelefonNorm,
   type PasaportAyrilisNedeni,
   type PasaportPersonelDurum,
 } from '@/lib/pasaport-belge'
@@ -75,6 +77,7 @@ function ayrilanAlanlariDogrula(fd: FormData):
       unvan: string
       derece: string
       tckn: string
+      telefon: string
       ayrilis_nedeni: PasaportAyrilisNedeni
     }
   | { hata: string } {
@@ -82,6 +85,7 @@ function ayrilanAlanlariDogrula(fd: FormData):
   const unvan = str(fd, 'unvan')
   const derece = str(fd, 'derece')
   const tckn = str(fd, 'tckn')
+  const telefon = pasaportTelefonNorm(str(fd, 'telefon'))
   const ayrilis_nedeni = pasaportAyrilisNedeniNorm(str(fd, 'ayrilis_nedeni'))
 
   if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
@@ -89,9 +93,12 @@ function ayrilanAlanlariDogrula(fd: FormData):
   if (!derece) return { hata: 'Derece zorunludur.' }
   if (!pasaportDereceUygunMu(derece)) return { hata: PASAPORT_DERECE_UYARI }
   if (!pasaportTcknGecerliMi(tckn)) return { hata: 'T.C. kimlik numarası 11 rakam olmalıdır.' }
+  if (!pasaportTelefonGecerliMi(telefon)) {
+    return { hata: 'Telefon numarası 10–11 rakam olmalıdır.' }
+  }
   if (!ayrilis_nedeni) return { hata: 'Ayrılış nedeni (emekli / istifa) seçilmelidir.' }
 
-  return { ad_soyad, unvan, derece, tckn, ayrilis_nedeni }
+  return { ad_soyad, unvan, derece, tckn, telefon, ayrilis_nedeni }
 }
 
 export async function pasaportEkle(formData: FormData): Promise<PasaportActionSonuc> {
@@ -119,6 +126,7 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
         sicil_no: null,
         ad_soyad: alan.ad_soyad,
         tckn: alan.tckn,
+        telefon: alan.telefon,
         kadro_id: null,
         mudurluk: null,
         derece: alan.derece,
@@ -148,6 +156,7 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
         unvan: alan.unvan,
         ad_soyad: alan.ad_soyad,
         tckn: alan.tckn,
+        telefon: alan.telefon,
       },
     })
 
@@ -171,10 +180,12 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
 
   const { data: calisan } = await supabase
     .from('calisan')
-    .select('ad_soyad, tckn')
+    .select('ad_soyad, tckn, telefon')
     .eq('sicil_no', sicil)
     .maybeSingle()
   if (!calisan) return { hata: 'Personel bulunamadı.' }
+
+  const telefon = pasaportTelefonNorm(calisan.telefon)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error } = await (supabase as any)
@@ -183,6 +194,7 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
       sicil_no: sicil,
       ad_soyad: calisan.ad_soyad ?? sicil,
       tckn: calisan.tckn ?? null,
+      telefon: telefon || null,
       kadro_id: snap.kadro_id,
       mudurluk: snap.mudurluk,
       derece: snap.derece,
@@ -205,7 +217,7 @@ export async function pasaportEkle(formData: FormData): Promise<PasaportActionSo
     ozet: `${calisan.ad_soyad ?? sicil} için yeşil pasaport başvuru formu oluşturuldu.`,
     ref_table: 'pasaport_islemleri',
     ref_id: String(inserted?.id ?? ''),
-    sonraki: { ...snap, personel_durum: 'calisan' },
+    sonraki: { ...snap, personel_durum: 'calisan', telefon: telefon || null },
   })
 
   revalidatePath('/bildirim/pasaport')
@@ -228,7 +240,7 @@ export async function pasaportGuncelle(
   const { data: kayit } = await (supabase as any)
     .from('pasaport_islemleri')
     .select(
-      'id, sicil_no, ad_soyad, tckn, kadro_id, derece, unvan, mudurluk, statu, personel_durum, ayrilis_nedeni',
+      'id, sicil_no, ad_soyad, tckn, telefon, kadro_id, derece, unvan, mudurluk, statu, personel_durum, ayrilis_nedeni',
     )
     .eq('id', id)
     .maybeSingle()
@@ -257,6 +269,7 @@ export async function pasaportGuncelle(
       unvan: kayit.unvan,
       ad_soyad: kayit.ad_soyad,
       tckn: kayit.tckn,
+      telefon: kayit.telefon,
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,6 +278,7 @@ export async function pasaportGuncelle(
       .update({
         ad_soyad: alan.ad_soyad,
         tckn: alan.tckn,
+        telefon: alan.telefon,
         derece: alan.derece,
         unvan: alan.unvan,
         ayrilis_nedeni: alan.ayrilis_nedeni,
@@ -289,6 +303,7 @@ export async function pasaportGuncelle(
         unvan: alan.unvan,
         ad_soyad: alan.ad_soyad,
         tckn: alan.tckn,
+        telefon: alan.telefon,
       },
     })
 
@@ -304,12 +319,20 @@ export async function pasaportGuncelle(
   if ('hata' in snapRes) return { hata: snapRes.hata }
   const snap = snapRes.snapshot
 
+  const { data: calisan } = await supabase
+    .from('calisan')
+    .select('telefon')
+    .eq('sicil_no', String(kayit.sicil_no).trim())
+    .maybeSingle()
+  const telefon = pasaportTelefonNorm(calisan?.telefon)
+
   const onceki = {
     kadro_id: kayit.kadro_id,
     derece: kayit.derece,
     unvan: kayit.unvan,
     mudurluk: kayit.mudurluk,
     statu: kayit.statu,
+    telefon: kayit.telefon,
     personel_durum: 'calisan',
   }
 
@@ -322,6 +345,7 @@ export async function pasaportGuncelle(
       derece: snap.derece,
       unvan: snap.unvan,
       statu: snap.statu,
+      telefon: telefon || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -336,7 +360,7 @@ export async function pasaportGuncelle(
     ref_table: 'pasaport_islemleri',
     ref_id: String(id),
     onceki,
-    sonraki: { ...snap, personel_durum: 'calisan' },
+    sonraki: { ...snap, personel_durum: 'calisan', telefon: telefon || null },
   })
 
   revalidatePath('/bildirim/pasaport')

@@ -23,7 +23,7 @@ export default async function Page({ params }: Props) {
   const { data: kayit } = await (supabase as any)
     .from('pasaport_islemleri')
     .select(
-      'id, sicil_no, ad_soyad, tckn, kadro_id, derece, unvan, personel_durum, ayrilis_nedeni',
+      'id, sicil_no, ad_soyad, tckn, telefon, kadro_id, derece, unvan, personel_durum, ayrilis_nedeni',
     )
     .eq('id', id)
     .maybeSingle()
@@ -66,6 +66,7 @@ export default async function Page({ params }: Props) {
         unvan: kayit.unvan ?? '',
         derece: kayit.derece ?? '',
         tckn: kayit.tckn ?? '',
+        telefon: kayit.telefon ?? '',
       }}
       kayitId={id}
       ayrilanIzinli={isAdminLike(access)}

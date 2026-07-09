@@ -34,6 +34,16 @@ export function pasaportTcknGecerliMi(tckn: string | null | undefined): boolean 
   return /^\d{11}$/.test(String(tckn ?? '').trim())
 }
 
+/** Telefon: en az 10, en fazla 11 rakam (boşluk/tire hariç). */
+export function pasaportTelefonGecerliMi(telefon: string | null | undefined): boolean {
+  const d = String(telefon ?? '').replace(/\D/g, '')
+  return d.length >= 10 && d.length <= 11
+}
+
+export function pasaportTelefonNorm(telefon: string | null | undefined): string {
+  return String(telefon ?? '').replace(/\D/g, '')
+}
+
 export function pasaportPersonelDurumNorm(v: unknown): PasaportPersonelDurum {
   return String(v ?? '').trim() === 'ayrilan' ? 'ayrilan' : 'calisan'
 }
@@ -66,6 +76,7 @@ export interface PasaportBelgeAlanlari {
   derece: string
   unvan: string
   tckn: string
+  telefon: string
   ad_soyad: string
   personelDurum: PasaportPersonelDurum
   ayrilisNedeni: PasaportAyrilisNedeni | null
@@ -77,6 +88,7 @@ export function pasaportBelgeAlanlari(
     sicil_no: string | null
     ad_soyad: string
     tckn: string | null
+    telefon?: string | null
     mudurluk: string | null
     derece: string | null
     unvan: string | null
@@ -92,6 +104,7 @@ export function pasaportBelgeAlanlari(
     derece: String(p.derece ?? '').trim(),
     unvan: String(p.unvan ?? '').trim(),
     tckn: p.tckn ?? '',
+    telefon: String(p.telefon ?? '').trim(),
     ad_soyad: p.ad_soyad,
     personelDurum: pasaportPersonelDurumNorm(p.personel_durum),
     ayrilisNedeni: pasaportAyrilisNedeniNorm(p.ayrilis_nedeni),

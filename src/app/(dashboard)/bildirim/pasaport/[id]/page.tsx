@@ -35,7 +35,7 @@ export default async function Page({ params }: Props) {
   const { data: kayit } = await (supabase as any)
     .from('pasaport_islemleri')
     .select(
-      'id, sicil_no, ad_soyad, tckn, derece, unvan, mudurluk, statu, personel_durum, ayrilis_nedeni, created_at, updated_at, created_by_email',
+      'id, sicil_no, ad_soyad, tckn, telefon, derece, unvan, mudurluk, statu, personel_durum, ayrilis_nedeni, created_at, updated_at, created_by_email',
     )
     .eq('id', id)
     .maybeSingle()
@@ -75,6 +75,7 @@ export default async function Page({ params }: Props) {
       deger: kayit.sicil_no ? `${kayit.ad_soyad} (${kayit.sicil_no})` : kayit.ad_soyad,
     },
     { etiket: 'T.C. Kimlik No', deger: kayit.tckn ?? '—' },
+    { etiket: 'Telefon', deger: kayit.telefon ?? '—' },
     { etiket: 'Müdürlük', deger: kayit.mudurluk ?? '—' },
     { etiket: 'Kadro Derecesi', deger: kayit.derece ? `${kayit.derece}. derece` : '—' },
     { etiket: 'Ünvan', deger: kayit.unvan ?? '—' },

@@ -1095,7 +1095,7 @@ export interface Database {
       }
       pasaport_islemleri: {
         Row: {
-          id: number; sicil_no: string | null; ad_soyad: string; tckn: string | null
+          id: number; sicil_no: string | null; ad_soyad: string; tckn: string | null; telefon: string | null
           kadro_id: number | null; mudurluk: string | null; derece: string | null
           unvan: string | null; statu: string | null
           personel_durum: 'calisan' | 'ayrilan'; ayrilis_nedeni: 'emekli' | 'istifa' | null
@@ -1103,7 +1103,7 @@ export interface Database {
           created_by: string | null; created_by_email: string | null
         }
         Insert: {
-          id?: number; sicil_no?: string | null; ad_soyad: string; tckn?: string | null
+          id?: number; sicil_no?: string | null; ad_soyad: string; tckn?: string | null; telefon?: string | null
           kadro_id?: number | null; mudurluk?: string | null; derece?: string | null
           unvan?: string | null; statu?: string | null
           personel_durum?: 'calisan' | 'ayrilan'; ayrilis_nedeni?: 'emekli' | 'istifa' | null
@@ -1111,7 +1111,7 @@ export interface Database {
           created_by?: string | null; created_by_email?: string | null
         }
         Update: {
-          id?: number; sicil_no?: string | null; ad_soyad?: string; tckn?: string | null
+          id?: number; sicil_no?: string | null; ad_soyad?: string; tckn?: string | null; telefon?: string | null
           kadro_id?: number | null; mudurluk?: string | null; derece?: string | null
           unvan?: string | null; statu?: string | null
           personel_durum?: 'calisan' | 'ayrilan'; ayrilis_nedeni?: 'emekli' | 'istifa' | null

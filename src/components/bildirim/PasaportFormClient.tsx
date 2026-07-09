@@ -18,6 +18,7 @@ import {
   pasaportPersonelDurumNorm,
   pasaportTarihFormat,
   pasaportTcknGecerliMi,
+  pasaportTelefonGecerliMi,
   type PasaportAyrilisNedeni,
   type PasaportPersonelDurum,
 } from '@/lib/pasaport-belge'
@@ -31,6 +32,7 @@ export interface PasaportFormBaslangic {
   unvan?: string
   derece?: string
   tckn?: string | null
+  telefon?: string | null
 }
 
 interface Props {
@@ -74,6 +76,7 @@ export default function PasaportFormClient({
   const [manuelUnvan, setManuelUnvan] = useState(baslangic?.unvan ?? '')
   const [manuelDerece, setManuelDerece] = useState(baslangic?.derece ?? '')
   const [manuelTckn, setManuelTckn] = useState((baslangic?.tckn ?? '').toString())
+  const [manuelTelefon, setManuelTelefon] = useState((baslangic?.telefon ?? '').toString())
 
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
   const [seciliKadroId, setSeciliKadroId] = useState<number | null>(baslangicKadroId ?? null)
@@ -97,11 +100,13 @@ export default function PasaportFormClient({
   const calisanDereceUygun = seciliKadro ? pasaportDereceUygunMu(seciliKadro.derece) : false
   const ayrilanDereceUygun = pasaportDereceUygunMu(manuelDerece)
   const ayrilanTcknUygun = pasaportTcknGecerliMi(manuelTckn)
+  const ayrilanTelefonUygun = pasaportTelefonGecerliMi(manuelTelefon)
   const ayrilanHazir =
     Boolean(manuelAdSoyad.trim()) &&
     Boolean(manuelUnvan.trim()) &&
     ayrilanDereceUygun &&
     ayrilanTcknUygun &&
+    ayrilanTelefonUygun &&
     (ayrilisNedeni === 'emekli' || ayrilisNedeni === 'istifa')
 
   function personelDegis(sicil: string) {
@@ -128,6 +133,7 @@ export default function PasaportFormClient({
         else if (!manuelDerece.trim()) setHata('Derece zorunludur.')
         else if (!ayrilanDereceUygun) setHata(PASAPORT_DERECE_UYARI)
         else if (!ayrilanTcknUygun) setHata('T.C. kimlik numarası 11 rakam olmalıdır.')
+        else if (!ayrilanTelefonUygun) setHata('Telefon numarası 10–11 rakam olmalıdır.')
         else setHata('Ayrılış nedeni (emekli / istifa) seçilmelidir.')
         return
       }
@@ -135,6 +141,7 @@ export default function PasaportFormClient({
       fd.set('unvan', manuelUnvan.trim())
       fd.set('derece', manuelDerece.trim())
       fd.set('tckn', manuelTckn.trim())
+      fd.set('telefon', manuelTelefon.trim())
       fd.set('ayrilis_nedeni', ayrilisNedeni)
     } else {
       if (!seciliSicil || !seciliKadro) {
@@ -186,8 +193,9 @@ export default function PasaportFormClient({
           {mode === 'edit' ? 'Pasaport Formunu Değiştir' : 'Yeni Pasaport Formu'}
         </h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Çalışan personelde memur kadrosu (1–3. derece) seçilir. Ayrılan personelde ad soyad,
-          kadro, derece, T.C. kimlik no ve ayrılış nedeni (emekli / istifa) zorunludur.
+          Çalışan personelde memur kadrosu (1–3. derece) seçilir; telefon bilgisi personel kaydından alınır.
+          Ayrılan personelde ad soyad, kadro, derece, T.C. kimlik no, telefon ve ayrılış nedeni (emekli / istifa)
+          zorunludur.
         </p>
       </div>
 
@@ -305,6 +313,16 @@ export default function PasaportFormClient({
                 {PASAPORT_DERECE_UYARI}
               </div>
             ) : null}
+
+            {secili ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Telefon</label>
+                <p className="text-sm text-slate-800 font-mono px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                  {secili.telefon?.trim() || '—'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">Personel kaydından otomatik alınır.</p>
+              </div>
+            ) : null}
           </>
         ) : (
           <>
@@ -369,6 +387,23 @@ export default function PasaportFormClient({
                 />
                 {manuelTckn && !ayrilanTcknUygun ? (
                   <p className="text-xs text-red-600 mt-1">11 rakam olmalıdır ({manuelTckn.length}/11).</p>
+                ) : null}
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Telefon <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={manuelTelefon}
+                  onChange={e => setManuelTelefon(e.target.value.replace(/[^\d+\s()-]/g, ''))}
+                  required
+                  className="w-full h-[42px] px-3 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  placeholder="05xx xxx xx xx"
+                />
+                {manuelTelefon && !ayrilanTelefonUygun ? (
+                  <p className="text-xs text-red-600 mt-1">10–11 rakam olmalıdır.</p>
                 ) : null}
               </div>
             </div>
@@ -448,9 +483,16 @@ export default function PasaportFormClient({
               </p>
             )}
             <p className="mt-4 text-justify indent-8">{PASAPORT_KONU_METNI}</p>
-            <p className="text-right mt-20">
-              {personelDurum === 'ayrilan' ? manuelTckn || '—' : secili?.tckn || '—'}
-            </p>
+            <div className="flex justify-between items-baseline mt-20">
+              <span>
+                {personelDurum === 'ayrilan'
+                  ? manuelTelefon || '—'
+                  : secili?.telefon?.trim() || '—'}
+              </span>
+              <span>
+                {personelDurum === 'ayrilan' ? manuelTckn || '—' : secili?.tckn || '—'}
+              </span>
+            </div>
             <p className="text-right font-semibold">
               {personelDurum === 'ayrilan' ? manuelAdSoyad : secili?.ad_soyad}
             </p>
