@@ -8,11 +8,19 @@ import {
   buildShakWindowsForYear,
   isIzyRhTur,
   izyRhToplamGun,
+  pickGlobalCurDonemForShak,
   type KesintimDonemRow,
   type KesintimIzinRow,
   type KesintimHesapSatir,
   type KesintimKategori,
 } from '@/lib/kesinym-hesap'
+import {
+  buildIzyAnnualRhIzinler,
+  buildShakCurrentDonemRhDays,
+  mergeRhSiciller,
+  shakChainDonemIdListesi,
+  shakChainExtraIzySiraNolari,
+} from '@/lib/sosyal-hak-izy-hesap'
 import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
 function tarih(t: string | null | undefined) {
@@ -112,37 +120,16 @@ async function hesaplaModul(
   })
 
   /* ── globalCurId: Sosyal Hak dönemiyle en fazla örtüşen modül dönemi ── */
-  // Sosyal Hak [shakBasMs, shakBitMs] aralığıyla maksimum takvim gün örtüşümüne sahip modül dönemini seç.
-  // Hiçbir modül dönemi Sosyal Hak dönemiyle örtüşmüyorsa (örn. IZY son dönem Mayıs 14'te bitip
-  // Sosyal Hak Mayıs 15'te başlıyorsa), Sosyal Hak tarihlerinden SANAL bir dönem oluşturulup
-  // tumDonemler'e eklenir ve globalCurId olarak kullanılır.
   const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
   const shakBitMs = new Date(shakBitTarihi).setHours(23, 59, 59, 999)
-  let globalCurDonem = tumDonemler[tumDonemler.length - 1]
-  let maxOverlap = -1
-  for (const p of tumDonemler) {
-    const oS = Math.max(p.baslangic_tarihi_ms, shakBasMs)
-    const oE = Math.min(p.bitis_tarihi_ms,     shakBitMs)
-    const ov = oE > oS ? oE - oS : -1
-    if (ov > maxOverlap) { maxOverlap = ov; globalCurDonem = p }
-  }
-  if (maxOverlap < 0) {
-    // Örtüşen modül dönemi yok: Sosyal Hak sınırlarından sanal dönem oluştur.
-    // Böylece hesap zinciri (gerçek dönem → sanal dönem) doğru K/SD üretir.
-    const vTg = Math.floor((shakBitMs - shakBasMs) / 86_400_000) + 1
-    const virtualPeriod: KesintimDonemRow = {
-      id: -999,
-      baslangic_tarihi: shakBasTarihi,
-      bitis_tarihi:     shakBitTarihi,
-      baslangic_tarihi_ms: shakBasMs,
-      bitis_tarihi_ms:     shakBitMs,
-      idx:      tumDonemler.length,  // gerçek dönemlerin hemen ardına ekle
-      takvimGun: vTg,
-      kapasite:  modul === 'izy' ? vTg : Math.min(vTg, 30),
-    }
-    tumDonemler.push(virtualPeriod)
-    globalCurDonem = virtualPeriod
-  }
+  const { globalCurDonem, donemler: tumDonemlerResolved } = pickGlobalCurDonemForShak(
+    tumDonemler,
+    shakBasTarihi,
+    shakBitTarihi,
+    modul,
+  )
+  tumDonemler.length = 0
+  tumDonemler.push(...tumDonemlerResolved)
   const globalCurId = globalCurDonem.id
 
   // idxById: sanal dönem de dahil edilmeli → tumDonemler tamamlandıktan sonra kur
@@ -210,31 +197,60 @@ async function hesaplaModul(
     }))
 
   let izyAnnualRhIzinler: KesintimIzinRow[] | undefined
-  if (modul === 'izy' && siciller.length > 0) {
-    const { data: rhRaw } = await db
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-      .in('sicil_no', siciller)
-      .in('tur', ['Rapor', 'Heyet Raporu'])
-      .neq('durum', 'İptal Edildi')
-    const rhBySira = new Map<string, KesintimIzinRow>()
-    for (const i of izinler) {
-      if (i.tur === 'Rapor' || i.tur === 'Heyet Raporu') rhBySira.set(i.sira_no, i)
+  if (modul === 'izy') {
+    let rhSiciller = [...siciller]
+    const shakYilForChain = new Date(shakBasTarihi).getFullYear()
+    const { data: shDonemAll } = await db
+      .from('sosyal_hak_donem')
+      .select('id, baslangic_tarihi, bitis_tarihi')
+      .order('baslangic_tarihi', { ascending: true }) as {
+        data: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[] | null
+      }
+    const chainDonemIds = shakChainDonemIdListesi(shDonemAll ?? [], shakYilForChain, shakBitTarihi)
+    if (chainDonemIds.length > 0) {
+      const { data: chainSecim } = await db
+        .from('sosyal_hak_secim')
+        .select('izin_sira_no')
+        .in('donem_id', chainDonemIds)
+        .eq('tip', 'izy')
+        .eq('dahil', true) as { data: { izin_sira_no: string }[] | null }
+      const extraSiraNos = shakChainExtraIzySiraNolari(
+        siraNoList,
+        (chainSecim ?? []).map(s => s.izin_sira_no),
+      )
+      if (extraSiraNos.length > 0) {
+        const { data: extraIzin } = await db
+          .from('izin_hareketleri')
+          .select('sicil_no')
+          .in('sira_no', extraSiraNos)
+          .neq('durum', 'İptal Edildi') as { data: { sicil_no: string | null }[] | null }
+        const extraSiciller = [...new Set((extraIzin ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+        if (extraSiciller.length > 0) {
+          rhSiciller = mergeRhSiciller(rhSiciller, extraSiciller)
+          const missing = extraSiciller.filter(s => !adMap[s])
+          if (missing.length > 0) {
+            const { data: calExtra } = await db.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', missing)
+            ;(calExtra ?? []).forEach((c: { sicil_no: string | null; ad_soyad: string | null }) => {
+              if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
+            })
+            const { data: kadExtra } = await db.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', missing)
+            ;(kadExtra ?? []).forEach((k: { sicil_no: string | null; kadro_unvani: string | null }) => {
+              if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? ''
+            })
+          }
+        }
+      }
     }
-    for (const row of (rhRaw ?? []) as IzinDbRow[]) {
-      if (!row.sira_no || !row.ayrilis || !row.baslama) continue
-      rhBySira.set(row.sira_no, {
-        sira_no:  row.sira_no,
-        sicil_no: row.sicil_no ?? '',
-        ad_soyad: adMap[row.sicil_no ?? ''] ?? row.sicil_no ?? '',
-        unvan:    unvanMap[row.sicil_no ?? ''] ?? '',
-        tur:      row.tur ?? '',
-        ayrilis:  row.ayrilis,
-        baslama:  row.baslama,
-        gun:      row.gun ?? 0,
-      })
+
+    if (rhSiciller.length > 0) {
+      const { data: rhRaw } = await db
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .in('sicil_no', rhSiciller)
+        .in('tur', ['Rapor', 'Heyet Raporu'])
+        .neq('durum', 'İptal Edildi')
+      izyAnnualRhIzinler = buildIzyAnnualRhIzinler(izinler, (rhRaw ?? []) as IzinDbRow[], adMap, unvanMap)
     }
-    izyAnnualRhIzinler = [...rhBySira.values()]
   }
 
   /* ── kesintimHesapla: globalCurId ile tek çalıştırma ─────────────── */
@@ -321,13 +337,10 @@ async function hesaplaModul(
 
     const shakWindows = buildShakWindowsForYear(shDonemChain ?? [], shakYil, shakBitMs)
 
-    const currentDonemRhDays = new Map<string, number>()
-    for (const iz of izinler) {
-      if (!isIzyRhTur(iz.tur)) continue
-      const gun = iz.gun > 0 ? iz.gun : izyRhToplamGun(iz)
-      if (gun <= 0) continue
-      currentDonemRhDays.set(iz.sicil_no, (currentDonemRhDays.get(iz.sicil_no) ?? 0) + gun)
-    }
+    const currentDonemRhDays = buildShakCurrentDonemRhDays(
+      izinler,
+      new Set(siraNoList),
+    )
 
     const adjusted = applyShakIzyKsdToSonuc(
       { satirlar: [...resultMap.values()], personeller: [], takipteki: [], donemdeki: [], askidaki: [] },
@@ -511,13 +524,12 @@ export async function GET(request: NextRequest) {
 
     for (const tip of tipSirasi) {
       const tipLeaf = leafRows.filter(r => r.tip === tip)
-      if (tipLeaf.length === 0) continue
+      const satirMap = satirMapByTip[tip]
+      if (tipLeaf.length === 0 && satirMap.size === 0) continue
 
       rows.push(mergeSatir(TIP_LABEL[tip] ?? tip, colCount, { gri: true }))
       mergeRows.push(rows.length - 1)
       rows.push(ozetCols)
-
-      const satirMap = satirMapByTip[tip]
 
       // Kişi bazı toplama
       type P = { sicil_no: string; ad_soyad: string; unvan: string; OD: number; IZ: number; RB: number; K: number; SD: number }

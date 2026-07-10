@@ -6,6 +6,7 @@ import {
   kesintiDonemAuditSnapshot,
   writeKesintiDonemAuditLogSafe,
 } from '@/lib/kesinti-donem-audit'
+import { validateSosyalHakDonemTarihleri, type SosyalHakDonemTarih } from '@/lib/sosyal-hak-donem'
 
 const PATH = '/kesintiler/sosyal-hak'
 const REF_TABLE = 'sosyal_hak_donem'
@@ -16,12 +17,26 @@ function str(fd: FormData, key: string): string | null {
   return v || null
 }
 
+async function tumSosyalHakDonemTarihleri(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<SosyalHakDonemTarih[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from('sosyal_hak_donem')
+    .select('id, donem_adi, baslangic_tarihi, bitis_tarihi')
+  return (data ?? []) as SosyalHakDonemTarih[]
+}
+
 export async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
   const yil              = parseInt(String(fd.get('yil') ?? '0'), 10)
   const baslangic_tarihi = str(fd, 'baslangic_tarihi')
   const bitis_tarihi     = str(fd, 'bitis_tarihi')
   if (!yil || !baslangic_tarihi || !bitis_tarihi) return { hata: 'Yıl ve tarihler zorunludur.' }
-  if (bitis_tarihi < baslangic_tarihi) return { hata: 'Bitiş tarihi başlangıçtan önce olamaz.' }
+
+  const supabase = await createClient()
+  const mevcut = await tumSosyalHakDonemTarihleri(supabase)
+  const tarihHata = validateSosyalHakDonemTarihleri(baslangic_tarihi, bitis_tarihi, mevcut)
+  if (tarihHata) return { hata: tarihHata }
 
   const payload = {
     yil,
@@ -32,7 +47,6 @@ export async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
     durum:            'Açık' as const,
   }
 
-  const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const { data: inserted, error } = await db.from('sosyal_hak_donem').insert(payload).select('id').single()
@@ -52,12 +66,20 @@ export async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
 export async function donemGuncelle(id: number, fd: FormData): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const onceki = await fetchKesintiDonemAuditRow(supabase, REF_TABLE, id)
+  const baslangic_tarihi = str(fd, 'baslangic_tarihi')
+  const bitis_tarihi = str(fd, 'bitis_tarihi')
+  if (!baslangic_tarihi || !bitis_tarihi) return { hata: 'Başlangıç ve bitiş tarihleri zorunludur.' }
+
+  const mevcut = await tumSosyalHakDonemTarihleri(supabase)
+  const tarihHata = validateSosyalHakDonemTarihleri(baslangic_tarihi, bitis_tarihi, mevcut, id)
+  if (tarihHata) return { hata: tarihHata }
+
   const payload = {
     yil:              parseInt(String(fd.get('yil') ?? '0'), 10),
     sira_no:          str(fd, 'sira_no'),
     donem_adi:        str(fd, 'donem_adi'),
-    baslangic_tarihi: str(fd, 'baslangic_tarihi'),
-    bitis_tarihi:     str(fd, 'bitis_tarihi'),
+    baslangic_tarihi,
+    bitis_tarihi,
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from('sosyal_hak_donem').update(payload).eq('id', id)

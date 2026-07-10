@@ -381,6 +381,10 @@ function runIzyRhKsdWindow(
       if (gun > 0) sicillerInPeriod.add(sicil)
     }
   }
+  // Yalnızca devir taşıyan personel de her ay işlenmeli (Haziran vb. yeni izin olmasa da K=30).
+  for (const [sicil, carry] of carryBySicil) {
+    if (carry > 0) sicillerInPeriod.add(sicil)
+  }
 
   const processSicil = (sicil: string) => {
     let { days: rhDaysInPeriod, years } = izyRhDaysInRange(sicil, annualRhIzinler, rangeStartMs, rangeEndMs)
@@ -436,6 +440,35 @@ export function computeIzyRhKsdForShakMonths(
   return result
 }
 
+/** Sosyal Hak: her ay için kişi bazlı K/SD zinciri (debug / doğrulama). */
+export function computeIzyRhKsdShakMonthChain(
+  annualRhIzinler: KesintimIzinRow[],
+  shakWindows: IzyRhKsdWindow[],
+): Map<string, IzyPersonPeriodKsd[]> {
+  const carryBySicil = new Map<string, number>()
+  const chainBySicil = new Map<string, IzyPersonPeriodKsd[]>()
+
+  for (const w of shakWindows) {
+    const monthResult = new Map<string, IzyPersonPeriodKsd>()
+    runIzyRhKsdWindow(
+      carryBySicil,
+      monthResult,
+      annualRhIzinler,
+      w.baslangicMs,
+      w.bitisMs,
+      true,
+      undefined,
+      SHAK_IZY_KESINTI_KAPASITE,
+    )
+    for (const [sicil, ksd] of monthResult) {
+      const list = chainBySicil.get(sicil) ?? []
+      list.push(ksd)
+      chainBySicil.set(sicil, list)
+    }
+  }
+  return chainBySicil
+}
+
 /** Sosyal Hak yılı için dönem pencereleri (mevcut döneme kadar) */
 export function buildShakWindowsForYear(
   donemler: { baslangic_tarihi: string; bitis_tarihi: string }[],
@@ -443,19 +476,20 @@ export function buildShakWindowsForYear(
   bitisMsLimit: number,
 ): IzyRhKsdWindow[] {
   return donemler
-    .filter(d => {
-      const bas = new Date(d.baslangic_tarihi)
-      const bitMs = new Date(d.bitis_tarihi).setHours(23, 59, 59, 999)
-      return bas.getFullYear() === year && bitMs <= bitisMsLimit
-    })
     .map(d => {
-      const bas = new Date(d.baslangic_tarihi)
-      const bit = new Date(d.bitis_tarihi)
-      return {
-        baslangicMs: new Date(bas.getFullYear(), bas.getMonth(), bas.getDate()).getTime(),
-        bitisMs:     new Date(bit.getFullYear(), bit.getMonth(), bit.getDate(), 23, 59, 59, 999).getTime(),
-      }
+      const bas = parseD(d.baslangic_tarihi)
+      const bit = parseD(d.bitis_tarihi)
+      if (!bas || !bit) return null
+      const basY = bas.getFullYear()
+      const bitY = bit.getFullYear()
+      const bitisMs = new Date(bit.getFullYear(), bit.getMonth(), bit.getDate(), 23, 59, 59, 999).getTime()
+      const yilaAit = basY === year || bitY === year
+      const limitGun = sod(new Date(bitisMsLimit))
+      if (!yilaAit || sod(bit) > limitGun) return null
+      return { baslangicMs: sod(bas), bitisMs }
     })
+    .filter((w): w is IzyRhKsdWindow => w !== null)
+    .sort((a, b) => a.baslangicMs - b.baslangicMs)
 }
 
 export function buildKesintimSonucFromSatirlar(
@@ -471,7 +505,138 @@ export function buildKesintimSonucFromSatirlar(
   }
 }
 
-/** Sosyal Hak önizleme / Excel: IZY K/SD + sabit 30 gün kesinti sınırı */
+/** Sosyal Hak devir satırı (döneme yeni izin yok, OD/K/SD zinciri devam ediyor) */
+export const SHAK_IZY_DEVIR_SIRA_PREFIX = '__shak_devir__'
+
+/** Sosyal Hak tarih aralığıyla en çok örtüşen modül dönemi */
+export function pickGlobalCurDonemForShak(
+  tumDonemler: KesintimDonemRow[],
+  shakBasTarihi: string,
+  shakBitTarihi: string,
+  modul: KesintimModul,
+): { globalCurDonem: KesintimDonemRow; donemler: KesintimDonemRow[] } {
+  const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
+  const shakBitMs = new Date(shakBitTarihi).setHours(23, 59, 59, 999)
+  let globalCurDonem = tumDonemler[tumDonemler.length - 1]
+  let maxOverlap = -1
+  for (const p of tumDonemler) {
+    const oS = Math.max(p.baslangic_tarihi_ms, shakBasMs)
+    const oE = Math.min(p.bitis_tarihi_ms, shakBitMs)
+    const ov = oE > oS ? oE - oS : -1
+    if (ov > maxOverlap) { maxOverlap = ov; globalCurDonem = p }
+  }
+  if (maxOverlap < 0) {
+    const vTg = Math.floor((shakBitMs - shakBasMs) / 86_400_000) + 1
+    const virtualPeriod: KesintimDonemRow = {
+      id: -999,
+      baslangic_tarihi: shakBasTarihi,
+      bitis_tarihi: shakBitTarihi,
+      baslangic_tarihi_ms: shakBasMs,
+      bitis_tarihi_ms: shakBitMs,
+      idx: tumDonemler.length,
+      takvimGun: vTg,
+      kapasite: modul === 'izy' ? vTg : Math.min(vTg, 30),
+    }
+    return { globalCurDonem: virtualPeriod, donemler: [...tumDonemler, virtualPeriod] }
+  }
+  return { globalCurDonem, donemler: tumDonemler }
+}
+
+/** @deprecated pickGlobalCurDonemForShak kullanın */
+export function pickIzyGlobalCurDonem(
+  tumDonemler: KesintimDonemRow[],
+  shakBasTarihi: string,
+  shakBitTarihi: string,
+): { globalCurDonem: KesintimDonemRow; donemler: KesintimDonemRow[] } {
+  return pickGlobalCurDonemForShak(tumDonemler, shakBasTarihi, shakBitTarihi, 'izy')
+}
+
+/** Zincirde mevcut SH dönemine kadar olan dönem id'leri */
+export function shakChainDonemIdsUpTo(
+  donemler: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[],
+  shakYil: number,
+  shakBitTarihi: string,
+): number[] {
+  return donemler
+    .filter(d => {
+      const basY = Number.parseInt(d.baslangic_tarihi.slice(0, 4), 10)
+      const bitY = Number.parseInt(d.bitis_tarihi.slice(0, 4), 10)
+      const yilaAit = basY === shakYil || bitY === shakYil
+      return yilaAit && d.bitis_tarihi <= shakBitTarihi
+    })
+    .map(d => d.id)
+}
+
+function izyRhPeakAtMs(
+  annualRhIzinler: KesintimIzinRow[],
+  sicil: string,
+  bitisMs: number,
+): number {
+  const years = new Set(
+    annualRhIzinler
+      .filter(iv => iv.sicil_no === sicil && isIzyRhTur(iv.tur))
+      .map(iv => (iv.ayrilis ?? '').slice(0, 4))
+      .filter(Boolean),
+  )
+  let peak = 0
+  for (const year of years) {
+    peak = Math.max(peak, izyRhPeakForSicilYear(annualRhIzinler, sicil, year, bitisMs))
+  }
+  return peak
+}
+
+/**
+ * Döneme aktarılmış izni olmayan ama OD/K/SD zinciri devam eden personel için özet satırı.
+ */
+export function appendShakIzyCarryOnlySatirlar(
+  satirlar: KesintimHesapSatir[],
+  ksdBySicil: Map<string, IzyPersonPeriodKsd>,
+  annualRhIzinler: KesintimIzinRow[],
+  bitisMs?: number,
+): KesintimHesapSatir[] {
+  const rhSiciller = new Set(
+    satirlar.filter(s => isIzyRhTur(s.tur) && !s.sira_no.startsWith(SHAK_IZY_DEVIR_SIRA_PREFIX)).map(s => s.sicil_no),
+  )
+  const personBySicil = new Map<string, { ad_soyad: string; unvan: string }>()
+  for (const iv of annualRhIzinler) {
+    if (!personBySicil.has(iv.sicil_no)) {
+      personBySicil.set(iv.sicil_no, { ad_soyad: iv.ad_soyad, unvan: iv.unvan })
+    }
+  }
+
+  const extra: KesintimHesapSatir[] = []
+  for (const [sicil, ksd] of ksdBySicil) {
+    if (rhSiciller.has(sicil)) continue
+    if (ksd.OD === 0 && ksd.K === 0 && ksd.SD === 0) continue
+    const person = personBySicil.get(sicil)
+    if (!person) continue
+    const rb = bitisMs !== undefined ? izyRhPeakAtMs(annualRhIzinler, sicil, bitisMs) : 0
+    extra.push({
+      sira_no: `${SHAK_IZY_DEVIR_SIRA_PREFIX}${sicil}`,
+      sicil_no: sicil,
+      ad_soyad: person.ad_soyad,
+      unvan: person.unvan,
+      tur: 'Rapor',
+      OD: ksd.OD,
+      R: 0,
+      RR: 0,
+      HR: 0,
+      K: ksd.K,
+      SD: ksd.SD,
+      RB: rb,
+      kategori: 'Dönemdeki İzinler',
+    })
+  }
+  return extra.length > 0 ? [...satirlar, ...extra] : satirlar
+}
+
+/** Sosyal Hak önizleme / Excel: IZY K/SD + sabit 30 gün kesinti sınırı
+ *
+ * Üç kural birlikte uygulanır:
+ * 1. Yıllık R/HR zinciri (Ocak→…→mevcut ay) — computeIzyRhKsdForShakMonths
+ * 2. Önceki SH dönemlerinin IZY seçimleri annualRh'e dahil edilir (sosyal-hak-izy-hesap)
+ * 3. Döneme izin aktarılmamış devir taşıyan personel — appendShakIzyCarryOnlySatirlar
+ */
 export function applyShakIzyKsdToSonuc(
   sonuc: KesintimHesapSonucu,
   annualRhIzinler: KesintimIzinRow[],
@@ -479,7 +644,30 @@ export function applyShakIzyKsdToSonuc(
   currentDonemRhDaysBySicil?: Map<string, number>,
 ): KesintimHesapSonucu {
   const ksdBySicil = computeIzyRhKsdForShakMonths(annualRhIzinler, shakWindows, currentDonemRhDaysBySicil)
-  const satirlar   = applyIzyPersonPeriodKsd(sonuc.satirlar, ksdBySicil, annualRhIzinler)
+  let satirlar = applyIzyPersonPeriodKsd(sonuc.satirlar, ksdBySicil, annualRhIzinler)
+
+  if (shakWindows.length > 0) {
+    const bitisMs = shakWindows[shakWindows.length - 1].bitisMs
+    const lastSiraBySicil = new Map<string, string>()
+    const rhSatirlar = satirlar.filter(s => isIzyRhTur(s.tur))
+    const izinBySn = new Map(annualRhIzinler.map(iv => [iv.sira_no, iv]))
+    const sorted = [...rhSatirlar].sort((a, b) => {
+      const ia = izinBySn.get(a.sira_no)
+      const ib = izinBySn.get(b.sira_no)
+      return (ia?.ayrilis ?? '').localeCompare(ib?.ayrilis ?? '')
+    })
+    for (const s of sorted) lastSiraBySicil.set(s.sicil_no, s.sira_no)
+
+    satirlar = satirlar.map(s => {
+      if (!isIzyRhTur(s.tur) || !ksdBySicil.has(s.sicil_no)) return s
+      if (s.sira_no !== lastSiraBySicil.get(s.sicil_no)) return s
+      const peak = izyRhPeakAtMs(annualRhIzinler, s.sicil_no, bitisMs)
+      return peak > 0 ? { ...s, RB: peak } : s
+    })
+
+    satirlar = appendShakIzyCarryOnlySatirlar(satirlar, ksdBySicil, annualRhIzinler, bitisMs)
+  }
+
   return buildKesintimSonucFromSatirlar(satirlar, SHAK_IZY_KESINTI_KAPASITE)
 }
 

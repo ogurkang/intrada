@@ -24,7 +24,7 @@ export default async function SosyalHakPage() {
       baslik="Sosyal Hak Kesintileri"
       kod="SHK"
       donemler={donemler}
-      kuralMetni="Raporlu Memurlar (RMY), İzinli Vekiller (IVY) ve İzinli Zabıtalar (IZY) izinleri tek dönem ekranında birleşik olarak görüntülenir ve işleme alınır."
+      kuralMetni="Raporlu Memurlar (RMY), İzinli Vekiller (IVY) ve İzinli Zabıtalar (IZY) izinleri tek dönem ekranında birleşik olarak görüntülenir ve işleme alınır. Dönem tarihleri kesişemez; bir dönemin bitişinden sonraki gün, izleyen dönemin başlangıcı olmalıdır (arada boşluk veya aynı gün olamaz)."
       hideSecimColumn
       detayBase="/kesintiler/sosyal-hak"
       onEkle={donemEkle}

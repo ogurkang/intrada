@@ -9,6 +9,8 @@
     "build": "node scripts/generate-gelistirmeler.mjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "test:shak-izy": "npx --yes tsx scripts/verify-shak-izy-unit.mjs && npx --yes tsx scripts/verify-ali-180.mjs",
+    "test:shak-izy:db": "npx --yes tsx scripts/verify-ali-180-ozet.mjs",
     "bulk-auth-users": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs",
     "bulk-auth-users:dry": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --dry",
     "bulk-auth-users:reset": "node --env-file=.env.local scripts/bulk-create-auth-users.mjs --reset-existing",

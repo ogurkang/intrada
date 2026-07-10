@@ -12,11 +12,17 @@ import {
   kesintimHesapla,
   applyShakIzyKsdToSonuc,
   buildShakWindowsForYear,
-  isIzyRhTur,
-  izyRhToplamGun,
+  pickGlobalCurDonemForShak,
   type KesintimDonemRow,
   type KesintimIzinRow,
 } from '@/lib/kesinym-hesap'
+import {
+  buildIzyAnnualRhIzinler,
+  buildShakCurrentDonemRhDays,
+  mergeRhSiciller,
+  shakChainDonemIdListesi,
+  shakChainExtraIzySiraNolari,
+} from '@/lib/sosyal-hak-izy-hesap'
 import KesintimDetayClient from '@/components/kesintiler/KesintimDetayClient'
 import { createClient } from '@/lib/supabase/client'
 
@@ -370,6 +376,16 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
 
     const idxById = new Map(tumDonemler.map(d => [d.id, d.idx]))
 
+    const shakBasTarihi = data.donem.baslangic_tarihi
+    const shakBitTarihi = data.donem.bitis_tarihi
+    const { globalCurDonem, donemler: tumDonemlerResolved } = pickGlobalCurDonemForShak(
+      tumDonemler,
+      shakBasTarihi,
+      shakBitTarihi,
+      'izy',
+    )
+    const globalCurId = globalCurDonem.id
+
     const { data: tumSecimRaw } = await supabase
       .from('izinli_zabitalar_yeni_secim')
       .select('donem_id, izin_sira_no, dahil')
@@ -388,10 +404,11 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     // Sadece IZY izinlerini dahil et
     const izyIslenecek = data.islenecek.filter(i => i.tips.includes('izy'))
     for (const iz of izyIslenecek) {
-      ilkDonemIdBySiraNo[iz.sira_no] = donemId
+      ilkDonemIdBySiraNo[iz.sira_no] = globalCurId
     }
 
     const siraNoList = Object.keys(ilkDonemIdBySiraNo)
+    const currentPeriodSiraNos = new Set(izyIslenecek.map(i => i.sira_no))
     const adMap: Record<string, string> = {}
     const unvanMap: Record<string, string> = {}
     let izinler: KesintimIzinRow[] = []
@@ -436,58 +453,75 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
       durum: t.durum ?? true,
     }))
 
-    let sonuc = kesintimHesapla({ modul: 'izy', curId: donemId, donemler: tumDonemler, ilkDonemIdBySiraNo, izinler, tatiller })
+    let sonuc = kesintimHesapla({
+      modul: 'izy',
+      curId: globalCurId,
+      donemler: tumDonemlerResolved,
+      ilkDonemIdBySiraNo,
+      izinler,
+      tatiller,
+      izyAnnualRhIzinler: undefined,
+    })
 
-    const shakBasMs = new Date(data.donem.baslangic_tarihi).setHours(0, 0, 0, 0)
-    const shakBitMs = new Date(data.donem.bitis_tarihi).setHours(23, 59, 59, 999)
-    const shakYil   = new Date(data.donem.baslangic_tarihi).getFullYear()
+    const shakBasMs = new Date(shakBasTarihi).setHours(0, 0, 0, 0)
+    const shakBitMs = new Date(shakBitTarihi).setHours(23, 59, 59, 999)
+    const shakYil   = new Date(shakBasTarihi).getFullYear()
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: shDonemChain } = await (supabase as any)
       .from('sosyal_hak_donem')
-      .select('baslangic_tarihi, bitis_tarihi')
+      .select('id, baslangic_tarihi, bitis_tarihi')
       .order('baslangic_tarihi', { ascending: true }) as {
-        data: { baslangic_tarihi: string; bitis_tarihi: string }[] | null
+        data: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[] | null
       }
 
     const shakWindows = buildShakWindowsForYear(shDonemChain ?? [], shakYil, shakBitMs)
 
-    const sicillerRh = [...new Set(izinler.map(i => i.sicil_no).filter(Boolean))]
+    let rhSiciller = [...new Set(izinler.map(i => i.sicil_no).filter(Boolean))]
+    const chainDonemIds = shakChainDonemIdListesi(shDonemChain ?? [], shakYil, shakBitTarihi)
+    if (chainDonemIds.length > 0) {
+      const { data: chainSecim } = await supabase
+        .from('sosyal_hak_secim')
+        .select('izin_sira_no')
+        .in('donem_id', chainDonemIds)
+        .eq('tip', 'izy')
+        .eq('dahil', true)
+      const extraSiraNos = shakChainExtraIzySiraNolari(
+        siraNoList,
+        (chainSecim ?? []).map(s => s.izin_sira_no),
+      )
+      if (extraSiraNos.length > 0) {
+        const { data: extraIzin } = await supabase
+          .from('izin_hareketleri')
+          .select('sicil_no')
+          .in('sira_no', extraSiraNos)
+          .neq('durum', 'İptal Edildi')
+        const extraSiciller = [...new Set((extraIzin ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
+        if (extraSiciller.length > 0) {
+          rhSiciller = mergeRhSiciller(rhSiciller, extraSiciller)
+          const missing = extraSiciller.filter(s => !adMap[s])
+          if (missing.length > 0) {
+            const { data: calExtra } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', missing)
+            ;(calExtra ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
+            const { data: kadExtra } = await supabase.from('personel_kadro_ozet').select('sicil_no, kadro_unvani').in('sicil_no', missing)
+            ;(kadExtra ?? []).forEach(k => { if (k.sicil_no) unvanMap[k.sicil_no] = k.kadro_unvani ?? '' })
+          }
+        }
+      }
+    }
+
     let annualRhIzinler: KesintimIzinRow[] = []
-    if (sicillerRh.length > 0) {
+    if (rhSiciller.length > 0) {
       const { data: rhRaw } = await supabase
         .from('izin_hareketleri')
         .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-        .in('sicil_no', sicillerRh)
+        .in('sicil_no', rhSiciller)
         .in('tur', ['Rapor', 'Heyet Raporu'])
         .neq('durum', 'İptal Edildi')
-      const rhBySira = new Map<string, KesintimIzinRow>()
-      for (const iz of izinler) {
-        if (isIzyRhTur(iz.tur)) rhBySira.set(iz.sira_no, iz)
-      }
-      for (const row of rhRaw ?? []) {
-        if (!row.sira_no || !row.ayrilis || !row.baslama) continue
-        rhBySira.set(row.sira_no, {
-          sira_no:  row.sira_no,
-          sicil_no: row.sicil_no ?? '',
-          ad_soyad: adMap[row.sicil_no] ?? row.sicil_no ?? '',
-          unvan:    unvanMap[row.sicil_no] ?? '',
-          tur:      row.tur ?? '',
-          ayrilis:  row.ayrilis,
-          baslama:  row.baslama,
-          gun:      row.gun ?? 0,
-        })
-      }
-      annualRhIzinler = [...rhBySira.values()]
+      annualRhIzinler = buildIzyAnnualRhIzinler(izinler, rhRaw ?? [], adMap, unvanMap)
     }
 
-    const currentDonemRhDays = new Map<string, number>()
-    for (const iz of izinler) {
-      if (!isIzyRhTur(iz.tur)) continue
-      const gun = iz.gun > 0 ? iz.gun : izyRhToplamGun(iz)
-      if (gun <= 0) continue
-      currentDonemRhDays.set(iz.sicil_no, (currentDonemRhDays.get(iz.sicil_no) ?? 0) + gun)
-    }
+    const currentDonemRhDays = buildShakCurrentDonemRhDays(izinler, currentPeriodSiraNos)
 
     if (annualRhIzinler.length > 0 && shakWindows.length > 0) {
       sonuc = applyShakIzyKsdToSonuc(sonuc, annualRhIzinler, shakWindows, currentDonemRhDays)
