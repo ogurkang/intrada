@@ -2,247 +2,247 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-06-11T10:53:32.102Z",
+  "generatedAt": "2026-07-10T10:59:26.128Z",
   "commits": [
     {
-      "hash": "bb51e43",
-      "fullHash": "bb51e43b1033e8d696170cb40151241b6142cebd",
-      "date": "2026-06-10",
-      "subject": "Memur İzinleri Raporu ekle; işçi/memur raporlarına müdürlük sütunu ve filtresi."
+      "hash": "f941829",
+      "fullHash": "f9418293b0ada2deab19c817e57cceed5276fc26",
+      "date": "2026-07-10",
+      "subject": "AYY: kapali donemde salt okunur izin goruntuleme ve arada kalan izin uyarisi."
     },
     {
-      "hash": "02a6a37",
-      "fullHash": "02a6a3710984783949550aaf5066c75d4b305f0d",
-      "date": "2026-06-10",
-      "subject": "Personel hareketleri ekranına audit log ve İşlemler kolonu ekle."
+      "hash": "de81662",
+      "fullHash": "de81662b777be5ba54f75b261339596f388f28fa",
+      "date": "2026-07-10",
+      "subject": "Sosyal Hak IZY devir SD zincirini duzelt ve regresyon testleri ekle."
     },
     {
-      "hash": "b9dd05f",
-      "fullHash": "b9dd05f47d7951d05b29e1bc340e627e01d59c30",
-      "date": "2026-06-10",
-      "subject": "Geçmiş sekmesi detayında maskelemeyi kaldır; değerler açık gösterilsin."
+      "hash": "f32f592",
+      "fullHash": "f32f5925ce102b7a004420813eb003eca048a272",
+      "date": "2026-07-09",
+      "subject": "Pasaport dilekçesi alt bilgisinde telefon etiketini düzenle."
     },
     {
-      "hash": "2abe453",
-      "fullHash": "2abe4530dcf5ac8c033465496f49b987bd391c23",
-      "date": "2026-06-10",
-      "subject": "Kişisel bilgi güncellemelerini alan bazlı audit log ile Geçmiş sekmesine ekle."
+      "hash": "36eed7e",
+      "fullHash": "36eed7ed73336435921b8959c49727f3fe0d1bcc",
+      "date": "2026-07-09",
+      "subject": "Pasaport dilekçesine telefon bilgisini ekle."
     },
     {
-      "hash": "54b7a15",
-      "fullHash": "54b7a1549bdf5d743918b30d5ddee28b712c1a7a",
-      "date": "2026-06-09",
-      "subject": "Personel ayrılışında kadro boşaltma ve ayrılış nedeni alanı."
+      "hash": "ec0b41f",
+      "fullHash": "ec0b41f333fc2f17e126297d87f60d8bada412d0",
+      "date": "2026-07-08",
+      "subject": "feat(pasaport): ayrilan personel (emekli/istifa) formu ve durum sutunu"
     },
     {
-      "hash": "9a5dc3e",
-      "fullHash": "9a5dc3e3b8edfdfe8f9508b5fbd84691c6221e5d",
-      "date": "2026-06-09",
-      "subject": "fix(terfi): excel indirmede sicil numarasina gore siralama"
+      "hash": "af4061d",
+      "fullHash": "af4061df584da6aab46e7ff954c3e712c6ab028f",
+      "date": "2026-07-08",
+      "subject": "fix(rapor): gorev turu listesine calisan harici tum turleri dahil et"
     },
     {
-      "hash": "309c140",
-      "fullHash": "309c140ee296a1a3cc3c6dc57498a06c2676fbe3",
-      "date": "2026-06-09",
-      "subject": "fix(terfi): terfi ettir onizlemede kadro derecesi eslestirmesi"
+      "hash": "83171aa",
+      "fullHash": "83171aaac5bf648918d5a604e97058f43fc2f447",
+      "date": "2026-07-08",
+      "subject": "fix(ayy): fark doneminde zabita kesintisini normal kurala esitle"
     },
     {
-      "hash": "338cd9e",
-      "fullHash": "338cd9e944714c1c96d2a2b478ab386d7ec3b38f",
-      "date": "2026-06-08",
-      "subject": "fix(rapor): ogrenim listesinde onlisans ve ustu tum kayitlari goster"
+      "hash": "afbca45",
+      "fullHash": "afbca45aa6eb878b2cad88f54692b30c913fd158",
+      "date": "2026-07-08",
+      "subject": "fix(build): donem_turu audit select yalnizca AYY tablosunda kullanilsin"
     },
     {
-      "hash": "04c3265",
-      "fullHash": "04c3265bd6940e587511d9b6090588fbf1241114",
-      "date": "2026-05-21",
-      "subject": "feat(asistan): INTRADA yardim botu ve kismi isimle izin sorgusu"
+      "hash": "3460113",
+      "fullHash": "34601138beafe66202afca851be2e89ff8b15879",
+      "date": "2026-07-07",
+      "subject": "feat(ayy,kesintiler): donem turu ve secili imza basliklari"
     },
     {
-      "hash": "ba5e45d",
-      "fullHash": "ba5e45d2bfddc91f58a14f64ecffe475ceca87c8",
-      "date": "2026-05-21",
-      "subject": "feat: mihenk taslari, ADABEL personel raporu ve gelistirme listesi"
+      "hash": "02a2517",
+      "fullHash": "02a2517852a3040e2c6549ef671449585c1be9c4",
+      "date": "2026-07-04",
+      "subject": "fix(terfi): kadro bazli eslestirme, personel hareketi senkronu ve kapsam disi kayitlar"
     },
     {
-      "hash": "f9d9752",
-      "fullHash": "f9d97525e751ff1c910e6b1588fc6b2047d7067f",
-      "date": "2026-05-21",
-      "subject": "feat(ui): sol menu arama ve ADABEL tablo siralama"
+      "hash": "edb690a",
+      "fullHash": "edb690ac710c874af5a4741e51ba9694c2c014a0",
+      "date": "2026-07-03",
+      "subject": "fix(personel-hareketleri): kadro eslemesi, islem no PH# ve goruntule SSR"
     },
     {
-      "hash": "c76b945",
-      "fullHash": "c76b94540ea7f86ba1f6c1934922ab566197524d",
-      "date": "2026-05-21",
-      "subject": "feat(yerleske-konum): sirket yerleske, ADABEL atama ve rapor iyilestirmeleri"
+      "hash": "cdf547e",
+      "fullHash": "cdf547e7c25758bd00b6f566c75f9f5518e60bb9",
+      "date": "2026-07-02",
+      "subject": "feat(personel-hareketleri): yeni kayit formu degistir ile birlestir, kadro sinif sutunu"
     },
     {
-      "hash": "7ffa514",
-      "fullHash": "7ffa5144e0a2155b9bb78c17f8c6a20c0055cbfa",
-      "date": "2026-05-20",
-      "subject": "feat(yerleske): konum eslemesi, personel yerleske atamasi ve rapor"
+      "hash": "b5e125b",
+      "fullHash": "b5e125be8f61334d5735e0138a2833887087ba0c",
+      "date": "2026-07-02",
+      "subject": "feat(personel-hareketleri): sifirdan hareket ekleme ve kan grubu telefon sutunu"
     },
     {
-      "hash": "adda64c",
-      "fullHash": "adda64c406124bd80fb59e71344b37dcb4fb452e",
-      "date": "2026-05-20",
-      "subject": "feat(tanimlar): Yerleske Adresleri tanimi ve mudurluk coklu secim"
+      "hash": "6f0a533",
+      "fullHash": "6f0a533a59b243f9259801c4b54ecc1a3d44aedb",
+      "date": "2026-07-02",
+      "subject": "fix(personel-hareketleri): salt-okunur akis ve goruntule excel indirme iyilestirmeleri"
     },
     {
-      "hash": "01d86f7",
-      "fullHash": "01d86f731263cb548c14ba98bfccba4b31dbd7b3",
-      "date": "2026-05-18",
-      "subject": "fix(sosyal-hak): IZY kesinti ust siniri sabit 30 gun"
+      "hash": "408bf37",
+      "fullHash": "408bf373a97178c47072582099128181c47a3d4d",
+      "date": "2026-07-01",
+      "subject": "feat(personel-hareketleri): Excel ve Word belge indirme, sablon kenarliklari korunur"
     },
     {
-      "hash": "8569a8a",
-      "fullHash": "8569a8a8ac24d0bc7938846cfc99c96cb94f9046",
-      "date": "2026-05-16",
-      "subject": "fix(izy): Sosyal Hak Excel kisi-donem R/HR kuyruk K/SD hesabi"
+      "hash": "2504227",
+      "fullHash": "25042272b5de5ac7b097a1e2e38edffc7687010a",
+      "date": "2026-06-30",
+      "subject": "feat(tanimlar): Organizasyon modulu - birim hiyerarsisi, makam (baskan/baskan yrd) birimleri, kadro hareketlerinden otomatik mudur/baskan isimleri, coklu birim ekleme, audit + saat ikonu; /personel/adres-duzenleme kaldirildi"
     },
     {
-      "hash": "fa62edc",
-      "fullHash": "fa62edc4d0fe54fc824bdfb082f0ab3ed89ae5f8",
-      "date": "2026-05-16",
-      "subject": "fix(izy): yillik 30 gun rapor bakiyesi kesilen ve sonraki donem kurallari"
+      "hash": "c653fdb",
+      "fullHash": "c653fdbabf35b793b1f98eafc032c4304fdbd494",
+      "date": "2026-06-30",
+      "subject": "fix(arazi): personel grubu alt cizgisini 3. ay satirinda belirginlestir; ADABEL profil sicil sync migration"
     },
     {
-      "hash": "e7b78c2",
-      "fullHash": "e7b78c2b8f75ec777376ea97ac9b57c615f55f5e",
-      "date": "2026-05-16",
-      "subject": "feat(sosyal-hak): zabita rapor izinleri cift tip rmy+izy ve genel excel"
+      "hash": "6293472",
+      "fullHash": "62934720176c416c539c20a1e19a7f66ed40da04",
+      "date": "2026-06-30",
+      "subject": "feat(adabel): ADABEL kisi karti (/personel fallback) + puantaj mudurluk cozumu; puantaj satir cizgileri belirginlestirildi"
     },
     {
-      "hash": "e2f9c67",
-      "fullHash": "e2f9c67ebeefc7732aa6e726893265dea2213456",
-      "date": "2026-05-15",
-      "subject": "fix: Sosyal Hak ve kesinti modullerinde ortak kadro kurallari"
+      "hash": "3b4ea03",
+      "fullHash": "3b4ea030a6c211b1c5488bf038d5c5dcdba860ee",
+      "date": "2026-06-30",
+      "subject": "feat(adabel,yetki): ADABEL personeli yetkilendirme+sifre sifirlama destegi, sicil 'A' oneki"
     },
     {
-      "hash": "0c2a0ff",
-      "fullHash": "0c2a0ffaa5591e0dd46289158b9f82cad08ce7c9",
-      "date": "2026-05-15",
-      "subject": "fix: sosyal hak kadro sorgusunda 1000 satir limiti nedeniyle eksik personel"
+      "hash": "c5970e2",
+      "fullHash": "c5970e24a73465b2712c3dbf994d0e8ba0ff0ab0",
+      "date": "2026-06-29",
+      "subject": "feat(sms,adabel): tum SMS gonderimlerine 'Sayin ad soyad' prefix; ADABEL personeline yerleske adresi secimi + audit"
     },
     {
-      "hash": "5f00691",
-      "fullHash": "5f006913b777c49efb485a9003aaec186f787e8e",
-      "date": "2026-05-15",
-      "subject": "revert: sosyalHakDetayYukle kadro ve limit degisikliklerini geri al"
+      "hash": "bff1971",
+      "fullHash": "bff1971ed5db8dfcd3af6dc702bec943f497ad6b",
+      "date": "2026-06-29",
+      "subject": "feat(bildirim): Pasaport Islemleri widget'i genel bakisa ekle"
     },
     {
-      "hash": "c18176b",
-      "fullHash": "c18176bf04c4d308edbb90ecfddcddab9b42e6d5",
-      "date": "2026-05-15",
-      "subject": "fix: sosyal-hak ayrilmis personel izinleri ve limit 2000"
+      "hash": "de12bac",
+      "fullHash": "de12bacf7d0f5f122680f734b5a08aafe537eb12",
+      "date": "2026-06-29",
+      "subject": "feat(bildirim): Pasaport Islemleri ekrani ve Word belge uretimi"
     },
     {
-      "hash": "9ba9665",
-      "fullHash": "9ba9665ada172d328ed65290881eb239e97f1fdc",
-      "date": "2026-05-15",
-      "subject": "fix: DonemListClient sort ikonu detay sayfasi stiliyle eslestirildi"
+      "hash": "3b421c3",
+      "fullHash": "3b421c3ff17a52eb4e44a9e9ebd9e0ab7ff36c32",
+      "date": "2026-06-29",
+      "subject": "feat(rapor): yerleske sayi raporuna Konum sutunu ekle"
     },
     {
-      "hash": "396ee6f",
-      "fullHash": "396ee6fcedbd97b02c82f4b3fb662d67f3ac4cff",
-      "date": "2026-05-15",
-      "subject": "feat: DonemListClient sutun siralaması ekle"
+      "hash": "c163026",
+      "fullHash": "c1630264bccc0fe57fd90d0d88ead20c391f776d",
+      "date": "2026-06-29",
+      "subject": "feat(rapor): gorevlendirme turu personeli otomatik Dis say"
     },
     {
-      "hash": "4be3f3a",
-      "fullHash": "4be3f3a638a7c4940c0c77e1f405524bd8868141",
-      "date": "2026-05-15",
-      "subject": "feat: Aday Izinler tablosuna sutun bazli siralama ekle (RMY/IVY/IZY)"
+      "hash": "64dca1d",
+      "fullHash": "64dca1dab97c98e3c6c1adecc5a25d1d31a7c86f",
+      "date": "2026-06-23",
+      "subject": "feat(izin): Izin Haklari ekranina 'Kullanilani Yeniden Hesapla' butonu"
     },
     {
-      "hash": "2e3383f",
-      "fullHash": "2e3383f35043184f4f9a79aa338f0414ca570a4c",
-      "date": "2026-05-15",
-      "subject": "fix: ayliksizIzindenDon - gorev_turu_bitis_tarihi tip hatasi duzelt"
+      "hash": "03468dd",
+      "fullHash": "03468dd8e9fc2b75d37a9461db90069b0cb0ae9b",
+      "date": "2026-06-23",
+      "subject": "refactor(iletisim/sms): grup mesaj gonderimini liste ekranina tasi"
     },
     {
-      "hash": "c079477",
-      "fullHash": "c079477875aa0ddd735bd07c1c415aa0f20db41b",
-      "date": "2026-05-15",
-      "subject": "fix: Genel Excel K=0 - overlapsiz modül dönemleri için sanal dönem enjekte et"
+      "hash": "f83a26a",
+      "fullHash": "f83a26a319c56dad1ddb24b43929aee965d24d0f",
+      "date": "2026-06-23",
+      "subject": "feat(iletisim/sms): widget kart hub + ayri ekranlar ve grup mesajlari"
     },
     {
-      "hash": "9d8009f",
-      "fullHash": "9d8009f27b3f993347f2b10966217a33eddf8dac",
-      "date": "2026-05-15",
-      "subject": "fix: Genel Excel K=0 duzeltme + ayliksiz izin Ise Dondu butonu"
+      "hash": "cacbcd6",
+      "fullHash": "cacbcd6a660e8a7ed98bb8df1ec1015ae6fde037",
+      "date": "2026-06-22",
+      "subject": "SMS widgetlerini kart yapisi, ay sekmeleri ve dogum gunu zamanlamasiyla guncelle."
     },
     {
-      "hash": "da0522f",
-      "fullHash": "da0522f9c575bfee85d7fdd2e4e8cc3f9e8d0954",
-      "date": "2026-05-15",
-      "subject": "fix: Genel Excel hesaplaModul globalCurId + fallback ile yeniden yazildi"
+      "hash": "a249f57",
+      "fullHash": "a249f5734f4e8adda76b19ebf37434a9b4b0caa4",
+      "date": "2026-06-22",
+      "subject": "SMS islemlerine dogum gunu/hos geldin bebek/tekil widgetleri ve sablon yonetimi ekle."
     },
     {
-      "hash": "8e10f75",
-      "fullHash": "8e10f750f9ce16db519e566492e29ee24fbbf4f1",
-      "date": "2026-05-15",
-      "subject": "fix: IZY Rapor Bakiyesi icin tum R/HR izinleri yillik hesaba dahil edildi"
+      "hash": "179e13c",
+      "fullHash": "179e13c6c6e9a0dee66699ed513d7a95cd62a5a7",
+      "date": "2026-06-22",
+      "subject": "Iletisim Yonetimine SMS gonderim entegrasyonu (mesajpaketi.com) ekle."
     },
     {
-      "hash": "5c230cb",
-      "fullHash": "5c230cb3a7fb909c235a29bdf3c24118f6b3c622",
-      "date": "2026-05-15",
-      "subject": "fix: Genel Excel gecmis donem izinleri kesinti hesabi duzeltildi"
+      "hash": "4a66752",
+      "fullHash": "4a667528c1652b3e6cc9ba1d5ef0317166844ac0",
+      "date": "2026-06-22",
+      "subject": "Adrese gore personel raporunu il/ilce/mahalle filtreli olarak yeniden kur."
     },
     {
-      "hash": "7fa43cb",
-      "fullHash": "7fa43cb0b58f398c8fd0703e6885c76646eb56d4",
-      "date": "2026-05-15",
-      "subject": "fix: SosyalHakDetayClient - ozetData donem type cast hatasi"
+      "hash": "776467f",
+      "fullHash": "776467f41cd1e7af6fd9e0ae4e875dbea6b3b456",
+      "date": "2026-06-19",
+      "subject": "Adres secimde il degisimi stale state nedeniyle Sakarya'ya donmesini duzelt."
     },
     {
-      "hash": "2be74cd",
-      "fullHash": "2be74cd04eb784073a496912af461e5c71251e71",
-      "date": "2026-05-15",
-      "subject": "fix: SosyalHak Excel - Buffer -> Uint8Array (NextResponse BodyInit uyumsuzlugu)"
+      "hash": "4757014",
+      "fullHash": "4757014d753238ce2c49c5f7d98a50bc6c9430e0",
+      "date": "2026-06-18",
+      "subject": "Adres duzenlemede adresi tanimli personeli kalici olarak listeden cikar."
     },
     {
-      "hash": "024a8b9",
-      "fullHash": "024a8b9515e0e49dd0c58ce2e2b26c5407a88fac",
-      "date": "2026-05-15",
-      "subject": "fix: SosyalHak - build any type + duplicate key constraint hatasi duzelt"
+      "hash": "5b529e7",
+      "fullHash": "5b529e78d059721fd54bc0c911feb9afa960d0fa",
+      "date": "2026-06-18",
+      "subject": "Adres duzenlemede kaydedilen personeli listeden cikar."
     },
     {
-      "hash": "58934f2",
-      "fullHash": "58934f2a0fe1282bd9bf0f577b3694717f42b9d7",
-      "date": "2026-05-15",
-      "subject": "fix: SosyalHak Excel - implicit any type hatasini duzelt"
+      "hash": "d649130",
+      "fullHash": "d649130ab1dc4e057ed6ec1594fb68211ad1362d",
+      "date": "2026-06-17",
+      "subject": "Adres duzenleme ekrani, egitim ay etiketi ve personel gecmis yetkisi ekle."
     },
     {
-      "hash": "8b34494",
-      "fullHash": "8b344942f16845755a77ab2e2e80c4262bc10943",
-      "date": "2026-05-15",
-      "subject": "fix: SosyalHak Excel - TypeScript unknown type hatasini duzelt"
+      "hash": "772fdd6",
+      "fullHash": "772fdd68dd6037b262bcd328caede49fe9142eee",
+      "date": "2026-06-17",
+      "subject": "Adres mahalle tanimlari, Excel ice aktarim ve personel adres secimi ekle."
     },
     {
-      "hash": "bb597ac",
-      "fullHash": "bb597acb8f06bf8c161be999166e47e6ec78ce39",
-      "date": "2026-05-15",
-      "subject": "feat: SosyalHak Genel Excel - tum moduller icin kesintimHesapla (RMY/IVY/IZY donem tablolari)"
+      "hash": "ea7852b",
+      "fullHash": "ea7852b63e16d6e53e181728d09b9ecb3fb81388",
+      "date": "2026-06-17",
+      "subject": "ADABEL yerleske secimini sirket tanimina bagla; Calisanlar alt menusunu kaldir."
     },
     {
-      "hash": "a961587",
-      "fullHash": "a961587683d82b2e6b6082cb616da7a5429c0fe9",
-      "date": "2026-05-14",
-      "subject": "feat: personel - Yemek hakki alani goster/duzenle/kaydet (Gecici & Kurum Gorevlendirme)"
+      "hash": "9c56d8d",
+      "fullHash": "9c56d8d6973f4ff2721431fbc0cab7f052db17ea",
+      "date": "2026-06-17",
+      "subject": "Iletisim ve Stratejik modullerini yetkilendirmeye ekle; sayfa yukleme animasyonu."
     },
     {
-      "hash": "7f6e1a3",
-      "fullHash": "7f6e1a37a4d00526738fde5bb91531363babdf21",
-      "date": "2026-05-14",
-      "subject": "feat: SosyalHak Excel - Detay/Ozet/Genel ayrimi, IZY Rapor Bakiyesi hesabi"
+      "hash": "f495f81",
+      "fullHash": "f495f81d5ea189a0de1c2665828e36e922cda0f3",
+      "date": "2026-06-16",
+      "subject": "Yetkilendirme listesine tum aktif personeli ekle ve audit gecmisi bagla."
     },
     {
-      "hash": "ec23db5",
-      "fullHash": "ec23db53902e7692fd8e46a4b720728c95638f03",
-      "date": "2026-05-14",
-      "subject": "feat: SosyalHak - Ozet Onizle + Rapor Bakiyesi + IZY buton duzeni"
+      "hash": "07c3c58",
+      "fullHash": "07c3c5840836d1b3b2793c5901db069c173285a9",
+      "date": "2026-06-15",
+      "subject": "Kesintiler, bildirim hub ve egitim modullerine audit gecmisi ekle."
     }
   ]
 }
