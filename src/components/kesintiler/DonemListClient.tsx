@@ -352,7 +352,18 @@ export default function DonemListClient({
   async function handleSubmit(fd: FormData) {
     setSunuciHata(null)
     startTransition(async () => {
-      const res = seciliDonem ? await onGuncelle(seciliDonem.id, fd) : await onEkle(fd)
+      if (seciliDonem) {
+        const res = await onGuncelle(seciliDonem.id, fd)
+        if (res.hata) setSunuciHata(res.hata)
+        else {
+          formKapat()
+          broadcastIntradaRefresh('kesintiler')
+          router.refresh()
+        }
+        return
+      }
+
+      const res = await onEkle(fd)
       if (res.hata) setSunuciHata(res.hata)
       else {
         formKapat()

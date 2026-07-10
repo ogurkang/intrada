@@ -480,12 +480,13 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
     let rhSiciller = [...new Set(izinler.map(i => i.sicil_no).filter(Boolean))]
     const chainDonemIds = shakChainDonemIdListesi(shDonemChain ?? [], shakYil, shakBitTarihi)
     if (chainDonemIds.length > 0) {
-      const { data: chainSecim } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: chainSecim } = await (supabase as any)
         .from('sosyal_hak_secim')
         .select('izin_sira_no')
         .in('donem_id', chainDonemIds)
         .eq('tip', 'izy')
-        .eq('dahil', true)
+        .eq('dahil', true) as { data: { izin_sira_no: string }[] | null }
       const extraSiraNos = shakChainExtraIzySiraNolari(
         siraNoList,
         (chainSecim ?? []).map(s => s.izin_sira_no),
