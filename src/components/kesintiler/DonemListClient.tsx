@@ -61,7 +61,7 @@ interface Props {
   kuralMetni?: string
   /** true ise Seçim sütunu ve SecimModal gizlenir (IZY, IVY detay sayfasında seçim yapıldığı için) */
   hideSecimColumn?: boolean
-  onEkle:      (fd: FormData) => Promise<{ hata?: string }>
+  onEkle:      (fd: FormData) => Promise<{ hata?: string; uyari?: string; donemId?: number }>
   onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
   onKapat:     (id: number) => Promise<{ hata?: string }>
   onAc:        (id: number) => Promise<{ hata?: string }>
@@ -358,6 +358,13 @@ export default function DonemListClient({
         formKapat()
         broadcastIntradaRefresh('kesintiler')
         router.refresh()
+        if (res.uyari) {
+          if (detayBase && res.donemId && confirm(`${res.uyari}\n\nDönem detayına gidip izinleri kontrol etmek ister misiniz?`)) {
+            router.push(`${detayBase}/${res.donemId}`)
+          } else if (!detayBase || !res.donemId) {
+            alert(res.uyari)
+          }
+        }
       }
     })
   }

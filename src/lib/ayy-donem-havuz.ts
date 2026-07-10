@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
+import { kayitKapatEsigiSonrasiMi } from '@/lib/ayy-kayit-esik'
 
 export type AyyDonemTuru = 'normal' | 'fark'
 
@@ -307,6 +308,63 @@ export async function ayyBuildIzinHavuzu(
   )
   memo.pool.set(donemId, merged)
   return merged
+}
+
+function izinSonGunMs(ayrilis: string, baslama: string): number | null {
+  const startMs = new Date(`${ayrilis.slice(0, 10)}T00:00:00`).getTime()
+  const bD = new Date(`${baslama.slice(0, 10)}T00:00:00`)
+  bD.setDate(bD.getDate() - 1)
+  const lastMs = bD.getTime()
+  if (lastMs < startMs) return null
+  return lastMs
+}
+
+/**
+ * İki dönem arasında «arada kalan» izinler: önceki dönem kapatıldıktan sonra kaydedilmiş,
+ * takvim olarak yeni dönem başlangıcından önce başlayıp biten izinler (ayy-hesap kuralı).
+ */
+export async function ayyAradaKalanIzinleriBul(
+  supabase: SupabaseClient,
+  donem: Pick<AyyDonemRow, 'baslangic_tarihi' | 'bitis_tarihi' | 'donem_turu'>,
+): Promise<AyyIzinDbRow[]> {
+  const donemTuru = ayyDonemTuruNorm(donem.donem_turu)
+  const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi, donemTuru)
+  if (!prev) return []
+
+  const memur = await ayyGetMemurSozlesmeliSiciller(supabase)
+  if (memur.size === 0) return []
+
+  const basMs = new Date(`${donem.baslangic_tarihi.slice(0, 10)}T00:00:00`).getTime()
+  const oncekiEsik = {
+    baslangic_tarihi: prev.baslangic_tarihi,
+    bitis_tarihi:     prev.bitis_tarihi,
+    kapatildi_at:     prev.kapatildi_at ?? null,
+  }
+
+  const sanalDonem: AyyDonemRow = {
+    id: 0,
+    donem_adi: null,
+    donem_turu: donemTuru,
+    baslangic_tarihi: donem.baslangic_tarihi,
+    bitis_tarihi:     donem.bitis_tarihi,
+    kapatildi_at:     null,
+  }
+  const candidates = await queryIzinA(supabase, memur, [...memur], sanalDonem, prev)
+
+  return candidates.filter(r => {
+    if (!r.kayit_tarihi || !r.ayrilis || !r.baslama) return false
+    if (!kayitKapatEsigiSonrasiMi(r.kayit_tarihi, oncekiEsik)) return false
+    const startMs = new Date(`${r.ayrilis.slice(0, 10)}T00:00:00`).getTime()
+    const sonGunMs = izinSonGunMs(r.ayrilis, r.baslama)
+    if (sonGunMs === null) return false
+    return startMs < basMs && sonGunMs < basMs
+  })
+}
+
+export function ayyFormatAradaKalanUyari(rows: AyyIzinDbRow[]): string {
+  const ornek = rows.slice(0, 5).map(r => `${r.sira_no} (sicil ${r.sicil_no})`).join(', ')
+  const fazla = rows.length > 5 ? ` ve ${rows.length - 5} izin daha` : ''
+  return `${rows.length} adet «arada kalan» izin tespit edildi: ${ornek}${fazla}. Bu izinler havuza dahil olabilir; dönem detayından İzinleri Düzenle ile kontrol edin.`
 }
 
 export async function ayyLoadTatiller(

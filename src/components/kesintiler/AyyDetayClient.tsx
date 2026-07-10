@@ -26,18 +26,21 @@ function IzinTablo({
   onSagaAl,
   onSolaAl,
   yon,
+  readonly = false,
 }: {
   izinler: AyyDetayIzin[]
   onSagaAl?: (sira_no: string) => void
   onSolaAl?: (sira_no: string) => void
   yon: 'aday' | 'islenecek'
+  readonly?: boolean
 }) {
+  const showActions = !readonly && (onSagaAl || onSolaAl)
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
-            <th className="w-12 px-3 py-2.5" />
+            {showActions && <th className="w-12 px-3 py-2.5" />}
             <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Sıra No</th>
             <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Sicil No</th>
             <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Adı Soyadı</th>
@@ -50,13 +53,14 @@ function IzinTablo({
         <tbody className="divide-y divide-slate-100">
           {            izinler.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">
+              <td colSpan={showActions ? 8 : 7} className="px-4 py-8 text-center text-slate-400 text-sm">
                 {yon === 'aday' ? 'Hariç tutulan izin yok.' : 'Tüm izinler kesintiye dahil.'}
               </td>
             </tr>
           ) : (
             izinler.map((iz, i) => (
               <tr key={`${yon}-${iz.sira_no}-${iz.ayrilis}-${iz.baslama}-${i}`} className="hover:bg-slate-50 transition-colors">
+                {showActions && (
                 <td className="px-3 py-2 text-center">
                   {yon === 'aday' && onSagaAl && (
                     <button
@@ -83,6 +87,7 @@ function IzinTablo({
                     </button>
                   )}
                 </td>
+                )}
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sira_no}</td>
                 <td className="px-4 py-2 font-mono text-xs text-slate-500">{iz.sicil_no}</td>
                 <td className="px-4 py-2 font-medium text-slate-800">{iz.ad_soyad}</td>
@@ -147,13 +152,8 @@ export default function AyyDetayClient({ donemId }: Props) {
     return () => { iptal = true }
   }, [data?.islenecek.length, data?.aday.length, donemId, izinDuzenleAcik])
 
-  useEffect(() => {
-    if (data?.donem.durum === 'Kapalı' && izinDuzenleAcik) {
-      setIzinDuzenleAcik(false)
-    }
-  }, [data?.donem.durum, izinDuzenleAcik])
-
   function sagaAl(sira_no: string) {
+    if (data?.donem.durum === 'Kapalı') return
     if (!data) return
     const iz = data.aday.find(i => i.sira_no === sira_no)
     if (!iz) return
@@ -165,6 +165,7 @@ export default function AyyDetayClient({ donemId }: Props) {
   }
 
   function solaAl(sira_no: string) {
+    if (data?.donem.durum === 'Kapalı') return
     if (!data) return
     const iz = data.islenecek.find(i => i.sira_no === sira_no)
     if (!iz) return
@@ -253,15 +254,15 @@ export default function AyyDetayClient({ donemId }: Props) {
         )}
       </nav>
 
-      {readonly && (
+      {readonly && !izinDuzenleAcik && (
         <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm font-medium text-amber-800">
-            Bu dönem kapalıdır. İzin düzenlemesi yapılamaz. Dönem listesinden &quot;Aç&quot; butonu ile tekrar açabilirsiniz.
+            Bu dönem kapalıdır. İzinleri Görüntüle ile dönem içindeki izin listesini salt okunur görebilirsiniz.
           </p>
         </div>
       )}
 
-      {(!izinDuzenleAcik || readonly) ? (
+      {!izinDuzenleAcik ? (
         /* Özet Önizleme (varsayılan görünüm) */
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -278,15 +279,13 @@ export default function AyyDetayClient({ donemId }: Props) {
                 </svg>
                 Geri
               </Link>
-              {!readonly && (
-                <button
-                  type="button"
-                  onClick={() => setIzinDuzenleAcik(true)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
-                >
-                  İzinleri Düzenle
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIzinDuzenleAcik(true)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+              >
+                {readonly ? 'İzinleri Görüntüle' : 'İzinleri Düzenle'}
+              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -330,22 +329,24 @@ export default function AyyDetayClient({ donemId }: Props) {
           )}
         </>
       ) : (
-        /* İzinleri Düzenle ekranı */
+        /* İzinleri Düzenle / Görüntüle ekranı */
         <>
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <div className={`mb-4 p-4 rounded-lg border ${readonly ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
             <p className="text-sm text-slate-600">
-              Kesintiye dahil olmasını istemediğiniz izinleri sol tarafa (Hariç Tutulan) taşıyın. Kaydet ile özet ekranına dönersiniz.
+              {readonly
+                ? 'Kapalı dönem — izin listesi salt okunurdur; taşıma ve kayıt yapılamaz.'
+                : 'Kesintiye dahil olmasını istemediğiniz izinleri sol tarafa (Hariç Tutulan) taşıyın. Kaydet ile özet ekranına dönersiniz.'}
             </p>
           </div>
 
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-2">Kesintiye Dahil ({data.islenecek.length})</h3>
-            <IzinTablo izinler={data.islenecek} onSolaAl={solaAl} yon="islenecek" />
+            <IzinTablo izinler={data.islenecek} onSolaAl={readonly ? undefined : solaAl} yon="islenecek" readonly={readonly} />
           </div>
 
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-2">Hariç Tutulan ({data.aday.length})</h3>
-            <IzinTablo izinler={data.aday} onSagaAl={sagaAl} yon="aday" />
+            <IzinTablo izinler={data.aday} onSagaAl={readonly ? undefined : sagaAl} yon="aday" readonly={readonly} />
           </div>
 
           <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-lg border border-slate-200 justify-end">
@@ -354,24 +355,28 @@ export default function AyyDetayClient({ donemId }: Props) {
               onClick={() => setIzinDuzenleAcik(false)}
               className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
             >
-              İptal
+              {readonly ? 'Özet Ekranına Dön' : 'İptal'}
             </button>
-            <button
-              type="button"
-              onClick={hepsiniIptal}
-              disabled={isPending || data.aday.length === 0}
-              className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Tümünü Dahil Et
-            </button>
-            <button
-              type="button"
-              onClick={kaydet}
-              disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              Kaydet ve Özet Ekranına Dön
-            </button>
+            {!readonly && (
+              <>
+                <button
+                  type="button"
+                  onClick={hepsiniIptal}
+                  disabled={isPending || data.aday.length === 0}
+                  className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Tümünü Dahil Et
+                </button>
+                <button
+                  type="button"
+                  onClick={kaydet}
+                  disabled={isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Kaydet ve Özet Ekranına Dön
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

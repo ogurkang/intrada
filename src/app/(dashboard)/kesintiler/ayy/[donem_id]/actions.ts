@@ -153,6 +153,9 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
 /** islenecek = kesintiye dahil, aday = hariç tutulan. Sadece hariç tutulanları (aday) kaydeder. */
 export async function ayySecimleriKaydet(donem_id: number, haricSiraNoList: string[]): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const donem = await ayyLoadDonem(supabase, donem_id)
+  if (!donem) return { hata: 'Dönem bulunamadı.' }
+  if (donem.durum === 'Kapalı') return { hata: 'Kapalı dönemde izin seçimi değiştirilemez.' }
   await supabase.from('aylik_yemek_yeni_secim').delete().eq('donem_id', donem_id)
   if (haricSiraNoList.length > 0) {
     const { error } = await supabase.from('aylik_yemek_yeni_secim').insert(
