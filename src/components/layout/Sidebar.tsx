@@ -158,6 +158,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/kesintiler/yevmiye',     label: 'Yevmiye Puantajı'         },
       { href: '/kesintiler/arazi',       label: 'Arazi Puantajı'           },
       { href: '/kesintiler/ayy',          label: 'Aylık Yemek (AYY)'          },
+      { href: '/kesintiler/zabita-havuz', label: 'Zabıta Havuzu'              },
       { href: '/kesintiler/sosyal-hak',  label: 'Sosyal Hak Kesintileri'    },
       { href: '/kesintiler/rmy',         label: 'Raporlu Memurlar'          },
       { href: '/kesintiler/ivy',         label: 'İzinli Vekiller'           },

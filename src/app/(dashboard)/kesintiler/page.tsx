@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
 import ModulHubClient from '@/components/ui/ModulHubClient'
 import KesintilerListeTabSync from '@/components/kesintiler/KesintilerListeTabSync'
 import { ayyZabitaHavuzSatirlari } from '@/lib/ayy-zabita-havuz'
@@ -52,6 +51,22 @@ const TANIMLAR = [
     ikon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.379a48.474 48.474 0 00-6-.371c-2.032 0-3.9.096-5.593.284M15 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A1.125 1.125 0 009.375 7.5H8.25m11.622 10.006a48.523 48.523 0 01-2.274.306 48.523 48.523 0 01-2.274-.306m0 0a48.523 48.523 0 002.274-.306 48.523 48.523 0 012.274.306" />
+      </svg>
+    ),
+  },
+  {
+    key: 'zhv',
+    kod: 'ZH',
+    baslik: 'Zabıta Havuzu',
+    aciklama: 'Zabıta/normal kesinti kuralına alınacak personel listesi',
+    href: '/kesintiler/zabita-havuz',
+    tablo: null,
+    renk: 'border-orange-200 bg-orange-50',
+    ikonRenk: 'bg-orange-100 text-orange-600',
+    birim: 'havuz',
+    ikon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
       </svg>
     ),
   },
@@ -151,9 +166,12 @@ export default async function KesintilerPage() {
     }),
   ])
 
+  const normalKesintiSayisi = zabitaHavuzSatirlari.filter(s => !s.zabitaKesintiAktif).length
+
   const kartlar = TANIMLAR.map((t, i) => {
     const { acik, toplamYil } = donemSonuclari[i]
     const auditLoglar = t.tablo ? (auditLoglarByRefTable[t.tablo] ?? []) : []
+    const isZhv = t.key === 'zhv'
     return {
       key: t.key,
       kod: t.kod,
@@ -163,9 +181,17 @@ export default async function KesintilerPage() {
       renk: t.renk,
       ikonRenk: t.ikonRenk,
       ikon: t.ikon,
-      sayi: t.tablo ? toplamYil : `${tarihTr(cariYil.baslangic)} – ${tarihTr(cariYil.bitis)}`,
-      altMetin: t.tablo ? `${buYil} yılı · ${t.birim}` : t.birim,
-      badge: t.tablo && acik > 0 ? `${acik} açık` : null,
+      sayi: isZhv
+        ? zabitaHavuzSatirlari.length
+        : t.tablo
+          ? toplamYil
+          : `${tarihTr(cariYil.baslangic)} – ${tarihTr(cariYil.bitis)}`,
+      altMetin: isZhv ? 'kayıt · AYY havuzu' : t.tablo ? `${buYil} yılı · ${t.birim}` : t.birim,
+      badge: isZhv && normalKesintiSayisi > 0
+        ? `${normalKesintiSayisi} normal`
+        : t.tablo && acik > 0
+          ? `${acik} açık`
+          : null,
       sonIslem: hubSonIslemFromLogs(auditLoglar),
       auditLoglar,
       auditTip: t.tablo ? ('kesinti-donem' as const) : undefined,
@@ -173,40 +199,11 @@ export default async function KesintilerPage() {
     }
   })
 
-  const zabitaHavuzAlt = (
-    <Link href="/kesintiler/zabita-havuz" target="_blank" rel="noopener noreferrer"
-      className="block rounded-xl border-2 border-amber-200 bg-amber-50 p-6 hover:shadow-md transition-all group mt-8">
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-3 rounded-xl bg-amber-100 text-amber-600">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-          </svg>
-        </div>
-        <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors mt-1"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-      <p className="text-2xl font-bold text-slate-800 tabular-nums">{zabitaHavuzSatirlari.length}</p>
-      <p className="text-xs text-slate-500 mb-2">kayıt · AYY havuzu</p>
-      <p className="font-semibold text-slate-700">Zabıta Havuzu</p>
-      <p className="text-sm text-slate-500 mt-0.5">
-        Zabıta/normal kesinti kuralına alınacak personel listesi
-        {zabitaHavuzSatirlari.filter(s => !s.zabitaKesintiAktif).length > 0 && (
-          <span className="block mt-1 text-xs text-amber-700">
-            Normal kesintiye alınan: {zabitaHavuzSatirlari.filter(s => !s.zabitaKesintiAktif).length}
-          </span>
-        )}
-      </p>
-    </Link>
-  )
-
   return (
     <ModulHubClient
       baslik="Kesinti Yönetimi"
       aciklama="Dönem bazlı kesinti ve puantaj yönetimi. Kartlarda son dönem işlemi gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       ustBilesen={<KesintilerListeTabSync />}
-      altBilesen={zabitaHavuzAlt}
       kartlar={kartlar}
     />
   )
