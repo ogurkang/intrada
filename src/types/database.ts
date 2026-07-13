@@ -1147,6 +1147,24 @@ export interface Database {
         }
         Relationships: []
       }
+      sosyal_hak_izy_ksd_override: {
+        Row: {
+          id: number; donem_id: number; sicil_no: string
+          k_override: number; sd_override: number | null
+          not_lar: string | null; created_at: string
+        }
+        Insert: {
+          id?: number; donem_id: number; sicil_no: string
+          k_override: number; sd_override?: number | null
+          not_lar?: string | null; created_at?: string
+        }
+        Update: {
+          id?: number; donem_id?: number; sicil_no?: string
+          k_override?: number; sd_override?: number | null
+          not_lar?: string | null; created_at?: string
+        }
+        Relationships: []
+      }
       personel_audit_log: {
         Row: {
           id: number; sicil_no: string | null; modul: string; islem: string; ozet: string

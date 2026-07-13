@@ -20,6 +20,7 @@ import {
   mergeRhSiciller,
   shakChainDonemIdListesi,
   shakChainExtraIzySiraNolari,
+  applyShakIzyKsdOverrides,
 } from '@/lib/sosyal-hak-izy-hesap'
 import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
@@ -93,6 +94,8 @@ async function hesaplaModul(
   shakBasTarihi: string,
   /** Sosyal Hak döneminin bitiş tarihi (max-overlap hesabı için) */
   shakBitTarihi: string,
+  /** Sosyal Hak dönem id (IZY K override için) */
+  shakDonemId?: number,
 ): Promise<Map<string, KesintimHesapSatir>> {
   if (siraNoList.length === 0) return new Map()
 
@@ -348,8 +351,20 @@ async function hesaplaModul(
       shakWindows,
       currentDonemRhDays,
     )
+    let finalSonuc = adjusted
+    if (shakDonemId) {
+      const { data: ksdOverrideRaw } = await db
+        .from('sosyal_hak_izy_ksd_override')
+        .select('sicil_no, k_override, sd_override')
+        .eq('donem_id', shakDonemId) as {
+          data: { sicil_no: string; k_override: number; sd_override: number | null }[] | null
+        }
+      if (ksdOverrideRaw && ksdOverrideRaw.length > 0) {
+        finalSonuc = applyShakIzyKsdOverrides(adjusted, ksdOverrideRaw)
+      }
+    }
     resultMap.clear()
-    for (const s of adjusted.satirlar) resultMap.set(s.sira_no, s)
+    for (const s of finalSonuc.satirlar) resultMap.set(s.sira_no, s)
   }
 
   return resultMap
@@ -460,9 +475,9 @@ export async function GET(request: NextRequest) {
     const izyLeaf = leafRows.filter(r => r.tip === 'izy')
 
     ;[rmySatirMap, ivySatirMap, izySatirMap] = await Promise.all([
-      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
-      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
-      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi),
+      hesaplaModul(supabase, 'rmy', rmySiraNoList, rmyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi, donemId),
+      hesaplaModul(supabase, 'ivy', ivySiraNoList, ivyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi, donemId),
+      hesaplaModul(supabase, 'izy', izySiraNoList, izyLeaf, tatiller, donem.baslangic_tarihi, donem.bitis_tarihi, donemId),
     ])
   }
 

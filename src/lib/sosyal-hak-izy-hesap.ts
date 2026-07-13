@@ -2,12 +2,14 @@
  * Sosyal Hak IZY hesaplama yardımcıları.
  * Excel dışa aktarım ve önizleme aynı zincir / devir kurallarını paylaşır.
  */
-import type { KesintimIzinRow } from './kesinym-hesap'
+import type { KesintimIzinRow, KesintimHesapSonucu } from './kesinym-hesap'
 import {
+  buildKesintimSonucFromSatirlar,
   isIzyRhTur,
   izyRhToplamGun,
   shakChainDonemIdsUpTo,
   SHAK_IZY_DEVIR_SIRA_PREFIX,
+  SHAK_IZY_KESINTI_KAPASITE,
 } from './kesinym-hesap'
 
 export type ShakDonemKayit = { id: number; baslangic_tarihi: string; bitis_tarihi: string }
@@ -87,4 +89,46 @@ export function buildShakCurrentDonemRhDays(
     map.set(iz.sicil_no, (map.get(iz.sicil_no) ?? 0) + gun)
   }
   return map
+}
+
+export interface ShakIzyKsdOverride {
+  sicil_no: string
+  k_override: number
+  sd_override?: number | null
+}
+
+/**
+ * Dönem+sicil bazlı manuel K düzeltmesi.
+ * sd_override yoksa SD = max(0, eskiK + eskiSD - yeniK) (bakiye korunur).
+ * Not: kisiOzetTopla K'yı kapasiteye kırptığı için rebuild kapasitesi
+ * override K değerlerinin üstüne çıkarılır (aksi halde 43 → 30'a düşer).
+ */
+export function applyShakIzyKsdOverrides(
+  sonuc: KesintimHesapSonucu,
+  overrides: ShakIzyKsdOverride[],
+): KesintimHesapSonucu {
+  if (!overrides.length) return sonuc
+  const bySicil = new Map(
+    overrides.map(o => [String(o.sicil_no).trim(), o] as const),
+  )
+
+  const satirlar = sonuc.satirlar.map(s => {
+    const ov = bySicil.get(String(s.sicil_no).trim())
+    if (!ov) return s
+    // K/SD kişi satırında (son RH veya devir) tutulur; K=0 ve SD=0 satırlara dokunma
+    if (s.K === 0 && s.SD === 0 && s.OD === 0) return s
+    const k = Math.max(0, Math.floor(ov.k_override))
+    const sd =
+      ov.sd_override != null && Number.isFinite(ov.sd_override)
+        ? Math.max(0, Math.floor(ov.sd_override))
+        : Math.max(0, s.K + s.SD - k)
+    return { ...s, K: k, SD: sd }
+  })
+
+  const maxOverrideK = Math.max(
+    0,
+    ...overrides.map(o => Math.floor(Number(o.k_override) || 0)),
+  )
+  const kapasite = Math.max(SHAK_IZY_KESINTI_KAPASITE, maxOverrideK)
+  return buildKesintimSonucFromSatirlar(satirlar, kapasite)
 }

@@ -22,6 +22,7 @@ import {
   mergeRhSiciller,
   shakChainDonemIdListesi,
   shakChainExtraIzySiraNolari,
+  applyShakIzyKsdOverrides,
 } from '@/lib/sosyal-hak-izy-hesap'
 import KesintimDetayClient from '@/components/kesintiler/KesintimDetayClient'
 import { createClient } from '@/lib/supabase/client'
@@ -526,6 +527,17 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
 
     if (annualRhIzinler.length > 0 && shakWindows.length > 0) {
       sonuc = applyShakIzyKsdToSonuc(sonuc, annualRhIzinler, shakWindows, currentDonemRhDays)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: ksdOverrideRaw } = await (supabase as any)
+      .from('sosyal_hak_izy_ksd_override')
+      .select('sicil_no, k_override, sd_override')
+      .eq('donem_id', donemId) as {
+        data: { sicil_no: string; k_override: number; sd_override: number | null }[] | null
+      }
+    if (ksdOverrideRaw && ksdOverrideRaw.length > 0) {
+      sonuc = applyShakIzyKsdOverrides(sonuc, ksdOverrideRaw)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
