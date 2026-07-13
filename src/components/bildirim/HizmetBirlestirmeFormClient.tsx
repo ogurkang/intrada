@@ -351,9 +351,7 @@ export default function HizmetBirlestirmeFormClient({
             Belge Önizleme
           </p>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-10 py-10 text-slate-800 leading-relaxed font-serif">
-            <p className="text-right text-sm">
-              <span className="text-slate-500">İşlem Tarihi:</span> {hizmetBirlestirmeTarihFormat()}
-            </p>
+            <p className="text-right">{hizmetBirlestirmeTarihFormat()}</p>
             <p className="text-center font-bold mt-10">{HIZMET_BIRLESTIRME_MAKAM}</p>
             <p className="text-center">{HIZMET_BIRLESTIRME_BIRIM}</p>
             <p className="mt-8 text-justify indent-8">{HIZMET_BIRLESTIRME_METIN}</p>

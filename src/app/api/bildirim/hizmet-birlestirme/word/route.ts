@@ -87,7 +87,7 @@ export async function GET(req: Request) {
             new Paragraph({
               alignment: AlignmentType.RIGHT,
               spacing: { after: 600 },
-              children: [run(`İşlem Tarihi: ${alanlar.tarih}`)],
+              children: [run(alanlar.tarih)],
             }),
             new Paragraph({
               alignment: AlignmentType.CENTER,
