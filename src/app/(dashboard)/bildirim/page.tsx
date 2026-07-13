@@ -3,7 +3,13 @@ import ModulHubClient from '@/components/ui/ModulHubClient'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { loadAuditLoglarByRefTables, hubSonIslemFromLogs, type ModulHubAuditTip } from '@/lib/hub-audit-load'
 
-const BILDIRIM_REF_TABLES = ['calisan_ogrenim', 'aile_bildirimi', 'mal_bildirimi', 'pasaport_islemleri'] as const
+const BILDIRIM_REF_TABLES = [
+  'calisan_ogrenim',
+  'aile_bildirimi',
+  'mal_bildirimi',
+  'pasaport_islemleri',
+  'hizmet_birlestirme_islemleri',
+] as const
 
 export default async function BildirimHubPage() {
   const supabase = await createClient()
@@ -20,18 +26,23 @@ export default async function BildirimHubPage() {
   const pasaportCountQ = kullaniciSicil
     ? supabase.from('pasaport_islemleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('pasaport_islemleri').select('*', { count: 'exact', head: true })
+  const hizmetCountQ = kullaniciSicil
+    ? supabase.from('hizmet_birlestirme_islemleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('hizmet_birlestirme_islemleri').select('*', { count: 'exact', head: true })
 
   const [
     { count: ogrenimSayisi },
     { count: aileSayisi },
     { count: malSayisi },
     { count: pasaportSayisi },
+    { count: hizmetSayisi },
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
     aileCountQ,
     malCountQ,
     pasaportCountQ,
+    hizmetCountQ,
     loadAuditLoglarByRefTables(supabase, [...BILDIRIM_REF_TABLES]),
   ])
 
@@ -104,13 +115,30 @@ export default async function BildirimHubPage() {
         </svg>
       ),
     },
+    {
+      key: 'hizmet-birlestirme',
+      baslik: 'Hizmet Birleştirme İşlemleri',
+      aciklama: 'SGK hizmet birleştirme dilekçesi oluşturma ve Word çıktısı',
+      href: '/bildirim/hizmet-birlestirme',
+      refTable: 'hizmet_birlestirme_islemleri' as const,
+      sayi: hizmetSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-sky-200 bg-sky-50',
+      ikonRenk: 'bg-sky-100 text-sky-600',
+      auditTip: 'hizmet-birlestirme' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      ),
+    },
   ]
 
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, aile, mal bildirimleri ve pasaport işlemleri yönetimi. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
-      gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5"
+      aciklama="Öğrenim, aile, mal bildirimleri, pasaport ve hizmet birleştirme işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []
         return {

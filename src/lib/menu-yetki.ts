@@ -138,7 +138,8 @@ export function kullaniciPathAllowed(
     if (
       path.startsWith('/bildirim/aile') ||
       path.startsWith('/bildirim/mal') ||
-      path.startsWith('/bildirim/pasaport')
+      path.startsWith('/bildirim/pasaport') ||
+      path.startsWith('/bildirim/hizmet-birlestirme')
     ) {
       return true
     }

@@ -10,6 +10,10 @@ import { aileAuditDiffSatirlari, aileAuditDegerGoster } from '@/lib/aile-audit'
 import { malAuditDiffSatirlari, malAuditDegerGoster } from '@/lib/mal-audit'
 import { kesintiDonemAuditDiffSatirlari, kesintiDonemAuditDegerGoster } from '@/lib/kesinti-donem-audit'
 import { pasaportAuditDiffSatirlari, pasaportAuditDegerGoster } from '@/lib/pasaport-audit'
+import {
+  hizmetBirlestirmeAuditDiffSatirlari,
+  hizmetBirlestirmeAuditDegerGoster,
+} from '@/lib/hizmet-birlestirme-audit'
 
 type AuditLog = Tables<'personel_audit_log'>
 type DiffFn = (onceki: unknown, sonraki: unknown) => {
@@ -29,6 +33,10 @@ const AUDIT_TIP_MAP: Record<ModulHubAuditTip, { diffSatirlari: DiffFn; degerGost
   mal:           { diffSatirlari: malAuditDiffSatirlari, degerGoster: malAuditDegerGoster },
   'kesinti-donem': { diffSatirlari: kesintiDonemAuditDiffSatirlari, degerGoster: kesintiDonemAuditDegerGoster },
   pasaport:      { diffSatirlari: pasaportAuditDiffSatirlari, degerGoster: pasaportAuditDegerGoster },
+  'hizmet-birlestirme': {
+    diffSatirlari: hizmetBirlestirmeAuditDiffSatirlari,
+    degerGoster: hizmetBirlestirmeAuditDegerGoster,
+  },
 }
 
 export interface ModulHubKart {

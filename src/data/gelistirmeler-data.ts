@@ -2,8 +2,32 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-10T10:59:26.128Z",
+  "generatedAt": "2026-07-13T08:07:43.883Z",
   "commits": [
+    {
+      "hash": "a178e28",
+      "fullHash": "a178e28ba7875f7b6c7c55b29a54c4cc20aec6c3",
+      "date": "2026-07-10",
+      "subject": "feat(rapor): ogrenim durumuna gore iletisim bilgileri listesi"
+    },
+    {
+      "hash": "014e17f",
+      "fullHash": "014e17f4b9dde4252bfd1bc5c3b78450f990889b",
+      "date": "2026-07-10",
+      "subject": "feat(kesintiler): Zabita Havuzu sol menu ve genel bakis karti"
+    },
+    {
+      "hash": "857c8b4",
+      "fullHash": "857c8b4ce86dba27da1477d269e8e2da79622b79",
+      "date": "2026-07-10",
+      "subject": "fix(build): DonemListClient onEkle uyari tipi ve sosyal_hak_secim sorgusu."
+    },
+    {
+      "hash": "f6071df",
+      "fullHash": "f6071dfbe9ddd5db23782dc8f49748e21209819d",
+      "date": "2026-07-10",
+      "subject": "Gelistirmeler verisini son commitlerle senkronize et."
+    },
     {
       "hash": "f941829",
       "fullHash": "f9418293b0ada2deab19c817e57cceed5276fc26",
@@ -219,30 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "772fdd68dd6037b262bcd328caede49fe9142eee",
       "date": "2026-06-17",
       "subject": "Adres mahalle tanimlari, Excel ice aktarim ve personel adres secimi ekle."
-    },
-    {
-      "hash": "ea7852b",
-      "fullHash": "ea7852b63e16d6e53e181728d09b9ecb3fb81388",
-      "date": "2026-06-17",
-      "subject": "ADABEL yerleske secimini sirket tanimina bagla; Calisanlar alt menusunu kaldir."
-    },
-    {
-      "hash": "9c56d8d",
-      "fullHash": "9c56d8d6973f4ff2721431fbc0cab7f052db17ea",
-      "date": "2026-06-17",
-      "subject": "Iletisim ve Stratejik modullerini yetkilendirmeye ekle; sayfa yukleme animasyonu."
-    },
-    {
-      "hash": "f495f81",
-      "fullHash": "f495f81d5ea189a0de1c2665828e36e922cda0f3",
-      "date": "2026-06-16",
-      "subject": "Yetkilendirme listesine tum aktif personeli ekle ve audit gecmisi bagla."
-    },
-    {
-      "hash": "07c3c58",
-      "fullHash": "07c3c5840836d1b3b2793c5901db069c173285a9",
-      "date": "2026-06-15",
-      "subject": "Kesintiler, bildirim hub ve egitim modullerine audit gecmisi ekle."
     }
   ]
 }

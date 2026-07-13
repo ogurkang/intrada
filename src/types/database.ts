@@ -1120,6 +1120,33 @@ export interface Database {
         }
         Relationships: []
       }
+      hizmet_birlestirme_islemleri: {
+        Row: {
+          id: number; sicil_no: string | null; ad_soyad: string; tckn: string | null
+          personel_durum: 'calisan' | 'ayrilan'
+          emeklilik_sicil_no: string | null; ssk: string | null
+          bagkur_sicil_no: string | null; hizmet_illeri: string | null
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no?: string | null; ad_soyad: string; tckn?: string | null
+          personel_durum?: 'calisan' | 'ayrilan'
+          emeklilik_sicil_no?: string | null; ssk?: string | null
+          bagkur_sicil_no?: string | null; hizmet_illeri?: string | null
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string | null; ad_soyad?: string; tckn?: string | null
+          personel_durum?: 'calisan' | 'ayrilan'
+          emeklilik_sicil_no?: string | null; ssk?: string | null
+          bagkur_sicil_no?: string | null; hizmet_illeri?: string | null
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
       personel_audit_log: {
         Row: {
           id: number; sicil_no: string | null; modul: string; islem: string; ozet: string
