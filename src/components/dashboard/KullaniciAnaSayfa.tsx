@@ -36,6 +36,18 @@ export default function KullaniciAnaSayfa({
         href: '/bildirim/mal',
         emoji: '🏠',
       },
+      {
+        baslik: 'Pasaport İşlemleri',
+        aciklama: 'Yeşil pasaport başvuru formu oluşturma ve Word çıktısı.',
+        href: '/bildirim/pasaport',
+        emoji: '🛂',
+      },
+      {
+        baslik: 'Hizmet Birleştirme İşlemleri',
+        aciklama: 'SGK hizmet birleştirme dilekçesi oluşturma ve Word çıktısı.',
+        href: '/bildirim/hizmet-birlestirme',
+        emoji: '📄',
+      },
     )
   }
 
