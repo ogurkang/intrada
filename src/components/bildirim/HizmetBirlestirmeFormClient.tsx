@@ -117,11 +117,7 @@ export default function HizmetBirlestirmeFormClient({
         setHata(sonuc.hata)
         return
       }
-      if (sonuc?.id) {
-        router.push(`/bildirim/hizmet-birlestirme/${sonuc.id}`)
-      } else {
-        router.push('/bildirim/hizmet-birlestirme')
-      }
+      router.push('/bildirim/hizmet-birlestirme')
       router.refresh()
     })
   }

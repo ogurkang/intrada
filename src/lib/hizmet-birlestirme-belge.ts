@@ -1,7 +1,7 @@
 /** Hizmet birleştirme dilekçesi — ortak metin yardımcıları (önizleme + Word çıktısı). */
 
-export const HIZMET_BIRLESTIRME_MAKAM = 'SOSYAL GÜVENLİK KURUMU BAŞKANLIĞI'
-export const HIZMET_BIRLESTIRME_BIRIM = 'Sosyal Sigortalar İl Müdürlüğü'
+export const HIZMET_BIRLESTIRME_MAKAM = 'ADAPAZARI BELEDİYE BAŞKANLIĞI'
+export const HIZMET_BIRLESTIRME_BIRIM = '(İnsan Kaynakları ve Eğitim Müdürlüğü)'
 
 export const HIZMET_BIRLESTIRME_METIN =
   "Halen 5510 sayılı Kanunun 4/(c) kapsamında iştirakçi olarak çalışmaktayım. Daha önce 4/(a)S.S.K.'na 4/(b)Bağ-Kur'a tabi geçen hizmetimin kurumunuza tabi hizmetimle birleştirilebilmesi için gereğini arz ederim."

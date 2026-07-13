@@ -97,6 +97,28 @@ export interface ShakIzyKsdOverride {
   sd_override?: number | null
 }
 
+/** Override satırlarını donem_id → liste map'ine çevirir */
+export function groupShakIzyKsdOverridesByDonem(
+  rows: {
+    donem_id: number
+    sicil_no: string
+    k_override: number
+    sd_override?: number | null
+  }[],
+): Map<number, ShakIzyKsdOverride[]> {
+  const map = new Map<number, ShakIzyKsdOverride[]>()
+  for (const row of rows) {
+    const list = map.get(row.donem_id) ?? []
+    list.push({
+      sicil_no: row.sicil_no,
+      k_override: row.k_override,
+      sd_override: row.sd_override,
+    })
+    map.set(row.donem_id, list)
+  }
+  return map
+}
+
 /**
  * Dönem+sicil bazlı manuel K düzeltmesi.
  * sd_override yoksa SD = max(0, eskiK + eskiSD - yeniK) (bakiye korunur).

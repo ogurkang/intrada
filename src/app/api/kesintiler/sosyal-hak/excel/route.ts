@@ -21,6 +21,7 @@ import {
   shakChainDonemIdListesi,
   shakChainExtraIzySiraNolari,
   applyShakIzyKsdOverrides,
+  groupShakIzyKsdOverridesByDonem,
 } from '@/lib/sosyal-hak-izy-hesap'
 import { RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
@@ -333,12 +334,35 @@ async function hesaplaModul(
     const shakYil = new Date(shakBasTarihi).getFullYear()
     const { data: shDonemChain } = await db
       .from('sosyal_hak_donem')
-      .select('baslangic_tarihi, bitis_tarihi')
+      .select('id, baslangic_tarihi, bitis_tarihi')
       .order('baslangic_tarihi', { ascending: true }) as {
-        data: { baslangic_tarihi: string; bitis_tarihi: string }[] | null
+        data: { id: number; baslangic_tarihi: string; bitis_tarihi: string }[] | null
       }
 
     const shakWindows = buildShakWindowsForYear(shDonemChain ?? [], shakYil, shakBitMs)
+    const chainDonemIdsForOverride = shakChainDonemIdListesi(
+      shDonemChain ?? [],
+      shakYil,
+      shakBitTarihi,
+    )
+
+    let overridesByDonemId: ReturnType<typeof groupShakIzyKsdOverridesByDonem> | undefined
+    if (chainDonemIdsForOverride.length > 0) {
+      const { data: chainOverrideRaw } = await db
+        .from('sosyal_hak_izy_ksd_override')
+        .select('donem_id, sicil_no, k_override, sd_override')
+        .in('donem_id', chainDonemIdsForOverride) as {
+          data: {
+            donem_id: number
+            sicil_no: string
+            k_override: number
+            sd_override: number | null
+          }[] | null
+        }
+      if (chainOverrideRaw && chainOverrideRaw.length > 0) {
+        overridesByDonemId = groupShakIzyKsdOverridesByDonem(chainOverrideRaw)
+      }
+    }
 
     const currentDonemRhDays = buildShakCurrentDonemRhDays(
       izinler,
@@ -350,18 +374,13 @@ async function hesaplaModul(
       izyAnnualRhIzinler,
       shakWindows,
       currentDonemRhDays,
+      overridesByDonemId,
     )
     let finalSonuc = adjusted
-    if (shakDonemId) {
-      const { data: ksdOverrideRaw } = await db
-        .from('sosyal_hak_izy_ksd_override')
-        .select('sicil_no, k_override, sd_override')
-        .eq('donem_id', shakDonemId) as {
-          data: { sicil_no: string; k_override: number; sd_override: number | null }[] | null
-        }
-      if (ksdOverrideRaw && ksdOverrideRaw.length > 0) {
-        finalSonuc = applyShakIzyKsdOverrides(adjusted, ksdOverrideRaw)
-      }
+    const currentOverrides =
+      shakDonemId != null ? overridesByDonemId?.get(shakDonemId) : undefined
+    if (currentOverrides && currentOverrides.length > 0) {
+      finalSonuc = applyShakIzyKsdOverrides(adjusted, currentOverrides)
     }
     resultMap.clear()
     for (const s of finalSonuc.satirlar) resultMap.set(s.sira_no, s)

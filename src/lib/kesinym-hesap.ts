@@ -300,6 +300,34 @@ export interface IzyPersonPeriodKsd {
 export interface IzyRhKsdWindow {
   baslangicMs: number
   bitisMs: number
+  /** sosyal_hak_donem.id — dönem bazlı K override eşlemesi için */
+  donemId?: number
+}
+
+/** SH dönemine ait manuel K/SD düzeltmesi (zincir taşıması için) */
+export interface IzyRhKsdDonemOverride {
+  sicil_no: string
+  k_override: number
+  sd_override?: number | null
+}
+
+function applyIzyRhKsdOverridesToMonth(
+  monthResult: Map<string, IzyPersonPeriodKsd>,
+  carryBySicil: Map<string, number>,
+  overrides: IzyRhKsdDonemOverride[],
+): void {
+  for (const ov of overrides) {
+    const sicil = String(ov.sicil_no).trim()
+    const cur = monthResult.get(sicil)
+    if (!cur) continue
+    const k = Math.max(0, Math.floor(ov.k_override))
+    const sd =
+      ov.sd_override != null && Number.isFinite(ov.sd_override)
+        ? Math.max(0, Math.floor(ov.sd_override))
+        : Math.max(0, cur.K + cur.SD - k)
+    monthResult.set(sicil, { OD: cur.OD, K: k, SD: sd })
+    carryBySicil.set(sicil, sd)
+  }
 }
 
 function izyRhDaysInRange(
@@ -412,12 +440,14 @@ function runIzyRhKsdWindow(
 /**
  * Sosyal Hak aylık dönem zinciri: Ocak→…→mevcut ay sırayla işlenir.
  * Mayıs OD = Nisan SD (33); IZY modül dönemleri bu hesapta kullanılmaz.
+ * overridesByDonemId verilirse ara aylardaki K düzeltmesi sonraki aya SD→OD olarak yansır.
  */
 export function computeIzyRhKsdForShakMonths(
   annualRhIzinler: KesintimIzinRow[],
   shakWindows: IzyRhKsdWindow[],
   /** Dışa aktarılan SH dönemine seçilmiş R/HR izin günleri (sicil → toplam gün) */
   currentDonemRhDaysBySicil?: Map<string, number>,
+  overridesByDonemId?: Map<number, IzyRhKsdDonemOverride[]>,
 ): Map<string, IzyPersonPeriodKsd> {
   const carryBySicil = new Map<string, number>()
   const result = new Map<string, IzyPersonPeriodKsd>()
@@ -426,16 +456,30 @@ export function computeIzyRhKsdForShakMonths(
   for (let wi = 0; wi < shakWindows.length; wi++) {
     const w = shakWindows[wi]
     const isLast = wi === shakWindows.length - 1
+    const monthResult = new Map<string, IzyPersonPeriodKsd>()
+    const ovs =
+      w.donemId != null && overridesByDonemId ? overridesByDonemId.get(w.donemId) : undefined
+    // Override varsa ara ayda da K/SD yazılmalı (carry düzeltmesi için)
+    const writeResult = isLast || Boolean(ovs?.length)
+
     runIzyRhKsdWindow(
       carryBySicil,
-      result,
+      monthResult,
       annualRhIzinler,
       w.baslangicMs,
       w.bitisMs,
-      isLast,
+      writeResult,
       isLast ? currentDonemRhDaysBySicil : undefined,
       SHAK_IZY_KESINTI_KAPASITE,
     )
+
+    if (ovs?.length) {
+      applyIzyRhKsdOverridesToMonth(monthResult, carryBySicil, ovs)
+    }
+
+    if (isLast) {
+      for (const [sicil, ksd] of monthResult) result.set(sicil, ksd)
+    }
   }
   return result
 }
@@ -471,7 +515,7 @@ export function computeIzyRhKsdShakMonthChain(
 
 /** Sosyal Hak yılı için dönem pencereleri (mevcut döneme kadar) */
 export function buildShakWindowsForYear(
-  donemler: { baslangic_tarihi: string; bitis_tarihi: string }[],
+  donemler: { id?: number; baslangic_tarihi: string; bitis_tarihi: string }[],
   year: number,
   bitisMsLimit: number,
 ): IzyRhKsdWindow[] {
@@ -486,7 +530,11 @@ export function buildShakWindowsForYear(
       const yilaAit = basY === year || bitY === year
       const limitGun = sod(new Date(bitisMsLimit))
       if (!yilaAit || sod(bit) > limitGun) return null
-      return { baslangicMs: sod(bas), bitisMs }
+      return {
+        baslangicMs: sod(bas),
+        bitisMs,
+        ...(d.id != null ? { donemId: d.id } : {}),
+      }
     })
     .filter((w): w is IzyRhKsdWindow => w !== null)
     .sort((a, b) => a.baslangicMs - b.baslangicMs)
@@ -642,8 +690,14 @@ export function applyShakIzyKsdToSonuc(
   annualRhIzinler: KesintimIzinRow[],
   shakWindows: IzyRhKsdWindow[],
   currentDonemRhDaysBySicil?: Map<string, number>,
+  overridesByDonemId?: Map<number, IzyRhKsdDonemOverride[]>,
 ): KesintimHesapSonucu {
-  const ksdBySicil = computeIzyRhKsdForShakMonths(annualRhIzinler, shakWindows, currentDonemRhDaysBySicil)
+  const ksdBySicil = computeIzyRhKsdForShakMonths(
+    annualRhIzinler,
+    shakWindows,
+    currentDonemRhDaysBySicil,
+    overridesByDonemId,
+  )
   let satirlar = applyIzyPersonPeriodKsd(sonuc.satirlar, ksdBySicil, annualRhIzinler)
 
   if (shakWindows.length > 0) {
