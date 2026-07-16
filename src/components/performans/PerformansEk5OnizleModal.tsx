@@ -42,10 +42,7 @@ export default function PerformansEk5OnizleModal({
       {veri && !yukleniyor && (
         <div className="space-y-4" id="performans-ek5-onizle">
           <div className="ek5-baslik text-center border-b border-slate-200 pb-3">
-            <p className="alt text-xs font-semibold tracking-wide text-slate-700">
-              Ek-5 ADAPAZARI BELEDİYESİ YÖNETİCİ/ŞEF/MEMURLAR İÇİN
-            </p>
-            <p className="ana text-sm font-bold text-slate-900 mt-1">
+            <p className="ana text-sm font-bold text-slate-900">
               YETKİNLİK BAZLI PERFORMANS DEĞERLENDİRME FORMU
             </p>
           </div>
@@ -115,10 +112,12 @@ export default function PerformansEk5OnizleModal({
                     <tr key={k.kod} className="border-t border-slate-200 align-top">
                       <td className="no px-2 py-1.5 text-center tabular-nums">{k.kod}</td>
                       <td className="px-2 py-1.5">
-                        <div className="kriter-baslik font-medium">{k.baslik}</div>
-                        {k.aciklama && (
-                          <div className="kriter-aciklama text-slate-500 mt-0.5">{k.aciklama}</div>
-                        )}
+                        <div className="kriter-baslik font-semibold text-slate-800">{k.baslik}</div>
+                        {k.aciklama ? (
+                          <div className="kriter-aciklama text-[11px] leading-snug text-slate-600 mt-0.5">
+                            {k.aciklama}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="puan px-2 py-1.5 text-center tabular-nums font-semibold">
                         {puanGoster(k.puan_amir1)}
@@ -170,7 +169,7 @@ export default function PerformansEk5OnizleModal({
               <p>Ünvanı: …………………</p>
               <p className="mt-2">Adı ve Soyadı: {veri.amir1_ad ?? '…………………'}</p>
               <p className="mt-4">İmza: …………………</p>
-              <p className="mt-2">Tarih: …………………</p>
+              <p className="mt-2">Tarih: {veri.amir1_tarih ?? '—'}</p>
             </div>
             {!veri.tek_amir && (
               <div>
@@ -178,7 +177,7 @@ export default function PerformansEk5OnizleModal({
                 <p>Ünvanı: …………………</p>
                 <p className="mt-2">Adı ve Soyadı: {veri.amir2_ad ?? '…………………'}</p>
                 <p className="mt-4">İmza: …………………</p>
-                <p className="mt-2">Tarih: …………………</p>
+                <p className="mt-2">Tarih: {veri.amir2_tarih ?? '—'}</p>
               </div>
             )}
           </div>

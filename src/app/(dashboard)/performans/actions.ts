@@ -550,6 +550,8 @@ export type PerformansEk5OnizleVeri = {
   ortalama: number | null
   amir1_ad: string | null
   amir2_ad: string | null
+  amir1_tarih: string | null
+  amir2_tarih: string | null
   kriterler: {
     kod: number
     baslik: string
@@ -560,6 +562,15 @@ export type PerformansEk5OnizleVeri = {
 }
 
 /** Ek-5 performans değerlendirme formu önizleme verisi */
+function performansTarihGgAaYyyy(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  const gg = String(d.getDate()).padStart(2, '0')
+  const aa = String(d.getMonth() + 1).padStart(2, '0')
+  return `${gg}.${aa}.${d.getFullYear()}`
+}
+
 export async function performansEk5OnizleVeri(
   degerlendirmeId: number,
 ): Promise<{ hata?: string; veri?: PerformansEk5OnizleVeri }> {
@@ -637,6 +648,8 @@ export async function performansEk5OnizleVeri(
       ortalama: deg.ortalama,
       amir1_ad: deg.amir1_sicil ? (amirAdMap[deg.amir1_sicil] ?? deg.amir1_sicil) : null,
       amir2_ad: deg.amir2_sicil ? (amirAdMap[deg.amir2_sicil] ?? deg.amir2_sicil) : null,
+      amir1_tarih: performansTarihGgAaYyyy(deg.amir1_tamam_at),
+      amir2_tarih: performansTarihGgAaYyyy(deg.amir2_onay_at),
       kriterler,
     },
   }
