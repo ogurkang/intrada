@@ -48,6 +48,17 @@ export function performansOrtalamaYuvarla(a: number, b?: number | null): number 
   return Math.round((a + b) / 2)
 }
 
+/** Ek-5 formunda bölüm başlıkları (kriter kodu → başlık) */
+export function performansEk5BolumBasligi(kod: number): string | null {
+  if (kod === 1) return 'MESLEKİ YETERLİLİK'
+  if (kod === 6) return 'DAVRANIŞ YETERLİLİK'
+  if (kod === 11) return 'BİREYSEL YETERLİLİK'
+  if (kod === 16) return 'MEMUR PERSONEL İÇİN KRİTERLER'
+  if (kod === 21) return 'ŞEF PERSONEL İÇİN KRİTERLER'
+  if (kod === 26) return 'YÖNETİCİLER İÇİN KRİTERLER'
+  return null
+}
+
 /** Form tipine göre değerlendirilecek kriter kod aralıkları */
 export function performansKriterKodlari(formTipi: PerformansFormTipi): number[] {
   const ortak = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

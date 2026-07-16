@@ -1,6 +1,15 @@
 /**
- * Performans 1./2. amir eşlemesi (v1).
- * Kaynak: organizasyon ağacı + kadro unvan indeksi.
+ * Performans 1./2. amir eşlemesi.
+ * Kaynak: Tanımlar → Organizasyon ağacı + kadro unvan indeksi.
+ *
+ * Tek amir (yalnızca 1. amir değerlendirir):
+ * - Belediye Başkanı
+ * - Organizasyonda başkan yardımcısı birimine atanmış personel (memur statülü BY)
+ * - Başkana doğrudan bağlı müdürlüğün müdürü
+ *
+ * İki amir (1. amir + 2. amir):
+ * - Müdürlük memur/şef: müdür → (BY veya başkan, müdürlüğün üst birimine göre)
+ * - BY altındaki müdürlük müdürü: BY → başkan
  */
 import {
   mudurlukEslesmeBaz,
@@ -27,13 +36,26 @@ export interface AmirEslemeSonucu {
   tek_amir: boolean
 }
 
+function amirSonuc(
+  formTipi: PerformansFormTipi,
+  amir1: string | null,
+  amir2: string | null,
+  tek_amir: boolean,
+): AmirEslemeSonucu {
+  return {
+    formTipi,
+    amir1_sicil: amir1?.trim() || null,
+    amir2_sicil: tek_amir ? null : (amir2?.trim() || null),
+    tek_amir,
+  }
+}
+
 function mudurSicilForBaz(
   baz: string,
-  indeks: ReturnType<typeof organizasyonPersonelIndeksKur>,
   kadroRows: Array<KadroUnvanSatir & { asil?: string | null; vekil?: string | null }>,
 ): string | null {
-  // indeks sadece ad tutuyor; sicil için kadro satırını tekrar tara
   const hedef = trNormalize(baz)
+  if (!hedef) return null
   for (const r of kadroRows) {
     const unvan = trNormalize(String(r.kadro_unvani ?? r.gorev_unvani ?? ''))
     if (!unvan.includes('muduru')) continue
@@ -49,12 +71,10 @@ function mudurSicilForBaz(
 
 function baskanSicil(
   birimler: OrgBirimSatir[],
-  indeks: ReturnType<typeof organizasyonPersonelIndeksKur>,
   kadroRows: Array<KadroUnvanSatir & { asil?: string | null; vekil?: string | null }>,
 ): string | null {
   const baskanBirim = birimler.find(b => b.birim_turu === 'baskan')
   if (baskanBirim?.personel_sicil_no) return baskanBirim.personel_sicil_no
-  // kadrodan "Belediye Başkanı"
   for (const r of kadroRows) {
     const unvan = String(r.kadro_unvani ?? r.gorev_unvani ?? '')
     const n = trNormalize(unvan)
@@ -63,7 +83,6 @@ function baskanSicil(
       if (sicil) return sicil
     }
   }
-  void indeks
   return null
 }
 
@@ -78,7 +97,6 @@ function findMudurlukBirim(
     const adi = b.mudurluk?.mudurluk_adi ?? ''
     if (mudurlukEslesmeBaz(adi) === baz) return b
   }
-  // gevşek eşleme
   for (const b of birimler) {
     if (b.birim_turu !== 'mudurluk') continue
     const adi = mudurlukEslesmeBaz(b.mudurluk?.mudurluk_adi)
@@ -87,8 +105,20 @@ function findMudurlukBirim(
   return null
 }
 
+/** Organizasyon ağacında başkan yardımcısı birimine atanmış mı? */
+export function baskanYardimcisiBirimindeMi(
+  sicilNo: string,
+  birimler: OrgBirimSatir[],
+): boolean {
+  const hedef = sicilNo.trim()
+  if (!hedef) return false
+  return birimler.some(
+    b => b.birim_turu === 'baskan_yardimcisi' && b.personel_sicil_no === hedef,
+  )
+}
+
 /**
- * Personelin müdürlük adına ve unvanına göre 1./2. amir sicillerini çözer.
+ * Personelin müdürlük adına ve organizasyon ağacına göre 1./2. amir sicillerini çözer.
  */
 export function performansAmirEsle(params: {
   sicilNo: string
@@ -98,16 +128,15 @@ export function performansAmirEsle(params: {
   kadroRows: Array<KadroUnvanSatir & { asil?: string | null; vekil?: string | null }>
 }): AmirEslemeSonucu {
   const formTipi = formTipiFromUnvan(params.unvan)
-  const indeks = organizasyonPersonelIndeksKur(params.kadroRows)
-  const baskan = baskanSicil(params.birimler, indeks, params.kadroRows)
+  void organizasyonPersonelIndeksKur(params.kadroRows)
+  const baskan = baskanSicil(params.birimler, params.kadroRows)
 
   if (formTipi === 'baskan') {
-    return {
-      formTipi,
-      amir1_sicil: params.sicilNo,
-      amir2_sicil: null,
-      tek_amir: true,
-    }
+    return amirSonuc(formTipi, params.sicilNo, null, true)
+  }
+
+  if (baskanYardimcisiBirimindeMi(params.sicilNo, params.birimler)) {
+    return amirSonuc(formTipi, baskan, null, true)
   }
 
   const mudurlukBirim = findMudurlukBirim(params.birimler, params.mudurlukAdi)
@@ -117,49 +146,23 @@ export function performansAmirEsle(params: {
 
   const direkBaskanaBagli = ust?.birim_turu === 'baskan'
   const bySicil =
-    ust?.birim_turu === 'baskan_yardimcisi'
-      ? (ust.personel_sicil_no ?? null)
-      : null
+    ust?.birim_turu === 'baskan_yardimcisi' ? (ust.personel_sicil_no ?? null) : null
 
   const mudurSicil = mudurSicilForBaz(
     mudurlukEslesmeBaz(params.mudurlukAdi),
-    indeks,
     params.kadroRows,
   )
 
-  // Müdür / yönetici
   if (formTipi === 'yonetici') {
-    // kendisi müdür: 1=BY (veya başkan), 2=başkan
     if (direkBaskanaBagli) {
-      return {
-        formTipi,
-        amir1_sicil: baskan,
-        amir2_sicil: baskan,
-        tek_amir: false,
-      }
+      return amirSonuc(formTipi, baskan, null, true)
     }
-    return {
-      formTipi,
-      amir1_sicil: bySicil ?? baskan,
-      amir2_sicil: baskan,
-      tek_amir: false,
-    }
+    return amirSonuc(formTipi, bySicil ?? baskan, baskan, false)
   }
 
-  // Memur / şef
   if (direkBaskanaBagli) {
-    return {
-      formTipi,
-      amir1_sicil: mudurSicil,
-      amir2_sicil: baskan,
-      tek_amir: false,
-    }
+    return amirSonuc(formTipi, mudurSicil, baskan, false)
   }
 
-  return {
-    formTipi,
-    amir1_sicil: mudurSicil,
-    amir2_sicil: bySicil ?? baskan,
-    tek_amir: false,
-  }
+  return amirSonuc(formTipi, mudurSicil, bySicil ?? baskan, false)
 }

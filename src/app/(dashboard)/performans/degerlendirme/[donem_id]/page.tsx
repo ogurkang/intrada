@@ -4,7 +4,7 @@ import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import PerformansDonemDashboardClient, {
   type PersonelSatir,
 } from '@/components/performans/PerformansDonemDashboardClient'
-import { performansDonemPersonelSeedle } from '@/app/(dashboard)/performans/actions'
+import { performansDonemPersonelSeedle, performansDegerlendirmeAmirleriSenkronize } from '@/app/(dashboard)/performans/actions'
 import {
   donemIlerlemeOzet,
   mudurlukSatirlariOlustur,
@@ -53,6 +53,10 @@ export default async function PerformansDonemDashboardPage({
     if ((count ?? 0) === 0) {
       await performansDonemPersonelSeedle(donemId)
     }
+  }
+
+  if (admin) {
+    await performansDegerlendirmeAmirleriSenkronize(donemId)
   }
 
   const { data: mudRaw } = await supabase

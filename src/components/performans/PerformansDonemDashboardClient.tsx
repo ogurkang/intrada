@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
-import { performansDegerlendirmeSifirla } from '@/app/(dashboard)/performans/actions'
+import PerformansEk5OnizleModal from '@/components/performans/PerformansEk5OnizleModal'
+import {
+  performansDegerlendirmeSifirla,
+  performansEk5OnizleVeri,
+  type PerformansEk5OnizleVeri,
+} from '@/app/(dashboard)/performans/actions'
 import { donemIlerlemeOzet } from '@/lib/performans-istatistik'
 import type { MudurlukSatir } from '@/lib/performans-istatistik'
 import { performansPuanBandi } from '@/lib/performans'
@@ -80,6 +85,10 @@ export default function PerformansDonemDashboardClient({
   const [sifirlaHedef, setSifirlaHedef] = useState<PersonelSatir | null>(null)
   const [sifirlaHata, setSifirlaHata] = useState<string | null>(null)
   const [sifirlaPending, startSifirla] = useTransition()
+  const [onizleAcik, setOnizleAcik] = useState(false)
+  const [onizleVeri, setOnizleVeri] = useState<PerformansEk5OnizleVeri | null>(null)
+  const [onizleHata, setOnizleHata] = useState<string | null>(null)
+  const [onizlePending, startOnizle] = useTransition()
 
   const sifirlaYapilabilir = isAdmin && donem.durum !== 'Yayınlandı'
 
@@ -94,6 +103,20 @@ export default function PerformansDonemDashboardClient({
       }
       setSifirlaHedef(null)
       router.refresh()
+    })
+  }
+
+  function onizleAc(degerlendirmeId: number) {
+    setOnizleAcik(true)
+    setOnizleVeri(null)
+    setOnizleHata(null)
+    startOnizle(async () => {
+      const res = await performansEk5OnizleVeri(degerlendirmeId)
+      if (res.hata) {
+        setOnizleHata(res.hata)
+        return
+      }
+      setOnizleVeri(res.veri ?? null)
     })
   }
 
@@ -195,7 +218,7 @@ export default function PerformansDonemDashboardClient({
                   <th className="px-4 py-3 font-semibold">Görev Unvanı</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">1. Amir Puanı</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">2. Amir Puanı</th>
-                  {isAdmin && <th className="px-4 py-3 font-semibold text-right w-56">Değerlendirme</th>}
+                  {isAdmin && <th className="px-4 py-3 font-semibold text-right w-64">Değerlendirme</th>}
                 </tr>
               </thead>
               <tbody>
@@ -252,6 +275,13 @@ export default function PerformansDonemDashboardClient({
                                 2. Amir
                               </Link>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => onizleAc(p.id)}
+                              className="rounded-lg border border-indigo-200 text-indigo-700 px-2.5 py-1 text-xs font-medium hover:bg-indigo-50"
+                            >
+                              Önizle
+                            </button>
                             {sifirlaYapilabilir && (
                               <button
                                 type="button"
@@ -320,6 +350,18 @@ export default function PerformansDonemDashboardClient({
           </div>
         )}
       </Modal>
+
+      <PerformansEk5OnizleModal
+        acik={onizleAcik}
+        onKapat={() => {
+          setOnizleAcik(false)
+          setOnizleVeri(null)
+          setOnizleHata(null)
+        }}
+        veri={onizleVeri}
+        yukleniyor={onizlePending}
+        hata={onizleHata}
+      />
     </div>
   )
 }
