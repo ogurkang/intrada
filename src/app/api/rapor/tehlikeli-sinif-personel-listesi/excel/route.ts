@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import {
+  fetchMudurlukYerleskeKonumTanimlari,
+  mudurlukKonumMetniHaritasi,
+} from '@/lib/mudurluk-konum'
 import { type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
+
+function normMud(v: string | null | undefined): string {
+  return String(v ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
+}
 
 export async function GET(req: Request) {
   try {
@@ -14,11 +22,13 @@ export async function GET(req: Request) {
       .map(s => s.trim())
       .filter(Boolean) as TehlikeSinifi[]
     const supabase = await createClient()
-    const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
+    const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }, konumTanimlar] = await Promise.all([
       supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
       supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu').not('asil', 'is', null),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
+      fetchMudurlukYerleskeKonumTanimlari(supabase),
     ])
+    const konumByMud = mudurlukKonumMetniHaritasi(konumTanimlar)
     const tehlikeByMudurluk = new Map<string, TehlikeSinifi>()
     for (const m of mudRaw ?? []) tehlikeByMudurluk.set(m.mudurluk_adi, (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli')
     const calisanBySicil = new Map<string, { ad_soyad: string }>()
@@ -30,6 +40,7 @@ export async function GET(req: Request) {
     }
     const satirlar = aktifPersonelTehlikeSatirlari({ D, kadro: (kadroRaw ?? []) as KadroRaporRow[], calisanBySicil, tehlikeByMudurluk })
       .filter(r => (tehlikeFilter.length ? tehlikeFilter.includes(r.tehlike_sinifi) : true))
+      .map(r => ({ ...r, konum: konumByMud.get(normMud(r.mudurluk)) ?? '—' }))
       .sort(
         (a, b) =>
           tehlikeSira[a.tehlike_sinifi] - tehlikeSira[b.tehlike_sinifi] ||
@@ -40,8 +51,8 @@ export async function GET(req: Request) {
       baslik: 'Tehlike Sınıfına Göre Personel Listesi',
       donemEtiket: `Yıl: ${yil} · Sekme: ${label}`,
       anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date().toLocaleDateString('tr-TR')}`,
-      kolonlar: ['Sıra No', 'Tehlike Sınıfı', 'Sicil No', 'Adı Soyadı', 'Müdürlük'],
-      satirlar: satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.sicil_no, r.ad_soyad, r.mudurluk]),
+      kolonlar: ['Sıra No', 'Tehlike Sınıfı', 'Sicil No', 'Adı Soyadı', 'Müdürlük', 'Konum'],
+      satirlar: satirlar.map((r, i) => [i + 1, r.tehlike_sinifi, r.sicil_no, r.ad_soyad, r.mudurluk, r.konum]),
       sheetName: 'Tehlike Personel',
       downloadFileName: 'Tehlike_Sinifina_Gore_Personel_Listesi.xlsx',
     })

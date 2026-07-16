@@ -1,10 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import {
+  fetchMudurlukYerleskeKonumTanimlari,
+  mudurlukKonumMetniHaritasi,
+} from '@/lib/mudurluk-konum'
 import { parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 const AYLAR = ['YILLIK', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+
+function normMud(v: string | null | undefined): string {
+  return String(v ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
+}
 
 export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }: { searchParams: Promise<{ y?: string; p?: string }> }) {
   const sp = await searchParams
@@ -13,10 +21,14 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
   const { periyot, D, label } = parseRaporPeriyot(yil, sp.p)
   const p = periyot === 'yillik' ? 'yillik' : String(periyot)
   const supabase = await createClient()
-  const { data: mudRaw } = await supabase
-    .from('tanim_mudurluk')
-    .select('mudurluk_adi, tehlike_sinifi')
-    .eq('aktif', true)
+  const [{ data: mudRaw }, konumTanimlar] = await Promise.all([
+    supabase
+      .from('tanim_mudurluk')
+      .select('mudurluk_adi, tehlike_sinifi')
+      .eq('aktif', true),
+    fetchMudurlukYerleskeKonumTanimlari(supabase),
+  ])
+  const konumByMud = mudurlukKonumMetniHaritasi(konumTanimlar)
 
   const tehlikeSira: Record<TehlikeSinifi, number> = {
     'Az Tehlikeli': 1,
@@ -27,6 +39,7 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
     .map(r => ({
       mudurluk: r.mudurluk_adi,
       tehlike_sinifi: ((r.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli') as TehlikeSinifi,
+      konum: konumByMud.get(normMud(r.mudurluk_adi)) ?? '—',
     }))
     .sort(
       (a, b) =>
@@ -49,12 +62,13 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
       </div>
       <div className="border-b border-slate-200 overflow-x-auto"><nav className="flex min-w-max">{AYLAR.map((a, i) => { const pv = i === 0 ? 'yillik' : String(i); const aktif = pv === p; return <Link key={a} href={`?y=${yil}&p=${pv}`} className={`px-3 py-2 text-sm border-b-2 ${aktif ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-600'}`}>{a}</Link> })}</nav></div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm border-collapse min-w-[520px]">
+        <table className="w-full text-sm border-collapse min-w-[620px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Tehlike Sınıfı</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Müdürlük</th>
+              <th className="px-3 py-3 text-left font-semibold text-slate-700">Konum</th>
             </tr>
           </thead>
           <tbody>
@@ -63,6 +77,7 @@ export default async function TehlikeliSinifMudurlukListesiPage({ searchParams }
                 <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.tehlike_sinifi}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.mudurluk}</td>
+                <td className="px-3 py-2.5 text-slate-800">{r.konum}</td>
               </tr>
             ))}
           </tbody>

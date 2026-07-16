@@ -1,11 +1,19 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import {
+  fetchMudurlukYerleskeKonumTanimlari,
+  mudurlukKonumMetniHaritasi,
+} from '@/lib/mudurluk-konum'
 import { type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 const AYLAR = ['YILLIK', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+
+function normMud(v: string | null | undefined): string {
+  return String(v ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
+}
 
 export default async function TehlikeliSinifPersonelListesiPage({ searchParams }: { searchParams: Promise<{ y?: string; p?: string; t?: string }> }) {
   const sp = await searchParams
@@ -18,11 +26,13 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
     .map(s => s.trim())
     .filter(Boolean) as TehlikeSinifi[]
   const supabase = await createClient()
-  const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
+  const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }, konumTanimlar] = await Promise.all([
     supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
     supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu').not('asil', 'is', null),
     supabase.from('calisan').select('sicil_no, ad_soyad'),
+    fetchMudurlukYerleskeKonumTanimlari(supabase),
   ])
+  const konumByMud = mudurlukKonumMetniHaritasi(konumTanimlar)
   const tehlikeByMudurluk = new Map<string, TehlikeSinifi>()
   for (const m of mudRaw ?? []) tehlikeByMudurluk.set(m.mudurluk_adi, (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli')
   const calisanBySicil = new Map<string, { ad_soyad: string }>()
@@ -39,6 +49,7 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
     tehlikeByMudurluk,
   })
     .filter(r => (seciliTehlikeler.length ? seciliTehlikeler.includes(r.tehlike_sinifi) : true))
+    .map(r => ({ ...r, konum: konumByMud.get(normMud(r.mudurluk)) ?? '—' }))
     .sort(
       (a, b) =>
         tehlikeSira[a.tehlike_sinifi] - tehlikeSira[b.tehlike_sinifi] ||
@@ -79,7 +90,7 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
       </div>
       <div className="border-b border-slate-200 overflow-x-auto"><nav className="flex min-w-max">{AYLAR.map((a, i) => { const pv = i === 0 ? 'yillik' : String(i); const aktif = pv === p; return <Link key={a} href={`?y=${yil}&p=${pv}${tehlikeQ}`} className={`px-3 py-2 text-sm border-b-2 ${aktif ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-600'}`}>{a}</Link> })}</nav></div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm border-collapse min-w-[560px]">
+        <table className="w-full text-sm border-collapse min-w-[680px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
@@ -87,6 +98,7 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Sicil No</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Adı Soyadı</th>
               <th className="px-3 py-3 text-left font-semibold text-slate-700">Müdürlük</th>
+              <th className="px-3 py-3 text-left font-semibold text-slate-700">Konum</th>
             </tr>
           </thead>
           <tbody>
@@ -97,6 +109,7 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
                 <td className="px-3 py-2.5 text-slate-800">{r.sicil_no}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.ad_soyad}</td>
                 <td className="px-3 py-2.5 text-slate-800">{r.mudurluk}</td>
+                <td className="px-3 py-2.5 text-slate-800">{r.konum}</td>
               </tr>
             ))}
           </tbody>
