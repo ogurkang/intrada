@@ -175,6 +175,17 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'Performans Yönetimi',
+    icon: '⭐',
+    accordion: true,
+    items: [
+      { href: '/performans',                 label: 'Genel Bakış'   },
+      { href: '/performans/degerlendirme',   label: 'Değerlendirme' },
+      { href: '/performans/raporlama',       label: 'Raporlama'     },
+      { href: '/performans/tanimlar',        label: 'Tanımlar'      },
+    ],
+  },
+  {
     grup: 'Yerel Bilgi Yönetimi',
     icon: '📍',
     accordion: true,

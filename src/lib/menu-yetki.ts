@@ -14,6 +14,7 @@ export type MenuModulKey =
   | 'bildirim'
   | 'kesintiler'
   | 'egitim'
+  | 'performansYonetimi'
   | 'iletisimYonetimi'
   | 'stratejikYonetim'
   | 'yerelBilgi'
@@ -36,6 +37,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'bildirim', labelKisa: 'Bildirim', label: 'Bildirim', pathPrefixes: ['/bildirim'] },
   { key: 'kesintiler', labelKisa: 'Kesinti', label: 'Kesintiler', pathPrefixes: ['/kesintiler'] },
   { key: 'egitim', labelKisa: 'Eğitim', label: 'Eğitim', pathPrefixes: ['/egitim'] },
+  { key: 'performansYonetimi', labelKisa: 'Performans', label: 'Performans Yönetimi', pathPrefixes: ['/performans'] },
   { key: 'iletisimYonetimi', labelKisa: 'İletişim', label: 'İletişim Yönetimi', pathPrefixes: ['/iletisim-yonetimi'] },
   { key: 'stratejikYonetim', labelKisa: 'Stratejik', label: 'Stratejik Yönetim', pathPrefixes: ['/stratejik-yonetim'] },
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
@@ -124,6 +126,10 @@ export function kullaniciPathAllowed(
   if (path.startsWith('/egitim')) {
     return false
   }
+  // Performans: 1./2. amir kullanıcıları dönem listesine erişebilmeli
+  if (path.startsWith('/performans')) {
+    return true
+  }
   if (path.startsWith('/yetkilendirme')) {
     return false
   }
@@ -200,12 +206,15 @@ export function sidebarGrupGoster(
     'Bildirim Yönetimi': 'bildirim',
     'Kesintiler Yönetimi': 'kesintiler',
     'Eğitim Yönetimi': 'egitim',
+    'Performans Yönetimi': 'performansYonetimi',
     'İletişim Yönetimi': 'iletisimYonetimi',
     'Stratejik Yönetim': 'stratejikYonetim',
     'Yerel Bilgi Yönetimi': 'yerelBilgi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }
+  /** Kullanıcı: amir değerlendirmesi için performans menüsü her zaman görünür */
+  if (accessMode === 'kullanici' && grupEtiket === 'Performans Yönetimi') return true
   const key = map[grupEtiket]
   if (!key) return true
   return menuModulAcik(key, menuIzinleri)
