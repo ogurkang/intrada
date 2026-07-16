@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import KadroGecmisPanel from '@/components/kadro/KadroGecmisPanel'
 
+import type { KadroIsgalKaydi } from '@/lib/kadro-isgal-gecmisi'
+
 type Kadro = Tables<'kadro_hareketleri'>
 
 function tarih(t: string | null) {
@@ -40,11 +42,12 @@ interface Props {
   gelisNedenleri?: string[]
   ayrilisNedenleri?: string[]
   auditLoglar?: Tables<'personel_audit_log'>[]
+  isgalGecmisi?: KadroIsgalKaydi[]
   onGuncelle?: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
 export default function KadroDetayClient({
-  row, adMap, auditLoglar = [],
+  row, adMap, auditLoglar = [], isgalGecmisi = [],
 }: Props) {
   const [gecmisAcik, setGecmisAcik] = useState(false)
   const kadroBaslik =
@@ -129,16 +132,50 @@ export default function KadroDetayClient({
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Durum & Ayrılış & İptal</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">İptal</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Alan etiket="Ayrılış Tarihi" deger={tarih(row.ayrilis_tarihi)} />
-              <Alan etiket="Ayrılış Nedeni" deger={row.ayrilis_nedeni} />
               <Alan etiket="İptal Karar Tarihi" deger={tarih(row.iptal_karar_tarihi)} />
               <Alan etiket="İptal Karar No" deger={row.iptal_karar_no} />
-              <Alan etiket="Gittiği Yer" deger={row.gittigi_yer} />
-              <Alan etiket="Açıklama" deger={row.aciklama} />
             </div>
           </div>
+          {isgalGecmisi.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Personel Geçmişi</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Bu kadro ile ilişkilendirilmiş personel hareketi veya atama kayıtları.
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-sm min-w-[520px]">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-700">Personel</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-700">Rol</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-700">Başlangıç</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-700">Bitiş</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isgalGecmisi.map((k, i) => (
+                      <tr key={`${k.sicil_no}-${k.rol}-${i}`} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2.5 text-slate-800">
+                          {k.ad_soyad ? `${k.ad_soyad} (${k.sicil_no})` : k.sicil_no}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-700">{k.rol}</td>
+                        <td className="px-3 py-2.5 text-slate-700">{tarih(k.baslangic)}</td>
+                        <td className="px-3 py-2.5 text-slate-700">
+                          {k.devam_ediyor ? (
+                            <span className="text-emerald-700 font-medium">Devam ediyor</span>
+                          ) : (
+                            tarih(k.bitis)
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

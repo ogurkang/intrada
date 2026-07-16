@@ -42,6 +42,7 @@ export default async function KadroDetayPage({
         ayrilisNedenleri={rest.ayrilisNedenleri}
         onGuncelle={kadroGuncelle}
         auditLoglar={rest.auditLoglar}
+        isgalGecmisi={rest.isgalGecmisi}
       />
     </div>
   )

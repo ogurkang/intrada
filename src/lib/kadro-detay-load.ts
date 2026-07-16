@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
 import { isUuidSegment } from '@/lib/personel-link'
+import { yukleKadroIsgalGecmisi, type KadroIsgalKaydi } from '@/lib/kadro-isgal-gecmisi'
 
 export type KadroDetayPageData = {
   row: Tables<'kadro_hareketleri'>
@@ -13,6 +14,7 @@ export type KadroDetayPageData = {
   gelisNedenleri: string[]
   ayrilisNedenleri: string[]
   auditLoglar: Tables<'personel_audit_log'>[]
+  isgalGecmisi: KadroIsgalKaydi[]
 }
 
 export async function loadKadroDetayPageData(
@@ -85,6 +87,9 @@ export async function loadKadroDetayPageData(
   ] as string[]
   ayrilisNedenleri.sort((a, b) => (a ?? '').localeCompare(b ?? '', 'tr'))
 
+  const auditLoglar = (auditLogRaw ?? []) as Tables<'personel_audit_log'>[]
+  const isgalGecmisi = await yukleKadroIsgalGecmisi(supabase, row, adMap, auditLoglar)
+
   return {
     row,
     adMap,
@@ -97,7 +102,8 @@ export async function loadKadroDetayPageData(
     }),
     gelisNedenleri,
     ayrilisNedenleri,
-    auditLoglar: (auditLogRaw ?? []) as Tables<'personel_audit_log'>[],
+    auditLoglar,
+    isgalGecmisi,
   }
 }
 

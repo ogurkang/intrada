@@ -26,9 +26,6 @@ async function yukleBosKadrolar(
       .select(BOS_KADRO_SELECT)
       .eq('statu', 'Memur')
       .eq('durumu', 'Boş')
-      .is('iptal_karar_tarihi', null)
-      .is('iptal_karar_no', null)
-      .is('ayrilis_tarihi', null)
       .order('kadro_sira_no', { ascending: true })
       .range(from, to)
     if (error) throw error

@@ -640,7 +640,7 @@ export default function PersonelHareketiDegistirClient({
                     </label>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Kadro seçiminde yalnızca statüsü Memur ve durumu boş olan kadrolar listelenir. Asil veya vekil seçiminiz kayıt sonrası kadro hareketlerine yansır.
+                    Kadro seçiminde statüsü Memur ve durumu Boş olan kadrolar listelenir. Asil veya vekil seçiminiz kayıt sonrası kadro hareketlerine yansır.
                   </p>
                   <input type="hidden" name="yeni_kadro_rol" value={yeniKadroRolState} />
                 </div>
@@ -944,7 +944,7 @@ export default function PersonelHareketiDegistirClient({
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Memur · durumu boş)</h3>
+              <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Memur · durumu Boş)</h3>
               <button type="button" onClick={() => setKadroSecModalAcik(false)} className="text-sm text-slate-500 hover:text-slate-700">Kapat</button>
             </div>
             <div className="px-4 py-3 border-b border-slate-100 space-y-2">

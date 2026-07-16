@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
+import { kadroDurumuHesapla, kadroPersonelHareketSecilebilirMi } from '@/lib/kadro-durum'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
 import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import {
@@ -176,27 +177,32 @@ async function kadroAtamasiniGuncelle(
   async function yeniKadroyaAta(kadroId: number): Promise<{ hata?: string }> {
     const { data: yeni, error: yeniErr } = await supabase
       .from('kadro_hareketleri')
-      .select('id, asil, vekil, durumu')
+      .select('id, statu, durumu')
       .eq('id', kadroId)
       .limit(1)
       .maybeSingle()
     if (yeniErr) return { hata: yeniErr.message }
     if (!yeni) return { hata: 'Yeni kadro kaydı bulunamadı.' }
 
-    const mevcutAsil = String(yeni.asil ?? '').trim()
-    const mevcutVekil = String(yeni.vekil ?? '').trim()
-    const yeniUpdate: { asil?: string | null; vekil?: string | null; durumu?: 'Dolu' | 'Vekil' | 'Boş' } = {}
+    if (!kadroPersonelHareketSecilebilirMi(yeni)) {
+      return { hata: 'Seçilen kadro boş olmalıdır. Lütfen listeyi yenileyin.' }
+    }
+
+    const yeniUpdate: {
+      asil?: string | null
+      vekil?: string | null
+      durumu?: 'Dolu' | 'Vekil' | 'Boş'
+      ayrilis_tarihi?: string | null
+      ayrilis_nedeni?: string | null
+    } = {
+      ayrilis_tarihi: null,
+      ayrilis_nedeni: null,
+    }
 
     if (yeniRol === 'asil') {
-      if ((yeni.durumu ?? '').trim() !== 'Boş' || mevcutAsil || mevcutVekil) {
-        return { hata: 'Seçilen kadro boş olmalıdır. Lütfen listeyi yenileyin.' }
-      }
       yeniUpdate.asil = sicil
       yeniUpdate.durumu = 'Dolu'
     } else {
-      if ((yeni.durumu ?? '').trim() !== 'Boş' || mevcutAsil || mevcutVekil) {
-        return { hata: 'Seçilen kadro boş olmalıdır. Lütfen listeyi yenileyin.' }
-      }
       yeniUpdate.vekil = sicil
       yeniUpdate.durumu = 'Vekil'
     }
@@ -235,7 +241,7 @@ async function kadroAtamasiniGuncelle(
 
   const asilSon = oncekiUpdate.asil === null ? '' : oncekiAsil
   const vekilSon = oncekiUpdate.vekil === null ? '' : oncekiVekil
-  oncekiUpdate.durumu = asilSon ? 'Dolu' : (vekilSon ? 'Vekil' : 'Boş')
+  oncekiUpdate.durumu = kadroDurumuHesapla(asilSon || null, vekilSon || null)
 
   const { error: oncekiUpErr } = await supabase
     .from('kadro_hareketleri')

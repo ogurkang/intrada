@@ -11,3 +11,11 @@ export function kadroDurumuHesapla(
   if (v) return 'Vekil'
   return 'Boş'
 }
+
+/** Personel hareketleri kadro seçimi: statü Memur ve durumu Boş. */
+export function kadroPersonelHareketSecilebilirMi(k: {
+  statu?: string | null
+  durumu?: string | null
+}): boolean {
+  return String(k.statu ?? '').trim() === 'Memur' && String(k.durumu ?? '').trim() === 'Boş'
+}
