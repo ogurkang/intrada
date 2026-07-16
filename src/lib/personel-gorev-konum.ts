@@ -225,6 +225,20 @@ export function personelKonumMetni(
   return tip ?? '—'
 }
 
+function yerleskeAdFromHarita(
+  harita: Map<string, YerleskeSecenek[]>,
+  mudurlukAdi: string,
+  yerleskeId: number,
+): string | null {
+  const fromMud = harita.get(normMudStr(mudurlukAdi))?.find(y => y.id === yerleskeId)?.ad
+  if (fromMud) return fromMud
+  for (const list of harita.values()) {
+    const found = list.find(y => y.id === yerleskeId)
+    if (found) return found.ad
+  }
+  return null
+}
+
 export function etkinYerleskeAdiGoster(
   ctx: PersonelKonumCtx,
   params: {
@@ -233,7 +247,37 @@ export function etkinYerleskeAdiGoster(
   },
 ): string | null {
   const mud = String(params.gorevMudurlugu ?? '').trim()
-  const yId = etkinYerleskeId(ctx.yerleskeHarita, mud, params.kayitliYerleskeId ?? null)
+  const kayitli = params.kayitliYerleskeId ?? null
+
+  if (kayitli != null) {
+    const direct = ctx.yerleskeAdById.get(kayitli)
+    if (direct) return direct
+    const fromHarita = yerleskeAdFromHarita(ctx.yerleskeHarita, mud, kayitli)
+    if (fromHarita) return fromHarita
+  }
+
+  const yId = etkinYerleskeId(ctx.yerleskeHarita, mud, kayitli)
   if (yId == null) return null
-  return ctx.yerleskeAdById.get(yId) ?? null
+  return ctx.yerleskeAdById.get(yId) ?? yerleskeAdFromHarita(ctx.yerleskeHarita, mud, yId) ?? null
+}
+
+/** Rapor / liste satırı için personelin yerleşke atamasına göre konum metni */
+export function personelKonumRaporMetni(
+  ctx: PersonelKonumCtx,
+  input: {
+    gorevMudurlugu?: string | null
+    gorevYeri?: string | null
+    yerleskeAdresiId?: number | null
+    gorevTuru?: string | null
+  },
+): string {
+  const gorevMud = String(input.gorevMudurlugu ?? '').trim()
+  const yId = etkinYerleskeId(ctx.yerleskeHarita, gorevMud, input.yerleskeAdresiId ?? null)
+  let konum = personelKonumMetni(ctx, {
+    gorevYeri: input.gorevYeri,
+    gorevMudurlugu: gorevMud,
+    yerleskeId: yId,
+  })
+  if ((input.gorevTuru ?? '') === 'Kurum Görevlendirme') konum = 'Dış'
+  return konum
 }

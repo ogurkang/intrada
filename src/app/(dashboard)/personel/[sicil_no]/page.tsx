@@ -7,7 +7,7 @@ import FirmaCalisanDetayView from '@/components/personel/FirmaCalisanDetayView'
 import { calisanGuncelle } from './actions'
 import { fetchPersonelDetayPageData, resolvePersonelRouteSegment } from '@/lib/personel-detay-load'
 import { loadFirmaCalisanDetayPageData } from '@/lib/firma-calisan-load'
-import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import {
   buildPersonelKonumCtx,
   etkinYerleskeAdiGoster,
@@ -78,10 +78,8 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   ])
   const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
 
-  const D = new Date().toISOString().slice(0, 10)
-  const sec = secilenKadroSatirAsil(rest.kadrolar, D)
-  const gorevMud =
-    String(sec?.gorev_mudurlugu ?? '').trim() || String(sec?.kadro_mudurlugu ?? '').trim()
+  const anaKadro = anaKadroSec(rest.kadrolar, calisan.sicil_no ?? '')
+  const gorevMud = String(anaKadro?.gorev_mudurlugu ?? anaKadro?.kadro_mudurlugu ?? '').trim()
   const kayitliYerleskeId =
     (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
   const yId = etkinYerleskeId(konumCtx.yerleskeHarita, gorevMud, kayitliYerleskeId)
@@ -95,6 +93,44 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
     yerleskeId: yId,
   })
   if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
+
+  // Yayınlanmış dönem sonuçları (personel Performans Bilgileri sekmesi)
+  let performansKayitlari: {
+    yil: number
+    ortalama: number | null
+    puan_amir1: number | null
+    puan_amir2: number | null
+    durum: string
+    form_tipi: string
+  }[] = []
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: perfRows } = await (supabase as any)
+      .from('performans_degerlendirme')
+      .select('ortalama, puan_amir1, puan_amir2, durum, form_tipi, donem:performans_donem(yil, durum)')
+      .eq('sicil_no', calisan.sicil_no)
+      .in('durum', ['tamamlandi', 'amir2_onay'])
+    performansKayitlari = (perfRows ?? [])
+      .filter((r: { donem?: { durum?: string } | null }) => r.donem?.durum === 'Yayınlandı')
+      .map((r: {
+        ortalama: number | null
+        puan_amir1: number | null
+        puan_amir2: number | null
+        durum: string
+        form_tipi: string
+        donem: { yil: number } | null
+      }) => ({
+        yil: r.donem?.yil ?? 0,
+        ortalama: r.ortalama,
+        puan_amir1: r.puan_amir1,
+        puan_amir2: r.puan_amir2,
+        durum: r.durum,
+        form_tipi: r.form_tipi,
+      }))
+      .sort((a: { yil: number }, b: { yil: number }) => b.yil - a.yil)
+  } catch {
+    performansKayitlari = []
+  }
 
   return (
     <div>
@@ -130,6 +166,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         gecmisGoster={gecmisGoster}
         yerleskeAdi={yerleskeAdi}
         konumMetni={konumMetni}
+        performansKayitlari={performansKayitlari}
       />
     </div>
   )

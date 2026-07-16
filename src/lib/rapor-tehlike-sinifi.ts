@@ -1,13 +1,27 @@
 import { periyotSonGunu, type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import type { PersonelKonumCtx } from '@/lib/personel-gorev-konum'
+import { personelKonumRaporMetni } from '@/lib/personel-gorev-konum'
 
 export type TehlikeSinifi = 'Az Tehlikeli' | 'Tehlikeli' | 'Çok Tehlikeli'
+
+export interface TehlikeCalisanInfo {
+  ad_soyad: string
+  yerleske_adresi_id?: number | null
+  gorev_yeri?: string | null
+  gorev_turu?: string | null
+}
 
 export interface TehlikePersonelSatir {
   sicil_no: string
   ad_soyad: string
   mudurluk: string
   tehlike_sinifi: TehlikeSinifi
+  konum?: string
+}
+
+function personelGorevMudurlugu(k: KadroRaporRow): string {
+  return String(k.gorev_mudurlugu ?? '').trim() || String(k.kadro_mudurlugu ?? '').trim()
 }
 
 export interface TehlikeMudurlukSatir {
@@ -26,10 +40,11 @@ function asTehlike(v: string | null | undefined): TehlikeSinifi {
 export function aktifPersonelTehlikeSatirlari(input: {
   D: string
   kadro: KadroRaporRow[]
-  calisanBySicil: Map<string, { ad_soyad: string }>
+  calisanBySicil: Map<string, TehlikeCalisanInfo>
   tehlikeByMudurluk: Map<string, TehlikeSinifi>
+  konumCtx?: PersonelKonumCtx
 }): TehlikePersonelSatir[] {
-  const { D, kadro, calisanBySicil, tehlikeByMudurluk } = input
+  const { D, kadro, calisanBySicil, tehlikeByMudurluk, konumCtx } = input
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadro) {
     if (!r.asil) continue
@@ -47,11 +62,21 @@ export function aktifPersonelTehlikeSatirlari(input: {
     const cal = calisanBySicil.get(sicil)
     if (!cal) continue
     const tehlike = tehlikeByMudurluk.get(mudurluk) ?? TEHLIKE_DEFAULT
+    const gorevMud = personelGorevMudurlugu(sec)
+    const konum = konumCtx
+      ? personelKonumRaporMetni(konumCtx, {
+          gorevMudurlugu: gorevMud,
+          gorevYeri: cal.gorev_yeri,
+          yerleskeAdresiId: cal.yerleske_adresi_id,
+          gorevTuru: cal.gorev_turu,
+        })
+      : undefined
     out.push({
       sicil_no: sicil,
       ad_soyad: cal.ad_soyad,
       mudurluk,
       tehlike_sinifi: tehlike,
+      konum,
     })
   }
   out.sort((a, b) => a.mudurluk.localeCompare(b.mudurluk, 'tr') || a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }))

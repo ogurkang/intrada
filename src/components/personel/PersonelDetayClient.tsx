@@ -71,6 +71,14 @@ interface Props {
   gecmisGoster?: boolean
   yerleskeAdi?: string | null
   konumMetni?: string | null
+  performansKayitlari?: {
+    yil: number
+    ortalama: number | null
+    puan_amir1: number | null
+    puan_amir2: number | null
+    durum: string
+    form_tipi: string
+  }[]
 }
 
 function tarihFormatla(t: string | null | undefined) {
@@ -965,10 +973,51 @@ function EgitimTab({ egitimKatilimlari }: { egitimKatilimlari: { egitim_adi: str
 
 // ─── Performans Bilgileri ─────────────────────────────────────────────────────
 
-function PerformansTab() {
+function PerformansTab({
+  kayitlar,
+}: {
+  kayitlar: {
+    yil: number
+    ortalama: number | null
+    puan_amir1: number | null
+    puan_amir2: number | null
+    durum: string
+    form_tipi: string
+  }[]
+}) {
+  if (!kayitlar.length) {
+    return (
+      <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+        <p className="text-sm">Yayınlanmış performans değerlendirmesi bulunmuyor.</p>
+      </div>
+    )
+  }
   return (
-    <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-      <p className="text-sm">Performans bilgileri henüz aktif değil.</p>
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-50 text-left text-slate-600">
+          <tr>
+            <th className="px-4 py-3">Dönem</th>
+            <th className="px-4 py-3">Form</th>
+            <th className="px-4 py-3">1. Amir</th>
+            <th className="px-4 py-3">2. Amir</th>
+            <th className="px-4 py-3">Ortalama</th>
+            <th className="px-4 py-3">Durum</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kayitlar.map((k, i) => (
+            <tr key={i} className="border-t border-slate-100">
+              <td className="px-4 py-3">{k.yil}</td>
+              <td className="px-4 py-3 capitalize">{k.form_tipi}</td>
+              <td className="px-4 py-3 tabular-nums">{k.puan_amir1 ?? '—'}</td>
+              <td className="px-4 py-3 tabular-nums">{k.puan_amir2 ?? '—'}</td>
+              <td className="px-4 py-3 font-medium tabular-nums">{k.ortalama ?? '—'}</td>
+              <td className="px-4 py-3 text-slate-500">{k.durum}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -1352,6 +1401,7 @@ export default function PersonelDetayClient({
   gecmisGoster = true,
   yerleskeAdi = null,
   konumMetni = null,
+  performansKayitlari = [],
 }: Props) {
   const searchParams = useSearchParams()
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
@@ -1479,7 +1529,7 @@ export default function PersonelDetayClient({
             />
           )}
           {aktif === 'Eğitim Bilgileri'     && <EgitimTab egitimKatilimlari={egitimKatilimlari ?? []} />}
-          {aktif === 'Performans Bilgileri' && <PerformansTab />}
+          {aktif === 'Performans Bilgileri' && <PerformansTab kayitlar={performansKayitlari} />}
           {aktif === 'Geçmiş'              && <GecmisTab auditLoglar={auditLoglar} />}
         </div>
       </div>

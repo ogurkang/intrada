@@ -1,19 +1,16 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import {
-  fetchMudurlukYerleskeKonumTanimlari,
-  mudurlukKonumMetniHaritasi,
-} from '@/lib/mudurluk-konum'
+  buildPersonelKonumCtx,
+  fetchSirketYerleskeTanimSatirlari,
+} from '@/lib/personel-gorev-konum'
+import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
 import { type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { aktifPersonelTehlikeSatirlari, parseRaporPeriyot, type TehlikeSinifi } from '@/lib/rapor-tehlike-sinifi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
 const AYLAR = ['YILLIK', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
-
-function normMud(v: string | null | undefined): string {
-  return String(v ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
-}
 
 export default async function TehlikeliSinifPersonelListesiPage({ searchParams }: { searchParams: Promise<{ y?: string; p?: string; t?: string }> }) {
   const sp = await searchParams
@@ -26,17 +23,25 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
     .map(s => s.trim())
     .filter(Boolean) as TehlikeSinifi[]
   const supabase = await createClient()
-  const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }, konumTanimlar] = await Promise.all([
+  const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }, mudSatirlar, sirketSatirlar] = await Promise.all([
     supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
-    supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu').not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad'),
-    fetchMudurlukYerleskeKonumTanimlari(supabase),
+    supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu').not('asil', 'is', null),
+    supabase.from('calisan').select('sicil_no, ad_soyad, yerleske_adresi_id, gorev_yeri, gorev_turu'),
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
   ])
-  const konumByMud = mudurlukKonumMetniHaritasi(konumTanimlar)
+  const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
   const tehlikeByMudurluk = new Map<string, TehlikeSinifi>()
   for (const m of mudRaw ?? []) tehlikeByMudurluk.set(m.mudurluk_adi, (m.tehlike_sinifi as TehlikeSinifi) ?? 'Az Tehlikeli')
-  const calisanBySicil = new Map<string, { ad_soyad: string }>()
-  for (const c of calisanRaw ?? []) calisanBySicil.set(c.sicil_no, { ad_soyad: c.ad_soyad })
+  const calisanBySicil = new Map<string, { ad_soyad: string; yerleske_adresi_id?: number | null; gorev_yeri?: string | null; gorev_turu?: string | null }>()
+  for (const c of calisanRaw ?? []) {
+    calisanBySicil.set(c.sicil_no, {
+      ad_soyad: c.ad_soyad,
+      yerleske_adresi_id: c.yerleske_adresi_id,
+      gorev_yeri: c.gorev_yeri,
+      gorev_turu: c.gorev_turu,
+    })
+  }
   const tehlikeSira: Record<TehlikeSinifi, number> = {
     'Az Tehlikeli': 1,
     Tehlikeli: 2,
@@ -47,9 +52,10 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
     kadro: (kadroRaw ?? []) as KadroRaporRow[],
     calisanBySicil,
     tehlikeByMudurluk,
+    konumCtx,
   })
     .filter(r => (seciliTehlikeler.length ? seciliTehlikeler.includes(r.tehlike_sinifi) : true))
-    .map(r => ({ ...r, konum: konumByMud.get(normMud(r.mudurluk)) ?? '—' }))
+    .map(r => ({ ...r, konum: r.konum ?? '—' }))
     .sort(
       (a, b) =>
         tehlikeSira[a.tehlike_sinifi] - tehlikeSira[b.tehlike_sinifi] ||
