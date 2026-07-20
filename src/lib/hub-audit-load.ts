@@ -1,7 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
 
-export type ModulHubAuditTip = 'ogrenim' | 'aile' | 'mal' | 'kesinti-donem' | 'pasaport' | 'hizmet-birlestirme'
+export type ModulHubAuditTip =
+  | 'ogrenim'
+  | 'aile'
+  | 'mal'
+  | 'kesinti-donem'
+  | 'pasaport'
+  | 'hizmet-birlestirme'
+  | 'mehil-izni'
+  | 'harcirah-talep'
 
 export interface HubSonIslemOzet {
   tarih: string

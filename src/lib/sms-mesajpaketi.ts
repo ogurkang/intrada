@@ -192,6 +192,108 @@ export interface SmsKrediSonuc {
   hata?: string
 }
 
+export interface SmsMesajDurumSonuc {
+  ok: boolean
+  /** 0 beklemede, 1 iletildi, 2 başarısız */
+  durumKodu?: '0' | '1' | '2'
+  telefon?: string
+  hata?: string
+  ham?: string
+}
+
+/** SDate (GGAAYYYYSSdd) → ISO zaman damgası (yerel). */
+export function sdateToPlanlananAt(sdate: string): string | null {
+  const s = String(sdate ?? '').trim()
+  if (s.length < 12) return null
+  const gun = parseInt(s.slice(0, 2), 10)
+  const ay = parseInt(s.slice(2, 4), 10)
+  const yil = parseInt(s.slice(4, 8), 10)
+  const saat = parseInt(s.slice(8, 10), 10)
+  const dakika = parseInt(s.slice(10, 12), 10)
+  if (![gun, ay, yil, saat, dakika].every(n => Number.isFinite(n))) return null
+  const d = new Date(yil, ay - 1, gun, saat, dakika, 0, 0)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
+/**
+ * datetime-local değerinden SDate (GGAAYYYYSSdd) üretir.
+ * Geçmiş veya 1 dk içindeyse anında gönderim (boş sdate) döner.
+ */
+export function planliGonderimSDate(
+  tarihSaatYerel: string,
+): { sdate: string; aninda: boolean; planlananAt: string | null } | null {
+  const ham = String(tarihSaatYerel ?? '').trim()
+  if (!ham) return null
+  const d = new Date(ham)
+  if (Number.isNaN(d.getTime())) return null
+
+  const simdi = Date.now()
+  if (d.getTime() <= simdi + 60_000) {
+    return { sdate: '', aninda: true, planlananAt: null }
+  }
+
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yil = d.getFullYear()
+  const saat = `${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`
+  const sdate = `${dd}${mm}${yil}${saat}`
+  return { sdate, aninda: false, planlananAt: sdateToPlanlananAt(sdate) }
+}
+
+/** mesaj_raporu yanıtını yorumlar (düz metin veya XML). */
+function mesajRaporuYorumla(text: string): Pick<SmsMesajDurumSonuc, 'telefon' | 'durumKodu'> | null {
+  const ham = String(text ?? '').trim()
+
+  // XML: <TextRapor><MessageNo>5462863030-0</MessageNo></TextRapor>
+  const xmlMatch = ham.match(/<MessageNo>\s*([^<]+?)\s*<\/MessageNo>/i)
+  const payload = xmlMatch ? xmlMatch[1].trim() : ham
+
+  const parca = payload.split('-')
+  if (parca.length < 2) return null
+
+  const durumRaw = parca[parca.length - 1]?.trim()
+  if (durumRaw !== '0' && durumRaw !== '1' && durumRaw !== '2') return null
+
+  const telefon = parca.slice(0, -1).join('-').trim()
+  return { telefon, durumKodu: durumRaw }
+}
+
+/** Sağlayıcı mesaj ID ile iletim durumu sorgular. */
+export async function smsMesajDurumSorgula(
+  cfg: SmsAyarConfig,
+  mesajId: string,
+): Promise<SmsMesajDurumSonuc> {
+  if (!cfg.kullaniciAdi || !cfg.sifre) {
+    return { ok: false, hata: 'SMS ayarları eksik.' }
+  }
+  const id = String(mesajId ?? '').trim()
+  if (!id) return { ok: false, hata: 'Mesaj ID yok.' }
+
+  try {
+    const base = cfg.apiBaseUrl.replace(/\/+$/, '')
+    const url = `${base}/api/mesaj_raporu?UserName=${encodeURIComponent(cfg.kullaniciAdi)}&PassWord=${encodeURIComponent(cfg.sifre)}&MsgId=${encodeURIComponent(id)}`
+    const res = await fetch(url, { cache: 'no-store' })
+    const text = (await res.text()).trim()
+    if (!res.ok) return { ok: false, hata: `Sağlayıcı HTTP ${res.status}`, ham: text }
+
+    const hataKodu = text.match(/^\s*(0[1-9]|10)\s*$/)
+    if (hataKodu) {
+      const kod = hataKodu[1]
+      return { ok: false, hata: SMS_HATA_KODLARI[kod] ?? `Hata kodu: ${kod}`, ham: text }
+    }
+
+    const rapor = mesajRaporuYorumla(text)
+    if (rapor) {
+      return { ok: true, telefon: rapor.telefon, durumKodu: rapor.durumKodu, ham: text }
+    }
+
+    return { ok: false, hata: `Beklenmeyen yanıt: ${text}`, ham: text }
+  } catch (err) {
+    return { ok: false, hata: err instanceof Error ? err.message : 'Durum sorgulanamadı.' }
+  }
+}
+
 /** Kalan SMS kredisini sorgular. */
 export async function smsKrediSorgula(cfg: SmsAyarConfig): Promise<SmsKrediSonuc> {
   if (!cfg.kullaniciAdi || !cfg.sifre) {

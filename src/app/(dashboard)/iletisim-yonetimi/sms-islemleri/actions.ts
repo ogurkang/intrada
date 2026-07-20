@@ -9,6 +9,8 @@ import {
   smsGonderTekMetin,
   smsGonderCokluMetin,
   dogumGunuSDate,
+  planliGonderimSDate,
+  sdateToPlanlananAt,
   type SmsGonderSonuc,
 } from '@/lib/sms-mesajpaketi'
 import { sablonDoldur, ilkAd } from '@/lib/sms-sablon'
@@ -23,8 +25,10 @@ export interface SmsGonderInput {
   manuelNumaralar: string
   /** Hoş geldin bebek için sicil → çocuk adı */
   cocukAdiBySicil?: Record<string, string>
-  /** 'dogum_gunu' | 'hosgeldin_bebek' | 'tekil' */
+  /** 'dogum_gunu' | 'hosgeldin_bebek' | 'tekil' | 'grup' */
   baglam?: string
+  /** datetime-local değeri; doluysa tüm alıcılar bu tarihte gönderilir */
+  planlananGonderimAt?: string
 }
 
 export interface SmsGonderActionSonuc {
@@ -74,10 +78,21 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
 
   const baglam = input.baglam ?? 'tekil'
   // Tüm gönderimlerde (tekil, grup, doğum günü, bebek) mesajın başına "Sayın {ad soyad}" eklenir.
-  const zamanla = baglam === 'dogum_gunu'
+  const dogumGunuOtomatik = baglam === 'dogum_gunu'
   const cocukAdiBySicil = input.cocukAdiBySicil ?? {}
   const gecersiz: string[] = []
   const alicilar: Alici[] = []
+
+  let ortakSdate = ''
+  const planHam = String(input.planlananGonderimAt ?? '').trim()
+  if (planHam) {
+    const plan = planliGonderimSDate(planHam)
+    if (!plan) return { hata: 'Geçersiz planlanan gönderim tarihi.' }
+    if (plan.aninda) {
+      return { hata: 'Planlanan gönderim zamanı geçmiş veya çok yakın; gelecek bir tarih seçin.' }
+    }
+    ortakSdate = plan.sdate
+  }
 
   function hitapla(adSoyad: string | null, govde: string): string {
     const ad = String(adSoyad ?? '').trim()
@@ -105,8 +120,8 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
         ad: ilkAd(c.ad_soyad),
         cocuk_adi: cocukAdiBySicil[c.sicil_no] ?? '',
       })
-      let sdate = ''
-      if (zamanla && c.dogum_tarihi) {
+      let sdate = ortakSdate
+      if (!sdate && dogumGunuOtomatik && c.dogum_tarihi) {
         const plan = dogumGunuSDate(String(c.dogum_tarihi).slice(0, 10))
         if (plan && !plan.bugun) sdate = plan.sdate
       }
@@ -124,7 +139,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
       gecersiz.push(`${m} (numara geçersiz)`)
       continue
     }
-    alicilar.push({ sicil_no: null, ad: null, telefon: gsm, mesaj: sablonDoldur(metin, {}), sdate: '' })
+    alicilar.push({ sicil_no: null, ad: null, telefon: gsm, mesaj: sablonDoldur(metin, {}), sdate: ortakSdate })
   }
 
   // Telefona göre tekilleştir (personel kaydı öncelikli)
@@ -147,6 +162,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
   }
 
   const logKayitlari: TablesInsert<'iletisim_sms_log'>[] = []
+  const logOlayTaslaklari: { durum: string; aciklama: string; sdate: string }[] = []
   const now = new Date().toISOString()
   let gonderilen = 0
   let planlanan = 0
@@ -176,6 +192,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
     }
 
     for (const a of grup) {
+      const planlananAt = sdate ? sdateToPlanlananAt(sdate) : null
       logKayitlari.push({
         actor_id: user.id,
         actor_email: user.email ?? null,
@@ -185,16 +202,50 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
         mesaj: a.mesaj,
         originator: config.originator,
         durum,
+        baglam,
+        planlanan_gonderim_at: planlananAt,
         saglayici_mesaj_id: sonuc.mesajId ?? null,
         hata_kodu: sonuc.hataKodu ?? null,
         hata_mesaji: sonuc.ok ? null : sonuc.hata ?? null,
         created_at: now,
       })
+      logOlayTaslaklari.push({
+        durum,
+        sdate,
+        aciklama:
+          durum === 'planlandi'
+            ? planlananAt
+              ? baglam === 'dogum_gunu' && !planHam
+                ? `Doğum gününde iletilmek üzere planlandı (${new Date(planlananAt).toLocaleString('tr-TR')}).`
+                : `İleri tarihte iletilmek üzere planlandı (${new Date(planlananAt).toLocaleString('tr-TR')}).`
+              : 'İleriki tarihte iletilmek üzere planlandı.'
+            : durum === 'gonderildi'
+              ? 'Mesaj anında gönderildi.'
+              : `Gönderim başarısız: ${sonuc.hata ?? '—'}`,
+      })
     }
   }
 
-  const { error: logErr } = await supabase.from('iletisim_sms_log').insert(logKayitlari)
+  const { data: insertedLogs, error: logErr } = await supabase
+    .from('iletisim_sms_log')
+    .insert(logKayitlari)
+    .select('id')
   if (logErr) console.error('SMS_LOG_INSERT', logErr.message)
+
+  if (insertedLogs?.length) {
+    const olayRows = insertedLogs.map((row, idx) => {
+      const t = logOlayTaslaklari[idx]
+      return {
+        log_id: row.id,
+        olay_tipi: t?.durum === 'planlandi' ? 'planlandi' : t?.durum === 'gonderildi' ? 'gonderildi' : 'basarisiz',
+        aciklama: t?.aciklama ?? 'Kayıt oluşturuldu.',
+        saglayici_durum: null,
+      }
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: olayErr } = await (supabase as any).from('iletisim_sms_log_olay').insert(olayRows)
+    if (olayErr) console.error('SMS_LOG_OLAY_INSERT', olayErr.message)
+  }
 
   const basariliToplam = gonderilen + planlanan
   const baglamEtiket =

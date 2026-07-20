@@ -9,6 +9,7 @@ import {
   hizmetBirlestirmeBelgeAlanlari,
   hizmetBirlestirmeTarihFormat,
 } from '@/lib/hizmet-birlestirme-belge'
+import { hizmetBirlestirmeImzaTablosu } from '@/lib/bildirim-word-imza'
 
 function run(text: string, opts?: { bold?: boolean }): TextRun {
   return new TextRun({
@@ -21,14 +22,6 @@ function run(text: string, opts?: { bold?: boolean }): TextRun {
 
 function bosSatir(): Paragraph {
   return new Paragraph({ spacing: { after: 200 }, children: [run('')] })
-}
-
-function altSatir(etiket: string, deger: string): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.LEFT,
-    spacing: { after: 80 },
-    children: [run(`${etiket} : ${deger || '—'}`)],
-  })
 }
 
 export async function GET(req: Request) {
@@ -106,17 +99,7 @@ export async function GET(req: Request) {
             }),
             bosSatir(),
             bosSatir(),
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              spacing: { after: 400 },
-              children: [run(alanlar.ad_soyad, { bold: true })],
-            }),
-            bosSatir(),
-            altSatir('T.C.Kimlik Numarası', alanlar.tckn),
-            altSatir('Emeklilik Sicil Numarası', alanlar.emeklilik_sicil_no),
-            altSatir('S.S.K.', alanlar.ssk),
-            altSatir('Bağ-Kur Sicil Numarası', alanlar.bagkur_sicil_no),
-            altSatir('Sigortalı Hizmetin Geçtiği İl/İller', alanlar.hizmet_illeri),
+            hizmetBirlestirmeImzaTablosu(alanlar),
           ],
         },
       ],

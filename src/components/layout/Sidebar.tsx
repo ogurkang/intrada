@@ -138,6 +138,8 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/bildirim/mal',     label: 'Mal Bildirimi'    },
       { href: '/bildirim/pasaport',label: 'Pasaport İşlemleri'},
       { href: '/bildirim/hizmet-birlestirme', label: 'Hizmet Birleştirme İşlemleri' },
+      { href: '/bildirim/mehil-izni', label: 'Mehil İzni Bildirimi' },
+      { href: '/bildirim/harcirah-talep', label: 'Harcırah Talep Bildirimi' },
     ],
   },
   {

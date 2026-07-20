@@ -145,7 +145,9 @@ export function kullaniciPathAllowed(
       path.startsWith('/bildirim/aile') ||
       path.startsWith('/bildirim/mal') ||
       path.startsWith('/bildirim/pasaport') ||
-      path.startsWith('/bildirim/hizmet-birlestirme')
+      path.startsWith('/bildirim/hizmet-birlestirme') ||
+      path.startsWith('/bildirim/mehil-izni') ||
+      path.startsWith('/bildirim/harcirah-talep')
     ) {
       return true
     }

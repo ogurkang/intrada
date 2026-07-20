@@ -48,6 +48,18 @@ export default function KullaniciAnaSayfa({
         href: '/bildirim/hizmet-birlestirme',
         emoji: '📄',
       },
+      {
+        baslik: 'Mehil İzni Bildirimi',
+        aciklama: 'Mehil izni bildirimi oluşturma ve Word çıktısı.',
+        href: '/bildirim/mehil-izni',
+        emoji: '📅',
+      },
+      {
+        baslik: 'Harcırah Talep Bildirimi',
+        aciklama: 'Harcırah talep bildirimi oluşturma ve Word çıktısı.',
+        href: '/bildirim/harcirah-talep',
+        emoji: '💰',
+      },
     )
   }
 

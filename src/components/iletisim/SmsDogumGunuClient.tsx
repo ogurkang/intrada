@@ -7,6 +7,7 @@ import { smsGonderAction } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemle
 import { sablonTurEtiket } from '@/lib/sms-sablon'
 import type { SmsPersonelSatir, SmsSablonSecenek } from '@/lib/sms-islemleri-tipleri'
 import SmsSecimListesi from './SmsSecimListesi'
+import SmsPlanliGonderimAlanlari from './SmsPlanliGonderimAlanlari'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -48,6 +49,8 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
   const [originator, setOriginator] = useState(originatorlar[0] ?? '')
   const [sonuc, setSonuc] = useState<SmsGonderActionSonuc | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [planliGonderim, setPlanliGonderim] = useState(false)
+  const [planliTarihSaat, setPlanliTarihSaat] = useState('')
 
   const kullanilabilirSablonlar = useMemo(
     () => sablonlar.filter(s => IZINLI_TURLER.includes(s.tur)),
@@ -75,6 +78,10 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
       setSonuc({ hata: 'En az bir alıcı seçin.' })
       return
     }
+    if (planliGonderim && !planliTarihSaat) {
+      setSonuc({ hata: 'Planlanan gönderim tarihi ve saati seçin.' })
+      return
+    }
     startTransition(async () => {
       const res = await smsGonderAction({
         metin: sablon.metin,
@@ -82,10 +89,13 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
         sicilNolar: gonderilecek,
         manuelNumaralar: '',
         baglam: 'dogum_gunu',
+        planlananGonderimAt: planliGonderim ? planliTarihSaat : undefined,
       })
       setSonuc(res)
       if (res.ok) {
         setSecili(new Set())
+        setPlanliGonderim(false)
+        setPlanliTarihSaat('')
         router.refresh()
       }
     })
@@ -117,8 +127,8 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
 
       <div className="rounded-xl border border-slate-200 bg-sky-50/60 px-4 py-3 text-sm text-sky-800">
         <strong>{AYLAR[ay]}</strong> ayında doğan personel listeleniyor. Seçilenlere, <strong>Tanımlar</strong> ekranında
-        ayarladığınız doğum günü şablonu <strong>kendi doğum günlerinde (09:00)</strong> iletilmek üzere planlanır.
-        Mesajın başına otomatik «Sayın {'{ad_soyad}'}» eklenir; ayrı metin yazmanıza gerek yoktur.
+        ayarladığınız doğum günü şablonu varsayılan olarak <strong>kendi doğum günlerinde (09:00)</strong> iletilmek üzere
+        planlanır. İsterseniz aşağıdan ortak bir tarih/saat de seçebilirsiniz.
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap items-end gap-3">
@@ -153,20 +163,33 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
             </select>
           </div>
         )}
+        <SmsPlanliGonderimAlanlari
+          planli={planliGonderim}
+          onPlanliChange={setPlanliGonderim}
+          tarihSaat={planliTarihSaat}
+          onTarihSaatChange={setPlanliTarihSaat}
+          dogumGunuModu
+        />
         <button
           type="button"
           onClick={gonder}
           disabled={isPending || !gonderimAcik || !gonderilecek.length}
           className="px-5 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
         >
-          {isPending ? 'Gönderiliyor…' : `SMS Gönder (${gonderilecek.length})`}
+          {isPending
+            ? planliGonderim
+              ? 'Planlanıyor…'
+              : 'Gönderiliyor…'
+            : planliGonderim
+              ? `SMS Planla (${gonderilecek.length})`
+              : `SMS Gönder (${gonderilecek.length})`}
         </button>
       </div>
 
       {sonuc?.ok && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
           {(sonuc.gonderilen ?? 0) > 0 && <>{sonuc.gonderilen} alıcıya gönderildi. </>}
-          {(sonuc.planlanan ?? 0) > 0 && <>{sonuc.planlanan} alıcıya doğum gününde iletilmek üzere planlandı. </>}
+          {(sonuc.planlanan ?? 0) > 0 && <>{sonuc.planlanan} alıcıya ileri tarihte iletilmek üzere planlandı. </>}
           {sonuc.mesajId ? `(ID: ${sonuc.mesajId})` : ''}
         </div>
       )}

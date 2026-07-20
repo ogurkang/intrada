@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { smsLogOlaylariGetir, smsPlanliLoglariSenkronize } from '@/lib/sms-log-durum'
 import GecmisGonderimlerClient, {
   type SmsLogSatir,
 } from '@/components/iletisim/GecmisGonderimlerClient'
@@ -16,11 +17,21 @@ export default async function GecmisGonderimlerPage() {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   if (!isAdminLike(access)) notFound()
 
+  await smsPlanliLoglariSenkronize(supabase)
+
   const { data: logRaw } = await supabase
     .from('iletisim_sms_log')
-    .select('id, alici_ad, alici_sicil, telefon, mesaj, originator, durum, hata_mesaji, actor_email, created_at')
+    .select(
+      'id, alici_ad, alici_sicil, telefon, mesaj, originator, durum, baglam, planlanan_gonderim_at, gonderim_kontrol_at, saglayici_mesaj_id, hata_mesaji, actor_email, created_at',
+    )
     .order('created_at', { ascending: false })
     .limit(500)
+
+  const loglar = (logRaw ?? []) as SmsLogSatir[]
+  const olaylarByLogId = await smsLogOlaylariGetir(
+    supabase,
+    loglar.map(l => l.id),
+  )
 
   return (
     <div>
@@ -34,10 +45,13 @@ export default async function GecmisGonderimlerPage() {
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Geçmiş Gönderimler</h1>
-        <p className="text-sm text-slate-500 mt-1">Gönderilen SMS kayıtları (en son 500 kayıt).</p>
+        <p className="text-sm text-slate-500 mt-1">
+          Gönderilen ve planlanan SMS kayıtları. Doğum günü mesajlarında iletim durumu sağlayıcıdan
+          otomatik sorgulanır; satıra tıklayarak gelişmeleri görebilirsiniz.
+        </p>
       </div>
 
-      <GecmisGonderimlerClient loglar={(logRaw as SmsLogSatir[]) ?? []} />
+      <GecmisGonderimlerClient loglar={loglar} olaylarByLogId={olaylarByLogId} />
     </div>
   )
 }

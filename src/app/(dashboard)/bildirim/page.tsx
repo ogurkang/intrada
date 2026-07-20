@@ -9,6 +9,8 @@ const BILDIRIM_REF_TABLES = [
   'mal_bildirimi',
   'pasaport_islemleri',
   'hizmet_birlestirme_islemleri',
+  'mehil_izni_bildirimleri',
+  'harcirah_talep_bildirimleri',
 ] as const
 
 export default async function BildirimHubPage() {
@@ -29,6 +31,12 @@ export default async function BildirimHubPage() {
   const hizmetCountQ = kullaniciSicil
     ? supabase.from('hizmet_birlestirme_islemleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('hizmet_birlestirme_islemleri').select('*', { count: 'exact', head: true })
+  const mehilCountQ = kullaniciSicil
+    ? supabase.from('mehil_izni_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('mehil_izni_bildirimleri').select('*', { count: 'exact', head: true })
+  const harcirahCountQ = kullaniciSicil
+    ? supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true })
 
   const [
     { count: ogrenimSayisi },
@@ -36,6 +44,8 @@ export default async function BildirimHubPage() {
     { count: malSayisi },
     { count: pasaportSayisi },
     { count: hizmetSayisi },
+    { count: mehilSayisi },
+    { count: harcirahSayisi },
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
@@ -43,6 +53,8 @@ export default async function BildirimHubPage() {
     malCountQ,
     pasaportCountQ,
     hizmetCountQ,
+    mehilCountQ,
+    harcirahCountQ,
     loadAuditLoglarByRefTables(supabase, [...BILDIRIM_REF_TABLES]),
   ])
 
@@ -132,12 +144,46 @@ export default async function BildirimHubPage() {
         </svg>
       ),
     },
+    {
+      key: 'mehil-izni',
+      baslik: 'Mehil İzni Bildirimi',
+      aciklama: '657 SK m.62 mehil izni bildirimi oluşturma ve Word çıktısı',
+      href: '/bildirim/mehil-izni',
+      refTable: 'mehil_izni_bildirimleri' as const,
+      sayi: mehilSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-teal-200 bg-teal-50',
+      ikonRenk: 'bg-teal-100 text-teal-600',
+      auditTip: 'mehil-izni' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+        </svg>
+      ),
+    },
+    {
+      key: 'harcirah-talep',
+      baslik: 'Harcırah Talep Bildirimi',
+      aciklama: '6245 SK harcırah talep bildirimi oluşturma ve Word çıktısı',
+      href: '/bildirim/harcirah-talep',
+      refTable: 'harcirah_talep_bildirimleri' as const,
+      sayi: harcirahSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-rose-200 bg-rose-50',
+      ikonRenk: 'bg-rose-100 text-rose-600',
+      auditTip: 'harcirah-talep' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
   ]
 
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, aile, mal bildirimleri, pasaport ve hizmet birleştirme işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni ve harcırah talep işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []

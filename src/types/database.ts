@@ -237,6 +237,9 @@ export interface Database {
           mesaj: string
           originator: string | null
           durum: string
+          baglam: string | null
+          planlanan_gonderim_at: string | null
+          gonderim_kontrol_at: string | null
           saglayici_mesaj_id: string | null
           hata_kodu: string | null
           hata_mesaji: string | null
@@ -252,6 +255,9 @@ export interface Database {
           mesaj: string
           originator?: string | null
           durum?: string
+          baglam?: string | null
+          planlanan_gonderim_at?: string | null
+          gonderim_kontrol_at?: string | null
           saglayici_mesaj_id?: string | null
           hata_kodu?: string | null
           hata_mesaji?: string | null
@@ -267,9 +273,39 @@ export interface Database {
           mesaj?: string
           originator?: string | null
           durum?: string
+          baglam?: string | null
+          planlanan_gonderim_at?: string | null
+          gonderim_kontrol_at?: string | null
           saglayici_mesaj_id?: string | null
           hata_kodu?: string | null
           hata_mesaji?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      iletisim_sms_log_olay: {
+        Row: {
+          id: number
+          log_id: number
+          olay_tipi: string
+          aciklama: string
+          saglayici_durum: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          log_id: number
+          olay_tipi: string
+          aciklama: string
+          saglayici_durum?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          log_id?: number
+          olay_tipi?: string
+          aciklama?: string
+          saglayici_durum?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1142,6 +1178,51 @@ export interface Database {
           personel_durum?: 'calisan' | 'ayrilan'
           emeklilik_sicil_no?: string | null; ssk?: string | null
           bagkur_sicil_no?: string | null; hizmet_illeri?: string | null
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
+      mehil_izni_bildirimleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          geldigi_kurum: string; nakil_tarihi: string
+          mehil_baslangic_tarihi: string; mehil_bitis_tarihi: string
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          geldigi_kurum: string; nakil_tarihi: string
+          mehil_baslangic_tarihi: string; mehil_bitis_tarihi: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          geldigi_kurum?: string; nakil_tarihi?: string
+          mehil_baslangic_tarihi?: string; mehil_bitis_tarihi?: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
+      harcirah_talep_bildirimleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          adres: string | null; geldigi_kurum: string; nakil_tarihi: string
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          adres?: string | null; geldigi_kurum: string; nakil_tarihi: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          adres?: string | null; geldigi_kurum?: string; nakil_tarihi?: string
           created_at?: string; updated_at?: string
           created_by?: string | null; created_by_email?: string | null
         }

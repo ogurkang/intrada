@@ -121,5 +121,5 @@ export function pasaportGorevCumlesiSonu(
 ): string {
   if (durum === 'ayrilan' && neden === 'emekli') return 'kadrosunda iken emekli oldum.'
   if (durum === 'ayrilan' && neden === 'istifa') return 'kadrosunda iken istifa ettim.'
-  return 'kadrosunda olarak çalışmaktayım.'
+  return 'kadrosunda çalışmaktayım.'
 }
