@@ -226,6 +226,15 @@ export default function TerfiEttirClient({
     setOgrenimModalHata(null)
   }
 
+  function ogrenimListedenCikar(sicil: string) {
+    setSatirlar(prev => prev.filter(r => r.sicil_no !== sicil))
+    setSecili(prev => {
+      const next = { ...prev }
+      delete next[sicil]
+      return next
+    })
+  }
+
   async function excelIndir() {
     // Hem henüz terfi ettirilmemiş (önizleme) hem de bu dönemde terfi ettirilmiş satırları birleştir
     const tumSatirlar = [...satirlar, ...terfiEttirilenRows].sort((a, b) =>
@@ -674,7 +683,7 @@ export default function TerfiEttirClient({
                     >
                       {TERFI_OGRENIM_OLAY_SECENEKLERI.map(opt => (
                         <option key={opt.value} value={opt.value} className="bg-white text-slate-800">
-                          {opt.label}
+                          {opt.kisaLabel}
                         </option>
                       ))}
                     </select>
@@ -687,7 +696,15 @@ export default function TerfiEttirClient({
                   )}
                 </td>
                 <td className="px-2 py-2 align-top text-center">
-                  {aktifLogBySicil[r.sicil_no] ? (
+                  {r.ogrenim_terfi ? (
+                    <button
+                      type="button"
+                      onClick={() => ogrenimListedenCikar(r.sicil_no)}
+                      className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded hover:bg-slate-200"
+                    >
+                      İptal
+                    </button>
+                  ) : aktifLogBySicil[r.sicil_no] ? (
                     <button
                       type="button"
                       onClick={() => handleGeriAlTek(aktifLogBySicil[r.sicil_no])}

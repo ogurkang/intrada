@@ -11,10 +11,14 @@ import {
 
 export type TerfiOgrenimOlayTipi = 'hazirlik' | 'yuksek_lisans' | 'doktora'
 
-export const TERFI_OGRENIM_OLAY_SECENEKLERI: { value: TerfiOgrenimOlayTipi; label: string }[] = [
-  { value: 'hazirlik', label: 'Lisede Hazırlık Okudu' },
-  { value: 'yuksek_lisans', label: 'Yüksek Lisansı Tamamladı' },
-  { value: 'doktora', label: 'Doktorayı Tamamladı' },
+export const TERFI_OGRENIM_OLAY_SECENEKLERI: {
+  value: TerfiOgrenimOlayTipi
+  label: string
+  kisaLabel: string
+}[] = [
+  { value: 'hazirlik', label: 'Lisede Hazırlık Okudu', kisaLabel: 'Lise' },
+  { value: 'yuksek_lisans', label: 'Yüksek Lisansı Tamamladı', kisaLabel: 'Yüksek' },
+  { value: 'doktora', label: 'Doktorayı Tamamladı', kisaLabel: 'Doktora' },
 ]
 
 export function ogrenimOlayEtiket(tip: TerfiOgrenimOlayTipi): string {
