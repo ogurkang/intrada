@@ -101,7 +101,7 @@ export default function AracBilgileriDuzenleClient({
       <div className="mb-5">
         <Link
           href="/yerel-bilgi/islemler/arac-bilgileri"
-          className="intrada-btn intrada-btn-ust-menu mb-2"
+          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
         >
           ← Araç bilgileri listesi
         </Link>
@@ -256,7 +256,7 @@ export default function AracBilgileriDuzenleClient({
           type="button"
           onClick={kaydet}
           disabled={isPending || eklemeEngelli}
-          className="intrada-btn intrada-btn-kaydet disabled:opacity-50"
+          className="px-4 py-2 text-sm rounded-lg bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
         >
           {isPending ? 'Kaydediliyor…' : 'Kaydet'}
         </button>

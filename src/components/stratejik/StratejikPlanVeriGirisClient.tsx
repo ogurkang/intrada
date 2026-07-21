@@ -194,7 +194,7 @@ export default function StratejikPlanVeriGirisClient({
           <button
             type="button"
             onClick={excelIndir}
-            className="intrada-btn intrada-btn-excel"
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
           >
             Excel İndir
           </button>

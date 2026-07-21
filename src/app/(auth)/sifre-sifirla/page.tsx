@@ -165,7 +165,7 @@ export default function SifreSifirlaPage() {
           <button
             type="submit"
             disabled={pending}
-            className="intrada-btn intrada-btn-kaydet w-full py-2.5 disabled:opacity-50"
+            className="w-full py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium disabled:opacity-50"
           >
             {pending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
@@ -229,7 +229,7 @@ export default function SifreSifirlaPage() {
         <button
           type="submit"
           disabled={pending}
-          className="intrada-btn intrada-btn-kaydet w-full py-2.5 disabled:opacity-50"
+          className="w-full py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium disabled:opacity-50"
         >
           {pending ? 'Kontrol ediliyor…' : 'Devam et'}
         </button>

@@ -23,9 +23,9 @@ export default async function KimlikFormRaporuPage() {
     .maybeSingle()
 
   const excelBtn =
-    'intrada-btn intrada-btn-excel'
+    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors'
   const geriBtn =
-    'intrada-btn intrada-btn-kaydet'
+    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
 
   return (
     <div>

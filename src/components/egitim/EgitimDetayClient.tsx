@@ -281,13 +281,13 @@ export default function EgitimDetayClient({
         </Link>
         <Link
           href={`/api/egitim/${donem.id}/excel`}
-          className="intrada-btn intrada-btn-excel"
+          className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
         >
           Excel İndir
         </Link>
         {!readonly && (
           <button onClick={yeniEkleAc}
-            className="intrada-btn intrada-btn-ekle">
+            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
@@ -363,7 +363,7 @@ export default function EgitimDetayClient({
                   {!readonly && (
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => duzenleAc(e)}
-                        className="intrada-btn intrada-btn-duzenle text-xs px-2.5 py-1.5">Düzenle</button>
+                        className="text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">Düzenle</button>
                       <button onClick={() => handleSil(e.id)} disabled={isPending}
                         className="text-xs font-medium text-red-500 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40">Sil</button>
                     </div>
@@ -426,7 +426,7 @@ export default function EgitimDetayClient({
             <button type="button" onClick={formKapat}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</button>
             <button type="submit" disabled={isPending}
-              className="intrada-btn intrada-btn-kaydet">
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : eg ? 'Güncelle' : 'Kaydet'}
             </button>
           </div>

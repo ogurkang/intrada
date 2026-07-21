@@ -193,7 +193,7 @@ export default function PerformansEk5OnizleModal({
             <button
               type="button"
               onClick={onKapat}
-              className="intrada-btn intrada-btn-kaydet"
+              className="rounded-lg bg-slate-800 text-white px-4 py-2 text-sm hover:bg-slate-700"
             >
               Kapat
             </button>

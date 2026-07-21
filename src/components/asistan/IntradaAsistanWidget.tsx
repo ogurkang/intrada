@@ -134,7 +134,7 @@ export default function IntradaAsistanWidget({ access }: Props) {
               type="button"
               onClick={gonder}
               disabled={yukleniyor || !girdi.trim()}
-              className="intrada-btn intrada-btn-kaydet disabled:opacity-40 shrink-0 px-3 py-2"
+              className="shrink-0 px-3 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 disabled:opacity-40"
             >
               Gönder
             </button>

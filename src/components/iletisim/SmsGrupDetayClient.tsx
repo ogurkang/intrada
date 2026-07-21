@@ -127,7 +127,7 @@ export default function SmsGrupDetayClient({ grup, personeller }: Props) {
             type="button"
             onClick={uyeleriKaydet}
             disabled={isPending || kaydedildiMi}
-            className="intrada-btn intrada-btn-kaydet"
+            className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50"
           >
             {kaydedildiMi ? 'Kaydedildi' : isPending ? 'Kaydediliyor…' : 'Üyeleri Kaydet'}
           </button>

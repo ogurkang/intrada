@@ -210,11 +210,11 @@ export default function PersonelTekAlanTopluClient({
                   {sekme === 'liste' && (
                     <td className="px-3 py-2 text-right">
                       {duz ? (
-                        <button onClick={() => handleInlineKaydet(s)} disabled={isPending} className="intrada-btn intrada-btn-kaydet text-xs px-3 py-1.5">
+                        <button onClick={() => handleInlineKaydet(s)} disabled={isPending} className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded">
                           Kaydet
                         </button>
                       ) : (
-                        <button onClick={() => setDuzenlenenSicil(s.sicil_no)} className="intrada-btn intrada-btn-duzenle text-xs px-2 py-1">Düzenle</button>
+                        <button onClick={() => setDuzenlenenSicil(s.sicil_no)} className="text-xs text-slate-700">Düzenle</button>
                       )}
                     </td>
                   )}

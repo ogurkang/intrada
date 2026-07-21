@@ -5,7 +5,7 @@ export default function DashboardAnaSayfaLink({ className = '' }: { className?: 
   return (
     <Link
       href="/"
-      className={`intrada-btn intrada-btn-ust-menu ${className}`}
+      className={`flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors ${className}`}
     >
       Ana sayfa
     </Link>

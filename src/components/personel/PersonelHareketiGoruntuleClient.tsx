@@ -99,11 +99,11 @@ export default function PersonelHareketiGoruntuleClient({
             Excel İndir
           </button>
           <Link href={degistirHref}
-            className="intrada-btn intrada-btn-duzenle">
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             Değiştir
           </Link>
           <Link href="/personel-hareketleri"
-            className="intrada-btn intrada-btn-ust-menu">
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             ← Listeye Dön
           </Link>
         </div>

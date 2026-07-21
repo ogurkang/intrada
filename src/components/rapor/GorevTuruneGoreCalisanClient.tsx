@@ -121,7 +121,7 @@ export default function GorevTuruneGoreCalisanClient({
       {/* Başlık */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <Link href="/rapor" className="intrada-btn intrada-btn-ust-menu mb-2">
+          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
             ← Rapor Yönetimi
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Görev Türüne Göre Çalışan Bilgisi</h1>
@@ -133,7 +133,7 @@ export default function GorevTuruneGoreCalisanClient({
           <button
             onClick={excelIndir}
             disabled={excelYukleniyor || gorunenSatirlar.length === 0}
-            className="intrada-btn intrada-btn-excel"
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 transition-colors gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

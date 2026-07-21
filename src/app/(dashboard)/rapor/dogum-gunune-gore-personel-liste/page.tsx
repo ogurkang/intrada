@@ -68,7 +68,7 @@ export default async function DogumGununeGorePersonelListePage({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <Link href="/rapor" className="intrada-btn intrada-btn-ust-menu mb-2">
+          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
             ← Rapor Yönetimi
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Doğum Gününe Göre Personel Listesi</h1>
@@ -77,7 +77,7 @@ export default async function DogumGununeGorePersonelListePage({
         <div className="flex flex-wrap items-center gap-2 justify-end">
           <Link
             href={`/api/rapor/dogum-gunune-gore-personel-liste/excel?y=${yil}&m=${ay}`}
-            className="intrada-btn intrada-btn-excel"
+            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
           >
             Excel İndir ({AYLAR[ay - 1]})
           </Link>

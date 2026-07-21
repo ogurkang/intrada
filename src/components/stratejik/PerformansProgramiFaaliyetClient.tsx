@@ -42,7 +42,7 @@ export default function PerformansProgramiFaaliyetClient({ yil, programId, altPr
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-slate-800">{altProgramAdi}</h1><p className="text-sm text-slate-500 mt-1">Faaliyetleri yönetebilirsiniz.</p></div>
-        <button onClick={() => { setSecili(null); setHata(null); setFormAcik(true) }} className="intrada-btn intrada-btn-ekle">Faaliyet Ekle</button>
+        <button onClick={() => { setSecili(null); setHata(null); setFormAcik(true) }} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">Faaliyet Ekle</button>
       </div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[920px]">
         <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 text-center w-20">Sıra No</th><th className="px-4 py-3 text-left w-32">Kodu</th><th className="px-4 py-3 text-left">Faaliyet Adı</th><th className="px-4 py-3 text-left w-[260px]">Bilgi</th><th className="px-4 py-3 text-center w-28">İşlemler</th></tr></thead>

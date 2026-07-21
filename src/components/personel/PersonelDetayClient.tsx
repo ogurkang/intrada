@@ -1470,17 +1470,17 @@ export default function PersonelDetayClient({
           {((aktif === 'Kişisel Bilgiler' || kaynak === 'ayrilanlar') && onKisiselGuncelle && !saltOkunur) && (
             <Link
               href={`/personel/${duzenleSegment}/duzenle${kaynak ? `?kaynak=${kaynak}` : ''}`}
-              className="intrada-btn intrada-btn-duzenle">
+              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
               Değiştir
             </Link>
           )}
           {saltOkunur ? (
-            <Link href="/" className="intrada-btn intrada-btn-ust-menu">
+            <Link href="/" className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
               Ana sayfa
             </Link>
           ) : (
             <Link href={kaynak === 'ayrilanlar' ? '/personel/ayrilanlar' : '/personel'}
-              className="intrada-btn intrada-btn-ust-menu">
+              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
               ← Listeye Dön
             </Link>
           )}

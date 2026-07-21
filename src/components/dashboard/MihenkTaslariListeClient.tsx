@@ -42,7 +42,7 @@ export default function MihenkTaslariListeClient({ kayitlar, generatedAt }: Prop
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/" className="intrada-btn intrada-btn-ust-menu mb-2">
+        <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
           ← Genel Bakış
         </Link>
         <h1 className="text-2xl font-bold text-slate-800">Mihenk Taşları</h1>

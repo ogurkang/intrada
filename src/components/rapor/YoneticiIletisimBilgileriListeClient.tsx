@@ -162,14 +162,14 @@ export default function YoneticiIletisimBilgileriListeClient({
           {ustSekme === 'liste' && aktifDonem && (
             <Link
               href={`${excelBasePath}?y=${yil}&p=${aktifDonem.periyot === 'yillik' ? 'yillik' : aktifDonem.periyot}`}
-              className="intrada-btn intrada-btn-excel"
+              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktifDonem.label})
             </Link>
           )}
           <Link
             href="/rapor"
-            className="intrada-btn intrada-btn-ust-menu"
+            className="inline-flex items-center rounded-lg border border-slate-300 text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
           >
             ← Rapor Yönetimi
           </Link>
@@ -365,7 +365,7 @@ export default function YoneticiIletisimBilgileriListeClient({
               type="button"
               onClick={kaydet}
               disabled={isPending}
-              className="intrada-btn intrada-btn-kaydet"
+              className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:opacity-50"
             >
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>

@@ -106,7 +106,7 @@ export default function StatuyeGoreMatrisRaporClient({
         <div className={aciklamaContainerClassName}>
           <Link
             href={geriHref}
-            className="intrada-btn intrada-btn-ust-menu mb-2"
+            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
             {geriLabel}
           </Link>
@@ -117,7 +117,7 @@ export default function StatuyeGoreMatrisRaporClient({
           {(variant === 'yas' || variant === 'ogrenim' || variant === 'meslek') && aktif && excelBasePath && (
             <Link
               href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
-              className="intrada-btn intrada-btn-excel"
+              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})
             </Link>

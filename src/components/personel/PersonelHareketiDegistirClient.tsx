@@ -468,7 +468,7 @@ export default function PersonelHareketiDegistirClient({
           {yeniKayit ? 'Personel Hareketi - Yeni Kayıt' : 'Personel Hareketi - Değiştir'}
         </h1>
         <Link href="/personel-hareketleri"
-          className="intrada-btn intrada-btn-ust-menu">
+          className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
           ← Listeye Dön
         </Link>
       </div>
@@ -554,7 +554,7 @@ export default function PersonelHareketiDegistirClient({
                     className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-slate-50" />
                   {yeniKayit && personelAktif && (
                     <button type="button" onClick={personelDegistir}
-                      className="intrada-btn intrada-btn-duzenle text-xs px-2 py-1 whitespace-nowrap">
+                      className="text-xs text-slate-500 hover:text-slate-700 whitespace-nowrap px-2 py-1 border border-slate-200 rounded">
                       Değiştir
                     </button>
                   )}
@@ -938,7 +938,7 @@ export default function PersonelHareketiDegistirClient({
             İptal
           </Link>
           <button type="submit" disabled={isPending || detayKilitli}
-            className="intrada-btn intrada-btn-kaydet">
+            className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
           {kaydedildi && (
@@ -972,7 +972,7 @@ export default function PersonelHareketiDegistirClient({
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-700">Yeni Kadro Seçimi (Memur · durumu Boş)</h3>
-              <button type="button" onClick={() => setKadroSecModalAcik(false)} className="intrada-btn intrada-btn-ust-menu">Kapat</button>
+              <button type="button" onClick={() => setKadroSecModalAcik(false)} className="text-sm text-slate-500 hover:text-slate-700">Kapat</button>
             </div>
             <div className="px-4 py-3 border-b border-slate-100 space-y-2">
               <button type="button" onClick={kadroyuBosalt} className="px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50">

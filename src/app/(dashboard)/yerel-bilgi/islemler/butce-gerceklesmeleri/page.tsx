@@ -16,7 +16,7 @@ export default async function ButceGerceklesmeleriDonemListPage() {
   const girisHref = '/yerel-bilgi/islemler/butce-gerceklesmeleri/giris'
 
   const geriBtn =
-    'intrada-btn intrada-btn-kaydet'
+    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
 
   return (
     <div>

@@ -312,7 +312,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                 href={`/tanimlar/kazanc-bilgi/${unvanId}/toplu-ekle`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="intrada-btn intrada-btn-ekle"
+                className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 font-medium"
               >
                 Kazanç Bilgisi Ekle
               </Link>
@@ -347,7 +347,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                 type="button"
                 disabled={isPending || data.length === 0}
                 onClick={topluKaydet}
-                className="intrada-btn intrada-btn-kaydet disabled:opacity-50"
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
               >
                 {isPending ? 'Kaydediliyor…' : 'Kaydet'}
               </button>
@@ -721,7 +721,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                 type="button"
                 disabled={isPending}
                 onClick={duzenleModalKaydet}
-                className="intrada-btn intrada-btn-kaydet px-3 py-1.5 text-sm disabled:opacity-50"
+                className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm disabled:opacity-50"
               >
                 Kaydet
               </button>

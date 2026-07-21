@@ -139,7 +139,7 @@ export default function IzinHakiSection({ sicil_no, haklar, onKaydet }: Props) {
             <button type="button" onClick={kapat}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
             <button type="submit" disabled={isPending}
-              className="intrada-btn intrada-btn-kaydet">
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : secili ? 'Güncelle' : 'Kaydet'}
             </button>
           </div>

@@ -59,7 +59,7 @@ export default function PerformansProgramiAltProgramClient({
           <h1 className="text-2xl font-bold text-slate-800">{programAdi}</h1>
           <p className="text-sm text-slate-500 mt-1">Alt programları yönetebilirsiniz.</p>
         </div>
-        <button onClick={() => { setSecili(null); setHata(null); setFormAcik(true) }} className="intrada-btn intrada-btn-ekle">
+        <button onClick={() => { setSecili(null); setHata(null); setFormAcik(true) }} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
           Alt Program Ekle
         </button>
       </div>

@@ -1,5 +1,8 @@
-import { intradaIconBtnClass } from '@/lib/intrada-button'
+'use client'
+
 import type { MouseEvent } from 'react'
+
+const IKON_BTN = 'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40'
 
 export function SaatGecmisDugmesi({
   sayi = 0,
@@ -14,7 +17,7 @@ export function SaatGecmisDugmesi({
     <button
       type="button"
       onClick={onClick}
-      className={`relative ${intradaIconBtnClass('detay', 'text-amber-100 !bg-amber-600 hover:!bg-amber-500')}`}
+      className={`relative ${IKON_BTN} text-slate-500 hover:text-amber-600 hover:bg-amber-50`}
       title={title}
       aria-label={title}>
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -26,7 +29,7 @@ export function SaatGecmisDugmesi({
         />
       </svg>
       {sayi > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.1rem] h-[1.1rem] px-1 items-center justify-center rounded-full bg-white text-indigo-700 text-[10px] font-medium">
+        <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-[1.1rem] h-[1.1rem] px-1 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
           {sayi}
         </span>
       )}
@@ -48,7 +51,7 @@ export function KalemDuzenleDugmesi({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={intradaIconBtnClass('duzenle')}
+      className={`${IKON_BTN} text-slate-600 hover:bg-slate-100`}
       title={title}
       aria-label={title}>
       <KalemSvg />
@@ -70,7 +73,7 @@ export function CopKutusuSilDugmesi({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`${intradaIconBtnClass('duzenle', '!bg-red-600 hover:!bg-red-500')}`}
+      className={`${IKON_BTN} text-red-600 hover:bg-red-50`}
       title={title}
       aria-label={title}>
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -106,7 +109,12 @@ export function GozDetayLink({
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
 }) {
   return (
-    <a href={href} onClick={onClick} className={intradaIconBtnClass('detay')} title={title} aria-label={title}>
+    <a
+      href={href}
+      onClick={onClick}
+      className={`${IKON_BTN} text-indigo-600 hover:bg-indigo-50`}
+      title={title}
+      aria-label={title}>
       <GozSvg />
     </a>
   )
@@ -122,7 +130,12 @@ export function KalemDuzenleLink({
   onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
 }) {
   return (
-    <a href={href} onClick={onClick} className={intradaIconBtnClass('duzenle')} title={title} aria-label={title}>
+    <a
+      href={href}
+      onClick={onClick}
+      className={`${IKON_BTN} text-slate-600 hover:bg-slate-100`}
+      title={title}
+      aria-label={title}>
       <KalemSvg />
     </a>
   )
@@ -141,7 +154,7 @@ export function IndirLink({
     <a
       href={href}
       onClick={onClick}
-      className={intradaIconBtnClass('detay', '!bg-emerald-700 hover:!bg-emerald-600')}
+      className={`${IKON_BTN} text-emerald-600 hover:bg-emerald-50`}
       title={title}
       aria-label={title}>
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

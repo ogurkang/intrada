@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { INTRADA_FORM_INPUT, intradaBtnClass } from '@/lib/intrada-button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { LoginDuyuruModal } from '@/components/auth/LoginDuyuruModal'
@@ -58,8 +57,8 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="kullanici@kurum.gov.tr"
-            className={`w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm ${INTRADA_FORM_INPUT}
-                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800`}
+            className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
         </div>
 
@@ -73,8 +72,8 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className={`w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm ${INTRADA_FORM_INPUT}
-                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800`}
+            className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
+                       focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
           <p className="text-xs text-slate-500 mt-1.5 leading-snug">
             İlk giriş: T.C. kimlik numaranızın <strong>ilk 3 hanesi</strong> + nokta +{' '}
@@ -92,7 +91,11 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${intradaBtnClass('kaydet', 'w-full')} ${loading ? 'cursor-wait opacity-80' : ''}`}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all
+            ${loading
+              ? 'bg-slate-500 text-white cursor-wait'
+              : 'bg-slate-800 text-white hover:bg-slate-700'
+            } disabled:cursor-not-allowed`}
         >
           {loading && (
             <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full shrink-0" />

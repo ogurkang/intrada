@@ -111,7 +111,7 @@ export default function HarcirahTalepFormClient({ personeller, sabitSicil, onKay
       <div>
         <Link
           href="/bildirim/harcirah-talep"
-          className="intrada-btn intrada-btn-ust-menu mb-2"
+          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
         >
           ← Harcırah Talep Bildirimi
         </Link>
@@ -176,7 +176,7 @@ export default function HarcirahTalepFormClient({ personeller, sabitSicil, onKay
               type="button"
               onClick={gonder}
               disabled={pending || !formHazir}
-              className="intrada-btn intrada-btn-ekle disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
             >
               {pending ? 'Kaydediliyor…' : 'Oluştur'}
             </button>

@@ -90,7 +90,7 @@ export default async function Page({ params }: Props) {
         <div>
           <Link
             href="/bildirim/pasaport"
-            className="intrada-btn intrada-btn-ust-menu mb-2"
+            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
             ← Pasaport İşlemleri
           </Link>
@@ -99,13 +99,13 @@ export default async function Page({ params }: Props) {
         <div className="flex items-center gap-2">
           <Link
             href={`/bildirim/pasaport/${kayit.id}/duzenle`}
-            className="intrada-btn intrada-btn-duzenle"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Değiştir
           </Link>
           <a
             href={`/api/bildirim/pasaport/word?id=${kayit.id}`}
-            className="intrada-btn intrada-btn-ekle"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

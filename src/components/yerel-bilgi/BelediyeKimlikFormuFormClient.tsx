@@ -64,7 +64,7 @@ export default function BelediyeKimlikFormuFormClient({
   }
 
   const dis = !duzenlemeAcik || isPending
-  const btn = 'intrada-btn intrada-btn-kaydet'
+  const btn = 'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
 
   return (
     <div>
@@ -82,7 +82,7 @@ export default function BelediyeKimlikFormuFormClient({
               type="button"
               onClick={() => setDuzenlemeAcik(true)}
               disabled={duzenlemeAcik}
-              className="intrada-btn intrada-btn-duzenle disabled:opacity-50"
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white text-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
             >
               Düzenle
             </button>
@@ -159,7 +159,7 @@ export default function BelediyeKimlikFormuFormClient({
         </div>
 
         <div className="flex justify-end px-4 pb-4 pt-3 mt-auto border-t border-slate-100 bg-slate-50/80">
-          <button type="button" onClick={kaydet} disabled={!duzenlemeAcik || isPending} className="intrada-btn intrada-btn-kaydet px-6 py-2.5 disabled:opacity-50">
+          <button type="button" onClick={kaydet} disabled={!duzenlemeAcik || isPending} className="inline-flex items-center rounded-lg bg-slate-800 text-white px-6 py-2.5 text-sm font-medium hover:bg-slate-700 disabled:opacity-50">
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>

@@ -57,7 +57,7 @@ export default function PerformansProgramiFaaliyetAmacClient({ yil, programId, a
             {amacSecenekleri.map(a => <option key={a.id} value={a.id}>{a.amac_adi}</option>)}
           </select>
         </div>
-        <button type="submit" disabled={isPending} className="intrada-btn intrada-btn-ekle disabled:opacity-50">
+        <button type="submit" disabled={isPending} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50">
           Amaç Ekle
         </button>
       </form>

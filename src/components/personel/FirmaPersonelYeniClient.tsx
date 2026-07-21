@@ -129,7 +129,7 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, onEkle
             <Link href="/firma-calisanlar"
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</Link>
             <button type="submit" disabled={isPending}
-              className="intrada-btn intrada-btn-kaydet">
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>

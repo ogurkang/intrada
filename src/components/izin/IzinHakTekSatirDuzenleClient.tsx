@@ -137,7 +137,7 @@ export default function IzinHakTekSatirDuzenleClient({
             <button
               type="submit"
               disabled={isPending || !canEdit}
-              className="intrada-btn intrada-btn-kaydet disabled:opacity-50">
+              className="text-sm font-medium px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : hak ? 'Güncelle' : 'Kaydet'}
             </button>
           </div>

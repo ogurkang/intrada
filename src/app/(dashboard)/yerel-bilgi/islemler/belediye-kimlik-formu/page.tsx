@@ -52,11 +52,11 @@ export default async function BelediyeKimlikFormuPage() {
               Kayıt Ekle
             </button>
           ) : (
-            <Link href="/yerel-bilgi/islemler/belediye-kimlik-formu/ekle" target="_blank" rel="noopener noreferrer" className="intrada-btn intrada-btn-kaydet">
+            <Link href="/yerel-bilgi/islemler/belediye-kimlik-formu/ekle" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors">
               Kayıt Ekle
             </Link>
           )}
-          <Link href="/yerel-bilgi/islemler" className="intrada-btn intrada-btn-kaydet">
+          <Link href="/yerel-bilgi/islemler" className="inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors">
             ← Yerel Bilgi — İşlemler
           </Link>
         </div>

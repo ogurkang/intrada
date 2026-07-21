@@ -46,7 +46,7 @@ export default function PerformansProgramiButceKoduImportClient() {
           type="button"
           onClick={yukle}
           disabled={isPending}
-          className="intrada-btn intrada-btn-ekle disabled:opacity-60"
+          className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-60"
         >
           {isPending ? 'Yükleniyor…' : 'Excel İçe Aktar'}
         </button>

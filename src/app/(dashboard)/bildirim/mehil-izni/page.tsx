@@ -49,7 +49,7 @@ export default async function MehilIzniPage() {
         <div>
           <Link
             href="/bildirim"
-            className="intrada-btn intrada-btn-ust-menu mb-2"
+            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
             ← Bildirim Modülü
           </Link>
@@ -61,7 +61,7 @@ export default async function MehilIzniPage() {
         </div>
         <Link
           href="/bildirim/mehil-izni/yeni"
-          className="intrada-btn intrada-btn-ekle whitespace-nowrap"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <line x1="12" y1="5" x2="12" y2="19" />

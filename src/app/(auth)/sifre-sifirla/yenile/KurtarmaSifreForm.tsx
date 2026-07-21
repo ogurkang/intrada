@@ -115,7 +115,7 @@ export default function KurtarmaSifreForm({
         <button
           type="submit"
           disabled={pending}
-          className="intrada-btn intrada-btn-kaydet w-full py-2.5 disabled:opacity-50"
+          className="w-full py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
         >
           {pending ? 'Kaydediliyor…' : 'Kaydet ve girişe dön'}
         </button>

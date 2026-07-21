@@ -63,11 +63,11 @@ export default async function AileGoruntuPage({ params }: Props) {
         <h1 className="text-2xl font-bold text-slate-800">Aile Bildirimi - Görüntüle</h1>
         <div className="flex items-center gap-2">
           <Link href="/bildirim/aile"
-            className="intrada-btn intrada-btn-ust-menu">
+            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
             ← Geri
           </Link>
           <Link href={`/bildirim/aile/${numId}/duzenle`}
-            className="intrada-btn intrada-btn-duzenle">
+            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

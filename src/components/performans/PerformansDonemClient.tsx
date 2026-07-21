@@ -152,7 +152,7 @@ function DonemForm({
           <button
             type="submit"
             disabled={isPending}
-            className="intrada-btn intrada-btn-kaydet"
+            className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
           >
             {isPending ? 'Kaydediliyor…' : d ? 'Güncelle' : 'Kaydet'}
           </button>
@@ -261,7 +261,10 @@ export default function PerformansDonemClient({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Değerlendirme</h1>
+          <Link href="/performans" className="text-sm text-slate-500 hover:text-slate-700">
+            ← Performans Yönetimi
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-800 mt-2">Değerlendirme</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {acikSayisi > 0 ? (
               <span className="text-amber-600 font-medium">{acikSayisi} açık dönem</span>
@@ -270,32 +273,17 @@ export default function PerformansDonemClient({
             )}
           </p>
           <p className="text-sm leading-6 text-slate-600 mt-2 max-w-4xl">
-            {saltOkunur ? (
-              <>
-                Değerlendirme yapacağınız dönemi seçin; ardından sorumlu olduğunuz müdürlük ve personel
-                listesinden puanlama yapabilirsiniz.
-              </>
-            ) : (
-              <>
-                Aynı anda yalnızca bir dönem açık olabilir. Yeni dönem açmadan önce mevcut açık dönemi kapatın.
-                Tekrar açılan dönemlerde, önceki dönemin kapatılma zamanı (kapatildi_at) dolu olmalıdır.
-                Bitiş tarihi başlangıçtan önce olamaz.
-              </>
-            )}
+            Aynı anda yalnızca bir dönem açık olabilir. Yeni dönem açmadan önce mevcut açık dönemi kapatın.
+            Tekrar açılan dönemlerde, önceki dönemin kapatılma zamanı (kapatildi_at) dolu olmalıdır.
+            Bitiş tarihi başlangıçtan önce olamaz.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/performans"
-            className="intrada-btn intrada-btn-ust-menu"
-          >
-            ← Geri
-          </Link>
           {saltOkunur && <DashboardAnaSayfaLink />}
           {!saltOkunur && (
             <button
               onClick={yeniEkleAc}
-              className="intrada-btn intrada-btn-ekle"
+              className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -385,8 +373,8 @@ export default function PerformansDonemClient({
                     />
                     <Link
                       href={`/performans/degerlendirme/${d.id}`}
-                      className="intrada-icon-btn intrada-icon-btn-detay"
-                      title={saltOkunur ? 'Döneme gir' : 'Dönem dashboard'}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      title="Dönem dashboard"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
