@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
@@ -65,6 +65,26 @@ const BOS_DURUM: DurumBilgi = {
   oht: '',
   igz: '',
   sds_orani: '',
+}
+
+function durumTerfiAlanlari(t: TH | null): Partial<DurumBilgi> {
+  if (!t) return {}
+  return {
+    kha_derece: String(t.kha_derece ?? ''),
+    kha_kademe: String(t.kha_kademe ?? ''),
+    kha_tarihi: t.kha_tarihi ?? '',
+    ekea_derece: String(t.ekea_derece ?? ''),
+    ekea_kademe: String(t.ekea_kademe ?? ''),
+    ekea_tarihi: t.ekea_tarihi ?? '',
+    kidem_yili: String(t.kidem_yili ?? ''),
+    kidem_tarihi: t.kidem_tarihi ?? '',
+    iyi_hal_terfi_tarihi: t.iyi_hal_terfi_tarihi ?? '',
+    ek_gosterge: String(t.ek_gosterge ?? ''),
+    ek_odeme: String(t.ek_odeme ?? ''),
+    oht: String(t.oht ?? ''),
+    igz: String(t.yan_odeme ?? ''),
+    sds_orani: String(t.sds_orani ?? ''),
+  }
 }
 
 interface Props {
@@ -203,6 +223,13 @@ export default function PersonelHareketiDegistirClient({
   const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeniKayit ? '' : (yeni.kadro_derecesi ?? ''))
   const [yeniKadroRolState, setYeniKadroRolState] = useState<'asil' | 'vekil'>(yeniKayit ? 'asil' : seciliKadroRol)
   const [yeniGirisVarsayilan, setYeniGirisVarsayilan] = useState<DurumBilgi>(yeniKayit ? BOS_DURUM : yeni)
+
+  useEffect(() => {
+    if (!yeniKayit) return
+    const terfiAlan = durumTerfiAlanlari(terfiSonState)
+    setYeniGirisVarsayilan(prev => ({ ...prev, ...terfiAlan }))
+    setYeniBolumKey(k => k + 1)
+  }, [terfiSonState, yeniKayit])
 
   function kadroRolDegistir(rol: 'asil' | 'vekil') {
     setYeniKadroRolState(rol)

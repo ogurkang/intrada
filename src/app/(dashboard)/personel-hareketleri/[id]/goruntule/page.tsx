@@ -54,29 +54,24 @@ export default async function PersonelHareketiGoruntulePage({
   let sicil_no = ''
   let kadroKayit: KH | null = null
 
-  // 1) URL yolu sayısal personel_hareketleri id ise doğrudan o kayıt
+  const kadroModu = Number.isFinite(seciliKadroId) && seciliKadroId > 0
+  let phById: PH | null = null
+
+  // 1) URL yolu sayısal personel_hareketleri id olabilir (salt-okunur satır tıklaması)
   if (Number.isFinite(idNum) && idNum > 0) {
     const { data: byId } = await supabase
       .from('personel_hareketleri')
       .select('*')
       .eq('id', idNum)
       .maybeSingle()
-    if (byId) {
-      hareket = byId as PH
-      sicil_no = hareket.sicil_no
-      if (hareket.kadro_id) {
-        const { data: kh } = await supabase
-          .from('kadro_hareketleri')
-          .select('*')
-          .eq('id', hareket.kadro_id)
-          .maybeSingle()
-        kadroKayit = (kh ?? null) as KH | null
-      }
-    }
+    if (byId) phById = byId as PH
   }
 
-  // 2) Kadro satırı tıklaması: sicil + kadro_id + rol ile eşleştir
-  if (!hareket && Number.isFinite(seciliKadroId) && seciliKadroId > 0) {
+  // 2) Kadro satırı: URL'deki id sicil_no; PH id ile çakışırsa sicil+kadro yolu tercih edilir
+  const sicilOlarakAc =
+    kadroModu && (!phById || phById.sicil_no.trim() !== idText)
+
+  if (sicilOlarakAc) {
     sicil_no = idText
     const { data: kadro } = await supabase
       .from('kadro_hareketleri')
@@ -105,6 +100,17 @@ export default async function PersonelHareketiGoruntulePage({
 
     if (!hareket) {
       hareket = sentetikHareketKadrodan(kadroKayit, sicil_no, dogrulanmisRol)
+    }
+  } else if (phById) {
+    hareket = phById
+    sicil_no = hareket.sicil_no
+    if (hareket.kadro_id) {
+      const { data: kh } = await supabase
+        .from('kadro_hareketleri')
+        .select('*')
+        .eq('id', hareket.kadro_id)
+        .maybeSingle()
+      kadroKayit = (kh ?? null) as KH | null
     }
   }
 

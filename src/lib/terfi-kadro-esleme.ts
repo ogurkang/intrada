@@ -59,7 +59,7 @@ export function terfiKaydiEsle(
   const khKey = terfiKadroIdAnahtari(kadro_id)
   if (khKey) {
     const kadroIle = indeks.get(khKey)
-    if (kadroIle) return kadroIle
+    if (kadroIle && kadroIle.sicil_no.trim() === String(sicil_no).trim()) return kadroIle
   }
 
   const rolEtiket = terfiRolEtiketi(rol)
@@ -85,6 +85,7 @@ export async function terfiKaydiBul(
       .from('terfi_hareketleri')
       .select('*')
       .eq('kadro_id', kadroId)
+      .eq('sicil_no', sicil)
       .order('kayit_zamani', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -107,5 +108,12 @@ export async function terfiKaydiBul(
     if (data) return data as TH
   }
 
-  return null
+  const { data: bySicil } = await supabase
+    .from('terfi_hareketleri')
+    .select('*')
+    .eq('sicil_no', sicil)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (bySicil ?? null) as TH | null
 }

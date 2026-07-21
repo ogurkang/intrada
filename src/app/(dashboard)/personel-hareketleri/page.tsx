@@ -44,11 +44,15 @@ export default async function PersonelHareketiListPage() {
 
   const satirlar: Satir[] = []
 
-  const kadroPhId = new Map<number, number>()
+  const kadroPhId = new Map<string, number>()
   for (const h of hareketler) {
     const kid = (h as { kadro_id?: number | null }).kadro_id
     const hid = (h as { id?: number }).id
-    if (kid && hid && !kadroPhId.has(kid)) kadroPhId.set(kid, hid)
+    const sicil = h.sicil_no
+    if (kid && hid && sicil) {
+      const key = `${kid}:${sicil}`
+      if (!kadroPhId.has(key)) kadroPhId.set(key, hid)
+    }
   }
 
   kadrolar.forEach(k => {
@@ -73,7 +77,7 @@ export default async function PersonelHareketiListPage() {
         salt_okunur:         false,
         ph_kadro_id:         null,
         ph_kadro_rol:        null,
-        islem_no:            personelHareketIslemNo(kadroPhId.get(k.id) ?? null),
+        islem_no:            personelHareketIslemNo(kadroPhId.get(`${k.id}:${k.asil}`) ?? null),
       })
     }
     if (k.vekil) {
@@ -97,7 +101,7 @@ export default async function PersonelHareketiListPage() {
         salt_okunur:         false,
         ph_kadro_id:         null,
         ph_kadro_rol:        null,
-        islem_no:            personelHareketIslemNo(kadroPhId.get(k.id) ?? null),
+        islem_no:            personelHareketIslemNo(kadroPhId.get(`${k.id}:${k.vekil}`) ?? null),
       })
     }
   })
