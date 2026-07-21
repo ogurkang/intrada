@@ -69,7 +69,7 @@ export default function AracBilgileriGirisClient({
   }
 
   const geriBtn =
-    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
+    'intrada-btn intrada-btn-kaydet'
 
   return (
     <div>
@@ -102,7 +102,7 @@ export default function AracBilgileriGirisClient({
           type="button"
           onClick={aracEkleYeniSekme}
           disabled={!isAdmin && kullaniciMudurlukId == null}
-          className="inline-flex items-center rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none"
+          className="inline-flex items-center intrada-btn intrada-btn-kaydet disabled:pointer-events-none"
         >
           Araç Ekle
         </button>

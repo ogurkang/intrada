@@ -152,7 +152,7 @@ export default function IzinHakYonetimClient({
           {canEdit && onYenidenHesapla && (
             <button onClick={yenidenHesapla} disabled={isPending}
               title="Kullanılan izin günlerini izin hareketlerinden yeniden hesaplar (örn. Supabase'de elle düzeltilen kayıtlar için)."
-              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium whitespace-nowrap disabled:opacity-50">
+              className="intrada-btn intrada-btn-ust-menu font-medium whitespace-nowrap disabled:opacity-50">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15" />
               </svg>
@@ -162,7 +162,7 @@ export default function IzinHakYonetimClient({
 
           {/* Tekli ekle */}
           {canEdit && <button onClick={yeniEkleAc}
-            className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium whitespace-nowrap">
+            className="intrada-btn intrada-btn-ekle">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
@@ -357,7 +357,7 @@ export default function IzinHakYonetimClient({
             <button type="button" onClick={kapat}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
             <button type="submit" disabled={isPending || !canEdit}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+              className="intrada-btn intrada-btn-kaydet">
               {isPending ? 'Kaydediliyor…' : h ? 'Güncelle' : 'Kaydet'}
             </button>
           </div>

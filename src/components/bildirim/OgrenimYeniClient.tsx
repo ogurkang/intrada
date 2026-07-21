@@ -104,7 +104,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
               <span className="font-medium text-slate-800">{secilen.ad_soyad}</span>
               <span className="text-xs text-slate-500 ml-2 font-mono">{secilen.sicil_no}</span>
             </div>
-            <button type="button" onClick={() => setSecilenSicil('')} className="text-xs text-slate-600 hover:text-slate-900">
+            <button type="button" onClick={() => setSecilenSicil('')} className="intrada-btn intrada-btn-duzenle text-xs px-2 py-1">
               Değiştir
             </button>
           </div>
@@ -232,7 +232,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
           type="button"
           disabled={isPending || !secilenSicil}
           onClick={kaydet}
-          className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+          className="intrada-btn intrada-btn-kaydet px-5 py-2.5 disabled:opacity-50"
         >
           {isPending ? 'Kaydediliyor…' : 'Kaydet'}
         </button>

@@ -40,9 +40,9 @@ export default async function ButceTahminleriRaporPage() {
   const gelirToplam = gelirRows.reduce((acc, k) => acc + Number(gelirMap.get(k.id) ?? 0), 0)
 
   const excelBtn =
-    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors'
+    'intrada-btn intrada-btn-excel'
   const geriBtn =
-    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
+    'intrada-btn intrada-btn-kaydet'
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between gap-3">

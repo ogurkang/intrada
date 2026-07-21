@@ -91,7 +91,7 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
         </div>
         {!saltOkunur && (
         <button onClick={yeniEkle}
-          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium">
+          className="intrada-btn intrada-btn-ekle">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
@@ -206,7 +206,7 @@ export default function TatilClient({ data, tatilTurSecenekleri, onAdd, onUpdate
             <button type="button" onClick={kapat}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">İptal</button>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+              className="intrada-btn intrada-btn-kaydet">
               {isPending ? 'Kaydediliyor…' : secili ? 'Güncelle' : 'Ekle'}
             </button>
           </div>

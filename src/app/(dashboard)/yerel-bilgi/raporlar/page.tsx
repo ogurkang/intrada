@@ -40,7 +40,7 @@ const RAPORLAR = [
 
 export default function YerelBilgiRaporlarPage() {
   const geriBtn =
-    'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
+    'intrada-btn intrada-btn-kaydet'
 
   return (
     <div>

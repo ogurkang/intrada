@@ -578,7 +578,7 @@ export async function performansEk5OnizleVeri(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Oturum gerekli.' }
   const access = await getAppAccess(supabase, user.id)
-  if (!isAdminLike(access)) return { hata: 'Bu işlem için yetkiniz yok.' }
+  const isAdmin = isAdminLike(access)
 
   const { data: deg } = await (supabase as Sb)
     .from('performans_degerlendirme')
@@ -586,6 +586,16 @@ export async function performansEk5OnizleVeri(
     .eq('id', degerlendirmeId)
     .maybeSingle()
   if (!deg) return { hata: 'Kayıt bulunamadı.' }
+
+  if (!isAdmin) {
+    const sicil = await currentSicil(supabase)
+    if (
+      !sicil ||
+      (deg.amir1_sicil !== sicil && deg.amir2_sicil !== sicil && deg.sicil_no !== sicil)
+    ) {
+      return { hata: 'Bu işlem için yetkiniz yok.' }
+    }
+  }
 
   const { data: cal } = await supabase
     .from('calisan')

@@ -62,7 +62,7 @@ export default async function AracBilgileriRaporuPage() {
         <div className="max-w-4xl">
           <Link
             href="/yerel-bilgi/raporlar"
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+            className="intrada-btn intrada-btn-ust-menu mb-2"
           >
             ← Yerel Bilgi — Raporlar
           </Link>

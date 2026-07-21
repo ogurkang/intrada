@@ -135,7 +135,7 @@ export default function HizmetBirlestirmeFormClient({
       <div>
         <Link
           href={geriHref}
-          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+          className="intrada-btn intrada-btn-ust-menu mb-2"
         >
           ← {mode === 'edit' ? 'Form Detayı' : 'Hizmet Birleştirme İşlemleri'}
         </Link>
@@ -334,7 +334,7 @@ export default function HizmetBirlestirmeFormClient({
             type="button"
             onClick={gonder}
             disabled={pending || !kaydetAktif}
-            className="inline-flex items-center rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="intrada-btn intrada-btn-ekle"
           >
             {pending ? 'Kaydediliyor…' : mode === 'edit' ? 'Kaydet' : 'Oluştur'}
           </button>

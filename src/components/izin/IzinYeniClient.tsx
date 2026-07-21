@@ -127,7 +127,7 @@ export default function IzinYeniClient({
                   )}
                 </div>
                 <button type="button" onClick={() => { setSecilenSicil(''); setSicilArama('') }}
-                  className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
+                  className="intrada-btn intrada-btn-duzenle text-xs px-2 py-1">Değiştir</button>
               </div>
             ) : (
               <div className="relative">
@@ -227,7 +227,7 @@ export default function IzinYeniClient({
 
         <div className="flex justify-end pt-4">
           <button type="submit" disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50">
+            className="intrada-btn intrada-btn-kaydet">
             {isPending ? 'Kaydediliyor…' : 'Taslak Olarak Kaydet'}
           </button>
         </div>

@@ -15,7 +15,7 @@ import {
   donemAuditSnapshot,
   writeTerfiDonemAuditLogSafe,
 } from '@/lib/terfi-donem-audit'
-import { alanDegisiklikleriHesapla, degisiklikOzeti, degisiklikPayload } from '@/lib/personel-audit'
+import { alanDegisiklikleriHesapla, degisiklikOzeti, degisiklikPayload, writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
@@ -183,6 +183,10 @@ export type TerfiEttirKayitSatir = {
   oht: string | null
   yan_odeme: string | null
   sds_orani: string | null
+  /** Öğrenim terfi modalından eklenen satır */
+  ogrenim_terfi?: boolean
+  ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora'
+  yeni_ogrenim_turu?: string | null
 }
 
 type TerfiAlanSnapshot = {
@@ -240,6 +244,56 @@ function terfiSnapshotFromRow(row: Tables<'terfi_hareketleri'>): TerfiAlanSnapsh
   }
 }
 
+async function ogrenimTerfiKaydet(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  s: TerfiEttirKayitSatir,
+): Promise<{ hata?: string }> {
+  if (!s.ogrenim_terfi || !s.yeni_ogrenim_turu?.trim()) return {}
+  if (s.ogrenim_olay !== 'yuksek_lisans' && s.ogrenim_olay !== 'doktora') return {}
+
+  const yeniTur = s.yeni_ogrenim_turu.trim()
+  const { data: mevcut } = await supabase
+    .from('calisan_ogrenim')
+    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .eq('sicil_no', s.sicil_no)
+    .eq('aktif', true)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  await supabase
+    .from('calisan_ogrenim')
+    .update({ varsayilan: false, aktif: false })
+    .eq('sicil_no', s.sicil_no)
+
+  const payload = {
+    sicil_no: s.sicil_no,
+    ogrenim_turu: yeniTur,
+    okul_adi: mevcut?.okul_adi ?? null,
+    bolum: mevcut?.bolum ?? null,
+    meslegi: mevcut?.meslegi ?? null,
+    mezuniyet_yili: mevcut?.mezuniyet_yili ?? null,
+    mezuniyet_tarihi: mevcut?.mezuniyet_tarihi ?? null,
+    varsayilan: true,
+    aktif: true,
+  }
+  const { data: inserted, error } = await supabase.from('calisan_ogrenim').insert(payload).select('id').single()
+  if (error) return { hata: error.message }
+
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: s.sicil_no,
+    modul: 'öğrenim',
+    islem: 'Terfi Öğrenim',
+    ozet: `Öğrenim terfi: ${mevcut?.ogrenim_turu ?? '—'} → ${yeniTur}`,
+    ref_table: 'calisan_ogrenim',
+    ref_id: String(inserted?.id ?? ''),
+    onceki: mevcut ?? null,
+    sonraki: payload,
+  })
+  revalidatePath('/bildirim/ogrenim')
+  return {}
+}
+
 export async function terfiEttirKaydet(
   donemId: number,
   satirlar: TerfiEttirKayitSatir[],
@@ -295,6 +349,9 @@ export async function terfiEttirKaydet(
         sonraki: payload.sonraki,
       })
     }
+
+    const ogRes = await ogrenimTerfiKaydet(supabase, s)
+    if (ogRes.hata) return ogRes
   }
 
   revalidatePath('/terfi')

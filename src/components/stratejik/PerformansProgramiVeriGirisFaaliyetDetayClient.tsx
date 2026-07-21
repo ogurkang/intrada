@@ -270,7 +270,7 @@ export default function PerformansProgramiVeriGirisFaaliyetDetayClient({
           type="button"
           onClick={kaydetVeKapat}
           disabled={isPending}
-          className="inline-flex items-center rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-60"
+          className="inline-flex items-center intrada-btn intrada-btn-kaydet disabled:opacity-60"
         >
           Kaydet ve Kapat
         </button>

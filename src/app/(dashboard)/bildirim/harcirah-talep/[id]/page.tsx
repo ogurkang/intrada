@@ -63,7 +63,7 @@ export default async function HarcirahTalepDetayPage({ params }: Props) {
         <div>
           <Link
             href="/bildirim/harcirah-talep"
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+            className="intrada-btn intrada-btn-ust-menu mb-2"
           >
             ← Harcırah Talep Bildirimi
           </Link>
@@ -71,7 +71,7 @@ export default async function HarcirahTalepDetayPage({ params }: Props) {
         </div>
         <a
           href={`/api/bildirim/harcirah-talep/word?id=${kayit.id}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
+          className="intrada-btn intrada-btn-ekle"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

@@ -8,6 +8,9 @@ export type TerfiEttirDurumEtiket =
   | 'Eğitim Sınırında'
   | 'Kıdem Yılı İlerledi'
   | 'İyi Hal İlerlemesi'
+  | 'Lisede Hazırlık Okudu'
+  | 'Yüksek Lisansı Tamamladı'
+  | 'Doktorayı Tamamladı'
   | '—'
 
 /** Lise → min 3; Ön Lisans / Lisans → min 1 */
@@ -186,6 +189,10 @@ export type TerfiEttirOnizlemeSatir = {
   sds_yeni: string
   durum: TerfiEttirDurumEtiket
   terfi_id: number | null
+  /** Öğrenim terfi modalından eklenen satır */
+  ogrenim_terfi?: boolean
+  ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora'
+  yeni_ogrenim_turu?: string | null
   payload: {
     kha_derece: string | null
     kha_kademe: string | null

@@ -130,7 +130,7 @@ export default function PersonelHareketiDuzenleClient({ hareket, unvanlar, ayril
               İptal
             </Link>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
+              className="intrada-btn intrada-btn-kaydet">
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>

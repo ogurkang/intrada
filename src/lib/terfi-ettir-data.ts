@@ -89,6 +89,9 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 ): Promise<{
   kaynaklar: TerfiKaynak[]
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
+  kazancEntries: Array<{ key: string; puan: KazancPuan }>
+  tanimOgList: { id: number; isim: string }[]
+  memurPersoneller: { sicil_no: string; ad_soyad: string; alt?: string }[]
 }> {
   const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
     await Promise.all([
@@ -160,9 +163,6 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     })
   }
 
-  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
-    kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
-
   const tanimOgList = sortTanimOgrenimByIsim((tanimOg ?? []).map((o) => ({ id: o.id, isim: o.isim })))
   const kaynaklar: TerfiKaynak[] = []
 
@@ -186,8 +186,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       ekea_derece: t.ekea_derece,
       ekea_kademe: t.ekea_kademe,
       ekea_tarihi: t.ekea_tarihi,
-        kidem_yili: t.kidem_yili,
-        kidem_tarihi: t.kidem_tarihi,
+      kidem_yili: t.kidem_yili,
+      kidem_tarihi: t.kidem_tarihi,
       iyi_hal_terfi_tarihi: t.iyi_hal_terfi_tarihi,
       ek_gosterge: t.ek_gosterge,
       ek_odeme: t.ek_odeme,
@@ -198,5 +198,21 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     })
   }
 
-  return { kaynaklar, kazancLookup }
+  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
+    kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
+
+  const kazancEntries = [...kazancMap.entries()].map(([key, puan]) => ({ key, puan }))
+
+  const memurPersoneller = memurSiciller
+    .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
+    .map(sicil_no => {
+      const k = kadroMap.get(sicil_no)
+      return {
+        sicil_no,
+        ad_soyad: terfiMap[sicil_no]?.ad_soyad ?? k?.ad_soyad ?? sicil_no,
+        alt: ogrenimTuruBySicil.get(sicil_no) ? `Öğrenim: ${ogrenimTuruBySicil.get(sicil_no)}` : undefined,
+      }
+    })
+
+  return { kaynaklar, kazancLookup, kazancEntries, tanimOgList, memurPersoneller }
 }

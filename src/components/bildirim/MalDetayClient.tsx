@@ -477,12 +477,12 @@ export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
         <h1 className="text-2xl font-bold text-slate-800">Mal Bildirimi - Görüntüle</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/bildirim/mal"
-            className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+            className="intrada-btn intrada-btn-ust-menu">
             ← Geri
           </Link>
           {!saltOkunur && (
             <Link href={`/bildirim/mal/${urlSeg}/duzenle`}
-              className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
+              className="intrada-btn intrada-btn-ekle">
               Düzenle
             </Link>
           )}
@@ -925,7 +925,7 @@ export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
         </section>
 
         <Link href="/bildirim/mal"
-          className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
+          className="intrada-btn intrada-btn-ekle">
           ← Listeye Dön
         </Link>
       </div>

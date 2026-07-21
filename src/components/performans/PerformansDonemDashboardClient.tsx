@@ -13,6 +13,7 @@ import {
 import { donemIlerlemeOzet } from '@/lib/performans-istatistik'
 import type { MudurlukSatir } from '@/lib/performans-istatistik'
 import { performansPuanBandi } from '@/lib/performans'
+import type { PerformansAmirErisim } from '@/lib/performans-amir-erisim'
 
 export type PersonelSatir = {
   siraNo: number
@@ -25,6 +26,8 @@ export type PersonelSatir = {
   puan_amir2: number | null
   tek_amir: boolean
   durum: string
+  amir1_sicil: string | null
+  amir2_sicil: string | null
 }
 
 export type DonemBilgi = {
@@ -65,6 +68,24 @@ function tarih(t: string) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
+function GozIkon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  )
+}
+
+function GeriAlIkon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a4 4 0 014 4v0a4 4 0 01-4 4H5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 6l-4 4 4 4" />
+    </svg>
+  )
+}
+
 export default function PerformansDonemDashboardClient({
   donem,
   ilerleme,
@@ -72,6 +93,7 @@ export default function PerformansDonemDashboardClient({
   personeller,
   seciliMudurluk,
   isAdmin,
+  amirErisim = null,
 }: {
   donem: DonemBilgi
   ilerleme: ReturnType<typeof donemIlerlemeOzet>
@@ -79,6 +101,7 @@ export default function PerformansDonemDashboardClient({
   personeller: PersonelSatir[]
   seciliMudurluk: string | null
   isAdmin: boolean
+  amirErisim?: PerformansAmirErisim | null
 }) {
   const router = useRouter()
   const personelGorunumu = Boolean(seciliMudurluk)
@@ -91,6 +114,28 @@ export default function PerformansDonemDashboardClient({
   const [onizlePending, startOnizle] = useTransition()
 
   const sifirlaYapilabilir = isAdmin && donem.durum !== 'Yayınlandı'
+  const degerlendirmeGoster = isAdmin || amirErisim != null
+  const currentSicil = amirErisim?.sicilNo?.trim() || null
+
+  /** Admin: her iki rol (vekalet). Amir: yalnızca kendi rolü (1 veya 2). */
+  function amir1Gorebilir(p: PersonelSatir): boolean {
+    if (isAdmin) return true
+    if (!currentSicil) return false
+    return String(p.amir1_sicil ?? '').trim() === currentSicil
+  }
+
+  function amir2Gorebilir(p: PersonelSatir): boolean {
+    if (isAdmin) return true
+    if (!currentSicil || p.tek_amir) return false
+    return String(p.amir2_sicil ?? '').trim() === currentSicil
+  }
+
+  function kayitQuery(rol: 'amir1' | 'amir2', vekalet: boolean): string {
+    const q = new URLSearchParams({ rol, donem: String(donem.id) })
+    if (seciliMudurluk) q.set('mudurluk', seciliMudurluk)
+    if (vekalet) q.set('vekalet', '1')
+    return q.toString()
+  }
 
   function sifirlaOnayla() {
     if (!sifirlaHedef) return
@@ -122,20 +167,43 @@ export default function PerformansDonemDashboardClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          href="/performans/degerlendirme"
-          className="text-sm text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 mb-2"
-        >
-          ← Değerlendirme dönemleri
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-800">
-          {donem.donem_adi ?? `${donem.yil} Dönemi`}
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          {donem.sira_no ? `${donem.sira_no} · ` : ''}
-          {tarih(donem.baslangic_tarihi)} – {tarih(donem.bitis_tarihi)} · {donem.durum}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {donem.donem_adi ?? `${donem.yil} Dönemi`}
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            {donem.sira_no ? `${donem.sira_no} · ` : ''}
+            {tarih(donem.baslangic_tarihi)} – {tarih(donem.bitis_tarihi)} · {donem.durum}
+          </p>
+          {!isAdmin && amirErisim && (
+            <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mt-2 max-w-3xl">
+              {amirErisim.amir1Yetkisi && amirErisim.amir2Yetkisi
+                ? '1. amir olarak müdürlüğünüzdeki personeli, 2. amir olarak bağlı müdürlüklerdeki personeli değerlendirebilirsiniz.'
+                : amirErisim.amir1Yetkisi
+                  ? 'Yalnızca sorumlu olduğunuz müdürlükteki personeli 1. amir olarak değerlendirebilirsiniz.'
+                  : 'Bağlı müdürlüklerdeki personeli 2. amir olarak değerlendirebilirsiniz.'}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {personelGorunumu ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/performans/degerlendirme/${donem.id}`)}
+              className="intrada-btn intrada-btn-ust-menu"
+            >
+              ← Müdürlük listesine dön
+            </button>
+          ) : (
+            <Link
+              href="/performans/degerlendirme"
+              className="intrada-btn intrada-btn-ust-menu"
+            >
+              ← Dönem listesi
+            </Link>
+          )}
+        </div>
       </div>
 
       {!personelGorunumu && (
@@ -196,16 +264,7 @@ export default function PerformansDonemDashboardClient({
 
       {personelGorunumu && seciliMudurluk && (
         <>
-          <div>
-            <button
-              type="button"
-              onClick={() => router.push(`/performans/degerlendirme/${donem.id}`)}
-              className="text-sm text-sky-700 hover:underline"
-            >
-              ← Müdürlük listesine dön
-            </button>
-            <h2 className="text-lg font-semibold text-slate-800 mt-1">{seciliMudurluk}</h2>
-          </div>
+          <h2 className="text-lg font-semibold text-slate-800">{seciliMudurluk}</h2>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="min-w-full text-sm">
@@ -218,13 +277,15 @@ export default function PerformansDonemDashboardClient({
                   <th className="px-4 py-3 font-semibold">Görev Unvanı</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">1. Amir Puanı</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">2. Amir Puanı</th>
-                  {isAdmin && <th className="px-4 py-3 font-semibold text-right w-64">Değerlendirme</th>}
+                  {degerlendirmeGoster && (
+                    <th className="px-4 py-3 font-semibold text-right w-36">Değerlendirme</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {personeller.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={degerlendirmeGoster ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
                       Bu müdürlükte personel kaydı yok.
                     </td>
                   </tr>
@@ -258,30 +319,37 @@ export default function PerformansDonemDashboardClient({
                           '—'
                         )}
                       </td>
-                      {isAdmin && (
+                      {degerlendirmeGoster && (
                         <td className="px-4 py-3 text-right">
-                          <div className="flex flex-wrap justify-end gap-1.5">
-                            <Link
-                              href={`/performans/degerlendirme/kayit/${p.id}?rol=amir1&donem=${donem.id}&mudurluk=${encodeURIComponent(seciliMudurluk)}&vekalet=1`}
-                              className="rounded-lg bg-slate-800 text-white px-2.5 py-1 text-xs font-medium hover:bg-slate-700"
-                            >
-                              1. Amir
-                            </Link>
-                            {!p.tek_amir && (
+                          <div className="inline-flex items-center justify-end gap-1">
+                            {amir1Gorebilir(p) && (
                               <Link
-                                href={`/performans/degerlendirme/kayit/${p.id}?rol=amir2&donem=${donem.id}&mudurluk=${encodeURIComponent(seciliMudurluk)}&vekalet=1`}
-                                className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+                                href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir1', isAdmin)}`}
+                                title="1. amir değerlendirme"
+                                className="intrada-icon-btn intrada-icon-btn-detay h-7 w-7 text-xs font-semibold"
                               >
-                                2. Amir
+                                1
                               </Link>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => onizleAc(p.id)}
-                              className="rounded-lg border border-indigo-200 text-indigo-700 px-2.5 py-1 text-xs font-medium hover:bg-indigo-50"
-                            >
-                              Önizle
-                            </button>
+                            {amir2Gorebilir(p) && (
+                              <Link
+                                href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir2', isAdmin)}`}
+                                title="2. amir değerlendirme"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                2
+                              </Link>
+                            )}
+                            {(isAdmin || amir1Gorebilir(p) || amir2Gorebilir(p)) && (
+                              <button
+                                type="button"
+                                onClick={() => onizleAc(p.id)}
+                                title="Önizle"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                              >
+                                <GozIkon className="h-4 w-4" />
+                              </button>
+                            )}
                             {sifirlaYapilabilir && (
                               <button
                                 type="button"
@@ -289,9 +357,10 @@ export default function PerformansDonemDashboardClient({
                                   setSifirlaHata(null)
                                   setSifirlaHedef(p)
                                 }}
-                                className="rounded-lg border border-red-200 text-red-700 px-2.5 py-1 text-xs font-medium hover:bg-red-50"
+                                title="Sıfırla"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50"
                               >
-                                Sıfırla
+                                <GeriAlIkon className="h-4 w-4" />
                               </button>
                             )}
                           </div>

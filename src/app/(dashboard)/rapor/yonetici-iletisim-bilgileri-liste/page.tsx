@@ -1,83 +1,111 @@
 import { createClient } from '@/lib/supabase/server'
-import { trNormalize } from '@/lib/turkce-search'
 import YoneticiIletisimBilgileriListeClient, {
-  type YoneticiIletisimSatir,
+  type YoneticiIletisimTabVerisi,
 } from '@/components/rapor/YoneticiIletisimBilgileriListeClient'
+import { periyotSonGunu, type RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
+import {
+  yoneticiIletisimAdaySatirlariOlustur,
+  yoneticiIletisimListeSnapshot,
+  type PersonelHareketSatir,
+  type YoneticiKadroSatir,
+} from '@/lib/rapor-yonetici-iletisim-bilgileri-liste'
+import type { Tables } from '@/types/database'
 
-function unvanOncelik(unvan: string): number | null {
-  const n = trNormalize(unvan)
-  if (n.includes('belediye baskani')) return 0
-  if (n.includes('baskan yardimci')) return 1
-  if (n.includes('mudur')) return 2
-  return null
+const AYLAR_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+const MIN_YIL = 2000
+const MAX_YIL = 2035
+
+function sonGunuMetin(D: string): string {
+  const [y, m, d] = D.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default async function YoneticiIletisimBilgileriListePage() {
+export default async function YoneticiIletisimBilgileriListePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ y?: string }>
+}) {
+  const sp = await searchParams
+  const parsed = parseInt(sp.y ?? '', 10)
+  const yil = Number.isFinite(parsed) ? Math.min(MAX_YIL, Math.max(MIN_YIL, parsed)) : new Date().getFullYear()
+
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
-  const [{ data: kadroRaw, error }, { data: calisanRaw }, { data: ayarRaw }] = await Promise.all([
-    supabase
-      .from('kadro_hareketleri')
-      .select('id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no')
-      .order('id', { ascending: true }),
-    supabase.from('calisan').select('sicil_no, ad_soyad, telefon, e_posta'),
-    sb.from('rapor_yonetici_iletisim_liste_ayar').select('kayit_key, sira_no').order('sira_no', { ascending: true }),
-  ])
+  const [{ data: kadroRaw, error }, { data: calisanRaw }, { data: ayarRaw }, { data: phRaw }, { data: auditRaw }] =
+    await Promise.all([
+      supabase
+        .from('kadro_hareketleri')
+        .select(
+          'id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+        )
+        .order('id', { ascending: true }),
+      supabase.from('calisan').select('sicil_no, ad_soyad, telefon, e_posta'),
+      sb.from('rapor_yonetici_iletisim_liste_ayar').select('kayit_key, sira_no').order('sira_no', { ascending: true }),
+      supabase
+        .from('personel_hareketleri')
+        .select('sicil_no, kadro_id, kadro_rol, yururluk_tarihi, ise_baslama_tarihi, ayrilis_tarihi')
+        .not('kadro_id', 'is', null),
+      supabase
+        .from('personel_audit_log')
+        .select('created_at, onceki, sonraki, ref_id')
+        .eq('ref_table', 'calisan')
+        .order('created_at', { ascending: true }),
+    ])
 
-  const calisanBySicil = new Map(
-    (calisanRaw ?? []).map(c => [
-      String(c.sicil_no ?? '').trim(),
-      {
-        ad_soyad: String(c.ad_soyad ?? '').trim(),
-        telefon: String(c.telefon ?? '').trim(),
-        e_posta: String(c.e_posta ?? '').trim(),
-      },
-    ]),
-  )
+  const kadrolar = (kadroRaw ?? []) as YoneticiKadroSatir[]
+  const kadroById = new Map(kadrolar.map(k => [k.id, k]))
 
-  const tumSatirlar: YoneticiIletisimSatir[] = []
-
-  for (const k of kadroRaw ?? []) {
-    const unvan = String(k.kadro_unvani ?? '').trim()
-    const oncelik = unvanOncelik(unvan)
-    if (oncelik == null) continue
-    if (k.iptal_karar_tarihi || k.iptal_karar_no) continue
-
-    const adaylar: Array<{ rol: 'asil' | 'vekil'; sicil: string }> = [
-      { rol: 'asil', sicil: String(k.asil ?? '').trim() },
-      { rol: 'vekil', sicil: String(k.vekil ?? '').trim() },
-    ]
-    for (const a of adaylar) {
-      if (!a.sicil) continue
-      const c = calisanBySicil.get(a.sicil)
-      if (!c) continue
-      tumSatirlar.push({
-        kayit_key: `kadro:${k.id}:${a.rol}:${a.sicil}`,
-        sicil_no: a.sicil,
-        ad_soyad: c.ad_soyad || '—',
-        kadro_unvani: unvan || '—',
-        telefon: c.telefon || '—',
-        e_posta: c.e_posta || '—',
-      })
-    }
+  const calisanBySicil = new Map<string, { ad_soyad: string; telefon: string; e_posta: string }>()
+  for (const c of calisanRaw ?? []) {
+    const sicil = String(c.sicil_no ?? '').trim()
+    if (!sicil) continue
+    calisanBySicil.set(sicil, {
+      ad_soyad: String(c.ad_soyad ?? '').trim() || '—',
+      telefon: String(c.telefon ?? '').trim() || '—',
+      e_posta: String(c.e_posta ?? '').trim() || '—',
+    })
   }
 
-  tumSatirlar.sort((a, b) => {
-    const o1 = unvanOncelik(a.kadro_unvani) ?? 99
-    const o2 = unvanOncelik(b.kadro_unvani) ?? 99
-    if (o1 !== o2) return o1 - o2
-    return a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
-  })
+  const hareketlerByKadroId = new Map<number, PersonelHareketSatir[]>()
+  for (const h of phRaw ?? []) {
+    const kid = h.kadro_id as number | null
+    if (!kid) continue
+    const list = hareketlerByKadroId.get(kid) ?? []
+    list.push(h)
+    hareketlerByKadroId.set(kid, list)
+  }
 
-  const satirByKey = new Map(tumSatirlar.map(s => [s.kayit_key, s] as const))
+  const auditBySicil = new Map<string, Tables<'personel_audit_log'>[]>()
+  for (const a of auditRaw ?? []) {
+    const sicil = String(a.ref_id ?? '').trim()
+    if (!sicil) continue
+    const list = auditBySicil.get(sicil) ?? []
+    list.push(a as Tables<'personel_audit_log'>)
+    auditBySicil.set(sicil, list)
+  }
+
+  const tumSatirlar = yoneticiIletisimAdaySatirlariOlustur(kadrolar, calisanBySicil)
   const seciliKeys = (ayarRaw ?? [])
     .map((a: { kayit_key: string | null }) => String(a.kayit_key ?? '').trim())
     .filter(Boolean) as string[]
-  const ayarliSatirlar = seciliKeys
-    .map((k: string) => satirByKey.get(k))
-    .filter((x): x is YoneticiIletisimSatir => !!x)
+
+  const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  const tabs: YoneticiIletisimTabVerisi[] = periyotlar.map(p => {
+    const D = periyotSonGunu(yil, p)
+    const satirlar = yoneticiIletisimListeSnapshot({
+      D,
+      seciliKeys,
+      kadroById,
+      hareketlerByKadroId,
+      calisanBySicil,
+      auditBySicil,
+    })
+    const label = p === 'yillik' ? 'YILLIK' : AYLAR_TR[(p as number) - 1]
+    return { periyot: p, label, sonGunuEtiket: sonGunuMetin(D), satirlar }
+  })
 
   return (
     <div>
@@ -87,9 +115,14 @@ export default async function YoneticiIletisimBilgileriListePage() {
         </div>
       )}
       <YoneticiIletisimBilgileriListeClient
+        yil={yil}
+        minYil={MIN_YIL}
+        maxYil={MAX_YIL}
+        tabs={tabs}
         tumSatirlar={tumSatirlar}
-        seciliKeyler={ayarliSatirlar.map(s => s.kayit_key)}
-        excelHref="/api/rapor/yonetici-iletisim-bilgileri-liste/excel"
+        seciliKeyler={seciliKeys}
+        raporBasePath="/rapor/yonetici-iletisim-bilgileri-liste"
+        excelBasePath="/api/rapor/yonetici-iletisim-bilgileri-liste/excel"
       />
     </div>
   )

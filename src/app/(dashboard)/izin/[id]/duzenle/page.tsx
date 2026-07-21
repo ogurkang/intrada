@@ -37,7 +37,7 @@ export default async function IzinDuzenlePage({ params }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-800">İzin Hareketi - Düzenle</h1>
         <Link href={`/izin?yil=${izin.yil ?? new Date().getFullYear()}`}
-          className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+          className="intrada-btn intrada-btn-ust-menu">
           ← Listeye Dön
         </Link>
       </div>

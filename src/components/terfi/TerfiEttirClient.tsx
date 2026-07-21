@@ -2,8 +2,16 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import ExcelJS from 'exceljs'
-import type { TerfiEttirOnizlemeSatir } from '@/lib/terfi-ettir-hesap'
+import type { KazancPuan, TerfiEttirOnizlemeSatir, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import {
+  buildTerfiOgrenimOnizleme,
+  kazancLookupFromEntries,
+  TERFI_OGRENIM_OLAY_SECENEKLERI,
+  type TerfiOgrenimOlayTipi,
+} from '@/lib/terfi-ogrenim-ettir'
 import { terfiEttirKaydet, type TerfiEttirKayitSatir } from '@/app/(dashboard)/terfi/donem/actions'
+import Modal from '@/components/ui/Modal'
+import PersonelAramaSecim, { type PersonelAramaOge } from '@/components/bildirim/PersonelAramaSecim'
 
 interface Props {
   donemId: number
@@ -13,6 +21,10 @@ interface Props {
   initialRows: TerfiEttirOnizlemeSatir[]
   /** Dönem içinde terfi ettirilmiş kişilerin onceki→sonraki snapshot satırları */
   terfiEttirilenRows?: TerfiEttirOnizlemeSatir[]
+  kaynaklar: TerfiKaynak[]
+  kazancEntries: Array<{ key: string; puan: KazancPuan }>
+  tanimOgList: { id: number; isim: string }[]
+  memurPersoneller: PersonelAramaOge[]
   islemLoglari: { id: number; sicil_no: string; islem_tarihi: string; geri_alindi: boolean }[]
   onGeriAlTek: (donemId: number, logId: number) => Promise<{ hata?: string }>
   onGeriAlToplu: (donemId: number, logIds: number[]) => Promise<{ hata?: string; geriAlinan?: number }>
@@ -46,7 +58,8 @@ function puanGoster(v: string | null | undefined) {
   return v ?? '—'
 }
 
-function durumHucreClass(durum: string): string {
+function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
+  if (ogrenimTerfi) return 'bg-purple-600 !text-white'
   if (durum === 'Derece İlerledi') return 'bg-green-100 text-green-800'
   if (durum === 'Sadece Kademe') return 'bg-slate-100 text-slate-700'
   if (durum === 'Kıdem Yılı İlerledi') return 'bg-blue-100 text-blue-700'
@@ -56,7 +69,9 @@ function durumHucreClass(durum: string): string {
   return 'bg-slate-50 text-slate-600'
 }
 
-function durumExcelStyle(durum: string): Partial<ExcelJS.Style> {
+function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS.Style> {
+  if (ogrenimTerfi)
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9333EA' } }, font: { color: { argb: 'FFFFFFFF' } } }
   if (durum === 'Derece İlerledi')
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }, font: { color: { argb: 'FF166534' } } }
   if (durum === 'Sadece Kademe')
@@ -88,6 +103,10 @@ export default function TerfiEttirClient({
   terfiBit,
   initialRows,
   terfiEttirilenRows = [],
+  kaynaklar,
+  kazancEntries,
+  tanimOgList,
+  memurPersoneller,
   islemLoglari,
   onGeriAlTek,
   onGeriAlToplu,
@@ -98,6 +117,12 @@ export default function TerfiEttirClient({
   const [hata, setHata] = useState<string | null>(null)
   const [basari, setBasari] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [ogrenimModalAcik, setOgrenimModalAcik] = useState(false)
+  const [ogrenimSeciliSicil, setOgrenimSeciliSicil] = useState('')
+  const [ogrenimModalHata, setOgrenimModalHata] = useState<string | null>(null)
+
+  const kaynakBySicil = useMemo(() => new Map(kaynaklar.map(k => [k.sicil_no, k])), [kaynaklar])
+  const kazancLookup = useMemo(() => kazancLookupFromEntries(kazancEntries), [kazancEntries])
 
   const tumSecili = useMemo(() => {
     if (!satirlar.length) return false
@@ -141,6 +166,64 @@ export default function TerfiEttirClient({
         }
       }),
     )
+  }
+
+  const ogrenimAdayPersoneller = useMemo(() => {
+    const listede = new Set(satirlar.map(r => r.sicil_no))
+    const terfiEdilmis = new Set(
+      islemLoglari.filter(l => !l.geri_alindi).map(l => l.sicil_no),
+    )
+    return memurPersoneller.filter(
+      p => !listede.has(p.sicil_no) && !terfiEdilmis.has(p.sicil_no),
+    )
+  }, [memurPersoneller, satirlar, islemLoglari])
+
+  function ogrenimOlayDegistir(sicil: string, olay: TerfiOgrenimOlayTipi) {
+    const kaynak = kaynakBySicil.get(sicil)
+    if (!kaynak) return
+    const yeni = buildTerfiOgrenimOnizleme({ kaynak, olay, kazancLookup, tanimOgList })
+    if (!yeni) return
+    setSatirlar(prev => prev.map(r => (r.sicil_no === sicil ? yeni : r)))
+  }
+
+  function ogrenimListeyeEkle() {
+    setOgrenimModalHata(null)
+    if (!ogrenimSeciliSicil) {
+      setOgrenimModalHata('Lütfen bir personel seçin.')
+      return
+    }
+    if (satirlar.some(r => r.sicil_no === ogrenimSeciliSicil)) {
+      setOgrenimModalHata('Bu personel zaten listede.')
+      return
+    }
+    const kaynak = kaynakBySicil.get(ogrenimSeciliSicil)
+    if (!kaynak?.terfi_id) {
+      setOgrenimModalHata('Seçilen personelin terfi kaydı bulunamadı.')
+      return
+    }
+    const yeni = buildTerfiOgrenimOnizleme({
+      kaynak,
+      olay: 'hazirlik',
+      kazancLookup,
+      tanimOgList,
+    })
+    if (!yeni) {
+      setOgrenimModalHata('Önizleme oluşturulamadı (derece/kademe bilgisi eksik olabilir).')
+      return
+    }
+    setSatirlar(prev => [...prev, yeni].sort((a, b) =>
+      a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }),
+    ))
+    setSecili(prev => ({ ...prev, [ogrenimSeciliSicil]: true }))
+    setOgrenimModalAcik(false)
+    setOgrenimSeciliSicil('')
+    setBasari(`${yeni.ad_soyad ?? yeni.sicil_no} öğrenim terfi listesine eklendi.`)
+  }
+
+  function ogrenimModalKapat() {
+    setOgrenimModalAcik(false)
+    setOgrenimSeciliSicil('')
+    setOgrenimModalHata(null)
   }
 
   async function excelIndir() {
@@ -263,7 +346,7 @@ export default function TerfiEttirClient({
         { v: richOk(r.oht_eski, r.oht_yeni) },
         { v: richOk(r.yan_odeme_eski, r.yan_odeme_yeni) },
         { v: richOk(r.sds_eski, r.sds_yeni) },
-        { v: r.durum, style: durumExcelStyle(r.durum) },
+        { v: r.durum, style: durumExcelStyle(r.durum, r.ogrenim_terfi) },
       ]
 
       const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
@@ -340,6 +423,9 @@ export default function TerfiEttirClient({
       terfi_id: r.terfi_id!,
       sicil_no: r.sicil_no,
       ...r.payload,
+      ogrenim_terfi: r.ogrenim_terfi,
+      ogrenim_olay: r.ogrenim_olay,
+      yeni_ogrenim_turu: r.yeni_ogrenim_turu,
     }))
     startTransition(async () => {
       const res = await terfiEttirKaydet(donemId, payload)
@@ -396,6 +482,16 @@ export default function TerfiEttirClient({
             onClick={() => void excelIndir()}
             className="text-sm font-medium border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 shadow-sm">
             Excel indir
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOgrenimModalHata(null)
+              setOgrenimSeciliSicil('')
+              setOgrenimModalAcik(true)
+            }}
+            className="text-sm font-medium border border-purple-300 bg-purple-50 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-100 shadow-sm">
+            Öğrenim
           </button>
           <button
             type="button"
@@ -464,8 +560,13 @@ export default function TerfiEttirClient({
                   <span className="font-mono text-xs text-slate-500">{r.sicil_no}</span>
                   <br />
                   <span className="font-medium text-slate-800">{r.ad_soyad}</span>
-                  {r.ogrenim_turu ? (
-                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">Öğrenim: {r.ogrenim_turu}</p>
+                  {r.ogrenim_turu || r.yeni_ogrenim_turu ? (
+                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                      Öğrenim: {r.ogrenim_turu ?? '—'}
+                      {r.yeni_ogrenim_turu && r.yeni_ogrenim_turu !== r.ogrenim_turu
+                        ? ` → ${r.yeni_ogrenim_turu}`
+                        : ''}
+                    </p>
                   ) : null}
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700">{r.unvan_adi ?? '—'}</td>
@@ -564,11 +665,26 @@ export default function TerfiEttirClient({
                   />
                 </td>
                 <td className="px-2 py-2 align-top text-xs max-w-[10rem]">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${durumHucreClass(r.durum)}`}>
-                    <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-current opacity-60" />
-                    {r.durum}
-                  </span>
+                  {r.ogrenim_terfi ? (
+                    <select
+                      value={r.ogrenim_olay ?? 'hazirlik'}
+                      onChange={e => ogrenimOlayDegistir(r.sicil_no, e.target.value as TerfiOgrenimOlayTipi)}
+                      className={`w-full text-xs font-medium rounded-lg px-2 py-1.5 border-0 cursor-pointer ${durumHucreClass(r.durum, true)}`}
+                      style={{ color: '#ffffff' }}
+                    >
+                      {TERFI_OGRENIM_OLAY_SECENEKLERI.map(opt => (
+                        <option key={opt.value} value={opt.value} className="bg-white text-slate-800">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${durumHucreClass(r.durum)}`}>
+                      <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-current opacity-60" />
+                      {r.durum}
+                    </span>
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top text-center">
                   {aktifLogBySicil[r.sicil_no] ? (
@@ -589,6 +705,37 @@ export default function TerfiEttirClient({
           </tbody>
         </table>
       </div>
+
+      <Modal open={ogrenimModalAcik} onClose={ogrenimModalKapat} title="Öğrenim Terfi — Personel Seç" size="md">
+        <p className="text-sm text-slate-600 mb-4">
+          Statüsü memur olan aktif personel arasından seçim yapın. Seçilen personel terfi listesine eklenir; durum sütunundan
+          öğrenim olayını belirleyebilirsiniz.
+        </p>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Personel</label>
+        <PersonelAramaSecim
+          personeller={ogrenimAdayPersoneller}
+          value={ogrenimSeciliSicil}
+          onChange={setOgrenimSeciliSicil}
+          placeholder="Sicil veya ad soyad ile ara…"
+        />
+        {ogrenimModalHata && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg mt-3">{ogrenimModalHata}</p>
+        )}
+        <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={ogrenimModalKapat}
+            className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
+            İptal
+          </button>
+          <button
+            type="button"
+            onClick={ogrenimListeyeEkle}
+            className="text-sm font-medium text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700">
+            Listeye Ekle
+          </button>
+        </div>
+      </Modal>
 
       <div className="mt-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">

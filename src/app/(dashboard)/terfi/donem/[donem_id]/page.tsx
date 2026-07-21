@@ -102,7 +102,8 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
   const d = row as Tables<'terfi_donem'>
   const { bas, bit } = terfiTarihPenceresiOncekiDonem(d.baslangic_tarihi, d.bitis_tarihi)
 
-  const { kaynaklar, kazancLookup } = await yukleTerfiEttirKaynakVeKazanc(supabase)
+  const { kaynaklar, kazancLookup, kazancEntries, tanimOgList, memurPersoneller } =
+    await yukleTerfiEttirKaynakVeKazanc(supabase)
   const initialRows = buildTerfiEttirOnizleme(kaynaklar, bas, bit, kazancLookup)
   const { data: logRows } = await supabase
     .from('terfi_donem_islem_log')
@@ -251,6 +252,10 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
         terfiBit={bit}
         initialRows={initialRowsFinal}
         terfiEttirilenRows={terfiEttirilenSatirlar}
+        kaynaklar={kaynaklar}
+        kazancEntries={kazancEntries}
+        tanimOgList={tanimOgList}
+        memurPersoneller={memurPersoneller}
         islemLoglari={
           (logRows ?? []).map(x => ({
             id: x.id,

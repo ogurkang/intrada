@@ -2,8 +2,86 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-13T08:07:43.883Z",
+  "generatedAt": "2026-07-21T05:36:28.568Z",
   "commits": [
+    {
+      "hash": "6055826",
+      "fullHash": "60558265de1b5d443650d8e526f19505d7b7361b",
+      "date": "2026-07-20",
+      "subject": "feat(bildirim,iletisim): mehil/harcirah, SMS planlama ve log takibi"
+    },
+    {
+      "hash": "cb16994",
+      "fullHash": "cb16994b3b572bc2669c15e16007da17267c2394",
+      "date": "2026-07-16",
+      "subject": "fix(performans): Ek-5 yazdirma sigrasi ve amir tarihleri"
+    },
+    {
+      "hash": "3f10254",
+      "fullHash": "3f1025414980c30a0ce062d2bb264d60440e2a11",
+      "date": "2026-07-16",
+      "subject": "feat(performans): Ek-5 onizleme, A4 yazdirma ve org bazli amir eslemesi"
+    },
+    {
+      "hash": "6f94299",
+      "fullHash": "6f942992b8347818b7f3412b581b44df29a9a2ef",
+      "date": "2026-07-16",
+      "subject": "feat(performans): degerlendirme modulu, dashboard ve sifirlama"
+    },
+    {
+      "hash": "42e63b4",
+      "fullHash": "42e63b44705f9f30fddd208cab19f591482e2eb7",
+      "date": "2026-07-16",
+      "subject": "feat(kadro): detay iptal alani ve personel gecmisi; personel hareket kadro secimi"
+    },
+    {
+      "hash": "4f97522",
+      "fullHash": "4f9752287f87e096bffe92951cac4299990c1f09",
+      "date": "2026-07-16",
+      "subject": "fix(personel): yerleske adresi gorunurlugu ve tehlike raporu konumu"
+    },
+    {
+      "hash": "57db8d6",
+      "fullHash": "57db8d6519c774956fbbc4ce95ecce452e3169bd",
+      "date": "2026-07-16",
+      "subject": "feat(rapor): tehlikeli sinif listelerine mudurluk konum sutunu"
+    },
+    {
+      "hash": "bd24d29",
+      "fullHash": "bd24d2967ab08792caa582be472d684784947a5e",
+      "date": "2026-07-13",
+      "subject": "chore(sidebar): RMY/IVY/IZY alt menulerini gizle"
+    },
+    {
+      "hash": "c94292e",
+      "fullHash": "c94292e522230411f77dda32c64303825ed1a5a1",
+      "date": "2026-07-13",
+      "subject": "fix: hizmet birleştirme makam metni ve SH K override zincir taşıması"
+    },
+    {
+      "hash": "e2c3c4b",
+      "fullHash": "e2c3c4b857b95f869841d3cde537e4033bf63de0",
+      "date": "2026-07-13",
+      "subject": "feat(sosyal-hak): Ali 180 Haziran K=43 manuel override"
+    },
+    {
+      "hash": "b708979",
+      "fullHash": "b7089797fdc0d28aafc77db3d9b73f56af910cc4",
+      "date": "2026-07-13",
+      "subject": "feat(dashboard): kullanici ana sayfasina pasaport ve hizmet birlestirme kisayollari"
+    },
+    {
+      "hash": "d2ea0e1",
+      "fullHash": "d2ea0e180b341497d3381b035d5cbc05c20a1b88",
+      "date": "2026-07-13",
+      "subject": "fix(hizmet-birlestirme): onizleme ve Word'de yalniz tarih goster"
+    },
+    {
+      "hash": "f1b9f7e",
+      "fullHash": "f1b9f7e6a8026f9248a619fca53b18a080357365",
+      "date": "2026-07-13",
+      "subject": "feat(bildirim): Hizmet Birlestirme Islemleri formu ve Word ciktisi"
+    },
     {
       "hash": "a178e28",
       "fullHash": "a178e28ba7875f7b6c7c55b29a54c4cc20aec6c3",
@@ -165,84 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "3b421c3ff17a52eb4e44a9e9ebd9e0ab7ff36c32",
       "date": "2026-06-29",
       "subject": "feat(rapor): yerleske sayi raporuna Konum sutunu ekle"
-    },
-    {
-      "hash": "c163026",
-      "fullHash": "c1630264bccc0fe57fd90d0d88ead20c391f776d",
-      "date": "2026-06-29",
-      "subject": "feat(rapor): gorevlendirme turu personeli otomatik Dis say"
-    },
-    {
-      "hash": "64dca1d",
-      "fullHash": "64dca1dab97c98e3c6c1adecc5a25d1d31a7c86f",
-      "date": "2026-06-23",
-      "subject": "feat(izin): Izin Haklari ekranina 'Kullanilani Yeniden Hesapla' butonu"
-    },
-    {
-      "hash": "03468dd",
-      "fullHash": "03468dd8e9fc2b75d37a9461db90069b0cb0ae9b",
-      "date": "2026-06-23",
-      "subject": "refactor(iletisim/sms): grup mesaj gonderimini liste ekranina tasi"
-    },
-    {
-      "hash": "f83a26a",
-      "fullHash": "f83a26a319c56dad1ddb24b43929aee965d24d0f",
-      "date": "2026-06-23",
-      "subject": "feat(iletisim/sms): widget kart hub + ayri ekranlar ve grup mesajlari"
-    },
-    {
-      "hash": "cacbcd6",
-      "fullHash": "cacbcd6a660e8a7ed98bb8df1ec1015ae6fde037",
-      "date": "2026-06-22",
-      "subject": "SMS widgetlerini kart yapisi, ay sekmeleri ve dogum gunu zamanlamasiyla guncelle."
-    },
-    {
-      "hash": "a249f57",
-      "fullHash": "a249f5734f4e8adda76b19ebf37434a9b4b0caa4",
-      "date": "2026-06-22",
-      "subject": "SMS islemlerine dogum gunu/hos geldin bebek/tekil widgetleri ve sablon yonetimi ekle."
-    },
-    {
-      "hash": "179e13c",
-      "fullHash": "179e13c6c6e9a0dee66699ed513d7a95cd62a5a7",
-      "date": "2026-06-22",
-      "subject": "Iletisim Yonetimine SMS gonderim entegrasyonu (mesajpaketi.com) ekle."
-    },
-    {
-      "hash": "4a66752",
-      "fullHash": "4a667528c1652b3e6cc9ba1d5ef0317166844ac0",
-      "date": "2026-06-22",
-      "subject": "Adrese gore personel raporunu il/ilce/mahalle filtreli olarak yeniden kur."
-    },
-    {
-      "hash": "776467f",
-      "fullHash": "776467f41cd1e7af6fd9e0ae4e875dbea6b3b456",
-      "date": "2026-06-19",
-      "subject": "Adres secimde il degisimi stale state nedeniyle Sakarya'ya donmesini duzelt."
-    },
-    {
-      "hash": "4757014",
-      "fullHash": "4757014d753238ce2c49c5f7d98a50bc6c9430e0",
-      "date": "2026-06-18",
-      "subject": "Adres duzenlemede adresi tanimli personeli kalici olarak listeden cikar."
-    },
-    {
-      "hash": "5b529e7",
-      "fullHash": "5b529e78d059721fd54bc0c911feb9afa960d0fa",
-      "date": "2026-06-18",
-      "subject": "Adres duzenlemede kaydedilen personeli listeden cikar."
-    },
-    {
-      "hash": "d649130",
-      "fullHash": "d649130ab1dc4e057ed6ec1594fb68211ad1362d",
-      "date": "2026-06-17",
-      "subject": "Adres duzenleme ekrani, egitim ay etiketi ve personel gecmis yetkisi ekle."
-    },
-    {
-      "hash": "772fdd6",
-      "fullHash": "772fdd68dd6037b262bcd328caede49fe9142eee",
-      "date": "2026-06-17",
-      "subject": "Adres mahalle tanimlari, Excel ice aktarim ve personel adres secimi ekle."
     }
   ]
 }

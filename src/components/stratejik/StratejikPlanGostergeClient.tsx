@@ -175,7 +175,7 @@ export default function StratejikPlanGostergeClient({
           <p className="text-sm text-slate-500 mt-1">Bu faaliyete bağlı göstergeleri yönetebilirsiniz.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={yeniAc} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
+          <button onClick={yeniAc} className="intrada-btn intrada-btn-ekle">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>

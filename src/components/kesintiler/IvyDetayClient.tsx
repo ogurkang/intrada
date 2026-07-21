@@ -409,7 +409,7 @@ export default function IvyDetayClient({ donemId }: Props) {
             type="button"
             onClick={kaydet}
             disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="intrada-btn intrada-btn-duzenle"
           >
             Seçimleri Kaydet
           </button>
@@ -457,7 +457,7 @@ export default function IvyDetayClient({ donemId }: Props) {
             <button
               type="button"
               onClick={() => setOzetAcik(false)}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              className="intrada-btn intrada-btn-ust-menu"
             >
               Kapat
             </button>

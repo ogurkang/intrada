@@ -37,7 +37,7 @@ export default async function TehlikeSiniflarinaGoreMudurlukPage({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700">← Rapor Yönetimi</Link>
+          <Link href="/rapor" className="intrada-btn intrada-btn-ust-menu">← Rapor Yönetimi</Link>
           <h1 className="text-2xl font-bold text-slate-800 mt-1">Tehlike Sınıflarına Göre Müdürlük Raporu</h1>
           <p className="text-sm text-slate-600">Tehlike sınıfına göre müdürlük adedi özeti.</p>
         </div>

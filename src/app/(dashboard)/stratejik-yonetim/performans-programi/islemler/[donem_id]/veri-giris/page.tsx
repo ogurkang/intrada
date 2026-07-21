@@ -115,7 +115,7 @@ export default async function PerformansProgramiVeriGirisPage({
         </div>
         <Link
           href={`/stratejik-yonetim/performans-programi/islemler/${yil}`}
-          className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700"
+          className="intrada-btn intrada-btn-ekle"
         >
           Faaliyet Ekle
         </Link>

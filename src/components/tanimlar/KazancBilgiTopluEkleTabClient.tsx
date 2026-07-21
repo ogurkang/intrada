@@ -282,7 +282,7 @@ export default function KazancBilgiTopluEkleTabClient({
             type="button"
             disabled={isPending}
             onClick={kaydet}
-            className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+            className="intrada-btn intrada-btn-kaydet px-5 py-2.5 disabled:opacity-50"
           >
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>

@@ -90,7 +90,7 @@ export default async function YerelBilgiTanimlarHubPage() {
       <div className="mb-6">
         <Link
           href="/yerel-bilgi"
-          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+          className="intrada-btn intrada-btn-ust-menu mb-2"
         >
           ← Yerel Bilgi Yönetimi
         </Link>

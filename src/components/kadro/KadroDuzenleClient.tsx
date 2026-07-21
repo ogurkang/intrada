@@ -68,7 +68,7 @@ function PersonelSecici({
         <div className="flex items-center justify-between p-2.5 border border-green-200 bg-green-50 rounded-lg text-sm">
           <span className="font-medium text-slate-800">{personeller.find(p => p.sicil_no === secili)?.ad_soyad ?? secili}</span>
           {!disabled && (
-            <button type="button" onClick={() => { setSecili(''); setQ('') }} className="text-xs text-slate-500 hover:text-slate-700">Değiştir</button>
+            <button type="button" onClick={() => { setSecili(''); setQ('') }} className="intrada-btn intrada-btn-duzenle text-xs px-2 py-1">Değiştir</button>
           )}
         </div>
       ) : (
@@ -310,7 +310,7 @@ export default function KadroDuzenleClient({
             <Link href={kadroDetayHref(row)}
               className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">İptal</Link>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">
+              className="intrada-btn intrada-btn-kaydet">
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>

@@ -16,6 +16,14 @@ import {
   performansKadroUygun,
   performansMudurlukEslesir,
 } from '@/lib/performans-kadro'
+import {
+  performansAmirErisimOlustur,
+  performansMudurlukErisimiVar,
+  performansMudurlukListesiFiltrele,
+  type PerformansAmirErisim,
+} from '@/lib/performans-amir-erisim'
+import type { OrgBirimSatir } from '@/lib/performans-amir'
+import { performansAmirEsle } from '@/lib/performans-amir'
 
 export default async function PerformansDonemDashboardPage({
   params,
@@ -34,6 +42,17 @@ export default async function PerformansDonemDashboardPage({
   if (!user) notFound()
   const access = await getAppAccess(supabase, user.id)
   const admin = isAdminLike(access)
+
+  let currentSicil: string | null =
+    access.mode === 'kullanici' ? access.sicilNo : null
+  if (admin) {
+    const { data: profil } = await supabase
+      .from('app_profiles')
+      .select('sicil_no')
+      .eq('id', user.id)
+      .maybeSingle()
+    currentSicil = profil?.sicil_no ? String(profil.sicil_no) : currentSicil
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
@@ -94,7 +113,7 @@ export default async function PerformansDonemDashboardPage({
   const { data: rows } = await db
     .from('performans_degerlendirme')
     .select(
-      'id, sicil_no, mudurluk_adi, durum, tek_amir, puan_amir1, puan_amir2',
+      'id, sicil_no, mudurluk_adi, durum, tek_amir, puan_amir1, puan_amir2, amir1_sicil, amir2_sicil',
     )
     .eq('donem_id', donemId)
     .order('sicil_no')
@@ -116,6 +135,8 @@ export default async function PerformansDonemDashboardPage({
     tek_amir: boolean
     puan_amir1: number | null
     puan_amir2: number | null
+    amir1_sicil: string | null
+    amir2_sicil: string | null
   }) => {
     const kadro = kadroIndeks.get(r.sicil_no)
     return {
@@ -128,17 +149,85 @@ export default async function PerformansDonemDashboardPage({
       kadro_mudurlugu: kadro?.kadro_mudurlugu ?? null,
       puan_amir1: r.puan_amir1,
       puan_amir2: r.puan_amir2,
+      amir1_sicil: r.amir1_sicil,
+      amir2_sicil: r.amir2_sicil,
     }
   })
 
-  const ilerleme = donemIlerlemeOzet(liste)
-  const mudurlukler = mudurlukSatirlariOlustur(mudurlukAdlari, liste, performansMudurlukEslesir)
+  let amirErisim: PerformansAmirErisim | null = null
+  let birimler: OrgBirimSatir[] = []
+
+  const { data: aktifOrg } = await supabase
+    .from('tanim_organizasyon')
+    .select('id')
+    .eq('aktif', true)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (aktifOrg?.id) {
+    const { data: birimRaw } = await db
+      .from('tanim_organizasyon_birim')
+      .select(
+        'id, birim_turu, mudurluk_id, personel_sicil_no, ust_birim_id, mudurluk:tanim_mudurluk(id, mudurluk_adi)',
+      )
+      .eq('organizasyon_id', aktifOrg.id)
+    birimler = (birimRaw ?? []) as OrgBirimSatir[]
+  }
+
+  // Amir atamalarını canlı çöz (DB senkronu gecikmiş olsa bile düğmeler doğru kalsın)
+  if (birimler.length > 0) {
+    for (const r of liste) {
+      const unvan = kadroUnvanMap.get(r.sicil_no)
+      const esleme = performansAmirEsle({
+        sicilNo: r.sicil_no,
+        unvan: unvan?.gorev_unvani || unvan?.kadro_unvani,
+        mudurlukAdi: r.mudurluk_adi,
+        birimler,
+        kadroRows: kadroRaw ?? [],
+      })
+      r.amir1_sicil = esleme.amir1_sicil
+      r.amir2_sicil = esleme.tek_amir ? null : esleme.amir2_sicil
+      r.tek_amir = esleme.tek_amir
+    }
+  }
+
+  if (!admin) {
+    if (!currentSicil) notFound()
+
+    amirErisim = performansAmirErisimOlustur(
+      currentSicil,
+      birimler,
+      kadroRaw ?? [],
+      liste,
+    )
+    if (!amirErisim.amir1Yetkisi && !amirErisim.amir2Yetkisi) notFound()
+  }
+
+  const filtreliListe =
+    amirErisim == null
+      ? liste
+      : liste.filter(r => {
+          const mud = r.mudurluk_adi ?? r.gorev_mudurlugu ?? r.kadro_mudurlugu ?? ''
+          if (!mud) return false
+          return performansMudurlukErisimiVar(mud, amirErisim!)
+        })
+
+  const ilerleme = donemIlerlemeOzet(filtreliListe)
+  const gorulebilirMudurlukAdlari =
+    amirErisim == null
+      ? mudurlukAdlari
+      : performansMudurlukListesiFiltrele(mudurlukAdlari, amirErisim)
+  const mudurlukler = mudurlukSatirlariOlustur(gorulebilirMudurlukAdlari, filtreliListe, performansMudurlukEslesir)
 
   const seciliMudurluk = sp.mudurluk?.trim() || null
+  if (seciliMudurluk && amirErisim && !performansMudurlukErisimiVar(seciliMudurluk, amirErisim)) {
+    notFound()
+  }
   let personeller: PersonelSatir[] = []
 
   if (seciliMudurluk) {
-    const filtreli = liste.filter(r =>
+    const filtreli = filtreliListe.filter(r =>
       performansMudurlukEslesir(seciliMudurluk, {
         mudurluk_adi: r.mudurluk_adi,
         gorev_mudurlugu: r.gorev_mudurlugu,
@@ -158,6 +247,8 @@ export default async function PerformansDonemDashboardPage({
         puan_amir2: r.puan_amir2 ?? null,
         tek_amir: r.tek_amir,
         durum: r.durum,
+        amir1_sicil: r.amir1_sicil ?? null,
+        amir2_sicil: r.amir2_sicil ?? null,
       }
     })
   }
@@ -170,6 +261,7 @@ export default async function PerformansDonemDashboardPage({
       personeller={personeller}
       seciliMudurluk={seciliMudurluk}
       isAdmin={admin}
+      amirErisim={amirErisim}
     />
   )
 }

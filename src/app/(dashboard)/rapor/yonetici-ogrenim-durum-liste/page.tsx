@@ -46,7 +46,7 @@ export default async function YoneticiOgrenimDurumListePage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="max-w-4xl">
-          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
+          <Link href="/rapor" className="intrada-btn intrada-btn-ust-menu mb-2">
             ← Rapor Yönetimi
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Yönetici Öğrenim Durum Listesi</h1>
@@ -57,7 +57,7 @@ export default async function YoneticiOgrenimDurumListePage() {
         </div>
         <Link
           href="/api/rapor/yonetici-ogrenim-durum-liste/excel"
-          className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+          className="intrada-btn intrada-btn-excel"
         >
           Excel İndir
         </Link>

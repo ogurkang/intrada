@@ -89,31 +89,36 @@ export default function PerformansFormClient({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <Link href={geriHref} className="text-sm text-slate-500 hover:text-slate-700">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {degerlendirme.ad_soyad}{' '}
+            <span className="text-base font-normal text-slate-500">
+              ({degerlendirme.sicil_no})
+            </span>
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            {degerlendirme.donem_yil} · {PERF_FORM_ETIKET[degerlendirme.form_tipi]} ·{' '}
+            {rol === 'amir1' ? '1. amir' : '2. amir'}
+            {degerlendirme.tek_amir ? ' (tek amir)' : ''}
+          </p>
+          {degerlendirme.iade_notu && (
+            <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              İade notu: {degerlendirme.iade_notu}
+            </p>
+          )}
+          {adminVekalet && (
+            <p className="mt-2 text-sm text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+              Yönetici vekaleti: {rol === 'amir1' ? '1.' : '2.'} amir adına değerlendirme yapıyorsunuz.
+            </p>
+          )}
+        </div>
+        <Link
+          href={geriHref}
+          className="intrada-btn intrada-btn-ust-menu shrink-0"
+        >
           ← Geri
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800 mt-2">
-          {degerlendirme.ad_soyad}{' '}
-          <span className="text-base font-normal text-slate-500">
-            ({degerlendirme.sicil_no})
-          </span>
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          {degerlendirme.donem_yil} · {PERF_FORM_ETIKET[degerlendirme.form_tipi]} ·{' '}
-          {rol === 'amir1' ? '1. amir' : '2. amir'}
-          {degerlendirme.tek_amir ? ' (tek amir)' : ''}
-        </p>
-        {degerlendirme.iade_notu && (
-          <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            İade notu: {degerlendirme.iade_notu}
-          </p>
-        )}
-        {adminVekalet && (
-          <p className="mt-2 text-sm text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
-            Yönetici vekaleti: {rol === 'amir1' ? '1.' : '2.'} amir adına değerlendirme yapıyorsunuz.
-          </p>
-        )}
       </div>
 
       {hata && (
@@ -165,12 +170,14 @@ export default function PerformansFormClient({
               type="button"
               disabled={pending}
               onClick={() =>
-                run(() =>
-                  performansAmir1Kaydet({
-                    degerlendirmeId: degerlendirme.id,
-                    puanlar,
-                    gonder: false,
-                  }),
+                run(
+                  () =>
+                    performansAmir1Kaydet({
+                      degerlendirmeId: degerlendirme.id,
+                      puanlar,
+                      gonder: false,
+                    }),
+                  geriHref,
                 )
               }
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
@@ -191,7 +198,7 @@ export default function PerformansFormClient({
                   geriHref,
                 )
               }
-              className="rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+              className="intrada-btn intrada-btn-kaydet"
             >
               {degerlendirme.tek_amir ? 'Kaydet ve tamamla' : 'Kaydet · 2. amire gönder'}
             </button>

@@ -65,7 +65,7 @@ export default function StatuyeGoreSayiClient({
         <div>
           <Link
             href="/rapor"
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
+            className="intrada-btn intrada-btn-ust-menu mb-2"
           >
             ← Rapor Yönetimi
           </Link>
@@ -76,7 +76,7 @@ export default function StatuyeGoreSayiClient({
           {aktif && (
             <Link
               href={`/api/rapor/statuye-gore-sayi/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
-              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+              className="intrada-btn intrada-btn-excel"
             >
               Excel İndir ({aktif.label})
             </Link>

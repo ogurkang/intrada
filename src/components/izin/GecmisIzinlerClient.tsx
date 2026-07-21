@@ -181,7 +181,7 @@ export default function GecmisIzinlerClient() {
           <button
             type="button"
             disabled={rows.length === 0}
-            className="rounded-lg bg-slate-800 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="intrada-btn intrada-btn-kaydet disabled:opacity-50 disabled:cursor-not-allowed"
             title="Ön izleme onayı sonrası kaydetme için kullanılacak"
           >
             Sisteme İşle

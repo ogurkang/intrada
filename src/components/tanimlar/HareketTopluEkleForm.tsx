@@ -116,7 +116,7 @@ export default function HareketTopluEkleForm({ saltOkunur = false, onBasarili }:
           type="button"
           disabled={isPending || saltOkunur}
           onClick={topluKaydet}
-          className="text-sm bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50"
+          className="intrada-btn intrada-btn-kaydet disabled:opacity-50"
         >
           {isPending ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
