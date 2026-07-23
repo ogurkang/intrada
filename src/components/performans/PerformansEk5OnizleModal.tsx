@@ -54,7 +54,7 @@ export default function PerformansEk5OnizleModal({
             </div>
             <div>
               <span className="text-slate-500">Tarih:</span>{' '}
-              <span>……/……/{veri.donem_yil}</span>
+              <span>{veri.islem_tarihi ?? `……/……/${veri.donem_yil}`}</span>
             </div>
             <div>
               <span className="text-slate-500">T.C. Kimlik No:</span>{' '}
@@ -166,7 +166,7 @@ export default function PerformansEk5OnizleModal({
           <div className="imza-grid grid gap-4 sm:grid-cols-2 text-sm border-t border-slate-200 pt-4">
             <div>
               <p className="imza-baslik font-semibold mb-2">1. Amir</p>
-              <p>Ünvanı: …………………</p>
+              <p>Ünvanı: {veri.amir1_unvan ?? '…………………'}</p>
               <p className="mt-2">Adı ve Soyadı: {veri.amir1_ad ?? '…………………'}</p>
               <p className="mt-4">İmza: …………………</p>
               <p className="mt-2">Tarih: {veri.amir1_tarih ?? '—'}</p>
@@ -174,7 +174,7 @@ export default function PerformansEk5OnizleModal({
             {!veri.tek_amir && (
               <div>
                 <p className="imza-baslik font-semibold mb-2">2. Amir</p>
-                <p>Ünvanı: …………………</p>
+                <p>Ünvanı: {veri.amir2_unvan ?? '…………………'}</p>
                 <p className="mt-2">Adı ve Soyadı: {veri.amir2_ad ?? '…………………'}</p>
                 <p className="mt-4">İmza: …………………</p>
                 <p className="mt-2">Tarih: {veri.amir2_tarih ?? '—'}</p>

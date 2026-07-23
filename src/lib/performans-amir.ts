@@ -12,11 +12,17 @@
  * - BY altındaki müdürlük müdürü: BY → başkan
  */
 import {
+  mudurlukBazEslesir,
   mudurlukEslesmeBaz,
   organizasyonPersonelIndeksKur,
+  unvanMudurEslesmeBaz,
   type BirimTuru,
   type KadroUnvanSatir,
 } from '@/lib/organizasyon-birim'
+import {
+  kadroGorevUnvani,
+  performansMudurUnvaniMi,
+} from '@/lib/performans-unvan'
 import { trNormalize } from '@/lib/turkce-search'
 import { formTipiFromUnvan, type PerformansFormTipi } from '@/lib/performans'
 
@@ -50,26 +56,30 @@ function amirSonuc(
   }
 }
 
-function mudurSicilForBaz(
+export function mudurSicilForBaz(
   baz: string,
   kadroRows: Array<KadroUnvanSatir & { asil?: string | null; vekil?: string | null }>,
 ): string | null {
-  const hedef = trNormalize(baz)
+  const hedef = baz.trim()
   if (!hedef) return null
   for (const r of kadroRows) {
-    const unvan = trNormalize(String(r.kadro_unvani ?? r.gorev_unvani ?? ''))
-    if (!unvan.includes('muduru')) continue
-    if (unvan.includes('yardimci')) continue
-    const idx = unvan.indexOf('muduru')
-    const ubaz = unvan.slice(0, idx).trim()
-    if (ubaz !== hedef && !ubaz.includes(hedef) && !hedef.includes(ubaz)) continue
-    const sicil = String(r.asil ?? r.vekil ?? '').trim()
-    if (sicil) return sicil
+    for (const uv of [r.gorev_unvani, r.kadro_unvani]) {
+      const u = String(uv ?? '').trim()
+      if (!u || !performansMudurUnvaniMi(u)) continue
+      const ubaz = unvanMudurEslesmeBaz(u)
+      const mudBaz = mudurlukEslesmeBaz(r.gorev_mudurlugu ?? r.kadro_mudurlugu)
+      if (!mudurlukBazEslesir(hedef, ubaz) && !mudurlukBazEslesir(hedef, mudBaz)) continue
+      const vekil = String(r.vekil ?? '').trim()
+      const asil = String(r.asil ?? '').trim()
+      const sicil = vekil || asil
+      if (sicil) return sicil
+    }
   }
   return null
 }
 
-function baskanSicil(
+/** Organizasyon / kadro üzerinden belediye başkanı sicil_no. */
+export function baskanSicilBul(
   birimler: OrgBirimSatir[],
   kadroRows: Array<KadroUnvanSatir & { asil?: string | null; vekil?: string | null }>,
 ): string | null {
@@ -129,7 +139,7 @@ export function performansAmirEsle(params: {
 }): AmirEslemeSonucu {
   const formTipi = formTipiFromUnvan(params.unvan)
   void organizasyonPersonelIndeksKur(params.kadroRows)
-  const baskan = baskanSicil(params.birimler, params.kadroRows)
+  const baskan = baskanSicilBul(params.birimler, params.kadroRows)
 
   if (formTipi === 'baskan') {
     return amirSonuc(formTipi, params.sicilNo, null, true)

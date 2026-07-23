@@ -8,26 +8,62 @@ export const BIRIM_TURU_ETIKET: Record<BirimTuru, string> = {
   baskan_yardimcisi: 'Belediye Başkan Yardımcısı',
 }
 
-/** Müdürlük adından eşleştirme tabanı: "... Müdürlüğü"/"... Müdürü" ekleri sökülür. */
-export function mudurlukEslesmeBaz(mudurlukAdi: string | null | undefined): string {
-  const n = trNormalize(mudurlukAdi)
-  return n
-    .replace(/\s*mudurlugu\b.*$/, '')
-    .replace(/\s*muduru\b.*$/, '')
+/** Eşleştirmede "ve" bağlacı ve fazla boşluk farklarını yok sayar. */
+export function eslesmeBazNorm(s: string): string {
+  return s
+    .replace(/\s+ve\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-/** Unvan metninden "müdürü" öncesi taban. */
-function unvanMudurBaz(unvanNorm: string): string {
-  const idx = unvanNorm.indexOf('muduru')
+/** Müdürlük adından eşleştirme tabanı: "... Müdürlüğü"/"... Müdürü" ekleri sökülür. */
+export function mudurlukEslesmeBaz(mudurlukAdi: string | null | undefined): string {
+  const n = trNormalize(mudurlukAdi)
+  return eslesmeBazNorm(
+    n
+      .replace(/\s*mudurlugu\b.*$/, '')
+      .replace(/\s*muduru\b.*$/, '')
+      .trim(),
+  )
+}
+
+/** Unvan metninden "müdürü/müdürlüğü" öncesi taban. */
+export function unvanMudurEslesmeBaz(unvan: string | null | undefined): string {
+  const unvanNorm = trNormalize(unvan ?? '')
+  let idx = unvanNorm.indexOf('muduru')
+  if (idx < 0) idx = unvanNorm.indexOf('mudurlugu')
   if (idx < 0) return ''
-  return unvanNorm.slice(0, idx).trim()
+  return eslesmeBazNorm(unvanNorm.slice(0, idx))
+}
+
+/** İki müdürlük tabanı eşleşiyor mu (ve/boşluk farkları yok sayılır). */
+export function mudurlukBazEslesir(a: string, b: string): boolean {
+  const na = eslesmeBazNorm(trNormalize(a))
+  const nb = eslesmeBazNorm(trNormalize(b))
+  if (!na || !nb) return false
+  return na === nb || na.includes(nb) || nb.includes(na)
+}
+
+/** Unvan metninden "müdürü/müdürlüğü" öncesi taban. */
+function unvanMudurBaz(unvanNorm: string): string {
+  let idx = unvanNorm.indexOf('muduru')
+  if (idx < 0) idx = unvanNorm.indexOf('mudurlugu')
+  if (idx < 0) return ''
+  return eslesmeBazNorm(unvanNorm.slice(0, idx))
+}
+
+function mudurBazEkle(map: Map<string, Set<string>>, baz: string, ad: string) {
+  if (!baz) return
+  if (!map.has(baz)) map.set(baz, new Set())
+  map.get(baz)!.add(ad)
 }
 
 export interface KadroUnvanSatir {
   durumu?: string | null
   kadro_unvani?: string | null
   gorev_unvani?: string | null
+  kadro_mudurlugu?: string | null
+  gorev_mudurlugu?: string | null
   asil?: string | null
   vekil?: string | null
   asil_calisan?: { ad_soyad: string | null } | null
@@ -95,11 +131,12 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
         baskanlar.add(ad)
         continue
       }
-      if (n.includes('muduru')) {
+      if (n.includes('muduru') || n.includes('mudurlugu')) {
         const baz = unvanMudurBaz(n)
-        if (!baz) continue
-        if (!mudurByBaz.has(baz)) mudurByBaz.set(baz, new Set())
-        mudurByBaz.get(baz)!.add(ad)
+        mudurBazEkle(mudurByBaz, baz, ad)
+        for (const mudRaw of [r.gorev_mudurlugu, r.kadro_mudurlugu]) {
+          mudurBazEkle(mudurByBaz, mudurlukEslesmeBaz(mudRaw), ad)
+        }
       }
     }
   }

@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
+import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
+import { resolvePerformansOturum } from '@/lib/performans-oturum'
+import { performansDegerlendirmeYapabilir } from '@/lib/performans-degerlendirme-erisim'
+import PerformansDegerlendirmeYapilamazMesaji from '@/components/performans/PerformansDegerlendirmeYapilamazMesaji'
 import PerformansDonemClient from '@/components/performans/PerformansDonemClient'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import {
@@ -13,7 +17,16 @@ export default async function PerformansDegerlendirmePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
-  const saltOkunur = access.mode === 'kullanici'
+  const hayaletDurum = user ? await hayaletProfilDurumCoz(supabase, access) : null
+  const oturum = user
+    ? await resolvePerformansOturum(supabase, user.id, access, hayaletDurum)
+    : { sicil: null, adminBypass: true, hayaletAktif: false }
+  const saltOkunur = access.mode === 'kullanici' || hayaletDurum?.aktif === true
+
+  if (!oturum.adminBypass && oturum.sicil) {
+    const yapabilir = await performansDegerlendirmeYapabilir(supabase, oturum.sicil)
+    if (!yapabilir) return <PerformansDegerlendirmeYapilamazMesaji />
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any

@@ -7,13 +7,21 @@ import Modal from '@/components/ui/Modal'
 import PerformansEk5OnizleModal from '@/components/performans/PerformansEk5OnizleModal'
 import {
   performansDegerlendirmeSifirla,
+  performansDegerlendirmeAuditLoglari,
   performansEk5OnizleVeri,
   type PerformansEk5OnizleVeri,
 } from '@/app/(dashboard)/performans/actions'
-import { donemIlerlemeOzet } from '@/lib/performans-istatistik'
-import type { MudurlukSatir } from '@/lib/performans-istatistik'
+import { donemIlerlemeOzet, degerlendirmeTamamlandi, type MudurlukSatir } from '@/lib/performans-istatistik'
 import { performansPuanBandi } from '@/lib/performans'
+import { performansSatirDurumMetni, type PerformansIzleyiciRol } from '@/lib/performans-durum-metni'
 import type { PerformansAmirErisim } from '@/lib/performans-amir-erisim'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import {
+  performansDegAuditDiffSatirlari,
+  performansDegAuditDegerGoster,
+} from '@/lib/performans-degerlendirme-audit'
+import type { Tables } from '@/types/database'
 
 export type PersonelSatir = {
   siraNo: number
@@ -21,11 +29,11 @@ export type PersonelSatir = {
   sicil_no: string
   ad_soyad: string
   kadro_unvani: string | null
-  gorev_unvani: string | null
   puan_amir1: number | null
   puan_amir2: number | null
   tek_amir: boolean
   durum: string
+  iade_notu: string | null
   amir1_sicil: string | null
   amir2_sicil: string | null
 }
@@ -77,6 +85,64 @@ function GozIkon({ className }: { className?: string }) {
   )
 }
 
+function GeriLink({
+  href,
+  label,
+  onClick,
+}: {
+  href?: string
+  label: string
+  onClick?: () => void
+}) {
+  const cls =
+    'px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5 shrink-0'
+  const icon = (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l-7-7 7-7" />
+    </svg>
+  )
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={cls}>
+        {icon}
+        {label}
+      </button>
+    )
+  }
+  return (
+    <Link href={href ?? '#'} className={cls}>
+      {icon}
+      {label}
+    </Link>
+  )
+}
+
+function YildizDegerlendirmeButon({
+  href,
+  title,
+  onClick,
+}: {
+  href?: string
+  title: string
+  onClick?: () => void
+}) {
+  const cls =
+    'inline-flex h-7 w-7 items-center justify-center rounded-md border border-amber-300 text-amber-600 hover:bg-amber-50 text-sm'
+  const inner = <span aria-hidden>★</span>
+  if (href) {
+    return (
+      <Link href={href} title={title} className={cls}>
+        {inner}
+      </Link>
+    )
+  }
+  return (
+    <button type="button" title={title} onClick={onClick} className={cls}>
+      {inner}
+    </button>
+  )
+}
+
 function GeriAlIkon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -112,6 +178,27 @@ export default function PerformansDonemDashboardClient({
   const [onizleVeri, setOnizleVeri] = useState<PerformansEk5OnizleVeri | null>(null)
   const [onizleHata, setOnizleHata] = useState<string | null>(null)
   const [onizlePending, startOnizle] = useTransition()
+  const [amir2UyariAcik, setAmir2UyariAcik] = useState(false)
+  const [auditAcik, setAuditAcik] = useState(false)
+  const [auditLoglar, setAuditLoglar] = useState<Tables<'personel_audit_log'>[]>([])
+  const [auditHedef, setAuditHedef] = useState<PersonelSatir | null>(null)
+  const [auditPending, startAudit] = useTransition()
+
+  function amir2Degerlendirebilir(p: PersonelSatir): boolean {
+    return p.durum === 'amir1_gonderildi'
+  }
+
+  function personelSatirSinifi(p: PersonelSatir): string {
+    const taban = 'border-t border-slate-100'
+    if (degerlendirmeTamamlandi(p)) {
+      return `${taban} bg-emerald-50/60`
+    }
+    // Yalnızca 2. amirden 1. amire iade edilmiş; yeniden gönderilince (amir1_gonderildi) varsayılan renk
+    if (p.durum === 'iade') {
+      return `${taban} bg-amber-50/70`
+    }
+    return taban
+  }
 
   const sifirlaYapilabilir = isAdmin && donem.durum !== 'Yayınlandı'
   const degerlendirmeGoster = isAdmin || amirErisim != null
@@ -128,6 +215,27 @@ export default function PerformansDonemDashboardClient({
     if (isAdmin) return true
     if (!currentSicil || p.tek_amir) return false
     return String(p.amir2_sicil ?? '').trim() === currentSicil
+  }
+
+  function izleyiciRol(p: PersonelSatir): PerformansIzleyiciRol {
+    if (isAdmin) return 'diger'
+    if (currentSicil && String(p.amir2_sicil ?? '').trim() === currentSicil && !p.tek_amir) {
+      return 'amir2'
+    }
+    if (currentSicil && String(p.amir1_sicil ?? '').trim() === currentSicil) {
+      return 'amir1'
+    }
+    return 'diger'
+  }
+
+  function auditAc(degerlendirmeId: number, hedef: PersonelSatir) {
+    setAuditHedef(hedef)
+    setAuditAcik(true)
+    setAuditLoglar([])
+    startAudit(async () => {
+      const res = await performansDegerlendirmeAuditLoglari(degerlendirmeId)
+      if (!res.hata) setAuditLoglar(res.loglar ?? [])
+    })
   }
 
   function kayitQuery(rol: 'amir1' | 'amir2', vekalet: boolean): string {
@@ -176,32 +284,29 @@ export default function PerformansDonemDashboardClient({
             {donem.sira_no ? `${donem.sira_no} · ` : ''}
             {tarih(donem.baslangic_tarihi)} – {tarih(donem.bitis_tarihi)} · {donem.durum}
           </p>
+          {isAdmin && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2 max-w-3xl">
+              Yönetici erişimi: tüm müdürlükler ve dönem kayıtları görünür; amir filtreleri uygulanmaz. 1./2. amir vekalet değerlendirmesi yapabilirsiniz.
+            </p>
+          )}
           {!isAdmin && amirErisim && (
             <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mt-2 max-w-3xl">
               {amirErisim.amir1Yetkisi && amirErisim.amir2Yetkisi
-                ? '1. amir olarak müdürlüğünüzdeki personeli, 2. amir olarak bağlı müdürlüklerdeki personeli değerlendirebilirsiniz.'
+                ? '1. amir veya 2. amir olduğunuz personeli değerlendirebilirsiniz. Müdürlük listelerinde yalnızca kadro müdürlüğüne göre memur personel gösterilir.'
                 : amirErisim.amir1Yetkisi
-                  ? 'Yalnızca sorumlu olduğunuz müdürlükteki personeli 1. amir olarak değerlendirebilirsiniz.'
-                  : 'Bağlı müdürlüklerdeki personeli 2. amir olarak değerlendirebilirsiniz.'}
+                  ? 'Yalnızca 1. amir olarak değerlendirebileceğiniz, kadro müdürlüğünüzdeki memur personel listelenir.'
+                  : 'Yalnızca 2. amir olarak değerlendirebileceğiniz personel listelenir.'}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {personelGorunumu ? (
-            <button
-              type="button"
+            <GeriLink
+              label="Geri"
               onClick={() => router.push(`/performans/degerlendirme/${donem.id}`)}
-              className="intrada-btn intrada-btn-ust-menu"
-            >
-              ← Müdürlük listesine dön
-            </button>
+            />
           ) : (
-            <Link
-              href="/performans/degerlendirme"
-              className="intrada-btn intrada-btn-ust-menu"
-            >
-              ← Dönem listesi
-            </Link>
+            <GeriLink href="/performans/degerlendirme" label="Geri" />
           )}
         </div>
       </div>
@@ -264,7 +369,13 @@ export default function PerformansDonemDashboardClient({
 
       {personelGorunumu && seciliMudurluk && (
         <>
-          <h2 className="text-lg font-semibold text-slate-800">{seciliMudurluk}</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-800">{seciliMudurluk}</h2>
+            <GeriLink
+              label="Geri"
+              onClick={() => router.push(`/performans/degerlendirme/${donem.id}`)}
+            />
+          </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="min-w-full text-sm">
@@ -274,29 +385,35 @@ export default function PerformansDonemDashboardClient({
                   <th className="px-4 py-3 font-semibold w-24">Sicil No</th>
                   <th className="px-4 py-3 font-semibold">Adı Soyadı</th>
                   <th className="px-4 py-3 font-semibold">Kadro Unvanı</th>
-                  <th className="px-4 py-3 font-semibold">Görev Unvanı</th>
+                  <th className="px-4 py-3 font-semibold min-w-[12rem]">Durum</th>
+                  <th className="px-4 py-3 font-semibold min-w-[10rem]">Açıklama</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">1. Amir Puanı</th>
                   <th className="px-4 py-3 font-semibold text-center w-28">2. Amir Puanı</th>
                   {degerlendirmeGoster && (
-                    <th className="px-4 py-3 font-semibold text-right w-36">Değerlendirme</th>
+                    <th className="px-4 py-3 font-semibold text-right w-40">İşlemler</th>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {personeller.length === 0 ? (
                   <tr>
-                    <td colSpan={degerlendirmeGoster ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={degerlendirmeGoster ? 9 : 8} className="px-4 py-10 text-center text-slate-400">
                       Bu müdürlükte personel kaydı yok.
                     </td>
                   </tr>
                 ) : (
                   personeller.map(p => (
-                    <tr key={p.id} className="border-t border-slate-100">
+                    <tr key={p.id} className={personelSatirSinifi(p)}>
                       <td className="px-4 py-3 text-slate-500 tabular-nums">{p.siraNo}</td>
                       <td className="px-4 py-3 font-mono text-xs text-slate-600 tabular-nums">{p.sicil_no}</td>
                       <td className="px-4 py-3">{p.ad_soyad}</td>
                       <td className="px-4 py-3 text-slate-600">{p.kadro_unvani ?? '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{p.gorev_unvani ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-700 text-xs leading-snug">
+                        {performansSatirDurumMetni(p, izleyiciRol(p))}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 text-xs leading-snug">
+                        {p.durum === 'iade' && p.iade_notu ? p.iade_notu : '—'}
+                      </td>
                       <td className="px-4 py-3 text-center tabular-nums">
                         {p.puan_amir1 != null ? (
                           <>
@@ -322,23 +439,54 @@ export default function PerformansDonemDashboardClient({
                       {degerlendirmeGoster && (
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center justify-end gap-1">
-                            {amir1Gorebilir(p) && (
-                              <Link
-                                href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir1', isAdmin)}`}
-                                title="1. amir değerlendirme"
-                                className="intrada-icon-btn intrada-icon-btn-detay h-7 w-7 text-xs font-semibold"
-                              >
-                                1
-                              </Link>
+                            {!degerlendirmeTamamlandi(p) && amir1Gorebilir(p) && (
+                              isAdmin ? (
+                                <Link
+                                  href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir1', isAdmin)}`}
+                                  title="1. amir değerlendirme"
+                                  className="intrada-icon-btn intrada-icon-btn-detay h-7 w-7 text-xs font-semibold"
+                                >
+                                  1
+                                </Link>
+                              ) : (
+                                <YildizDegerlendirmeButon
+                                  href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir1', false)}`}
+                                  title="1. amir değerlendirme"
+                                />
+                              )
                             )}
-                            {amir2Gorebilir(p) && (
-                              <Link
-                                href={`/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir2', isAdmin)}`}
-                                title="2. amir değerlendirme"
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                              >
-                                2
-                              </Link>
+                            {!degerlendirmeTamamlandi(p) && amir2Gorebilir(p) && (
+                              isAdmin ? (
+                                <button
+                                  type="button"
+                                  title="2. amir değerlendirme"
+                                  onClick={() => {
+                                    if (!amir2Degerlendirebilir(p)) {
+                                      setAmir2UyariAcik(true)
+                                      return
+                                    }
+                                    router.push(
+                                      `/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir2', isAdmin)}`,
+                                    )
+                                  }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                  2
+                                </button>
+                              ) : (
+                                <YildizDegerlendirmeButon
+                                  title="2. amir değerlendirme"
+                                  onClick={() => {
+                                    if (!amir2Degerlendirebilir(p)) {
+                                      setAmir2UyariAcik(true)
+                                      return
+                                    }
+                                    router.push(
+                                      `/performans/degerlendirme/kayit/${p.id}?${kayitQuery('amir2', false)}`,
+                                    )
+                                  }}
+                                />
+                              )
                             )}
                             {(isAdmin || amir1Gorebilir(p) || amir2Gorebilir(p)) && (
                               <button
@@ -349,6 +497,13 @@ export default function PerformansDonemDashboardClient({
                               >
                                 <GozIkon className="h-4 w-4" />
                               </button>
+                            )}
+                            {(isAdmin || amir1Gorebilir(p) || amir2Gorebilir(p)) && (
+                              <SaatGecmisDugmesi
+                                sayi={0}
+                                title="Değerlendirme geçmişi"
+                                onClick={() => auditAc(p.id, p)}
+                              />
                             )}
                             {sifirlaYapilabilir && (
                               <button
@@ -374,6 +529,28 @@ export default function PerformansDonemDashboardClient({
           </div>
         </>
       )}
+
+      <Modal
+        open={amir2UyariAcik}
+        onClose={() => setAmir2UyariAcik(false)}
+        title="Değerlendirme yapılamaz"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700 leading-relaxed">
+            Henüz 1. Amir değerlendirme yapmadı.
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setAmir2UyariAcik(false)}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={sifirlaHedef != null}
@@ -430,6 +607,28 @@ export default function PerformansDonemDashboardClient({
         veri={onizleVeri}
         yukleniyor={onizlePending}
         hata={onizleHata}
+      />
+
+      <AuditGecmisPanel
+        acik={auditAcik}
+        onKapat={() => {
+          setAuditAcik(false)
+          setAuditHedef(null)
+          setAuditLoglar([])
+        }}
+        auditLoglar={auditLoglar}
+        baslik={
+          auditHedef
+            ? `Değerlendirme Geçmişi — ${auditHedef.ad_soyad} (${auditHedef.sicil_no})`
+            : 'Değerlendirme Geçmişi'
+        }
+        aciklama={
+          auditPending
+            ? 'Geçmiş yükleniyor…'
+            : 'Kaydet, gönder, onay ve iade adımları kronolojik olarak listelenir.'
+        }
+        diffSatirlari={performansDegAuditDiffSatirlari}
+        degerGoster={performansDegAuditDegerGoster}
       />
     </div>
   )

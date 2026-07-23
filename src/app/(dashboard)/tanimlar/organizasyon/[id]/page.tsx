@@ -64,7 +64,7 @@ export default async function OrganizasyonDetayPage({
     supabase
       .from('kadro_hareketleri')
       .select(
-        'durumu, kadro_unvani, gorev_unvani, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
+        'durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
       )
       .in('durumu', ['Dolu', 'Vekil']),
   ])

@@ -19,6 +19,7 @@ export type MenuModulKey =
   | 'stratejikYonetim'
   | 'yerelBilgi'
   | 'yetkilendirme'
+  | 'hayaletProfil'
   | 'tanimlar'
   | 'link'
 
@@ -42,6 +43,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'stratejikYonetim', labelKisa: 'Stratejik', label: 'Stratejik Yönetim', pathPrefixes: ['/stratejik-yonetim'] },
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
+  { key: 'hayaletProfil', labelKisa: 'Hayalet', label: 'Hayalet Profil', pathPrefixes: ['/yetkilendirme/hayalet-profil'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
   { key: 'link', labelKisa: 'Link', label: 'Paylaşım linkleri', pathPrefixes: ['/link'] },
 ]
@@ -131,6 +133,9 @@ export function kullaniciPathAllowed(
     return true
   }
   if (path.startsWith('/yetkilendirme')) {
+    if (path === '/yetkilendirme/hayalet-profil') {
+      return menuModulAcik('hayaletProfil', menuIzinleri)
+    }
     return false
   }
 
@@ -191,14 +196,15 @@ export function sidebarGrupGoster(
   if (accessMode === 'full' || accessMode === 'admin') return true
   /** Kullanıcıda «Personel Kartım» her zaman menüde (tek link veya tam grup). */
   if (accessMode === 'kullanici' && grupEtiket === 'Personel Yönetimi') return true
-  /** Kullanıcı: eğitim / yetkilendirme / tanımlar sol menüde yok */
+  /** Kullanıcı: eğitim / tanımlar sol menüde yok; yetkilendirme yalnızca hayalet profil yetkisi varsa */
   if (
     accessMode === 'kullanici' &&
-    (grupEtiket === 'Eğitim Yönetimi' ||
-      grupEtiket === 'Yetkilendirme Yönetimi' ||
-      grupEtiket === 'Tanımlar Yönetimi')
+    (grupEtiket === 'Eğitim Yönetimi' || grupEtiket === 'Tanımlar Yönetimi')
   ) {
     return false
+  }
+  if (accessMode === 'kullanici' && grupEtiket === 'Yetkilendirme Yönetimi') {
+    return menuModulAcik('hayaletProfil', menuIzinleri)
   }
 
   const map: Record<string, MenuModulKey> = {

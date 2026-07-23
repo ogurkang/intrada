@@ -2,19 +2,37 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { performansActionAdminBypass, performansActionSicil } from '@/lib/performans-oturum'
 import { revalidatePath } from 'next/cache'
 import {
   performansKriterKodlari,
   performansOrtalamaYuvarla,
   type PerformansFormTipi,
 } from '@/lib/performans'
-import { performansAmirEsle, type OrgBirimSatir } from '@/lib/performans-amir'
+import { performansDonemKayitlariSenkronize } from '@/lib/performans-degerlendirme-sync'
 import {
-  kadroMudurlukIndeksi,
+  performansOrgBaglamiYukle,
+  performansDegerlendirmeAmirCanli,
+  performansDegerlendirmeErisimVar,
+  type PerformansKadroAmirSatir,
+} from '@/lib/performans-degerlendirme-amir-canli'
+import {
   mudurlukByNormHaritasi,
+  performansKadroMudurlukEslesir,
+  performansKadroSatirlariIndeksi,
+  performansKadroSatirSec,
+  performansEtkinUnvanHaritasi,
   performansKadroUygun,
+  performansPersonelEtkinUnvan,
   performansMudurlukCoz,
+  performansMudurlukEslesir,
+  performansMudurlukPersonelSatirindaMi,
+  kadroMudurlukIndeksi,
+  performansSicilEsit,
+  tumAktifKadroHareketleriYukle,
 } from '@/lib/performans-kadro'
+import { writePerformansDegAuditLogSafe } from '@/lib/performans-degerlendirme-audit'
+import type { OrgBirimSatir } from '@/lib/performans-amir'
 import { sablonDoldur } from '@/lib/sms-sablon'
 import { fetchSmsAyar, smsAyarHazirMi, smsAyarToConfig } from '@/lib/sms-ayar'
 import { smsGonderTekMetin } from '@/lib/sms-mesajpaketi'
@@ -32,167 +50,25 @@ async function requireAdmin() {
 }
 
 async function currentSicil(supabase: Sb): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const access = await getAppAccess(supabase, user.id)
-  if (access.mode === 'kullanici') return access.sicilNo
-  if (isAdminLike(access)) {
-    const { data } = await supabase.from('app_profiles').select('sicil_no').eq('id', user.id).maybeSingle()
-    return data?.sicil_no ? String(data.sicil_no) : null
-  }
-  return null
+  return performansActionSicil(supabase)
 }
 
-/** Açık döneme memur kadrolarını üret / eksikleri tamamla */
+/** Açık döneme memur kadrolarını üret / eksikleri tamamla (admin) */
 export async function performansDonemPersonelSeedle(donemId: number): Promise<{ hata?: string; eklenen?: number }> {
   const gate = await requireAdmin()
   if (gate.hata) return { hata: gate.hata }
   const { supabase } = gate
 
-  const { data: kriterler } = await (supabase as Sb)
-    .from('performans_kriter')
-    .select('id, kod')
-    .eq('aktif', true)
-  const kriterByKod = new Map<number, number>((kriterler ?? []).map((k: { id: number; kod: number }) => [k.kod, k.id]))
+  const sonuc = await performansDonemKayitlariSenkronize(supabase, donemId)
+  if (sonuc.hata) return { hata: sonuc.hata }
 
-  const { data: aktifOrg } = await (supabase as Sb)
-    .from('tanim_organizasyon')
-    .select('id')
-    .eq('aktif', true)
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const { data: birimRaw } = aktifOrg?.id
-    ? await (supabase as Sb)
-        .from('tanim_organizasyon_birim')
-        .select('id, birim_turu, mudurluk_id, personel_sicil_no, ust_birim_id, mudurluk:tanim_mudurluk(id, mudurluk_adi)')
-        .eq('organizasyon_id', aktifOrg.id)
-    : { data: [] }
-  const birimler = (birimRaw ?? []) as OrgBirimSatir[]
-
-  const { data: mudRaw } = await supabase
-    .from('tanim_mudurluk')
-    .select('mudurluk_adi')
-    .eq('aktif', true)
-  const mudurlukByNorm = mudurlukByNormHaritasi(
-    (mudRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean) as string[],
-  )
-
-  const { data: kadroRows } = await supabase
-    .from('kadro_hareketleri')
-    .select('durumu, statu, kadro_unvani, gorev_unvani, gorev_mudurlugu, asil, vekil, kadro_mudurlugu, asil_calisan:calisan!kadro_hareketleri_asil_fkey(ad_soyad), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey(ad_soyad)')
-    .is('ayrilis_tarihi', null)
-
-  type Kadro = {
-    durumu?: string | null
-    statu?: string | null
-    kadro_unvani?: string | null
-    gorev_unvani?: string | null
-    gorev_mudurlugu?: string | null
-    asil?: string | null
-    vekil?: string | null
-    kadro_mudurlugu?: string | null
-    asil_calisan?: { ad_soyad: string | null } | null
-    vekil_calisan?: { ad_soyad: string | null } | null
-  }
-  const kadrolar = (kadroRows ?? []).filter(k => performansKadroUygun(k)) as Kadro[]
-
-  const { data: mevcut } = await (supabase as Sb)
-    .from('performans_degerlendirme')
-    .select('sicil_no')
-    .eq('donem_id', donemId)
-  const mevcutSet = new Set((mevcut ?? []).map((m: { sicil_no: string }) => m.sicil_no))
-
-  const eklenecek: {
-    donem_id: number
-    sicil_no: string
-    mudurluk_adi: string | null
-    form_tipi: PerformansFormTipi
-    amir1_sicil: string | null
-    amir2_sicil: string | null
-    tek_amir: boolean
-    durum: string
-  }[] = []
-
-  const gorulen = new Set<string>()
-  for (const k of kadrolar) {
-    const sicil = String(k.asil ?? '').trim() || String(k.vekil ?? '').trim()
-    if (!sicil || gorulen.has(sicil) || mevcutSet.has(sicil)) continue
-    gorulen.add(sicil)
-
-    const unvan = k.gorev_unvani || k.kadro_unvani
-    const mudurlukAdi = performansMudurlukCoz(k, mudurlukByNorm)
-    const esleme = performansAmirEsle({
-      sicilNo: sicil,
-      unvan,
-      mudurlukAdi,
-      birimler,
-      kadroRows: kadrolar,
-    })
-
-    eklenecek.push({
-      donem_id: donemId,
-      sicil_no: sicil,
-      mudurluk_adi: mudurlukAdi,
-      form_tipi: esleme.formTipi,
-      amir1_sicil: esleme.amir1_sicil,
-      amir2_sicil: esleme.tek_amir ? null : esleme.amir2_sicil,
-      tek_amir: esleme.tek_amir,
-      durum: 'beklemede_1',
-    })
-  }
-
-  // Mevcut kayıtlarda müdürlük boşsa kadrodan güncelle
-  if (mevcutSet.size > 0) {
-    const { data: mevcutRows } = await (supabase as Sb)
-      .from('performans_degerlendirme')
-      .select('id, sicil_no, mudurluk_adi')
-      .eq('donem_id', donemId)
-    const kadroMudMap = new Map<string, string | null>()
-    for (const k of kadrolar) {
-      const sicil = String(k.asil ?? '').trim() || String(k.vekil ?? '').trim()
-      if (sicil) kadroMudMap.set(sicil, performansMudurlukCoz(k, mudurlukByNorm))
-    }
-    for (const row of mevcutRows ?? []) {
-      const mud = kadroMudMap.get(row.sicil_no)
-      if (!mud) continue
-      if (row.mudurluk_adi === mud) continue
-      await (supabase as Sb)
-        .from('performans_degerlendirme')
-        .update({ mudurluk_adi: mud })
-        .eq('id', row.id)
-    }
-  }
-
-  if (eklenecek.length === 0) {
+  if (sonuc.eklenen > 0 || sonuc.amirGuncellenen > 0 || sonuc.mudurlukGuncellenen > 0) {
     revalidatePath('/performans/donem')
     revalidatePath('/performans/degerlendirme')
-    return { eklenen: 0 }
+    revalidatePath(`/performans/degerlendirme/${donemId}`)
   }
 
-  const { data: inserted, error } = await (supabase as Sb)
-    .from('performans_degerlendirme')
-    .insert(eklenecek)
-    .select('id, form_tipi')
-  if (error) return { hata: error.message }
-
-  const puanRows: { degerlendirme_id: number; kriter_id: number }[] = []
-  for (const row of inserted ?? []) {
-    const kodlar = performansKriterKodlari(row.form_tipi as PerformansFormTipi)
-    for (const kod of kodlar) {
-      const kid = kriterByKod.get(kod)
-      if (kid) puanRows.push({ degerlendirme_id: row.id, kriter_id: kid })
-    }
-  }
-  if (puanRows.length > 0) {
-    const { error: pErr } = await (supabase as Sb).from('performans_puan').insert(puanRows)
-    if (pErr) return { hata: pErr.message }
-  }
-
-  revalidatePath('/performans/donem')
-  revalidatePath('/performans/degerlendirme')
-  return { eklenen: eklenecek.length }
+  return { eklenen: sonuc.eklenen }
 }
 
 export async function performansDonemYayinla(donemId: number): Promise<{ hata?: string }> {
@@ -282,13 +158,24 @@ export async function performansAmir1Kaydet(params: {
   if (deg.donem?.durum === 'Yayınlandı' || deg.donem?.durum === 'Kapalı') {
     return { hata: 'Dönem kapalı / yayınlandı.' }
   }
+  if (['amir2_onay', 'tamamlandi'].includes(deg.durum)) {
+    return { hata: 'Değerlendirme tamamlanmış; sıfırlama olmadan düzenlenemez.' }
+  }
 
-  const access = await getAppAccess(supabase, (await supabase.auth.getUser()).data.user!.id)
-  const isAdmin = isAdminLike(access)
-  if (!isAdmin && deg.amir1_sicil !== sicil) return { hata: '1. amir yetkiniz yok.' }
+  const isAdmin = await performansActionAdminBypass(supabase)
+  const baglam = isAdmin ? null : await performansOrgBaglamiYukle(supabase)
+  const canli = baglam
+    ? performansDegerlendirmeAmirCanli(
+        { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi },
+        baglam,
+      )
+    : null
+  if (!isAdmin && canli?.amir1_sicil !== sicil) return { hata: '1. amir yetkiniz yok.' }
   if (!['beklemede_1', 'iade'].includes(deg.durum)) {
     return { hata: 'Bu kayıt 1. amir tarafından düzenlenemez.' }
   }
+
+  const tekAmir = isAdmin ? deg.tek_amir : (canli?.tek_amir ?? deg.tek_amir)
 
   for (const [kriterId, puan] of Object.entries(params.puanlar)) {
     const p = Number(puan)
@@ -317,7 +204,7 @@ export async function performansAmir1Kaydet(params: {
   }
 
   if (params.gonder) {
-    if (deg.tek_amir) {
+    if (tekAmir) {
       patch.durum = 'tamamlandi'
       patch.puan_amir2 = toplam
       patch.ortalama = toplam
@@ -345,7 +232,24 @@ export async function performansAmir1Kaydet(params: {
     .eq('id', params.degerlendirmeId)
   if (error) return { hata: error.message }
 
+  const yeniDurum = (patch.durum as string | undefined) ?? deg.durum
+  await writePerformansDegAuditLogSafe(supabase, {
+    degerlendirmeId: params.degerlendirmeId,
+    personelSicil: deg.sicil_no,
+    islem: params.gonder ? 'gonder' : 'kaydet',
+    ozet: params.gonder
+      ? tekAmir
+        ? '1. amir değerlendirmeyi tamamladı (tek amir)'
+        : '1. amir değerlendirmeyi 2. amire gönderdi'
+      : '1. amir taslak kaydetti',
+    onceki: { durum: deg.durum, puan_amir1: deg.puan_amir1 },
+    sonraki: { durum: yeniDurum, puan_amir1: toplam },
+  })
+
   revalidatePath('/performans/degerlendirme')
+  if (deg.donem_id) {
+    revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
+  }
   return {}
 }
 
@@ -366,10 +270,20 @@ export async function performansAmir2Kaydet(params: {
     .maybeSingle()
   if (!deg) return { hata: 'Kayıt bulunamadı.' }
   if (deg.donem?.durum !== 'Açık') return { hata: 'Dönem açık değil.' }
+  if (['amir2_onay', 'tamamlandi'].includes(deg.durum)) {
+    return { hata: 'Değerlendirme tamamlanmış; sıfırlama olmadan düzenlenemez.' }
+  }
 
   const access = await getAppAccess(supabase, (await supabase.auth.getUser()).data.user!.id)
-  const isAdmin = isAdminLike(access)
-  if (!isAdmin && deg.amir2_sicil !== sicil) return { hata: '2. amir yetkiniz yok.' }
+  const isAdmin = await performansActionAdminBypass(supabase)
+  if (!isAdmin) {
+    const baglam = await performansOrgBaglamiYukle(supabase)
+    const canli = performansDegerlendirmeAmirCanli(
+      { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi },
+      baglam,
+    )
+    if (canli.tek_amir || canli.amir2_sicil !== sicil) return { hata: '2. amir yetkiniz yok.' }
+  }
   if (deg.durum !== 'amir1_gonderildi') return { hata: 'Kayıt 2. amir incelemesinde değil.' }
 
   if (params.islem === 'iade') {
@@ -382,7 +296,16 @@ export async function performansAmir2Kaydet(params: {
       })
       .eq('id', params.degerlendirmeId)
     if (error) return { hata: error.message }
+    await writePerformansDegAuditLogSafe(supabase, {
+      degerlendirmeId: params.degerlendirmeId,
+      personelSicil: deg.sicil_no,
+      islem: 'iade',
+      ozet: '2. amir değerlendirmeyi 1. amire iade etti',
+      onceki: { durum: deg.durum },
+      sonraki: { durum: 'iade', iade_notu: params.iadeNotu?.trim() || 'İade edildi' },
+    })
     revalidatePath('/performans/degerlendirme')
+    if (deg.donem_id) revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
     return {}
   }
 
@@ -419,63 +342,66 @@ export async function performansAmir2Kaydet(params: {
     .eq('id', params.degerlendirmeId)
   if (error) return { hata: error.message }
 
+  await writePerformansDegAuditLogSafe(supabase, {
+    degerlendirmeId: params.degerlendirmeId,
+    personelSicil: deg.sicil_no,
+    islem: 'onayla',
+    ozet: '2. amir değerlendirmeyi onayladı',
+    onceki: { durum: deg.durum, puan_amir2: deg.puan_amir2 },
+    sonraki: { durum: 'amir2_onay', puan_amir2: toplam2, ortalama },
+  })
+
   revalidatePath('/performans/degerlendirme')
+  if (deg.donem_id) revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
   return {}
 }
 
-type KadroAmirSatir = {
-  durumu?: string | null
-  statu?: string | null
-  kadro_unvani?: string | null
-  gorev_unvani?: string | null
-  gorev_mudurlugu?: string | null
-  asil?: string | null
-  vekil?: string | null
-  kadro_mudurlugu?: string | null
-}
+/** Değerlendirme süreci audit logları */
+export async function performansDegerlendirmeAuditLoglari(
+  degerlendirmeId: number,
+): Promise<{ hata?: string; loglar?: import('@/types/database').Tables<'personel_audit_log'>[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const isAdmin = await performansActionAdminBypass(supabase)
 
-async function performansOrgBaglamiYukle(supabase: Sb) {
-  const { data: aktifOrg } = await supabase
-    .from('tanim_organizasyon')
-    .select('id')
-    .eq('aktif', true)
-    .order('id', { ascending: false })
-    .limit(1)
+  const { data: deg } = await (supabase as Sb)
+    .from('performans_degerlendirme')
+    .select('sicil_no, mudurluk_adi')
+    .eq('id', degerlendirmeId)
     .maybeSingle()
+  if (!deg) return { hata: 'Kayıt bulunamadı.' }
 
-  const { data: birimRaw } = aktifOrg?.id
-    ? await supabase
-        .from('tanim_organizasyon_birim')
-        .select('id, birim_turu, mudurluk_id, personel_sicil_no, ust_birim_id, mudurluk:tanim_mudurluk(id, mudurluk_adi)')
-        .eq('organizasyon_id', aktifOrg.id)
-    : { data: [] }
-
-  const { data: mudRaw } = await supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true)
-  const mudurlukByNorm = mudurlukByNormHaritasi(
-    (mudRaw ?? []).map((m: { mudurluk_adi: string | null }) => m.mudurluk_adi).filter(Boolean) as string[],
-  )
-
-  const { data: kadroRows } = await supabase
-    .from('kadro_hareketleri')
-    .select('durumu, statu, kadro_unvani, gorev_unvani, gorev_mudurlugu, asil, vekil, kadro_mudurlugu')
-    .is('ayrilis_tarihi', null)
-
-  const kadrolar = (kadroRows ?? []).filter((k: KadroAmirSatir) => performansKadroUygun(k)) as KadroAmirSatir[]
-
-  return {
-    birimler: (birimRaw ?? []) as OrgBirimSatir[],
-    kadrolar,
-    mudurlukByNorm,
+  if (!isAdmin) {
+    const sicil = await currentSicil(supabase)
+    if (!sicil) return { hata: 'Bu işlem için yetkiniz yok.' }
+    const baglam = await performansOrgBaglamiYukle(supabase)
+    if (
+      !performansDegerlendirmeErisimVar(sicil, { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi }, baglam)
+    ) {
+      return { hata: 'Bu işlem için yetkiniz yok.' }
+    }
   }
+
+  const { data: loglar } = await supabase
+    .from('personel_audit_log')
+    .select('*')
+    .eq('ref_table', 'performans_degerlendirme')
+    .eq('ref_id', String(degerlendirmeId))
+    .order('created_at', { ascending: false })
+
+  return { loglar: loglar ?? [] }
 }
 
-/** Organizasyon ağacına göre mevcut dönem kayıtlarının amir alanlarını günceller */
+/** Organizasyon ağacına göre mevcut dönem kayıtlarının amir alanlarını günceller (server action). */
 export async function performansDegerlendirmeAmirleriSenkronize(
   donemId: number,
 ): Promise<{ hata?: string; guncellenen?: number }> {
-  const gate = await requireAdmin()
-  if (gate.hata) return { hata: gate.hata }
-  const { supabase } = gate
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
 
   const { data: rows } = await (supabase as Sb)
     .from('performans_degerlendirme')
@@ -485,24 +411,15 @@ export async function performansDegerlendirmeAmirleriSenkronize(
   if (!rows?.length) return { guncellenen: 0 }
 
   const { birimler, kadrolar, mudurlukByNorm } = await performansOrgBaglamiYukle(supabase)
-  const kadroMap = new Map<string, KadroAmirSatir>()
-  for (const k of kadrolar) {
-    const sicil = String(k.asil ?? '').trim() || String(k.vekil ?? '').trim()
-    if (sicil && !kadroMap.has(sicil)) kadroMap.set(sicil, k)
-  }
+  const kadroMap = performansKadroSatirlariIndeksi(kadrolar.filter(k => performansKadroUygun(k)))
 
   let guncellenen = 0
   for (const row of rows) {
     const kadro = kadroMap.get(row.sicil_no)
-    const unvan = kadro?.gorev_unvani || kadro?.kadro_unvani
-    const mudurlukAdi = kadro ? performansMudurlukCoz(kadro, mudurlukByNorm) : null
-    const esleme = performansAmirEsle({
-      sicilNo: row.sicil_no,
-      unvan,
-      mudurlukAdi,
-      birimler,
-      kadroRows: kadrolar,
-    })
+    const esleme = performansDegerlendirmeAmirCanli(
+      { sicil_no: row.sicil_no, mudurluk_adi: kadro ? performansMudurlukCoz(kadro, mudurlukByNorm) : null },
+      { birimler, kadrolar, mudurlukByNorm },
+    )
 
     const patch = {
       form_tipi: esleme.formTipi,
@@ -535,6 +452,142 @@ export async function performansDegerlendirmeAmirleriSenkronize(
   return { guncellenen }
 }
 
+/** Liste sırasında değerlendirme bekleyen bir sonraki personeli bulur. */
+export async function performansSonrakiDegerlendirmeBul(params: {
+  mevcutDegId: number
+  donemId: number
+  mudurlukAdi?: string | null
+  rol: 'amir1' | 'amir2'
+}): Promise<{ hata?: string; sonrakiId?: number | null }> {
+  const supabase = await createClient()
+  const sicil = await currentSicil(supabase)
+  if (!sicil) return { hata: 'Sicil bulunamadı.' }
+  const isAdmin = await performansActionAdminBypass(supabase)
+
+  await performansDonemKayitlariSenkronize(supabase, params.donemId)
+
+  const { data: mevcut } = await (supabase as Sb)
+    .from('performans_degerlendirme')
+    .select('id, sicil_no')
+    .eq('id', params.mevcutDegId)
+    .maybeSingle()
+  if (!mevcut) return { hata: 'Kayıt bulunamadı.' }
+
+  const { data: mudRaw } = await supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true)
+  const mudurlukByNorm = mudurlukByNormHaritasi(
+    (mudRaw ?? []).map((m: { mudurluk_adi: string | null }) => m.mudurluk_adi).filter(Boolean) as string[],
+  )
+
+  const kadroRows = await tumAktifKadroHareketleriYukle<{
+    durumu?: string | null
+    statu?: string | null
+    gorev_mudurlugu?: string | null
+    kadro_mudurlugu?: string | null
+    kadro_unvani?: string | null
+    gorev_unvani?: string | null
+    asil?: string | null
+    vekil?: string | null
+  }>(
+    supabase,
+    'durumu, statu, gorev_mudurlugu, kadro_mudurlugu, kadro_unvani, gorev_unvani, asil, vekil',
+  )
+  const kadroIndeks = kadroMudurlukIndeksi(
+    kadroRows.filter(k => performansKadroUygun(k)),
+    mudurlukByNorm,
+  )
+  const etkinUnvanMap = performansEtkinUnvanHaritasi(kadroRows, mudurlukByNorm)
+
+  const { data: rows } = await (supabase as Sb)
+    .from('performans_degerlendirme')
+    .select('id, sicil_no, mudurluk_adi, durum, tek_amir, amir1_sicil, amir2_sicil')
+    .eq('donem_id', params.donemId)
+    .order('sicil_no')
+
+  const mudurluk = params.mudurlukAdi?.trim() || null
+
+  let birimler: OrgBirimSatir[] = []
+  const { data: aktifOrg } = await supabase
+    .from('tanim_organizasyon')
+    .select('id')
+    .eq('aktif', true)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (aktifOrg?.id) {
+    const { data: birimRaw } = await (supabase as Sb)
+      .from('tanim_organizasyon_birim')
+      .select(
+        'id, birim_turu, mudurluk_id, personel_sicil_no, ust_birim_id, mudurluk:tanim_mudurluk(id, mudurluk_adi)',
+      )
+      .eq('organizasyon_id', aktifOrg.id)
+    birimler = (birimRaw ?? []) as OrgBirimSatir[]
+  }
+
+  let liste = (rows ?? []) as {
+    id: number
+    sicil_no: string
+    mudurluk_adi: string | null
+    durum: string
+    tek_amir: boolean
+    amir1_sicil: string | null
+    amir2_sicil: string | null
+  }[]
+
+  if (!isAdmin) {
+    liste = liste.filter(r => {
+      if (!kadroIndeks.has(r.sicil_no)) return false
+      if (
+        !performansMudurlukPersonelSatirindaMi({
+          unvan: etkinUnvanMap.get(r.sicil_no),
+          sicilNo: r.sicil_no,
+          currentSicil: sicil,
+          birimler,
+        })
+      ) {
+        return false
+      }
+      if (mudurluk) {
+        const kadro = kadroIndeks.get(r.sicil_no)
+        if (!performansKadroMudurlukEslesir(mudurluk, kadro?.kadro_mudurlugu)) return false
+      }
+      return true
+    })
+  } else if (mudurluk) {
+    liste = liste.filter(r => {
+      const kadro = kadroIndeks.get(r.sicil_no)
+      return performansMudurlukEslesir(mudurluk, {
+        mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi,
+        gorev_mudurlugu: kadro?.gorev_mudurlugu,
+        kadro_mudurlugu: kadro?.kadro_mudurlugu,
+      })
+    })
+  }
+
+  const baglam = await performansOrgBaglamiYukle(supabase)
+
+  function degerlendirilebilir(r: (typeof liste)[0]): boolean {
+    const kadro = kadroIndeks.get(r.sicil_no)
+    const canli = performansDegerlendirmeAmirCanli(
+      {
+        sicil_no: r.sicil_no,
+        mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi,
+      },
+      baglam,
+    )
+    if (params.rol === 'amir1') {
+      if (!['beklemede_1', 'iade'].includes(r.durum)) return false
+      return isAdmin || performansSicilEsit(canli.amir1_sicil, sicil)
+    }
+    if (canli.tek_amir) return false
+    if (r.durum !== 'amir1_gonderildi') return false
+    return isAdmin || performansSicilEsit(canli.amir2_sicil, sicil)
+  }
+
+  const sonraki = liste.find(r => r.id !== params.mevcutDegId && degerlendirilebilir(r))
+
+  return { sonrakiId: sonraki?.id ?? null }
+}
+
 export type PerformansEk5OnizleVeri = {
   ad_soyad: string
   sicil_no: string
@@ -542,6 +595,7 @@ export type PerformansEk5OnizleVeri = {
   kadro_unvani: string | null
   gorev_unvani: string | null
   gorev_yeri: string | null
+  islem_tarihi: string | null
   donem_yil: number
   form_tipi: PerformansFormTipi
   tek_amir: boolean
@@ -550,6 +604,8 @@ export type PerformansEk5OnizleVeri = {
   ortalama: number | null
   amir1_ad: string | null
   amir2_ad: string | null
+  amir1_unvan: string | null
+  amir2_unvan: string | null
   amir1_tarih: string | null
   amir2_tarih: string | null
   kriterler: {
@@ -577,8 +633,7 @@ export async function performansEk5OnizleVeri(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { hata: 'Oturum gerekli.' }
-  const access = await getAppAccess(supabase, user.id)
-  const isAdmin = isAdminLike(access)
+  const isAdmin = await performansActionAdminBypass(supabase)
 
   const { data: deg } = await (supabase as Sb)
     .from('performans_degerlendirme')
@@ -589,9 +644,10 @@ export async function performansEk5OnizleVeri(
 
   if (!isAdmin) {
     const sicil = await currentSicil(supabase)
+    if (!sicil) return { hata: 'Bu işlem için yetkiniz yok.' }
+    const baglam = await performansOrgBaglamiYukle(supabase)
     if (
-      !sicil ||
-      (deg.amir1_sicil !== sicil && deg.amir2_sicil !== sicil && deg.sicil_no !== sicil)
+      !performansDegerlendirmeErisimVar(sicil, { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi }, baglam)
     ) {
       return { hata: 'Bu işlem için yetkiniz yok.' }
     }
@@ -603,13 +659,24 @@ export async function performansEk5OnizleVeri(
     .eq('sicil_no', deg.sicil_no)
     .maybeSingle()
 
-  const { data: kadro } = await supabase
+  const { data: kadroRows } = await supabase
     .from('kadro_hareketleri')
-    .select('kadro_unvani, gorev_unvani, gorev_mudurlugu, kadro_mudurlugu')
+    .select('kadro_unvani, gorev_unvani, gorev_mudurlugu, kadro_mudurlugu, asil, vekil, statu, durumu')
     .or(`asil.eq.${deg.sicil_no},vekil.eq.${deg.sicil_no}`)
     .is('ayrilis_tarihi', null)
-    .limit(1)
-    .maybeSingle()
+
+  const { data: mudRaw } = await supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true)
+  const mudurlukByNorm = mudurlukByNormHaritasi(
+    (mudRaw ?? []).map(m => m.mudurluk_adi).filter(Boolean) as string[],
+  )
+
+  const kadro = performansKadroSatirSec(deg.sicil_no, (kadroRows ?? []) as PerformansKadroAmirSatir[])
+  const etkinUnvan = performansPersonelEtkinUnvan(
+    deg.sicil_no,
+    deg.mudurluk_adi,
+    (kadroRows ?? []) as PerformansKadroAmirSatir[],
+    mudurlukByNorm,
+  )
 
   const { data: puanRows } = await (supabase as Sb)
     .from('performans_puan')
@@ -632,6 +699,7 @@ export async function performansEk5OnizleVeri(
 
   const amirSiciller = [deg.amir1_sicil, deg.amir2_sicil].filter(Boolean) as string[]
   const amirAdMap: Record<string, string> = {}
+  const amirUnvanMap: Record<string, string | null> = {}
   if (amirSiciller.length > 0) {
     const { data: amirCal } = await supabase
       .from('calisan')
@@ -640,16 +708,35 @@ export async function performansEk5OnizleVeri(
     ;(amirCal ?? []).forEach(c => {
       if (c.sicil_no) amirAdMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
     })
+
+    const { data: amirKadro } = await supabase
+      .from('kadro_hareketleri')
+      .select('asil, vekil, kadro_unvani, gorev_unvani, gorev_mudurlugu, kadro_mudurlugu, statu, durumu')
+      .is('ayrilis_tarihi', null)
+      .or(amirSiciller.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','))
+
+    for (const s of amirSiciller) {
+      amirUnvanMap[s] = performansPersonelEtkinUnvan(
+        s,
+        null,
+        (amirKadro ?? []) as PerformansKadroAmirSatir[],
+        mudurlukByNorm,
+      )
+    }
   }
+
+  const islemTarihiKaynak =
+    deg.amir2_onay_at ?? deg.amir1_tamam_at ?? deg.updated_at ?? null
 
   return {
     veri: {
       ad_soyad: cal?.ad_soyad ?? deg.sicil_no,
       sicil_no: deg.sicil_no,
       tckn: cal?.tckn ?? null,
-      kadro_unvani: kadro?.kadro_unvani ?? null,
-      gorev_unvani: kadro?.gorev_unvani ?? null,
+      kadro_unvani: etkinUnvan ?? kadro?.kadro_unvani ?? null,
+      gorev_unvani: etkinUnvan ?? kadro?.gorev_unvani ?? null,
       gorev_yeri: deg.mudurluk_adi ?? kadro?.gorev_mudurlugu ?? kadro?.kadro_mudurlugu ?? null,
+      islem_tarihi: performansTarihGgAaYyyy(islemTarihiKaynak),
       donem_yil: deg.donem?.yil ?? new Date().getFullYear(),
       form_tipi: deg.form_tipi as PerformansFormTipi,
       tek_amir: deg.tek_amir,
@@ -658,6 +745,8 @@ export async function performansEk5OnizleVeri(
       ortalama: deg.ortalama,
       amir1_ad: deg.amir1_sicil ? (amirAdMap[deg.amir1_sicil] ?? deg.amir1_sicil) : null,
       amir2_ad: deg.amir2_sicil ? (amirAdMap[deg.amir2_sicil] ?? deg.amir2_sicil) : null,
+      amir1_unvan: deg.amir1_sicil ? (amirUnvanMap[deg.amir1_sicil] ?? null) : null,
+      amir2_unvan: deg.amir2_sicil ? (amirUnvanMap[deg.amir2_sicil] ?? null) : null,
       amir1_tarih: performansTarihGgAaYyyy(deg.amir1_tamam_at),
       amir2_tarih: performansTarihGgAaYyyy(deg.amir2_onay_at),
       kriterler,
@@ -675,7 +764,7 @@ export async function performansDegerlendirmeSifirla(
 
   const { data: deg } = await (supabase as Sb)
     .from('performans_degerlendirme')
-    .select('id, donem_id, donem:performans_donem(durum)')
+    .select('id, donem_id, sicil_no, donem:performans_donem(durum)')
     .eq('id', degerlendirmeId)
     .maybeSingle()
   if (!deg) return { hata: 'Kayıt bulunamadı.' }
@@ -703,6 +792,15 @@ export async function performansDegerlendirmeSifirla(
     })
     .eq('id', degerlendirmeId)
   if (error) return { hata: error.message }
+
+  await writePerformansDegAuditLogSafe(supabase, {
+    degerlendirmeId,
+    personelSicil: deg.sicil_no ?? '',
+    islem: 'sifirla',
+    ozet: 'Yönetici değerlendirmeyi sıfırladı',
+    onceki: { durum: '—' },
+    sonraki: { durum: 'beklemede_1' },
+  })
 
   revalidatePath('/performans/degerlendirme')
   revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)

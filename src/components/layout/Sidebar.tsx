@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
+import { hayaletProfilYetkisiVar, type HayaletProfilDurum } from '@/lib/hayalet-profil'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 import { trNormalize } from '@/lib/turkce-search'
@@ -297,6 +298,7 @@ interface SidebarProps {
   /** Dashboard layout’tan (sunucu) gelir. */
   terfiMenuHref?: string
   access: AppAccess
+  hayaletDurum?: HayaletProfilDurum | null
 }
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
@@ -305,16 +307,17 @@ function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
   return 'kullanici'
 }
 
-export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }: SidebarProps) {
+export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, hayaletDurum }: SidebarProps) {
   const pathname = usePathname()
 
   const calisanlarHref = useMemo(() => {
+    if (hayaletDurum?.aktif) return '/performans/degerlendirme'
     if (access.mode === 'kullanici') {
       const sn = access.sicilNo.trim()
       if (sn) return `/personel/${encodeURIComponent(sn)}`
     }
     return '/personel'
-  }, [access])
+  }, [access, hayaletDurum])
 
   const menuGroups = useMemo(
     () => buildMenuGroups(terfiMenuHref, calisanlarHref),
@@ -325,9 +328,27 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
   const mode = accessSidebarMode(access)
 
   const filteredGroups = useMemo(() => {
-    return menuGroups
+    if (hayaletDurum?.aktif) {
+      return [
+        {
+          grup: 'Performans Yönetimi',
+          icon: '⭐',
+          accordion: true,
+          items: [{ href: '/performans/degerlendirme', label: 'Değerlendirme' }],
+        },
+      ] satisfies MenuGroup[]
+    }
+
+    const mapped = menuGroups
       .map(g => {
         if (!sidebarGrupGoster(g.grup, mode, menuIzinleri)) return null
+        if (g.grup === 'Yetkilendirme Yönetimi' && hayaletProfilYetkisiVar(access)) {
+          const items = [...g.items, { href: '/yetkilendirme/hayalet-profil', label: 'Hayalet Profil' }]
+          if (mode === 'kullanici') {
+            return { ...g, items: items.filter(i => i.href === '/yetkilendirme/hayalet-profil') }
+          }
+          return { ...g, items }
+        }
         if (g.grup !== 'Personel Yönetimi') return g
         /** Modül kapalıysa yalnızca kendi personel kartı */
         if (mode === 'kullanici' && !menuModulAcik('personel', menuIzinleri)) {
@@ -339,7 +360,9 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access }
         return items.length ? { ...g, items } : null
       })
       .filter((g): g is MenuGroup => g != null)
-  }, [menuGroups, mode, menuIzinleri, terfiMenuHref, calisanlarHref])
+
+    return mapped
+  }, [menuGroups, mode, menuIzinleri, terfiMenuHref, calisanlarHref, access, hayaletDurum])
 
   // Her accordion'ın açık/kapalı durumu grubun adına göre tutulur
   const [aciklar, setAciklar] = useState<Record<string, boolean>>(() => {

@@ -1,8 +1,17 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
+import { resolvePerformansOturum } from '@/lib/performans-oturum'
 import PerformansFormClient from '@/components/performans/PerformansFormClient'
 import type { PerformansFormTipi } from '@/lib/performans'
+import {
+  performansOrgBaglamiYukle,
+  performansDegerlendirmeAmirCanli,
+  performansDegerlendirmeErisimVar,
+} from '@/lib/performans-degerlendirme-amir-canli'
+import { degerlendirmeTamamlandi } from '@/lib/performans-istatistik'
+import { performansDonemKayitlariSenkronize } from '@/lib/performans-degerlendirme-sync'
 
 export default async function PerformansKayitDetayPage({
   params,
@@ -21,14 +30,10 @@ export default async function PerformansKayitDetayPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
   const access = await getAppAccess(supabase, user.id)
-  const admin = isAdminLike(access)
-
-  let currentSicil: string | null =
-    access.mode === 'kullanici' ? access.sicilNo : null
-  if (admin) {
-    const { data } = await supabase.from('app_profiles').select('sicil_no').eq('id', user.id).maybeSingle()
-    currentSicil = data?.sicil_no ? String(data.sicil_no) : currentSicil
-  }
+  const hayaletDurum = await hayaletProfilDurumCoz(supabase, access)
+  const oturum = await resolvePerformansOturum(supabase, user.id, access, hayaletDurum)
+  const admin = oturum.adminBypass
+  const currentSicil = oturum.sicil
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
@@ -39,13 +44,25 @@ export default async function PerformansKayitDetayPage({
     .maybeSingle()
   if (!deg) notFound()
 
-  const adminVekalet = admin && sp.vekalet === '1'
+  if (deg.donem?.durum === 'Açık') {
+    await performansDonemKayitlariSenkronize(supabase, deg.donem_id)
+  }
+
+  const adminVekalet = admin && sp.vekalet === '1' && !oturum.hayaletAktif
+  const baglam = await performansOrgBaglamiYukle(supabase)
+  const canli = performansDegerlendirmeAmirCanli(
+    { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi },
+    baglam,
+  )
 
   if (
     !admin &&
-    deg.sicil_no !== currentSicil &&
-    deg.amir1_sicil !== currentSicil &&
-    deg.amir2_sicil !== currentSicil
+    (!currentSicil ||
+      !performansDegerlendirmeErisimVar(
+        currentSicil,
+        { sicil_no: deg.sicil_no, mudurluk_adi: deg.mudurluk_adi },
+        baglam,
+      ))
   ) {
     notFound()
   }
@@ -78,23 +95,26 @@ export default async function PerformansKayitDetayPage({
     .sort((a: { kod: number }, b: { kod: number }) => a.kod - b.kod)
 
   let kaydedilebilir = false
-  if (deg.donem?.durum === 'Açık') {
+  const tamamlandi = degerlendirmeTamamlandi(deg)
+  if (deg.donem?.durum === 'Açık' && !tamamlandi) {
     if (rol === 'amir1') {
       kaydedilebilir =
-        (adminVekalet || deg.amir1_sicil === currentSicil) &&
+        (adminVekalet || canli.amir1_sicil === currentSicil) &&
         ['beklemede_1', 'iade'].includes(deg.durum)
     } else {
       kaydedilebilir =
-        (adminVekalet || deg.amir2_sicil === currentSicil) &&
+        (adminVekalet || (!canli.tek_amir && canli.amir2_sicil === currentSicil)) &&
         deg.durum === 'amir1_gonderildi'
     }
   }
 
   let geriHref = '/performans/degerlendirme'
+  const donemId = deg.donem?.id ?? (sp.donem ? Number(sp.donem) : null)
+  const mudurlukAdi = sp.mudurluk?.trim() || null
   if (sp.donem) {
     geriHref = `/performans/degerlendirme/${sp.donem}`
-    if (sp.mudurluk) {
-      geriHref += `?mudurluk=${encodeURIComponent(sp.mudurluk)}`
+    if (mudurlukAdi) {
+      geriHref += `?mudurluk=${encodeURIComponent(mudurlukAdi)}`
     }
   }
 
@@ -106,7 +126,7 @@ export default async function PerformansKayitDetayPage({
         ad_soyad: cal?.ad_soyad ?? deg.sicil_no,
         form_tipi: deg.form_tipi as PerformansFormTipi,
         durum: deg.durum,
-        tek_amir: deg.tek_amir,
+        tek_amir: canli.tek_amir,
         iade_notu: deg.iade_notu,
         puan_amir1: deg.puan_amir1,
         puan_amir2: deg.puan_amir2,
@@ -116,7 +136,10 @@ export default async function PerformansKayitDetayPage({
       kriterler={kriterler}
       rol={rol}
       kaydedilebilir={kaydedilebilir}
+      tamamlandi={tamamlandi}
       geriHref={geriHref}
+      donemId={donemId}
+      mudurlukAdi={mudurlukAdi}
       adminVekalet={adminVekalet}
     />
   )

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import DashboardShell from '@/components/layout/DashboardShell'
 import { getAppAccess } from '@/lib/app-access'
+import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { ensureAppProfileForAuthUser } from '@/lib/app-profile-ensure'
 import IlkKurulumGuard from '@/components/auth/IlkKurulumGuard'
 
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
   }
 
   const access = await getAppAccess(supabase, user.id)
+  const hayaletDurum = await hayaletProfilDurumCoz(supabase, access)
   if (access.mode === 'blocked') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -70,6 +72,7 @@ export default async function DashboardLayout({
         userEmail={user.email}
         kullaniciKarsilamaAd={kullaniciKarsilamaAd}
         access={access}
+        hayaletDurum={hayaletDurum}
         buildMarker={buildSha}
       >
         {children}

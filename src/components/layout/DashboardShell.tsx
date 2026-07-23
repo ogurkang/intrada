@@ -5,7 +5,9 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import PermissionGate from '@/components/auth/PermissionGate'
 import IntradaAsistanWidget from '@/components/asistan/IntradaAsistanWidget'
+import HayaletProfilBanner from '@/components/layout/HayaletProfilBanner'
 import type { AppAccess } from '@/lib/app-access'
+import type { HayaletProfilDurum } from '@/lib/hayalet-profil'
 
 interface DashboardShellProps {
   children: React.ReactNode
@@ -15,6 +17,8 @@ interface DashboardShellProps {
   /** Sunucudan gelir; opak terfi yolu (ör. /abc123). */
   terfiMenuHref?: string
   access: AppAccess
+  /** Aktif hayalet profil oturumu */
+  hayaletDurum?: HayaletProfilDurum | null
   /** Aktif deploy/build kimliği (debug amaçlı). */
   buildMarker?: string
 }
@@ -25,6 +29,7 @@ export default function DashboardShell({
   kullaniciKarsilamaAd,
   terfiMenuHref = '/terfi',
   access,
+  hayaletDurum,
   buildMarker,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -54,17 +59,21 @@ export default function DashboardShell({
           onNavigate={() => setSidebarOpen(false)}
           terfiMenuHref={terfiMenuHref}
           access={access}
+          hayaletDurum={hayaletDurum}
         />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           userEmail={userEmail}
-          kullaniciKarsilamaAd={kullaniciKarsilamaAd}
+          kullaniciKarsilamaAd={hayaletDurum?.aktif ? hayaletDurum.hedefAdSoyad : kullaniciKarsilamaAd}
           onMenuClick={() => setSidebarOpen((o) => !o)}
         />
         <main className="flex-1 p-6 overflow-auto">
-          <PermissionGate access={access} terfiMenuHref={terfiMenuHref}>
+          {hayaletDurum?.aktif ? (
+            <HayaletProfilBanner hedefAdSoyad={hayaletDurum.hedefAdSoyad} hedefSicil={hayaletDurum.hedefSicil} />
+          ) : null}
+          <PermissionGate access={access} terfiMenuHref={terfiMenuHref} hayaletDurum={hayaletDurum}>
             {children}
           </PermissionGate>
         </main>
@@ -72,7 +81,7 @@ export default function DashboardShell({
           build: {buildMarker ?? 'unknown'}
         </div>
       </div>
-      <IntradaAsistanWidget access={access} />
+      {!hayaletDurum?.aktif ? <IntradaAsistanWidget access={access} /> : null}
     </div>
   )
 }

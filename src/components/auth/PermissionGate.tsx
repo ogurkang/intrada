@@ -5,16 +5,38 @@ import { usePathname } from 'next/navigation'
 import type { AppAccess } from '@/lib/app-access'
 import { isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
+import { hayaletPathAllowed, type HayaletProfilDurum } from '@/lib/hayalet-profil'
 
 interface Props {
   access: AppAccess
   children: React.ReactNode
   /** Terfi menü href’i (PermissionGate ile Sidebar aynı olmalı) */
   terfiMenuHref?: string
+  hayaletDurum?: HayaletProfilDurum | null
 }
 
-export default function PermissionGate({ access, children, terfiMenuHref = '/terfi' }: Props) {
+export default function PermissionGate({ access, children, terfiMenuHref = '/terfi', hayaletDurum }: Props) {
   const pathname = usePathname() ?? '/'
+
+  if (hayaletDurum?.aktif) {
+    if (hayaletPathAllowed(pathname)) return <>{children}</>
+    return (
+      <div className="max-w-lg mx-auto mt-16 rounded-xl border border-violet-300 bg-violet-50 px-6 py-8 text-center">
+        <p className="text-lg font-bold text-violet-950">Hayalet profil modu</p>
+        <p className="mt-2 text-sm text-violet-900/90">
+          Bu ekrana hayalet modda erişilemez. Yalnızca performans yönetimi kullanılabilir.
+        </p>
+        <p className="mt-5">
+          <Link
+            href="/performans/degerlendirme"
+            className="text-sm font-semibold text-violet-950 underline underline-offset-2 hover:text-violet-800"
+          >
+            Performans değerlendirme
+          </Link>
+        </p>
+      </div>
+    )
+  }
 
   if (isAdminLike(access)) {
     return <>{children}</>
