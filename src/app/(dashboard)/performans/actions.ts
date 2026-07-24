@@ -35,12 +35,14 @@ import { writePerformansDegAuditLogSafe } from '@/lib/performans-degerlendirme-a
 import type { OrgBirimSatir } from '@/lib/performans-amir'
 import { sablonDoldur } from '@/lib/sms-sablon'
 import { fetchSmsAyar, smsAyarHazirMi, smsAyarToConfig } from '@/lib/sms-ayar'
-import { smsGonderTekMetin } from '@/lib/sms-mesajpaketi'
+import { smsGonderTekMetin, gsmNormalize } from '@/lib/sms-mesajpaketi'
+import { smsLogTekKayit } from '@/lib/sms-log-kayit'
 import {
-  PERFORMANS_AMIR2_SMS_ORIGINATOR,
   PERFORMANS_AMIR2_SMS_TEST_TELEFON,
   performansAmir2BildirimMetni,
   performansAmir2BildirimSenaryoBelirle,
+  performansAmir2SmsOriginator,
+  performansDegerlendirilenAdlariMetni,
 } from '@/lib/performans-amir2-bildirim'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -650,6 +652,7 @@ export async function performansSonrakiDegerlendirmeBul(params: {
           if (yil && hedefAmir1) {
             const senaryo = performansAmir2BildirimSenaryoBelirle(hedefAmir1, birimler)
             let amir1Ad: string | null = null
+            let degerlendirilenAd: string | null = null
             if (senaryo === 'baskan_yardimcisi') {
               const { data: amir1Cal } = await supabase
                 .from('calisan')
@@ -657,6 +660,22 @@ export async function performansSonrakiDegerlendirmeBul(params: {
                 .eq('sicil_no', hedefAmir1)
                 .maybeSingle()
               amir1Ad = amir1Cal?.ad_soyad?.trim() || hedefAmir1
+
+              const degerlendirilenSiciller = [
+                ...new Set(amir1Liste.map(r => r.sicil_no.trim()).filter(Boolean)),
+              ]
+              if (degerlendirilenSiciller.length > 0) {
+                const { data: degerlendirilenCal } = await supabase
+                  .from('calisan')
+                  .select('sicil_no, ad_soyad')
+                  .in('sicil_no', degerlendirilenSiciller)
+                const adHaritasi = new Map(
+                  (degerlendirilenCal ?? []).map(c => [c.sicil_no, c.ad_soyad?.trim() || c.sicil_no]),
+                )
+                degerlendirilenAd = performansDegerlendirilenAdlariMetni(
+                  degerlendirilenSiciller.map(s => adHaritasi.get(s) ?? s),
+                )
+              }
             }
             bildirimMetni = performansAmir2BildirimMetni({
               amir2Ad,
@@ -664,6 +683,7 @@ export async function performansSonrakiDegerlendirmeBul(params: {
               senaryo,
               mudurlukAdi: mudurluk,
               amir1Ad,
+              degerlendirilenAd,
             })
           }
         }
@@ -727,10 +747,41 @@ export async function performansAmir2MudurlukBildirimSmsGonder(params: {
   if (!smsAyarHazirMi(smsAyar)) {
     return { hata: 'SMS ayarları hazır değil (İletişim Yönetimi → Tanımlar).' }
   }
-  const config = smsAyarToConfig(smsAyar)
-  config.originator = PERFORMANS_AMIR2_SMS_ORIGINATOR
 
-  const sonuc = await smsGonderTekMetin(config, kontrol.bildirimMetni, [PERFORMANS_AMIR2_SMS_TEST_TELEFON])
+  const originatorSec = performansAmir2SmsOriginator(smsAyar)
+  if (originatorSec.hata || !originatorSec.originator) {
+    return { hata: originatorSec.hata ?? 'SMS başlığı seçilemedi.' }
+  }
+
+  const telefon = gsmNormalize(PERFORMANS_AMIR2_SMS_TEST_TELEFON)
+  if (!telefon) {
+    return { hata: 'Test telefon numarası geçersiz.' }
+  }
+
+  const config = smsAyarToConfig(smsAyar)
+  config.originator = originatorSec.originator
+
+  const sonuc = await smsGonderTekMetin(config, kontrol.bildirimMetni, [telefon])
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) {
+    await smsLogTekKayit(supabase, {
+      actorId: user.id,
+      actorEmail: user.email ?? null,
+      aliciAd: kontrol.amir2Ad ?? null,
+      aliciSicil: kontrol.amir2Sicil ?? null,
+      telefon,
+      mesaj: kontrol.bildirimMetni,
+      originator: config.originator,
+      baglam: 'performans_amir2_bildirim',
+      sonuc,
+    })
+  }
+
+  revalidatePath('/iletisim-yonetimi/gecmis-gonderimler')
+
   if (!sonuc.ok) return { hata: sonuc.hata ?? 'SMS gönderilemedi.' }
 
   return {

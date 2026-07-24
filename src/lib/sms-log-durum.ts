@@ -113,9 +113,11 @@ export async function smsLogDurumSenkronize(
 /** Planlanmış ve süresi geçmiş kayıtların durumunu toplu sorgular. */
 export async function smsPlanliLoglariSenkronize(
   supabase: SupabaseClient,
-  limit = 50,
+  limit = 15,
+  maxSureMs = 6000,
 ): Promise<number> {
   const simdi = new Date().toISOString()
+  const baslangic = Date.now()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: kayitlar } = await (supabase as any)
@@ -129,6 +131,7 @@ export async function smsPlanliLoglariSenkronize(
 
   let sayac = 0
   for (const k of kayitlar ?? []) {
+    if (Date.now() - baslangic > maxSureMs) break
     const sonuc = await smsLogDurumSenkronize(supabase, k.id as number)
     if (sonuc.guncellendi) sayac += 1
   }
@@ -141,19 +144,30 @@ export async function smsLogOlaylariGetir(
 ): Promise<Record<number, SmsLogOlaySatir[]>> {
   if (!logIds.length) return {}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
-    .from('iletisim_sms_log_olay')
-    .select('id, log_id, olay_tipi, aciklama, saglayici_durum, created_at')
-    .in('log_id', logIds)
-    .order('created_at', { ascending: false })
-
   const map: Record<number, SmsLogOlaySatir[]> = {}
-  for (const row of (data ?? []) as SmsLogOlaySatir[]) {
-    const key = row.log_id
-    if (!map[key]) map[key] = []
-    map[key].push(row)
+  const parcaBoyutu = 80
+
+  for (let i = 0; i < logIds.length; i += parcaBoyutu) {
+    const parca = logIds.slice(i, i + parcaBoyutu)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('iletisim_sms_log_olay')
+      .select('id, log_id, olay_tipi, aciklama, saglayici_durum, created_at')
+      .in('log_id', parca)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('SMS_LOG_OLAY_SELECT', error.message)
+      continue
+    }
+
+    for (const row of (data ?? []) as SmsLogOlaySatir[]) {
+      const key = row.log_id
+      if (!map[key]) map[key] = []
+      map[key].push(row)
+    }
   }
+
   return map
 }
 

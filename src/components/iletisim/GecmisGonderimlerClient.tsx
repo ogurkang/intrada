@@ -1,8 +1,12 @@
 'use client'
 
-import { Fragment, useMemo, useState, useTransition, type MouseEvent } from 'react'
+import { Fragment, useEffect, useMemo, useState, useTransition, type MouseEvent } from 'react'
 import type { SmsLogOlaySatir } from '@/lib/sms-log-durum'
-import { smsLogDurumSenkronizeAction, smsLogIptalAction } from '@/app/(dashboard)/iletisim-yonetimi/gecmis-gonderimler/actions'
+import {
+  smsLogDurumSenkronizeAction,
+  smsLogIptalAction,
+  smsPlanliLoglariSenkronizeAction,
+} from '@/app/(dashboard)/iletisim-yonetimi/gecmis-gonderimler/actions'
 
 export interface SmsLogSatir {
   id: number
@@ -32,6 +36,7 @@ function baglamEtiket(baglam: string | null): string | null {
   if (!baglam) return null
   if (baglam === 'dogum_gunu') return 'Doğum günü'
   if (baglam === 'hosgeldin_bebek') return 'Hoş geldin bebek'
+  if (baglam === 'performans_amir2_bildirim') return 'Performans 2. amir'
   if (baglam === 'tekil') return 'Tekil'
   return baglam
 }
@@ -70,6 +75,18 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
   const [pending, startTransition] = useTransition()
   const [senkronLogId, setSenkronLogId] = useState<number | null>(null)
   const [iptalLogId, setIptalLogId] = useState<number | null>(null)
+  const [planSenkron, setPlanSenkron] = useState(false)
+
+  useEffect(() => {
+    let iptal = false
+    setPlanSenkron(true)
+    smsPlanliLoglariSenkronizeAction().finally(() => {
+      if (!iptal) setPlanSenkron(false)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [])
 
   const filtreli = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase('tr-TR')
@@ -153,6 +170,9 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
         Satıra tıklayarak gönderim geçmişini görüntüleyebilirsiniz. Planlanmış doğum günü mesajlarında
         iletim durumu sağlayıcıdan sorgulanır. Sağlayıcı durum kodu <strong>0</strong> (beklemede), planlanan
         tarih henüz gelmediyse normaldir — mesaj genelde o gün saat 09:00&apos;da gönderilir.
+        {planSenkron ? (
+          <span className="ml-1 text-indigo-600">Planlı gönderimler arka planda güncelleniyor…</span>
+        ) : null}
       </p>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

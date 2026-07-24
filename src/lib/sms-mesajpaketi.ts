@@ -135,6 +135,7 @@ async function xmlPost(cfg: SmsAyarConfig, path: string, xml: string): Promise<s
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `data=${encodeURIComponent(xml)}`,
     cache: 'no-store',
+    signal: AbortSignal.timeout(20_000),
   })
   const text = await res.text()
   if (!res.ok) {
@@ -273,7 +274,7 @@ export async function smsMesajDurumSorgula(
   try {
     const base = cfg.apiBaseUrl.replace(/\/+$/, '')
     const url = `${base}/api/mesaj_raporu?UserName=${encodeURIComponent(cfg.kullaniciAdi)}&PassWord=${encodeURIComponent(cfg.sifre)}&MsgId=${encodeURIComponent(id)}`
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
     const text = (await res.text()).trim()
     if (!res.ok) return { ok: false, hata: `Sağlayıcı HTTP ${res.status}`, ham: text }
 
@@ -302,7 +303,7 @@ export async function smsKrediSorgula(cfg: SmsAyarConfig): Promise<SmsKrediSonuc
   try {
     const base = cfg.apiBaseUrl.replace(/\/+$/, '')
     const url = `${base}/api/kredi_raporu?UserName=${encodeURIComponent(cfg.kullaniciAdi)}&PassWord=${encodeURIComponent(cfg.sifre)}`
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
     const text = (await res.text()).trim()
     if (!res.ok) return { ok: false, hata: `Sağlayıcı HTTP ${res.status}` }
     const hataKodu = text.match(/^\s*(0[1-9]|10)\s*$/)

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
-import { smsLogOlaylariGetir, smsPlanliLoglariSenkronize } from '@/lib/sms-log-durum'
+import { smsLogOlaylariGetir } from '@/lib/sms-log-durum'
 import GecmisGonderimlerClient, {
   type SmsLogSatir,
 } from '@/components/iletisim/GecmisGonderimlerClient'
@@ -17,15 +17,17 @@ export default async function GecmisGonderimlerPage() {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   if (!isAdminLike(access)) notFound()
 
-  await smsPlanliLoglariSenkronize(supabase)
-
-  const { data: logRaw } = await supabase
+  const { data: logRaw, error: logErr } = await supabase
     .from('iletisim_sms_log')
     .select(
       'id, alici_ad, alici_sicil, telefon, mesaj, originator, durum, baglam, planlanan_gonderim_at, gonderim_kontrol_at, saglayici_mesaj_id, hata_mesaji, actor_email, created_at',
     )
     .order('created_at', { ascending: false })
     .limit(500)
+
+  if (logErr) {
+    console.error('SMS_LOG_SELECT', logErr.message)
+  }
 
   const loglar = (logRaw ?? []) as SmsLogSatir[]
   const olaylarByLogId = await smsLogOlaylariGetir(
