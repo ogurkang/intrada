@@ -6,7 +6,7 @@ import {
   listBildirimFormPersonel,
   type BildirimFormPersonel,
 } from '@/lib/bildirim-form-personel'
-import { sendikaIstifaEkle } from '../actions'
+import { sendikaIstifaEkle } from '../../calisma-belgesi/actions'
 
 export default async function SendikaIstifaYeniPage() {
   const supabase = await createClient()

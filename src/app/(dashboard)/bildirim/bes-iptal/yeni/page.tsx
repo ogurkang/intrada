@@ -6,7 +6,7 @@ import {
   listBildirimFormPersonel,
   type BildirimFormPersonel,
 } from '@/lib/bildirim-form-personel'
-import { besIptalEkle } from '../actions'
+import { besIptalEkle } from '../../calisma-belgesi/actions'
 
 export default async function BesIptalYeniPage() {
   const supabase = await createClient()
