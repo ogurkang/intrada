@@ -141,6 +141,9 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/bildirim/hizmet-birlestirme', label: 'Hizmet Birleştirme İşlemleri' },
       { href: '/bildirim/mehil-izni', label: 'Mehil İzni Bildirimi' },
       { href: '/bildirim/harcirah-talep', label: 'Harcırah Talep Bildirimi' },
+      { href: '/bildirim/calisma-belgesi', label: 'Çalışma Belgesi İşlemleri' },
+      { href: '/bildirim/bes-iptal', label: 'BES İptal İşlemleri' },
+      { href: '/bildirim/sendika-istifa', label: 'Sendika İstifa İşlemleri' },
     ],
   },
   {

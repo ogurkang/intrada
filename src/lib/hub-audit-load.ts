@@ -10,6 +10,9 @@ export type ModulHubAuditTip =
   | 'hizmet-birlestirme'
   | 'mehil-izni'
   | 'harcirah-talep'
+  | 'calisma-belgesi'
+  | 'bes-iptal'
+  | 'sendika-istifa'
 
 export interface HubSonIslemOzet {
   tarih: string

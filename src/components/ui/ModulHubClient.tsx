@@ -19,6 +19,15 @@ import {
   harcirahTalepAuditDiffSatirlari,
   harcirahTalepAuditDegerGoster,
 } from '@/lib/harcirah-talep-audit'
+import {
+  calismaBelgesiAuditDiffSatirlari,
+  calismaBelgesiAuditDegerGoster,
+} from '@/lib/calisma-belgesi-audit'
+import { besIptalAuditDiffSatirlari, besIptalAuditDegerGoster } from '@/lib/bes-iptal-audit'
+import {
+  sendikaIstifaAuditDiffSatirlari,
+  sendikaIstifaAuditDegerGoster,
+} from '@/lib/sendika-istifa-audit'
 
 type AuditLog = Tables<'personel_audit_log'>
 type DiffFn = (onceki: unknown, sonraki: unknown) => {
@@ -49,6 +58,18 @@ const AUDIT_TIP_MAP: Record<ModulHubAuditTip, { diffSatirlari: DiffFn; degerGost
   'harcirah-talep': {
     diffSatirlari: harcirahTalepAuditDiffSatirlari,
     degerGoster: harcirahTalepAuditDegerGoster,
+  },
+  'calisma-belgesi': {
+    diffSatirlari: calismaBelgesiAuditDiffSatirlari,
+    degerGoster: calismaBelgesiAuditDegerGoster,
+  },
+  'bes-iptal': {
+    diffSatirlari: besIptalAuditDiffSatirlari,
+    degerGoster: besIptalAuditDegerGoster,
+  },
+  'sendika-istifa': {
+    diffSatirlari: sendikaIstifaAuditDiffSatirlari,
+    degerGoster: sendikaIstifaAuditDegerGoster,
   },
 }
 

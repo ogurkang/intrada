@@ -11,6 +11,9 @@ const BILDIRIM_REF_TABLES = [
   'hizmet_birlestirme_islemleri',
   'mehil_izni_bildirimleri',
   'harcirah_talep_bildirimleri',
+  'calisma_belgesi_bildirimleri',
+  'bes_iptal_bildirimleri',
+  'sendika_istifa_bildirimleri',
 ] as const
 
 export default async function BildirimHubPage() {
@@ -37,6 +40,15 @@ export default async function BildirimHubPage() {
   const harcirahCountQ = kullaniciSicil
     ? supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true })
+  const calismaBelgesiCountQ = kullaniciSicil
+    ? supabase.from('calisma_belgesi_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('calisma_belgesi_bildirimleri').select('*', { count: 'exact', head: true })
+  const besIptalCountQ = kullaniciSicil
+    ? supabase.from('bes_iptal_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('bes_iptal_bildirimleri').select('*', { count: 'exact', head: true })
+  const sendikaIstifaCountQ = kullaniciSicil
+    ? supabase.from('sendika_istifa_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('sendika_istifa_bildirimleri').select('*', { count: 'exact', head: true })
 
   const [
     { count: ogrenimSayisi },
@@ -46,6 +58,9 @@ export default async function BildirimHubPage() {
     { count: hizmetSayisi },
     { count: mehilSayisi },
     { count: harcirahSayisi },
+    { count: calismaBelgesiSayisi },
+    { count: besIptalSayisi },
+    { count: sendikaIstifaSayisi },
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
@@ -55,6 +70,9 @@ export default async function BildirimHubPage() {
     hizmetCountQ,
     mehilCountQ,
     harcirahCountQ,
+    calismaBelgesiCountQ,
+    besIptalCountQ,
+    sendikaIstifaCountQ,
     loadAuditLoglarByRefTables(supabase, [...BILDIRIM_REF_TABLES]),
   ])
 
@@ -178,12 +196,63 @@ export default async function BildirimHubPage() {
         </svg>
       ),
     },
+    {
+      key: 'calisma-belgesi',
+      baslik: 'Çalışma Belgesi İşlemleri',
+      aciklama: 'Çalışma belgesi talep dilekçesi oluşturma ve Word çıktısı',
+      href: '/bildirim/calisma-belgesi',
+      refTable: 'calisma_belgesi_bildirimleri' as const,
+      sayi: calismaBelgesiSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-indigo-200 bg-indigo-50',
+      ikonRenk: 'bg-indigo-100 text-indigo-600',
+      auditTip: 'calisma-belgesi' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'bes-iptal',
+      baslik: 'BES İptal İşlemleri',
+      aciklama: 'BES/OKS iptal talep dilekçesi oluşturma ve Word çıktısı',
+      href: '/bildirim/bes-iptal',
+      refTable: 'bes_iptal_bildirimleri' as const,
+      sayi: besIptalSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-orange-200 bg-orange-50',
+      ikonRenk: 'bg-orange-100 text-orange-600',
+      auditTip: 'bes-iptal' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'sendika-istifa',
+      baslik: 'Sendika İstifa İşlemleri',
+      aciklama: 'Sendika istifa bildirimi dilekçesi oluşturma ve Word çıktısı',
+      href: '/bildirim/sendika-istifa',
+      refTable: 'sendika_istifa_bildirimleri' as const,
+      sayi: sendikaIstifaSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-fuchsia-200 bg-fuchsia-50',
+      ikonRenk: 'bg-fuchsia-100 text-fuchsia-600',
+      auditTip: 'sendika-istifa' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+        </svg>
+      ),
+    },
   ]
 
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni ve harcırah talep işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []

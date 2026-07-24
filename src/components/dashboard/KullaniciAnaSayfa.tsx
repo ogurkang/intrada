@@ -60,6 +60,24 @@ export default function KullaniciAnaSayfa({
         href: '/bildirim/harcirah-talep',
         emoji: '💰',
       },
+      {
+        baslik: 'Çalışma Belgesi İşlemleri',
+        aciklama: 'Çalışma belgesi talep dilekçesi oluşturma ve Word çıktısı.',
+        href: '/bildirim/calisma-belgesi',
+        emoji: '📋',
+      },
+      {
+        baslik: 'BES İptal İşlemleri',
+        aciklama: 'BES/OKS iptal talep dilekçesi oluşturma ve Word çıktısı.',
+        href: '/bildirim/bes-iptal',
+        emoji: '📝',
+      },
+      {
+        baslik: 'Sendika İstifa İşlemleri',
+        aciklama: 'Sendika istifa bildirimi oluşturma ve Word çıktısı.',
+        href: '/bildirim/sendika-istifa',
+        emoji: '✊',
+      },
     )
   }
 
