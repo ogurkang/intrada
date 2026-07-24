@@ -397,7 +397,8 @@ export default function PerformansFormClient({
               {smsModal.bildirimMetni}
             </div>
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Test modu: SMS şimdilik <strong>05322804987</strong> numarasına gönderilir.
+              Test modu: SMS şimdilik <strong>05322804987</strong> numarasına{' '}
+              <strong>ADPZRIBLD</strong> başlığıyla gönderilir.
             </p>
             {smsHata && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

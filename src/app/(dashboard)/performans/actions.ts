@@ -37,8 +37,10 @@ import { sablonDoldur } from '@/lib/sms-sablon'
 import { fetchSmsAyar, smsAyarHazirMi, smsAyarToConfig } from '@/lib/sms-ayar'
 import { smsGonderTekMetin } from '@/lib/sms-mesajpaketi'
 import {
+  PERFORMANS_AMIR2_SMS_ORIGINATOR,
   PERFORMANS_AMIR2_SMS_TEST_TELEFON,
   performansAmir2BildirimMetni,
+  performansAmir2BildirimSenaryoBelirle,
 } from '@/lib/performans-amir2-bildirim'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -645,7 +647,25 @@ export async function performansSonrakiDegerlendirmeBul(params: {
             .eq('sicil_no', amir2Sicil)
             .maybeSingle()
           amir2Ad = amir2Cal?.ad_soyad?.trim() || amir2Sicil
-          if (yil) bildirimMetni = performansAmir2BildirimMetni(amir2Ad, yil)
+          if (yil && hedefAmir1) {
+            const senaryo = performansAmir2BildirimSenaryoBelirle(hedefAmir1, birimler)
+            let amir1Ad: string | null = null
+            if (senaryo === 'baskan_yardimcisi') {
+              const { data: amir1Cal } = await supabase
+                .from('calisan')
+                .select('ad_soyad')
+                .eq('sicil_no', hedefAmir1)
+                .maybeSingle()
+              amir1Ad = amir1Cal?.ad_soyad?.trim() || hedefAmir1
+            }
+            bildirimMetni = performansAmir2BildirimMetni({
+              amir2Ad,
+              yil,
+              senaryo,
+              mudurlukAdi: mudurluk,
+              amir1Ad,
+            })
+          }
         }
       }
     }
@@ -708,6 +728,7 @@ export async function performansAmir2MudurlukBildirimSmsGonder(params: {
     return { hata: 'SMS ayarları hazır değil (İletişim Yönetimi → Tanımlar).' }
   }
   const config = smsAyarToConfig(smsAyar)
+  config.originator = PERFORMANS_AMIR2_SMS_ORIGINATOR
 
   const sonuc = await smsGonderTekMetin(config, kontrol.bildirimMetni, [PERFORMANS_AMIR2_SMS_TEST_TELEFON])
   if (!sonuc.ok) return { hata: sonuc.hata ?? 'SMS gönderilemedi.' }
