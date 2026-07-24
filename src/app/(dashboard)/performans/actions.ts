@@ -36,6 +36,10 @@ import type { OrgBirimSatir } from '@/lib/performans-amir'
 import { sablonDoldur } from '@/lib/sms-sablon'
 import { fetchSmsAyar, smsAyarHazirMi, smsAyarToConfig } from '@/lib/sms-ayar'
 import { smsGonderTekMetin } from '@/lib/sms-mesajpaketi'
+import {
+  PERFORMANS_AMIR2_SMS_TEST_TELEFON,
+  performansAmir2BildirimMetni,
+} from '@/lib/performans-amir2-bildirim'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sb = any
@@ -458,7 +462,15 @@ export async function performansSonrakiDegerlendirmeBul(params: {
   donemId: number
   mudurlukAdi?: string | null
   rol: 'amir1' | 'amir2'
-}): Promise<{ hata?: string; sonrakiId?: number | null }> {
+}): Promise<{
+  hata?: string
+  sonrakiId?: number | null
+  mudurlukAmir1Tamam?: boolean
+  amir2Ad?: string | null
+  amir2Sicil?: string | null
+  yil?: number | null
+  bildirimMetni?: string | null
+}> {
   const supabase = await createClient()
   const sicil = await currentSicil(supabase)
   if (!sicil) return { hata: 'Sicil bulunamadı.' }
@@ -468,7 +480,7 @@ export async function performansSonrakiDegerlendirmeBul(params: {
 
   const { data: mevcut } = await (supabase as Sb)
     .from('performans_degerlendirme')
-    .select('id, sicil_no')
+    .select('id, sicil_no, mudurluk_adi')
     .eq('id', params.mevcutDegId)
     .maybeSingle()
   if (!mevcut) return { hata: 'Kayıt bulunamadı.' }
@@ -585,7 +597,124 @@ export async function performansSonrakiDegerlendirmeBul(params: {
 
   const sonraki = liste.find(r => r.id !== params.mevcutDegId && degerlendirilebilir(r))
 
-  return { sonrakiId: sonraki?.id ?? null }
+  let mudurlukAmir1Tamam = false
+  let amir2Sicil: string | null = null
+  let amir2Ad: string | null = null
+  let yil: number | null = null
+  let bildirimMetni: string | null = null
+
+  if (params.rol === 'amir1' && mudurluk) {
+    const { data: donem } = await (supabase as Sb)
+      .from('performans_donem')
+      .select('yil')
+      .eq('id', params.donemId)
+      .maybeSingle()
+    yil = donem?.yil ?? null
+
+    const mevcutCanli = performansDegerlendirmeAmirCanli(
+      { sicil_no: mevcut.sicil_no, mudurluk_adi: mevcut.mudurluk_adi },
+      baglam,
+    )
+    const hedefAmir1 = mevcutCanli.amir1_sicil
+
+    const amir1Liste = liste.filter(r => {
+      if (r.tek_amir) return false
+      const kadro = kadroIndeks.get(r.sicil_no)
+      const canli = performansDegerlendirmeAmirCanli(
+        { sicil_no: r.sicil_no, mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi },
+        baglam,
+      )
+      return performansSicilEsit(canli.amir1_sicil, hedefAmir1)
+    })
+
+    if (amir1Liste.length > 0) {
+      const bekleyen = amir1Liste.filter(r => r.durum === 'beklemede_1' || r.durum === 'iade')
+      mudurlukAmir1Tamam = bekleyen.length === 0
+      if (mudurlukAmir1Tamam) {
+        const ornek = amir1Liste[0]
+        const kadro = kadroIndeks.get(ornek.sicil_no)
+        const canli = performansDegerlendirmeAmirCanli(
+          { sicil_no: ornek.sicil_no, mudurluk_adi: ornek.mudurluk_adi ?? kadro?.mudurluk_adi },
+          baglam,
+        )
+        amir2Sicil = canli.amir2_sicil ?? ornek.amir2_sicil
+        if (amir2Sicil) {
+          const { data: amir2Cal } = await supabase
+            .from('calisan')
+            .select('ad_soyad')
+            .eq('sicil_no', amir2Sicil)
+            .maybeSingle()
+          amir2Ad = amir2Cal?.ad_soyad?.trim() || amir2Sicil
+          if (yil) bildirimMetni = performansAmir2BildirimMetni(amir2Ad, yil)
+        }
+      }
+    }
+  }
+
+  return {
+    sonrakiId: sonraki?.id ?? null,
+    mudurlukAmir1Tamam,
+    amir2Ad,
+    amir2Sicil,
+    yil,
+    bildirimMetni,
+  }
+}
+
+/** Müdürlükte 1. amir değerlendirmesi bittiğinde 2. amire bildirim SMS (test numarasına). */
+export async function performansAmir2MudurlukBildirimSmsGonder(params: {
+  donemId: number
+  mudurlukAdi: string
+  mevcutDegId: number
+}): Promise<{ hata?: string; mesaj?: string }> {
+  const supabase = await createClient()
+  const sicil = await currentSicil(supabase)
+  if (!sicil) return { hata: 'Sicil bulunamadı.' }
+  const isAdmin = await performansActionAdminBypass(supabase)
+
+  const mudurluk = params.mudurlukAdi.trim()
+  if (!mudurluk) return { hata: 'Müdürlük bilgisi gerekli.' }
+
+  const kontrol = await performansSonrakiDegerlendirmeBul({
+    mevcutDegId: params.mevcutDegId,
+    donemId: params.donemId,
+    mudurlukAdi: mudurluk,
+    rol: 'amir1',
+  })
+  if (kontrol.hata) return { hata: kontrol.hata }
+  if (!kontrol.mudurlukAmir1Tamam) {
+    return { hata: 'Bu müdürlükte 1. amir değerlendirmesi henüz tamamlanmadı.' }
+  }
+  if (!kontrol.bildirimMetni) {
+    return { hata: '2. amir bilgisi bulunamadı.' }
+  }
+
+  if (!isAdmin) {
+    const baglam = await performansOrgBaglamiYukle(supabase)
+    const { data: mevcutDeg } = await (supabase as Sb)
+      .from('performans_degerlendirme')
+      .select('sicil_no, mudurluk_adi')
+      .eq('id', params.mevcutDegId)
+      .maybeSingle()
+    if (!mevcutDeg) return { hata: 'Kayıt bulunamadı.' }
+    const canli = performansDegerlendirmeAmirCanli(mevcutDeg, baglam)
+    if (!performansSicilEsit(canli.amir1_sicil, sicil)) {
+      return { hata: 'Bu işlem için 1. amir yetkiniz yok.' }
+    }
+  }
+
+  const smsAyar = await fetchSmsAyar(supabase)
+  if (!smsAyarHazirMi(smsAyar)) {
+    return { hata: 'SMS ayarları hazır değil (İletişim Yönetimi → Tanımlar).' }
+  }
+  const config = smsAyarToConfig(smsAyar)
+
+  const sonuc = await smsGonderTekMetin(config, kontrol.bildirimMetni, [PERFORMANS_AMIR2_SMS_TEST_TELEFON])
+  if (!sonuc.ok) return { hata: sonuc.hata ?? 'SMS gönderilemedi.' }
+
+  return {
+    mesaj: `Bildirim SMS test hattına (${PERFORMANS_AMIR2_SMS_TEST_TELEFON}) gönderildi.`,
+  }
 }
 
 export type PerformansEk5OnizleVeri = {

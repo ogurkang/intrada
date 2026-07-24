@@ -12,8 +12,10 @@ import {
 import {
   performansAmir1Kaydet,
   performansAmir2Kaydet,
+  performansAmir2MudurlukBildirimSmsGonder,
   performansSonrakiDegerlendirmeBul,
 } from '@/app/(dashboard)/performans/actions'
+import Modal from '@/components/ui/Modal'
 
 type KriterSatir = {
   id: number
@@ -75,6 +77,13 @@ export default function PerformansFormClient({
   const [pending, start] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [iadeNotu, setIadeNotu] = useState('')
+  const [smsModal, setSmsModal] = useState<{
+    sonraHref: string
+    amir2Ad: string
+    bildirimMetni: string
+  } | null>(null)
+  const [smsHata, setSmsHata] = useState<string | null>(null)
+  const [smsPending, startSms] = useTransition()
 
   const baslangic = useMemo(() => {
     const m: Record<number, number> = {}
@@ -117,6 +126,74 @@ export default function PerformansFormClient({
       const href = r.sonraHref ?? varsayilanHref
       if (href) router.push(href)
       else router.refresh()
+    })
+  }
+
+  async function amir1GonderSonrasi(): Promise<{ hata?: string; sonraHref?: string }> {
+    const r = await performansAmir1Kaydet({
+      degerlendirmeId: degerlendirme.id,
+      puanlar,
+      gonder: true,
+    })
+    if (r.hata) return r
+
+    try {
+      const sonraki = await performansSonrakiDegerlendirmeBul({
+        mevcutDegId: degerlendirme.id,
+        donemId: donemId!,
+        mudurlukAdi,
+        rol: 'amir1',
+      })
+      if (sonraki.hata) return { hata: sonraki.hata }
+
+      const href = sonraki.sonrakiId
+        ? kayitHref(sonraki.sonrakiId, 'amir1')
+        : geriHref
+
+      if (
+        !degerlendirme.tek_amir &&
+        !sonraki.sonrakiId &&
+        sonraki.mudurlukAmir1Tamam &&
+        mudurlukAdi &&
+        sonraki.bildirimMetni &&
+        sonraki.amir2Ad
+      ) {
+        setSmsHata(null)
+        setSmsModal({
+          sonraHref: href,
+          amir2Ad: sonraki.amir2Ad,
+          bildirimMetni: sonraki.bildirimMetni,
+        })
+        return {}
+      }
+
+      return { sonraHref: href }
+    } catch (e) {
+      return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
+    }
+  }
+
+  function smsModalKapat(gonder: boolean) {
+    if (!smsModal || !donemId || !mudurlukAdi) return
+    const href = smsModal.sonraHref
+    if (!gonder) {
+      setSmsModal(null)
+      router.push(href)
+      return
+    }
+    setSmsHata(null)
+    startSms(async () => {
+      const r = await performansAmir2MudurlukBildirimSmsGonder({
+        donemId,
+        mudurlukAdi,
+        mevcutDegId: degerlendirme.id,
+      })
+      if (r.hata) {
+        setSmsHata(r.hata)
+        return
+      }
+      setSmsModal(null)
+      router.push(href)
     })
   }
 
@@ -233,21 +310,7 @@ export default function PerformansFormClient({
             <button
               type="button"
               disabled={pending || !hepsiDolu}
-              onClick={() =>
-                run(async () => {
-                  const r = await performansAmir1Kaydet({
-                    degerlendirmeId: degerlendirme.id,
-                    puanlar,
-                    gonder: true,
-                  })
-                  if (r.hata) return r
-                  try {
-                    return { sonraHref: await sonrakiHrefBul('amir1') }
-                  } catch (e) {
-                    return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
-                  }
-                })
-              }
+              onClick={() => run(() => amir1GonderSonrasi())}
               className="rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
             >
               {degerlendirme.tek_amir ? 'Kaydet ve tamamla' : 'Kaydet · 2. amire gönder'}
@@ -255,21 +318,7 @@ export default function PerformansFormClient({
             <button
               type="button"
               disabled={pending || !hepsiDolu}
-              onClick={() =>
-                run(async () => {
-                  const r = await performansAmir1Kaydet({
-                    degerlendirmeId: degerlendirme.id,
-                    puanlar,
-                    gonder: true,
-                  })
-                  if (r.hata) return r
-                  try {
-                    return { sonraHref: await sonrakiHrefBul('amir1') }
-                  } catch (e) {
-                    return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
-                  }
-                })
-              }
+              onClick={() => run(() => amir1GonderSonrasi())}
               className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
             >
               Kaydet · devam et
@@ -329,6 +378,53 @@ export default function PerformansFormClient({
           </div>
         )}
       </div>
+
+      <Modal
+        open={smsModal != null}
+        onClose={() => smsModalKapat(false)}
+        title="2. Amire Mesaj Gönderilsin mi?"
+        size="md"
+      >
+        {smsModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <span className="font-medium text-slate-800">{mudurlukAdi}</span> müdürlüğündeki tüm
+              personelin 1. amir değerlendirmesi tamamlandı. 2. amir{' '}
+              <span className="font-medium text-slate-800">{smsModal.amir2Ad}</span> bilgilendirilsin
+              mi?
+            </p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap">
+              {smsModal.bildirimMetni}
+            </div>
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Test modu: SMS şimdilik <strong>05322804987</strong> numarasına gönderilir.
+            </p>
+            {smsHata && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {smsHata}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={smsPending}
+                onClick={() => smsModalKapat(false)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Hayır
+              </button>
+              <button
+                type="button"
+                disabled={smsPending}
+                onClick={() => smsModalKapat(true)}
+                className="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {smsPending ? 'Gönderiliyor…' : 'Evet, gönder'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
