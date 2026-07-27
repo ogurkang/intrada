@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-25T19:32:32.139Z",
+  "generatedAt": "2026-07-27T08:18:29.708Z",
   "commits": [
+    {
+      "hash": "0bcaf8a",
+      "fullHash": "0bcaf8afe68db57835a7d319da34bfe581f90ce1",
+      "date": "2026-07-27",
+      "subject": "feat(performans,dashboard,isg): raporlama, IK SMS ve ana sayfa statü KPI"
+    },
     {
       "hash": "e508d4d",
       "fullHash": "e508d4d9b1bde465973b5a77f161d0097e126625",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "cdf547e7c25758bd00b6f566c75f9f5518e60bb9",
       "date": "2026-07-02",
       "subject": "feat(personel-hareketleri): yeni kayit formu degistir ile birlestir, kadro sinif sutunu"
-    },
-    {
-      "hash": "b5e125b",
-      "fullHash": "b5e125be8f61334d5735e0138a2833887087ba0c",
-      "date": "2026-07-02",
-      "subject": "feat(personel-hareketleri): sifirdan hareket ekleme ve kan grubu telefon sutunu"
     }
   ]
 }

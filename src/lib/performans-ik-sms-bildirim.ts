@@ -92,7 +92,7 @@ async function mudurlukTamamlandiMi(
     .eq('donem_id', donemId)
 
   const mudRows = (rows ?? []).filter(r =>
-    performansMudurlukKayitEslesir(r.mudurluk_adi ?? '', mudurlukAdi),
+    performansMudurlukKayitEslesir(mudurlukAdi, { mudurluk_adi: r.mudurluk_adi }),
   )
   if (mudRows.length === 0) return false
   return mudRows.every(r => TAMAM_DURUMLAR.includes(r.durum as (typeof TAMAM_DURUMLAR)[number]))
