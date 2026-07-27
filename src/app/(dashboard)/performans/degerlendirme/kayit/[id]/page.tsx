@@ -10,6 +10,7 @@ import {
   performansDegerlendirmeAmirCanli,
   performansDegerlendirmeErisimVar,
 } from '@/lib/performans-degerlendirme-amir-canli'
+import { performansKadroSatirSec, performansMudurlukCoz } from '@/lib/performans-kadro'
 import { degerlendirmeTamamlandi } from '@/lib/performans-istatistik'
 import { performansDonemKayitlariSenkronize } from '@/lib/performans-degerlendirme-sync'
 
@@ -18,7 +19,7 @@ export default async function PerformansKayitDetayPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ rol?: string; donem?: string; mudurluk?: string; vekalet?: string }>
+  searchParams: Promise<{ rol?: string; donem?: string; mudurluk?: string; vekalet?: string; bby?: string; bby2?: string; baskan?: string }>
 }) {
   const { id } = await params
   const sp = await searchParams
@@ -110,10 +111,24 @@ export default async function PerformansKayitDetayPage({
 
   let geriHref = '/performans/degerlendirme'
   const donemId = deg.donem?.id ?? (sp.donem ? Number(sp.donem) : null)
-  const mudurlukAdi = sp.mudurluk?.trim() || null
+  const kadroSatir = performansKadroSatirSec(deg.sicil_no, baglam.kadrolar)
+  const kadroMudurluk = kadroSatir
+    ? performansMudurlukCoz(kadroSatir, baglam.mudurlukByNorm)
+    : null
+  const mudurlukAdi =
+    sp.mudurluk?.trim() || kadroMudurluk || deg.mudurluk_adi?.trim() || null
+  const bbyAmir1Mudur = sp.bby === '1'
+  const bbyAmir2Mod = sp.bby2 === '1'
+  const baskanMod = sp.baskan === '1'
   if (sp.donem) {
     geriHref = `/performans/degerlendirme/${sp.donem}`
-    if (mudurlukAdi) {
+    if (bbyAmir2Mod || baskanMod) {
+      const q = new URLSearchParams()
+      if (mudurlukAdi) q.set('mudurluk', mudurlukAdi)
+      if (bbyAmir2Mod) q.set('bby2', '1')
+      if (baskanMod) q.set('baskan', '1')
+      geriHref += `?${q.toString()}`
+    } else if (!bbyAmir1Mudur && mudurlukAdi) {
       geriHref += `?mudurluk=${encodeURIComponent(mudurlukAdi)}`
     }
   }
@@ -141,6 +156,9 @@ export default async function PerformansKayitDetayPage({
       donemId={donemId}
       mudurlukAdi={mudurlukAdi}
       adminVekalet={adminVekalet}
+      bbyAmir1Mudur={bbyAmir1Mudur}
+      bbyAmir2Mod={bbyAmir2Mod}
+      baskanMod={baskanMod}
     />
   )
 }

@@ -99,6 +99,17 @@ export function performansKadroMudurlukEslesir(
   return normMudStr(kadro_mudurlugu) === hedef
 }
 
+/** Kadro müdürlüğü veya kayıtlı müdürlük adı ile eşleşme (BBY geri dönüşleri için). */
+export function performansMudurlukKayitEslesir(
+  seciliMudurluk: string,
+  kayit: { kadro_mudurlugu?: string | null; mudurluk_adi?: string | null },
+): boolean {
+  return (
+    performansKadroMudurlukEslesir(seciliMudurluk, kayit.kadro_mudurlugu) ||
+    performansKadroMudurlukEslesir(seciliMudurluk, kayit.mudurluk_adi)
+  )
+}
+
 export function mudurlukByNormHaritasi(mudurlukAdlari: string[]): Map<string, string> {
   const map = new Map<string, string>()
   for (const adi of mudurlukAdlari) {

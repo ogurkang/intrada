@@ -21,7 +21,6 @@ export function hayaletPathAllowed(pathname: string): boolean {
   if (path === '/yetkilendirme/hayalet-profil') return true
   if (path === '/performans' || path.startsWith('/performans/')) {
     if (path.startsWith('/performans/tanimlar')) return false
-    if (path.startsWith('/performans/raporlama')) return false
     if (path.startsWith('/performans/donem')) return false
     return true
   }

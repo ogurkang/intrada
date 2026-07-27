@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { personelDetayHref } from '@/lib/personel-link'
 import GorevHatirlaticiWidget, { type GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
+import type { DashboardStatuEtiket } from '@/lib/dashboard-statu-sayilari'
+import { DASHBOARD_STATU_ETIKETLERI } from '@/lib/dashboard-statu-sayilari'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +64,7 @@ export interface IzinArtisAdayi {
 }
 
 interface Props {
-  aktifPersonelSayisi: number
+  statuSayilari: Record<DashboardStatuEtiket, number>
   kadroDoluluk:        KadroDoluluk
   izinIstatistik:      IzinIstatistik
   bekleyenIzinler:     BekleyenIzin[]
@@ -74,6 +76,14 @@ interface Props {
   buYil:               number
   canEditIzinHak:      boolean
   onDurumDegistir:     (id: number, yeniDurum: 'Onaylandı' | 'İptal Edildi') => Promise<{ hata?: string }>
+}
+
+const STATU_KART_RENK: Record<DashboardStatuEtiket, string> = {
+  Memur: 'bg-blue-50 border-blue-200 text-blue-800',
+  'İşçi': 'bg-orange-50 border-orange-200 text-orange-800',
+  Sözleşmeli: 'bg-teal-50 border-teal-200 text-teal-800',
+  'Meclis Üyesi': 'bg-purple-50 border-purple-200 text-purple-800',
+  'Belediye Başkanı': 'bg-amber-50 border-amber-200 text-amber-800',
 }
 
 // ─── Yardımcı ────────────────────────────────────────────────────────────────
@@ -121,7 +131,7 @@ function KpiKart({ baslik, deger, alt, renk, href }: {
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
-  aktifPersonelSayisi, kadroDoluluk, izinIstatistik,
+  statuSayilari, kadroDoluluk, izinIstatistik,
   bekleyenIzinler, yaklaşanTatiller, izindekiler, izinArtisAdaylari,
   gorevHatirlaticilar,
   mihenkTasiSayisi,
@@ -142,9 +152,7 @@ export default function DashboardClient({
 
   const kadroToplam = kadroDoluluk.dolu + kadroDoluluk.vekil + kadroDoluluk.bos || 1
   const dolulukYuzde = Math.round(((kadroDoluluk.dolu + kadroDoluluk.vekil) / kadroToplam) * 100)
-
-  const izinToplam = izinIstatistik.taslak + izinIstatistik.onaylandi +
-                     izinIstatistik.iptal  + izinIstatistik.degistirildi || 1
+  const aktifToplam = DASHBOARD_STATU_ETIKETLERI.reduce((s, e) => s + statuSayilari[e], 0)
 
   return (
     <div className="space-y-6">
@@ -157,100 +165,36 @@ export default function DashboardClient({
         </p>
       </div>
 
-      {/* KPI Kartları + Mihenk Taşları */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <KpiKart
-          baslik="Aktif Personel"
-          deger={aktifPersonelSayisi}
-          alt={`${kadroDoluluk.dolu} dolu · ${kadroDoluluk.vekil} vekil · ${kadroDoluluk.bos} boş kadro`}
-          renk="bg-blue-50 border-blue-200 text-blue-800"
-          href="/personel"
-        />
-        <KpiKart
-          baslik="Kadro Doluluk"
-          deger={`%${dolulukYuzde}`}
-          alt={`${kadroDoluluk.dolu + kadroDoluluk.vekil} / ${kadroToplam} kadro dolu`}
-          renk="bg-indigo-50 border-indigo-200 text-indigo-800"
-          href="/kadro"
-        />
-        <KpiKart
-          baslik={`${buYil} İzin Hareketleri`}
-          deger={izinIstatistik.onaylandi}
-          alt={`${izinIstatistik.taslak} bekleyen · ${izinIstatistik.iptal} iptal`}
-          renk="bg-green-50 border-green-200 text-green-800"
-          href="/izin"
-        />
-        <KpiKart
-          baslik="Bekleyen Talepler"
-          deger={izinIstatistik.taslak}
-          alt="onay bekleyen izin"
-          renk={izinIstatistik.taslak > 0
-            ? 'bg-amber-50 border-amber-200 text-amber-800'
-            : 'bg-slate-50 border-slate-200 text-slate-600'
-          }
-          href="/izin"
-        />
-        <KpiKart
-          baslik="Mihenk Taşları"
-          deger={mihenkTasiSayisi}
-          alt="source kodu geliştirmesi"
-          renk="bg-violet-50 border-violet-200 text-violet-800"
-          href="/mihenk-taslari"
-        />
-      </div>
-
-      {/* Kadro doluluk çubuğu */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-700">Kadro Doluluk Durumu</h2>
-          <Link href="/kadro" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Tümünü gör →</Link>
-        </div>
-        <div className="flex rounded-full overflow-hidden h-4 gap-0.5 mb-3">
-          {kadroDoluluk.dolu > 0 && (
-            <div className="bg-green-500 transition-all"
-              style={{ width: `${(kadroDoluluk.dolu / kadroToplam) * 100}%` }} title={`Dolu: ${kadroDoluluk.dolu}`} />
-          )}
-          {kadroDoluluk.vekil > 0 && (
-            <div className="bg-amber-400 transition-all"
-              style={{ width: `${(kadroDoluluk.vekil / kadroToplam) * 100}%` }} title={`Vekil: ${kadroDoluluk.vekil}`} />
-          )}
-          {kadroDoluluk.bos > 0 && (
-            <div className="bg-slate-200 transition-all"
-              style={{ width: `${(kadroDoluluk.bos / kadroToplam) * 100}%` }} title={`Boş: ${kadroDoluluk.bos}`} />
-          )}
-        </div>
-        <div className="flex gap-5 text-xs text-slate-600">
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />Dolu: {kadroDoluluk.dolu}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" />Vekil: {kadroDoluluk.vekil}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-200 inline-block" />Boş: {kadroDoluluk.bos}</span>
-        </div>
-      </div>
-
-      {/* İzin dağılım çubuğu */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-700">{buYil} Yılı İzin Dağılımı</h2>
-          <Link href="/izin" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">Tümünü gör →</Link>
-        </div>
-        <div className="flex rounded-full overflow-hidden h-4 gap-0.5 mb-3">
-          {izinIstatistik.onaylandi > 0 && (
-            <div className="bg-green-500" style={{ width: `${(izinIstatistik.onaylandi / izinToplam) * 100}%` }} />
-          )}
-          {izinIstatistik.taslak > 0 && (
-            <div className="bg-amber-400" style={{ width: `${(izinIstatistik.taslak / izinToplam) * 100}%` }} />
-          )}
-          {izinIstatistik.degistirildi > 0 && (
-            <div className="bg-blue-400" style={{ width: `${(izinIstatistik.degistirildi / izinToplam) * 100}%` }} />
-          )}
-          {izinIstatistik.iptal > 0 && (
-            <div className="bg-slate-300" style={{ width: `${(izinIstatistik.iptal / izinToplam) * 100}%` }} />
-          )}
-        </div>
-        <div className="flex flex-wrap gap-4 text-xs text-slate-600">
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />Onaylı: {izinIstatistik.onaylandi}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" />Bekleyen: {izinIstatistik.taslak}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" />Değiştirildi: {izinIstatistik.degistirildi}</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-300 inline-block" />İptal: {izinIstatistik.iptal}</span>
+      {/* Statü KPI + Kadro Doluluk + Mihenk Taşları */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+          Aktif personel (asil kadro) · toplam {aktifToplam}
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          {DASHBOARD_STATU_ETIKETLERI.map(etiket => (
+            <KpiKart
+              key={etiket}
+              baslik={etiket}
+              deger={statuSayilari[etiket]}
+              alt="asil kadro"
+              renk={STATU_KART_RENK[etiket]}
+              href="/personel"
+            />
+          ))}
+          <KpiKart
+            baslik="Kadro Doluluk"
+            deger={`%${dolulukYuzde}`}
+            alt={`${kadroDoluluk.dolu + kadroDoluluk.vekil} / ${kadroToplam} kadro dolu`}
+            renk="bg-indigo-50 border-indigo-200 text-indigo-800"
+            href="/kadro"
+          />
+          <KpiKart
+            baslik="Mihenk Taşları"
+            deger={mihenkTasiSayisi}
+            alt="source kodu geliştirmesi"
+            renk="bg-violet-50 border-violet-200 text-violet-800"
+            href="/mihenk-taslari"
+          />
         </div>
       </div>
 

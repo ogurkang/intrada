@@ -4,6 +4,7 @@ import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
 import type { GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
 import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
+import { dashboardStatuSayilariHesapla } from '@/lib/dashboard-statu-sayilari'
 import { izinDurumDegistir } from './izin/actions'
 import type {
   KadroDoluluk, IzinIstatistik, BekleyenIzin,
@@ -30,23 +31,21 @@ export default async function DashboardPage() {
   const bugun    = new Date().toISOString().split('T')[0]
 
   const [
-    { data: personelRaw },
     { data: kadroRaw },
     { data: izinYilRaw },
     { data: bekleyenRaw },
     { data: tatilRaw },
     { data: izindekiRaw },
   ] = await Promise.all([
-    // 1) Aktif personel sayısı
-    supabase.from('personel_kadro_ozet').select('sicil_no', { count: 'exact', head: false }),
-
-    // 2) Kadro doluluk (ayrılmamış kayıtlar)
+    // Kadro doluluk + asil kadro statü sayıları (ayrılmamış kayıtlar)
     supabase
       .from('kadro_hareketleri')
-      .select('durumu')
+      .select(
+        'durumu, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, gorev_unvani, kadro_unvani',
+      )
       .is('ayrilis_tarihi', null),
 
-    // 3) Bu yılın tüm izin hareketleri (durum dağılımı)
+    // Bu yılın tüm izin hareketleri (durum dağılımı)
     supabase
       .from('izin_hareketleri')
       .select('durum')
@@ -182,13 +181,14 @@ export default async function DashboardPage() {
     }
   })
 
-  // Kadro doluluk
+  // Kadro doluluk + statü sayıları (asil kadro)
   const kadroDoluluk: KadroDoluluk = { dolu: 0, vekil: 0, bos: 0 }
   ;(kadroRaw ?? []).forEach(k => {
-    if (k.durumu === 'Dolu')  kadroDoluluk.dolu++
+    if (k.durumu === 'Dolu') kadroDoluluk.dolu++
     if (k.durumu === 'Vekil') kadroDoluluk.vekil++
-    if (k.durumu === 'Boş')  kadroDoluluk.bos++
+    if (k.durumu === 'Boş') kadroDoluluk.bos++
   })
+  const statuSayilari = dashboardStatuSayilariHesapla(kadroRaw ?? [], bugun)
 
   // İzin istatistik
   const izinIstatistik: IzinIstatistik = { taslak: 0, onaylandi: 0, iptal: 0, degistirildi: 0 }
@@ -364,7 +364,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardClient
-        aktifPersonelSayisi={personelRaw?.length ?? 0}
+        statuSayilari={statuSayilari}
         kadroDoluluk={kadroDoluluk}
         izinIstatistik={izinIstatistik}
         bekleyenIzinler={bekleyenIzinler}

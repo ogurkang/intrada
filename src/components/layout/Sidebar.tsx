@@ -231,6 +231,16 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'İSG Yönetimi',
+    icon: '🦺',
+    accordion: true,
+    items: [
+      { href: '/isg/islemler', label: 'İşlemler' },
+      { href: '/isg/raporlar', label: 'Raporlar' },
+      { href: '/isg/tanimlar', label: 'Tanımlar' },
+    ],
+  },
+  {
     grup: 'Stratejik Yönetim',
     icon: '🎯',
     accordion: true,
@@ -337,7 +347,10 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
           grup: 'Performans Yönetimi',
           icon: '⭐',
           accordion: true,
-          items: [{ href: '/performans/degerlendirme', label: 'Değerlendirme' }],
+          items: [
+            { href: '/performans/degerlendirme', label: 'Değerlendirme' },
+            { href: '/performans/raporlama', label: 'Raporlama' },
+          ],
         },
       ] satisfies MenuGroup[]
     }

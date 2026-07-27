@@ -2,8 +2,68 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-21T05:36:28.568Z",
+  "generatedAt": "2026-07-25T19:32:32.139Z",
   "commits": [
+    {
+      "hash": "e508d4d",
+      "fullHash": "e508d4d9b1bde465973b5a77f161d0097e126625",
+      "date": "2026-07-24",
+      "subject": "fix(bildirim): use server re-export hatasini duzelt"
+    },
+    {
+      "hash": "eecaf9e",
+      "fullHash": "eecaf9ee3e67d9e9c579943a4ec793141191d6d9",
+      "date": "2026-07-24",
+      "subject": "feat(bildirim): calisma belgesi, BES iptal ve sendika istifa modulleri"
+    },
+    {
+      "hash": "af7f853",
+      "fullHash": "af7f853151710da48680bdfa4b3680d8c0b61e83",
+      "date": "2026-07-24",
+      "subject": "fix(performans,sms): bildirim logu, gecmis sayfa ve BBY mesaj metni"
+    },
+    {
+      "hash": "33d3c6e",
+      "fullHash": "33d3c6e74ea39106568059189f1fc234782d9d8b",
+      "date": "2026-07-24",
+      "subject": "feat(performans): 2. amir SMS metnini mudurluk ve amir rolune gore ozellestir"
+    },
+    {
+      "hash": "41e4fb4",
+      "fullHash": "41e4fb41a2c5b06c8e1b35032032fa0a11ef6fdf",
+      "date": "2026-07-24",
+      "subject": "feat(performans): 1. amir tamamlaninca 2. amire SMS bildirim popup"
+    },
+    {
+      "hash": "7e32f5c",
+      "fullHash": "7e32f5c48d08ed09fc1f23495508debb57ef26c1",
+      "date": "2026-07-23",
+      "subject": "feat(performans): vekil mudur eslemesi, hayalet profil ve degerlendirme iyilestirmeleri"
+    },
+    {
+      "hash": "c623505",
+      "fullHash": "c6235059d295fd63bac73f44fa88178447366708",
+      "date": "2026-07-21",
+      "subject": "revert(ui): intrada standart dugme renklerini geri al"
+    },
+    {
+      "hash": "15cb33e",
+      "fullHash": "15cb33efdef711267d5619b3f558a10f649123df",
+      "date": "2026-07-21",
+      "subject": "fix(personel-hareketleri): sicil-PH id cakismasi ve terfi on doldurma"
+    },
+    {
+      "hash": "ad27145",
+      "fullHash": "ad27145695369332edd40b6cb364a86373514bdf",
+      "date": "2026-07-21",
+      "subject": "fix(terfi): ogrenim dropdown kisa etiketler ve listeden iptal"
+    },
+    {
+      "hash": "94f3465",
+      "fullHash": "94f346500050e28c6acdeaefac6d98eb5002b0e8",
+      "date": "2026-07-21",
+      "subject": "feat(terfi,rapor,ui): ogrenim terfi, yonetici iletisim snapshot ve dugme standardi"
+    },
     {
       "hash": "6055826",
       "fullHash": "60558265de1b5d443650d8e526f19505d7b7361b",
@@ -183,66 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "b5e125be8f61334d5735e0138a2833887087ba0c",
       "date": "2026-07-02",
       "subject": "feat(personel-hareketleri): sifirdan hareket ekleme ve kan grubu telefon sutunu"
-    },
-    {
-      "hash": "6f0a533",
-      "fullHash": "6f0a533a59b243f9259801c4b54ecc1a3d44aedb",
-      "date": "2026-07-02",
-      "subject": "fix(personel-hareketleri): salt-okunur akis ve goruntule excel indirme iyilestirmeleri"
-    },
-    {
-      "hash": "408bf37",
-      "fullHash": "408bf373a97178c47072582099128181c47a3d4d",
-      "date": "2026-07-01",
-      "subject": "feat(personel-hareketleri): Excel ve Word belge indirme, sablon kenarliklari korunur"
-    },
-    {
-      "hash": "2504227",
-      "fullHash": "25042272b5de5ac7b097a1e2e38edffc7687010a",
-      "date": "2026-06-30",
-      "subject": "feat(tanimlar): Organizasyon modulu - birim hiyerarsisi, makam (baskan/baskan yrd) birimleri, kadro hareketlerinden otomatik mudur/baskan isimleri, coklu birim ekleme, audit + saat ikonu; /personel/adres-duzenleme kaldirildi"
-    },
-    {
-      "hash": "c653fdb",
-      "fullHash": "c653fdbabf35b793b1f98eafc032c4304fdbd494",
-      "date": "2026-06-30",
-      "subject": "fix(arazi): personel grubu alt cizgisini 3. ay satirinda belirginlestir; ADABEL profil sicil sync migration"
-    },
-    {
-      "hash": "6293472",
-      "fullHash": "62934720176c416c539c20a1e19a7f66ed40da04",
-      "date": "2026-06-30",
-      "subject": "feat(adabel): ADABEL kisi karti (/personel fallback) + puantaj mudurluk cozumu; puantaj satir cizgileri belirginlestirildi"
-    },
-    {
-      "hash": "3b4ea03",
-      "fullHash": "3b4ea030a6c211b1c5488bf038d5c5dcdba860ee",
-      "date": "2026-06-30",
-      "subject": "feat(adabel,yetki): ADABEL personeli yetkilendirme+sifre sifirlama destegi, sicil 'A' oneki"
-    },
-    {
-      "hash": "c5970e2",
-      "fullHash": "c5970e24a73465b2712c3dbf994d0e8ba0ff0ab0",
-      "date": "2026-06-29",
-      "subject": "feat(sms,adabel): tum SMS gonderimlerine 'Sayin ad soyad' prefix; ADABEL personeline yerleske adresi secimi + audit"
-    },
-    {
-      "hash": "bff1971",
-      "fullHash": "bff1971ed5db8dfcd3af6dc702bec943f497ad6b",
-      "date": "2026-06-29",
-      "subject": "feat(bildirim): Pasaport Islemleri widget'i genel bakisa ekle"
-    },
-    {
-      "hash": "de12bac",
-      "fullHash": "de12bacf7d0f5f122680f734b5a08aafe537eb12",
-      "date": "2026-06-29",
-      "subject": "feat(bildirim): Pasaport Islemleri ekrani ve Word belge uretimi"
-    },
-    {
-      "hash": "3b421c3",
-      "fullHash": "3b421c3ff17a52eb4e44a9e9ebd9e0ab7ff36c32",
-      "date": "2026-06-29",
-      "subject": "feat(rapor): yerleske sayi raporuna Konum sutunu ekle"
     }
   ]
 }

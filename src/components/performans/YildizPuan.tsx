@@ -6,13 +6,17 @@ export function YildizPuan({
   onChange,
   disabled,
   size = 'md',
+  muted = false,
 }: {
   value: number | null
   onChange?: (v: number) => void
   disabled?: boolean
   size?: 'sm' | 'md'
+  /** Salt okunur 1. amir puanları için gri dolu yıldız */
+  muted?: boolean
 }) {
   const cls = size === 'sm' ? 'text-lg' : 'text-2xl'
+  const doluRenk = muted ? 'text-slate-400' : 'text-amber-400'
   return (
     <div className="inline-flex items-center gap-0.5" role="group" aria-label="Puan">
       {[1, 2, 3, 4, 5].map(n => {
@@ -25,7 +29,7 @@ export function YildizPuan({
             onClick={() => onChange?.(n)}
             className={`${cls} leading-none transition ${
               disabled ? 'cursor-default' : 'cursor-pointer hover:scale-110'
-            } ${on ? 'text-amber-400' : 'text-slate-300'}`}
+            } ${on ? doluRenk : 'text-slate-300'}`}
             aria-label={`${n} yıldız`}
           >
             ★

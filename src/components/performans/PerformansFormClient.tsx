@@ -10,6 +10,12 @@ import {
   type PerformansFormTipi,
 } from '@/lib/performans'
 import {
+  PERFORMANS_HIZLI_BANDLAR,
+  performansHizliBantDagit,
+  performansHizliBantToplam,
+  type PerformansHizliBant,
+} from '@/lib/performans-hizli-bant'
+import {
   performansAmir1Kaydet,
   performansAmir2Kaydet,
   performansAmir2MudurlukBildirimSmsGonder,
@@ -24,6 +30,12 @@ type KriterSatir = {
   aciklama: string | null
   puan_amir1: number | null
   puan_amir2: number | null
+}
+
+type HizliBantModal = {
+  bant: PerformansHizliBant
+  puanlar: Record<number, number>
+  toplam: number
 }
 
 function GeriLink({ href }: { href: string }) {
@@ -50,6 +62,9 @@ export default function PerformansFormClient({
   donemId = null,
   mudurlukAdi = null,
   adminVekalet = false,
+  bbyAmir1Mudur = false,
+  bbyAmir2Mod = false,
+  baskanMod = false,
 }: {
   degerlendirme: {
     id: number
@@ -72,6 +87,9 @@ export default function PerformansFormClient({
   donemId?: number | null
   mudurlukAdi?: string | null
   adminVekalet?: boolean
+  bbyAmir1Mudur?: boolean
+  bbyAmir2Mod?: boolean
+  baskanMod?: boolean
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -84,6 +102,15 @@ export default function PerformansFormClient({
   } | null>(null)
   const [smsHata, setSmsHata] = useState<string | null>(null)
   const [smsPending, startSms] = useTransition()
+  const [hizliBantModal, setHizliBantModal] = useState<HizliBantModal | null>(null)
+
+  const amir1Baslangic = useMemo(() => {
+    const m: Record<number, number> = {}
+    for (const k of kriterler) {
+      if (k.puan_amir1) m[k.id] = k.puan_amir1
+    }
+    return m
+  }, [kriterler])
 
   const baslangic = useMemo(() => {
     const m: Record<number, number> = {}
@@ -96,7 +123,10 @@ export default function PerformansFormClient({
 
   const [puanlar, setPuanlar] = useState<Record<number, number>>(baslangic)
 
+  const kriterIdleri = useMemo(() => kriterler.map(k => k.id), [kriterler])
+
   const toplam = Object.values(puanlar).reduce((s, v) => s + (v || 0), 0)
+  const toplamAmir1 = kriterler.reduce((s, k) => s + (k.puan_amir1 ?? 0), 0)
   const hepsiDolu = kriterler.every(k => puanlar[k.id] >= 1 && puanlar[k.id] <= 5)
 
   function setPuan(kriterId: number, v: number) {
@@ -108,6 +138,9 @@ export default function PerformansFormClient({
     const q = new URLSearchParams({ rol: kayitRol })
     if (donemId) q.set('donem', String(donemId))
     if (mudurlukAdi) q.set('mudurluk', mudurlukAdi)
+    if (bbyAmir1Mudur) q.set('bby', '1')
+    else if (bbyAmir2Mod) q.set('bby2', '1')
+    else if (baskanMod) q.set('baskan', '1')
     if (adminVekalet) q.set('vekalet', '1')
     return `/performans/degerlendirme/kayit/${degId}?${q.toString()}`
   }
@@ -129,10 +162,37 @@ export default function PerformansFormClient({
     })
   }
 
-  async function amir1GonderSonrasi(): Promise<{ hata?: string; sonraHref?: string }> {
+  function hizliBantSec(bant: PerformansHizliBant) {
+    if (!kaydedilebilir) return
+    const dagitim = performansHizliBantDagit(kriterIdleri, bant)
+    setHizliBantModal({
+      bant,
+      puanlar: dagitim,
+      toplam: performansHizliBantToplam(dagitim),
+    })
+  }
+
+  function hizliBantModalKapat() {
+    setHizliBantModal(null)
+  }
+
+  function hizliBantUygulaVe(
+    fn: (puanKaynak: Record<number, number>) => Promise<{ hata?: string; sonraHref?: string }>,
+    href?: string,
+  ) {
+    if (!hizliBantModal) return
+    const uygulanan = hizliBantModal.puanlar
+    setPuanlar(uygulanan)
+    setHizliBantModal(null)
+    run(() => fn(uygulanan), href)
+  }
+
+  async function amir1GonderSonrasi(
+    puanKaynak: Record<number, number> = puanlar,
+  ): Promise<{ hata?: string; sonraHref?: string }> {
     const r = await performansAmir1Kaydet({
       degerlendirmeId: degerlendirme.id,
-      puanlar,
+      puanlar: puanKaynak,
       gonder: true,
     })
     if (r.hata) return r
@@ -143,6 +203,7 @@ export default function PerformansFormClient({
         donemId: donemId!,
         mudurlukAdi,
         rol: 'amir1',
+        bbyAmir1Mudur,
       })
       if (sonraki.hata) return { hata: sonraki.hata }
 
@@ -154,9 +215,9 @@ export default function PerformansFormClient({
         !degerlendirme.tek_amir &&
         !sonraki.sonrakiId &&
         sonraki.mudurlukAmir1Tamam &&
-        mudurlukAdi &&
         sonraki.bildirimMetni &&
-        sonraki.amir2Ad
+        sonraki.amir2Ad &&
+        (bbyAmir1Mudur || mudurlukAdi)
       ) {
         setSmsHata(null)
         setSmsModal({
@@ -174,7 +235,7 @@ export default function PerformansFormClient({
   }
 
   function smsModalKapat(gonder: boolean) {
-    if (!smsModal || !donemId || !mudurlukAdi) return
+    if (!smsModal || !donemId) return
     const href = smsModal.sonraHref
     if (!gonder) {
       setSmsModal(null)
@@ -185,8 +246,9 @@ export default function PerformansFormClient({
     startSms(async () => {
       const r = await performansAmir2MudurlukBildirimSmsGonder({
         donemId,
-        mudurlukAdi,
+        mudurlukAdi: mudurlukAdi ?? undefined,
         mevcutDegId: degerlendirme.id,
+        bbyAmir1Mudur,
       })
       if (r.hata) {
         setSmsHata(r.hata)
@@ -204,14 +266,66 @@ export default function PerformansFormClient({
       donemId,
       mudurlukAdi,
       rol: kayitRol,
+      bbyAmir1Mudur,
+      bbyAmir2Mod: kayitRol === 'amir2' ? bbyAmir2Mod : undefined,
     })
     if (sonraki.hata) throw new Error(sonraki.hata)
     if (sonraki.sonrakiId) return kayitHref(sonraki.sonrakiId, kayitRol)
+    if (kayitRol === 'amir2' && bbyAmir2Mod) {
+      const q = new URLSearchParams({ bby2: '1' })
+      if (mudurlukAdi) q.set('mudurluk', mudurlukAdi)
+      return `/performans/degerlendirme/${donemId}?${q.toString()}`
+    }
     return geriHref
   }
 
+  async function amir2DevamEt(
+    puanKaynak: Record<number, number> = puanlar,
+  ): Promise<{ hata?: string; sonraHref?: string }> {
+    const r = await performansAmir2Kaydet({
+      degerlendirmeId: degerlendirme.id,
+      puanlar: puanKaynak,
+      islem: 'onayla',
+    })
+    if (r.hata) return r
+    try {
+      return { sonraHref: await sonrakiHrefBul('amir2') }
+    } catch (e) {
+      return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
+    }
+  }
+
+  async function amir2IadeSonrasi(): Promise<{ hata?: string; sonraHref?: string }> {
+    const r = await performansAmir2Kaydet({
+      degerlendirmeId: degerlendirme.id,
+      puanlar,
+      islem: 'iade',
+      iadeNotu,
+    })
+    if (r.hata) return r
+    try {
+      return { sonraHref: await sonrakiHrefBul('amir2') }
+    } catch (e) {
+      return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
+    }
+  }
+
+  async function amir2KaydetKapat(
+    puanKaynak: Record<number, number> = puanlar,
+  ): Promise<{ hata?: string; sonraHref?: string }> {
+    const r = await performansAmir2Kaydet({
+      degerlendirmeId: degerlendirme.id,
+      puanlar: puanKaynak,
+      islem: 'kaydet',
+    })
+    if (r.hata) return r
+    return { sonraHref: geriHref }
+  }
+
+  const ciftSutun = rol === 'amir2'
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className={`mx-auto space-y-6 ${ciftSutun ? 'max-w-4xl' : 'max-w-3xl'}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
@@ -248,47 +362,107 @@ export default function PerformansFormClient({
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{hata}</div>
       )}
 
-      {rol === 'amir2' && !tamamlandi && (
+      {kaydedilebilir && !tamamlandi && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
+          <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Hızlı puanlama</p>
+          <div className="flex flex-wrap gap-2">
+            {PERFORMANS_HIZLI_BANDLAR.map(b => (
+              <button
+                key={b.key}
+                type="button"
+                disabled={pending}
+                onClick={() => hizliBantSec(b)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-800 transition-colors disabled:opacity-50"
+              >
+                {b.etiket} ({b.min}–{b.max})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {ciftSutun && !tamamlandi && (
         <p className="text-sm text-slate-600 bg-sky-50 border border-sky-100 rounded-lg px-3 py-2">
-          1. amir puanları önceden yüklendi. İstediğiniz kriteri değiştirebilir veya aynen onaylayabilirsiniz.
+          Sol sütunda 1. amir puanları salt okunurdur. Değişikliklerinizi sağ sütundan yapın.
         </p>
       )}
 
+      {ciftSutun && (
+        <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <span>Kriter</span>
+          <span className="w-36 text-center">1. Amir</span>
+          <span className="w-36 text-center">2. Amir</span>
+        </div>
+      )}
+
       <div className="space-y-3">
-        {kriterler.map(k => (
-          <div
-            key={k.id}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-          >
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-slate-800">
-                <span className="text-slate-400 mr-2">{k.kod}.</span>
-                {k.baslik}
+        {kriterler.map(k => {
+          const amir1Puan = amir1Baslangic[k.id] ?? k.puan_amir1
+          const farkli = ciftSutun && amir1Puan != null && puanlar[k.id] != null && amir1Puan !== puanlar[k.id]
+          return (
+            <div
+              key={k.id}
+              className={`rounded-xl border px-4 py-3 ${
+                farkli ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'
+              } ${ciftSutun ? 'grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:items-center' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'}`}
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-800">
+                  <span className="text-slate-400 mr-2">{k.kod}.</span>
+                  {k.baslik}
+                </div>
+                {k.aciklama && (
+                  <p className="text-xs text-slate-500 mt-0.5">{k.aciklama}</p>
+                )}
               </div>
-              {k.aciklama && (
-                <p className="text-xs text-slate-500 mt-0.5">{k.aciklama}</p>
-              )}
-              {rol === 'amir2' && k.puan_amir1 != null && (
-                <p className="text-xs text-slate-400 mt-1">1. amir: {k.puan_amir1}★</p>
+              {ciftSutun ? (
+                <>
+                  <div className="sm:w-36 flex sm:justify-center rounded-lg bg-slate-100/80 px-2 py-1">
+                    <YildizPuan value={amir1Puan ?? null} disabled muted size="sm" />
+                  </div>
+                  <div className="sm:w-36 flex sm:justify-center">
+                    <YildizPuan
+                      value={puanlar[k.id] ?? null}
+                      onChange={v => setPuan(k.id, v)}
+                      disabled={!kaydedilebilir}
+                      size="sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <YildizPuan
+                  value={puanlar[k.id] ?? null}
+                  onChange={v => setPuan(k.id, v)}
+                  disabled={!kaydedilebilir}
+                />
               )}
             </div>
-            <YildizPuan
-              value={puanlar[k.id] ?? null}
-              onChange={v => setPuan(k.id, v)}
-              disabled={!kaydedilebilir}
-            />
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="sticky bottom-0 bg-white/95 border-t border-slate-200 py-4 flex flex-wrap items-center gap-3 justify-between">
         <div className="text-sm text-slate-700">
-          Toplam: <strong className="tabular-nums">{toplam}</strong>
-          <span className="text-slate-400 ml-2">({performansPuanBandi(toplam)})</span>
+          {ciftSutun ? (
+            <>
+              1. amir toplam:{' '}
+              <strong className="tabular-nums">{toplamAmir1}</strong>
+              <span className="text-slate-400 ml-1">({performansPuanBandi(toplamAmir1)})</span>
+              <span className="mx-2 text-slate-300">·</span>
+              2. amir toplam:{' '}
+              <strong className="tabular-nums">{toplam}</strong>
+              <span className="text-slate-400 ml-1">({performansPuanBandi(toplam)})</span>
+            </>
+          ) : (
+            <>
+              Toplam: <strong className="tabular-nums">{toplam}</strong>
+              <span className="text-slate-400 ml-2">({performansPuanBandi(toplam)})</span>
+            </>
+          )}
         </div>
 
         {kaydedilebilir && rol === 'amir1' && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <button
               type="button"
               disabled={pending}
@@ -305,7 +479,7 @@ export default function PerformansFormClient({
               }
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
             >
-              Kaydet kapat
+              {'Kaydet>Kapat'}
             </button>
             <button
               type="button"
@@ -313,7 +487,7 @@ export default function PerformansFormClient({
               onClick={() => run(() => amir1GonderSonrasi())}
               className="rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
             >
-              {degerlendirme.tek_amir ? 'Kaydet ve tamamla' : 'Kaydet · 2. amire gönder'}
+              {degerlendirme.tek_amir ? 'Kaydet ve tamamla' : 'Kaydet>2. Amire Gönder'}
             </button>
             <button
               type="button"
@@ -321,7 +495,15 @@ export default function PerformansFormClient({
               onClick={() => run(() => amir1GonderSonrasi())}
               className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
             >
-              Kaydet · devam et
+              {'Kaydet>Devam Et'}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => router.push(geriHref)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              Çıkış
             </button>
           </div>
         )}
@@ -337,47 +519,125 @@ export default function PerformansFormClient({
             <button
               type="button"
               disabled={pending}
-              onClick={() =>
-                run(
-                  () =>
-                    performansAmir2Kaydet({
-                      degerlendirmeId: degerlendirme.id,
-                      puanlar,
-                      islem: 'iade',
-                      iadeNotu,
-                    }),
-                  geriHref,
-                )
-              }
+              onClick={() => run(() => amir2IadeSonrasi())}
               className="rounded-lg border border-amber-300 text-amber-900 px-4 py-2 text-sm hover:bg-amber-50 disabled:opacity-50"
             >
-              1. amire iade
+              1. Amire İade Et
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => amir2KaydetKapat())}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              {'Kaydet>Kapat'}
             </button>
             <button
               type="button"
               disabled={pending || !hepsiDolu}
-              onClick={() =>
-                run(async () => {
-                  const r = await performansAmir2Kaydet({
-                    degerlendirmeId: degerlendirme.id,
-                    puanlar,
-                    islem: 'onayla',
-                  })
-                  if (r.hata) return r
-                  try {
-                    return { sonraHref: await sonrakiHrefBul('amir2') }
-                  } catch (e) {
-                    return { hata: e instanceof Error ? e.message : 'Sonraki kayıt bulunamadı.' }
-                  }
-                })
-              }
+              onClick={() => run(() => amir2DevamEt())}
               className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
             >
-              Onayla
+              {'Onayla>Devam Et'}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => router.push(geriHref)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              Çıkış
             </button>
           </div>
         )}
       </div>
+
+      <Modal
+        open={hizliBantModal != null}
+        onClose={hizliBantModalKapat}
+        title="Hızlı puanlama"
+        size="sm"
+      >
+        {hizliBantModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              <span className="font-medium text-slate-800">{hizliBantModal.bant.etiket}</span>{' '}
+              ({hizliBantModal.bant.min}–{hizliBantModal.bant.max}) aralığından rastgele bir toplam seçilip
+              kriterlere dağıtılacak.
+            </p>
+            <p className="text-sm text-slate-700">
+              Toplam:{' '}
+              <strong className="tabular-nums">{hizliBantModal.toplam}</strong>
+              <span className="text-slate-400 ml-1">
+                ({performansPuanBandi(hizliBantModal.toplam)})
+              </span>
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              {rol === 'amir1' ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      hizliBantUygulaVe(
+                        p =>
+                          performansAmir1Kaydet({
+                            degerlendirmeId: degerlendirme.id,
+                            puanlar: p,
+                            gonder: false,
+                          }),
+                        geriHref,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {'Kaydet>Kapat'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      hizliBantUygulaVe(p => amir1GonderSonrasi(p))
+                    }
+                    className="w-full rounded-lg bg-slate-800 text-white px-4 py-2.5 text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    {degerlendirme.tek_amir ? 'Kaydet ve tamamla' : 'Kaydet>2. Amire Gönder'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      hizliBantUygulaVe(p => amir1GonderSonrasi(p))
+                    }
+                    className="w-full rounded-lg bg-emerald-700 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
+                  >
+                    {'Kaydet>Devam Et'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => hizliBantUygulaVe(p => amir2KaydetKapat(p))}
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {'Kaydet>Kapat'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => hizliBantUygulaVe(p => amir2DevamEt(p))}
+                    className="w-full rounded-lg bg-emerald-700 text-white px-4 py-2.5 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50"
+                  >
+                    {'Kaydet>Devam Et'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={smsModal != null}
@@ -398,8 +658,7 @@ export default function PerformansFormClient({
             </div>
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               Test modu: SMS şimdilik <strong>05322804987</strong> numarasına{' '}
-              <strong>ADPZRIBLD</strong> başlığıyla gönderilir. Başlık, İletişim Yönetimi → Tanımlar
-              ekranındaki Originator alanlarından birinde tanımlı olmalıdır.
+              <strong>ADPZRIBLD</strong> başlığıyla gönderilir.
             </p>
             {smsHata && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

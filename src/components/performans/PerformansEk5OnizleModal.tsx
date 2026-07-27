@@ -168,7 +168,18 @@ export default function PerformansEk5OnizleModal({
               <p className="imza-baslik font-semibold mb-2">1. Amir</p>
               <p>Ünvanı: {veri.amir1_unvan ?? '…………………'}</p>
               <p className="mt-2">Adı ve Soyadı: {veri.amir1_ad ?? '…………………'}</p>
-              <p className="mt-4">İmza: …………………</p>
+              <div className="mt-4 min-h-[48px]">
+                {veri.amir1_imza_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={veri.amir1_imza_url}
+                    alt="1. amir imzası"
+                    className="h-12 max-w-[180px] object-contain"
+                  />
+                ) : (
+                  <p>İmza: …………………</p>
+                )}
+              </div>
               <p className="mt-2">Tarih: {veri.amir1_tarih ?? '—'}</p>
             </div>
             {!veri.tek_amir && (
@@ -176,7 +187,18 @@ export default function PerformansEk5OnizleModal({
                 <p className="imza-baslik font-semibold mb-2">2. Amir</p>
                 <p>Ünvanı: {veri.amir2_unvan ?? '…………………'}</p>
                 <p className="mt-2">Adı ve Soyadı: {veri.amir2_ad ?? '…………………'}</p>
-                <p className="mt-4">İmza: …………………</p>
+                <div className="mt-4 min-h-[48px]">
+                  {veri.amir2_imza_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={veri.amir2_imza_url}
+                      alt="2. amir imzası"
+                      className="h-12 max-w-[180px] object-contain"
+                    />
+                  ) : (
+                    <p>İmza: …………………</p>
+                  )}
+                </div>
                 <p className="mt-2">Tarih: {veri.amir2_tarih ?? '—'}</p>
               </div>
             )}

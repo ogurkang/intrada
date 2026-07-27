@@ -69,15 +69,13 @@ interface Props {
   saltOkunur?: boolean
   /** Geçmiş sekmesi yalnızca admin / tam yetkili kullanıcıda */
   gecmisGoster?: boolean
+  /** Performans sekmesi yalnızca admin / tam yetkili kullanıcıda */
+  performansGoster?: boolean
   yerleskeAdi?: string | null
   konumMetni?: string | null
   performansKayitlari?: {
     yil: number
     ortalama: number | null
-    puan_amir1: number | null
-    puan_amir2: number | null
-    durum: string
-    form_tipi: string
   }[]
 }
 
@@ -976,19 +974,12 @@ function EgitimTab({ egitimKatilimlari }: { egitimKatilimlari: { egitim_adi: str
 function PerformansTab({
   kayitlar,
 }: {
-  kayitlar: {
-    yil: number
-    ortalama: number | null
-    puan_amir1: number | null
-    puan_amir2: number | null
-    durum: string
-    form_tipi: string
-  }[]
+  kayitlar: { yil: number; ortalama: number | null }[]
 }) {
   if (!kayitlar.length) {
     return (
       <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-        <p className="text-sm">Yayınlanmış performans değerlendirmesi bulunmuyor.</p>
+        <p className="text-sm">Tamamlanmış performans değerlendirmesi bulunmuyor.</p>
       </div>
     )
   }
@@ -997,23 +988,15 @@ function PerformansTab({
       <table className="min-w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-600">
           <tr>
-            <th className="px-4 py-3">Dönem</th>
-            <th className="px-4 py-3">Form</th>
-            <th className="px-4 py-3">1. Amir</th>
-            <th className="px-4 py-3">2. Amir</th>
-            <th className="px-4 py-3">Ortalama</th>
-            <th className="px-4 py-3">Durum</th>
+            <th className="px-4 py-3">Dönem (Yıl)</th>
+            <th className="px-4 py-3">Not Ortalaması</th>
           </tr>
         </thead>
         <tbody>
-          {kayitlar.map((k, i) => (
-            <tr key={i} className="border-t border-slate-100">
-              <td className="px-4 py-3">{k.yil}</td>
-              <td className="px-4 py-3 capitalize">{k.form_tipi}</td>
-              <td className="px-4 py-3 tabular-nums">{k.puan_amir1 ?? '—'}</td>
-              <td className="px-4 py-3 tabular-nums">{k.puan_amir2 ?? '—'}</td>
-              <td className="px-4 py-3 font-medium tabular-nums">{k.ortalama ?? '—'}</td>
-              <td className="px-4 py-3 text-slate-500">{k.durum}</td>
+          {kayitlar.map(k => (
+            <tr key={k.yil} className="border-t border-slate-100">
+              <td className="px-4 py-3 font-medium">{k.yil}</td>
+              <td className="px-4 py-3 tabular-nums">{k.ortalama ?? '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -1399,16 +1382,19 @@ export default function PersonelDetayClient({
   terfiOncesiTarihce = [],
   saltOkunur = false,
   gecmisGoster = true,
+  performansGoster = false,
   yerleskeAdi = null,
   konumMetni = null,
   performansKayitlari = [],
 }: Props) {
   const searchParams = useSearchParams()
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
-  const sekmeler = useMemo(
-    () => (gecmisGoster ? SEKMELER : SEKMELER.filter(s => s !== 'Geçmiş')),
-    [gecmisGoster],
-  )
+  const sekmeler = useMemo(() => {
+    let liste: Sekme[] = [...SEKMELER]
+    if (!gecmisGoster) liste = liste.filter(s => s !== 'Geçmiş')
+    if (!performansGoster) liste = liste.filter(s => s !== 'Performans Bilgileri')
+    return liste
+  }, [gecmisGoster, performansGoster])
 
   useEffect(() => {
     const sekmeParam = String(searchParams.get('sekme') ?? '').trim().toLocaleLowerCase('tr-TR')
@@ -1431,10 +1417,10 @@ export default function PersonelDetayClient({
   }, [searchParams, gecmisGoster])
 
   useEffect(() => {
-    if (!gecmisGoster && aktif === 'Geçmiş') {
+    if (!sekmeler.includes(aktif)) {
       setAktif('Kişisel Bilgiler')
     }
-  }, [gecmisGoster, aktif])
+  }, [sekmeler, aktif])
 
   const sicil = (calisan.sicil_no ?? '').trim()
   const duzenleSegment = encodeURIComponent((calisan as { public_id?: string }).public_id ?? sicil)

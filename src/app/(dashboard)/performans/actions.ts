@@ -19,6 +19,7 @@ import {
 import {
   mudurlukByNormHaritasi,
   performansKadroMudurlukEslesir,
+  performansMudurlukKayitEslesir,
   performansKadroSatirlariIndeksi,
   performansKadroSatirSec,
   performansEtkinUnvanHaritasi,
@@ -32,6 +33,8 @@ import {
   tumAktifKadroHareketleriYukle,
 } from '@/lib/performans-kadro'
 import { writePerformansDegAuditLogSafe } from '@/lib/performans-degerlendirme-audit'
+import { writePerformansImzaAuditLogSafe } from '@/lib/performans-imza-audit'
+import { performansAmirImzaHaritasi, PERFORMANS_IMZA_BUCKET } from '@/lib/performans-amir-imza'
 import type { OrgBirimSatir } from '@/lib/performans-amir'
 import { sablonDoldur } from '@/lib/sms-sablon'
 import { fetchSmsAyar, smsAyarHazirMi, smsAyarToConfig } from '@/lib/sms-ayar'
@@ -44,6 +47,9 @@ import {
   performansAmir2SmsOriginator,
   performansDegerlendirilenAdlariMetni,
 } from '@/lib/performans-amir2-bildirim'
+import { performansTamamlanmaIkSmsDene } from '@/lib/performans-ik-sms-bildirim'
+import { performansMudurUnvaniMi } from '@/lib/performans-unvan'
+import { performansBbyAmir2PersonelSatirlari } from '@/lib/performans-amir-erisim'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sb = any
@@ -258,13 +264,30 @@ export async function performansAmir1Kaydet(params: {
   if (deg.donem_id) {
     revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
   }
+
+  if (params.gonder && tekAmir && deg.donem_id) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      await performansTamamlanmaIkSmsDene(supabase, {
+        donemId: deg.donem_id,
+        sicilNo: deg.sicil_no,
+        mudurlukAdi: deg.mudurluk_adi ?? null,
+        tekAmir: true,
+        actorId: user.id,
+        actorEmail: user.email ?? null,
+      })
+    }
+  }
+
   return {}
 }
 
 export async function performansAmir2Kaydet(params: {
   degerlendirmeId: number
   puanlar: Record<number, number>
-  islem: 'onayla' | 'iade'
+  islem: 'kaydet' | 'onayla' | 'iade'
   iadeNotu?: string
 }): Promise<{ hata?: string }> {
   const supabase = await createClient()
@@ -330,19 +353,50 @@ export async function performansAmir2Kaydet(params: {
 
   const { data: puanRows } = await (supabase as Sb)
     .from('performans_puan')
-    .select('puan_amir1, puan_amir2')
+    .select('puan_amir2')
     .eq('degerlendirme_id', params.degerlendirmeId)
   const toplam2 = (puanRows ?? []).reduce(
     (s: number, r: { puan_amir2: number | null }) => s + (r.puan_amir2 ?? 0),
     0,
   )
-  const ortalama = performansOrtalamaYuvarla(deg.puan_amir1 ?? 0, toplam2)
+
+  if (params.islem === 'kaydet') {
+    const { error } = await (supabase as Sb)
+      .from('performans_degerlendirme')
+      .update({
+        puan_amir2: toplam2,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.degerlendirmeId)
+    if (error) return { hata: error.message }
+    await writePerformansDegAuditLogSafe(supabase, {
+      degerlendirmeId: params.degerlendirmeId,
+      personelSicil: deg.sicil_no,
+      islem: 'kaydet',
+      ozet: '2. amir taslak kaydetti',
+      onceki: { puan_amir2: deg.puan_amir2 },
+      sonraki: { puan_amir2: toplam2 },
+    })
+    revalidatePath('/performans/degerlendirme')
+    if (deg.donem_id) revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
+    return {}
+  }
+
+  const { data: puanOrtRows } = await (supabase as Sb)
+    .from('performans_puan')
+    .select('puan_amir1, puan_amir2')
+    .eq('degerlendirme_id', params.degerlendirmeId)
+  const toplam2Onay = (puanOrtRows ?? []).reduce(
+    (s: number, r: { puan_amir2: number | null }) => s + (r.puan_amir2 ?? 0),
+    0,
+  )
+  const ortalama = performansOrtalamaYuvarla(deg.puan_amir1 ?? 0, toplam2Onay)
 
   const { error } = await (supabase as Sb)
     .from('performans_degerlendirme')
     .update({
       durum: 'amir2_onay',
-      puan_amir2: toplam2,
+      puan_amir2: toplam2Onay,
       ortalama,
       amir2_onay_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -356,11 +410,28 @@ export async function performansAmir2Kaydet(params: {
     islem: 'onayla',
     ozet: '2. amir değerlendirmeyi onayladı',
     onceki: { durum: deg.durum, puan_amir2: deg.puan_amir2 },
-    sonraki: { durum: 'amir2_onay', puan_amir2: toplam2, ortalama },
+    sonraki: { durum: 'amir2_onay', puan_amir2: toplam2Onay, ortalama },
   })
 
   revalidatePath('/performans/degerlendirme')
   if (deg.donem_id) revalidatePath(`/performans/degerlendirme/${deg.donem_id}`)
+
+  if (deg.donem_id) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      await performansTamamlanmaIkSmsDene(supabase, {
+        donemId: deg.donem_id,
+        sicilNo: deg.sicil_no,
+        mudurlukAdi: deg.mudurluk_adi ?? null,
+        tekAmir: deg.tek_amir ?? false,
+        actorId: user.id,
+        actorEmail: user.email ?? null,
+      })
+    }
+  }
+
   return {}
 }
 
@@ -466,6 +537,10 @@ export async function performansSonrakiDegerlendirmeBul(params: {
   donemId: number
   mudurlukAdi?: string | null
   rol: 'amir1' | 'amir2'
+  /** BBY 1. amir müdür sırası: müdürlük filtresi yok, son müdürde toplu SMS */
+  bbyAmir1Mudur?: boolean
+  /** BBY 2. amir personel sırası */
+  bbyAmir2Mod?: boolean
 }): Promise<{
   hata?: string
   sonrakiId?: number | null
@@ -519,7 +594,14 @@ export async function performansSonrakiDegerlendirmeBul(params: {
     .eq('donem_id', params.donemId)
     .order('sicil_no')
 
-  const mudurluk = params.mudurlukAdi?.trim() || null
+  const mudurluk =
+    params.mudurlukAdi?.trim() ||
+    (() => {
+      const kadro = kadroIndeks.get(mevcut.sicil_no)
+      return kadro?.kadro_mudurlugu?.trim() || mevcut.mudurluk_adi?.trim() || null
+    })()
+  const bbyAmir1Mudur = params.bbyAmir1Mudur === true
+  const bbyAmir2Mod = params.bbyAmir2Mod === true
 
   let birimler: OrgBirimSatir[] = []
   const { data: aktifOrg } = await supabase
@@ -562,12 +644,20 @@ export async function performansSonrakiDegerlendirmeBul(params: {
       ) {
         return false
       }
+      if (bbyAmir1Mudur) return true
       if (mudurluk) {
         const kadro = kadroIndeks.get(r.sicil_no)
-        if (!performansKadroMudurlukEslesir(mudurluk, kadro?.kadro_mudurlugu)) return false
+        if (!performansMudurlukKayitEslesir(mudurluk, {
+          kadro_mudurlugu: kadro?.kadro_mudurlugu,
+          mudurluk_adi: r.mudurluk_adi,
+        })) {
+          return false
+        }
       }
       return true
     })
+  } else if (bbyAmir1Mudur) {
+    liste = liste.filter(r => performansMudurUnvaniMi(etkinUnvanMap.get(r.sicil_no) ?? ''))
   } else if (mudurluk) {
     liste = liste.filter(r => {
       const kadro = kadroIndeks.get(r.sicil_no)
@@ -579,7 +669,35 @@ export async function performansSonrakiDegerlendirmeBul(params: {
     })
   }
 
+  if (bbyAmir2Mod && params.rol === 'amir2') {
+    const amir2Satirlar = performansBbyAmir2PersonelSatirlari(
+      sicil,
+      liste.map(r => ({
+        id: r.id,
+        sicil_no: r.sicil_no,
+        amir1_sicil: r.amir1_sicil,
+        amir2_sicil: r.amir2_sicil,
+        tek_amir: r.tek_amir,
+      })),
+      etkinUnvanMap,
+    )
+    const amir2IdSet = new Set(amir2Satirlar.map(r => r.id))
+    liste = liste.filter(r => amir2IdSet.has(r.id))
+  }
+
   const baglam = await performansOrgBaglamiYukle(supabase)
+
+  if (bbyAmir1Mudur) {
+    liste = liste.filter(r => {
+      if (!performansMudurUnvaniMi(etkinUnvanMap.get(r.sicil_no) ?? '')) return false
+      const kadro = kadroIndeks.get(r.sicil_no)
+      const canli = performansDegerlendirmeAmirCanli(
+        { sicil_no: r.sicil_no, mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi },
+        baglam,
+      )
+      return isAdmin || performansSicilEsit(canli.amir1_sicil, sicil)
+    })
+  }
 
   function degerlendirilebilir(r: (typeof liste)[0]): boolean {
     const kadro = kadroIndeks.get(r.sicil_no)
@@ -607,7 +725,7 @@ export async function performansSonrakiDegerlendirmeBul(params: {
   let yil: number | null = null
   let bildirimMetni: string | null = null
 
-  if (params.rol === 'amir1' && mudurluk) {
+  if (params.rol === 'amir1' && (mudurluk || bbyAmir1Mudur)) {
     const { data: donem } = await (supabase as Sb)
       .from('performans_donem')
       .select('yil')
@@ -621,15 +739,25 @@ export async function performansSonrakiDegerlendirmeBul(params: {
     )
     const hedefAmir1 = mevcutCanli.amir1_sicil
 
-    const amir1Liste = liste.filter(r => {
-      if (r.tek_amir) return false
-      const kadro = kadroIndeks.get(r.sicil_no)
-      const canli = performansDegerlendirmeAmirCanli(
-        { sicil_no: r.sicil_no, mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi },
-        baglam,
-      )
-      return performansSicilEsit(canli.amir1_sicil, hedefAmir1)
-    })
+    const amir1Liste = bbyAmir1Mudur
+      ? liste.filter(r => {
+          if (r.tek_amir) return false
+          const kadro = kadroIndeks.get(r.sicil_no)
+          const canli = performansDegerlendirmeAmirCanli(
+            { sicil_no: r.sicil_no, mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi },
+            baglam,
+          )
+          return performansSicilEsit(canli.amir1_sicil, hedefAmir1)
+        })
+      : liste.filter(r => {
+          if (r.tek_amir) return false
+          const kadro = kadroIndeks.get(r.sicil_no)
+          const canli = performansDegerlendirmeAmirCanli(
+            { sicil_no: r.sicil_no, mudurluk_adi: r.mudurluk_adi ?? kadro?.mudurluk_adi },
+            baglam,
+          )
+          return performansSicilEsit(canli.amir1_sicil, hedefAmir1)
+        })
 
     if (amir1Liste.length > 0) {
       const bekleyen = amir1Liste.filter(r => r.durum === 'beklemede_1' || r.durum === 'iade')
@@ -681,7 +809,7 @@ export async function performansSonrakiDegerlendirmeBul(params: {
               amir2Ad,
               yil,
               senaryo,
-              mudurlukAdi: mudurluk,
+              mudurlukAdi: mudurluk ?? ornek.mudurluk_adi ?? kadro?.mudurluk_adi ?? 'Müdürlük',
               amir1Ad,
               degerlendirilenAd,
             })
@@ -704,22 +832,24 @@ export async function performansSonrakiDegerlendirmeBul(params: {
 /** Müdürlükte 1. amir değerlendirmesi bittiğinde 2. amire bildirim SMS (test numarasına). */
 export async function performansAmir2MudurlukBildirimSmsGonder(params: {
   donemId: number
-  mudurlukAdi: string
+  mudurlukAdi?: string
   mevcutDegId: number
+  bbyAmir1Mudur?: boolean
 }): Promise<{ hata?: string; mesaj?: string }> {
   const supabase = await createClient()
   const sicil = await currentSicil(supabase)
   if (!sicil) return { hata: 'Sicil bulunamadı.' }
   const isAdmin = await performansActionAdminBypass(supabase)
 
-  const mudurluk = params.mudurlukAdi.trim()
-  if (!mudurluk) return { hata: 'Müdürlük bilgisi gerekli.' }
+  const mudurluk = params.mudurlukAdi?.trim() || ''
+  if (!params.bbyAmir1Mudur && !mudurluk) return { hata: 'Müdürlük bilgisi gerekli.' }
 
   const kontrol = await performansSonrakiDegerlendirmeBul({
     mevcutDegId: params.mevcutDegId,
     donemId: params.donemId,
-    mudurlukAdi: mudurluk,
+    mudurlukAdi: mudurluk || null,
     rol: 'amir1',
+    bbyAmir1Mudur: params.bbyAmir1Mudur,
   })
   if (kontrol.hata) return { hata: kontrol.hata }
   if (!kontrol.mudurlukAmir1Tamam) {
@@ -809,6 +939,8 @@ export type PerformansEk5OnizleVeri = {
   amir2_unvan: string | null
   amir1_tarih: string | null
   amir2_tarih: string | null
+  amir1_imza_url: string | null
+  amir2_imza_url: string | null
   kriterler: {
     kod: number
     baslik: string
@@ -929,6 +1061,8 @@ export async function performansEk5OnizleVeri(
   const islemTarihiKaynak =
     deg.amir2_onay_at ?? deg.amir1_tamam_at ?? deg.updated_at ?? null
 
+  const imzaMap = await performansAmirImzaHaritasi(supabase, amirSiciller)
+
   return {
     veri: {
       ad_soyad: cal?.ad_soyad ?? deg.sicil_no,
@@ -950,6 +1084,8 @@ export async function performansEk5OnizleVeri(
       amir2_unvan: deg.amir2_sicil ? (amirUnvanMap[deg.amir2_sicil] ?? null) : null,
       amir1_tarih: performansTarihGgAaYyyy(deg.amir1_tamam_at),
       amir2_tarih: performansTarihGgAaYyyy(deg.amir2_onay_at),
+      amir1_imza_url: deg.amir1_sicil ? (imzaMap[deg.amir1_sicil]?.imza_url ?? null) : null,
+      amir2_imza_url: deg.amir2_sicil ? (imzaMap[deg.amir2_sicil]?.imza_url ?? null) : null,
       kriterler,
     },
   }
@@ -1063,4 +1199,72 @@ export async function performansAmir2SmsGonder(donemId: number): Promise<{ hata?
 
   if (ok === 0) return { hata: hatalar.join('; ') || 'SMS gönderilemedi.' }
   return { mesaj: `${ok} alıcıya SMS gönderildi.${hatalar.length ? ` Uyarı: ${hatalar.join('; ')}` : ''}` }
+}
+
+const IMZA_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const
+const IMZA_MAX_BOYUT = 2 * 1024 * 1024
+
+/** Admin: 1./2. amir imza görseli yükle veya değiştir */
+export async function performansAmirImzaYukle(formData: FormData): Promise<{ hata?: string }> {
+  const gate = await requireAdmin()
+  if (gate.hata) return { hata: gate.hata }
+  const { supabase, user } = gate
+
+  const sicil = String(formData.get('sicil_no') ?? '').trim()
+  const file = formData.get('file')
+  if (!sicil) return { hata: 'Sicil gerekli.' }
+  if (!(file instanceof File) || file.size === 0) return { hata: 'Dosya gerekli.' }
+  if (file.size > IMZA_MAX_BOYUT) return { hata: 'Dosya en fazla 2 MB olabilir.' }
+  if (!IMZA_MIME.includes(file.type as (typeof IMZA_MIME)[number])) {
+    return { hata: 'Yalnızca PNG, JPEG veya WebP yüklenebilir.' }
+  }
+
+  const ext =
+    file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  const storagePath = `${sicil}/imza.${ext}`
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: onceki } = await (supabase as any)
+    .from('performans_amir_imza')
+    .select('storage_path, dosya_adi, mime_type')
+    .eq('sicil_no', sicil)
+    .maybeSingle()
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const { error: uploadErr } = await supabase.storage
+    .from(PERFORMANS_IMZA_BUCKET)
+    .upload(storagePath, buffer, {
+      contentType: file.type,
+      upsert: true,
+    })
+  if (uploadErr) return { hata: uploadErr.message }
+
+  const { error: dbErr } = await (supabase as Sb)
+    .from('performans_amir_imza')
+    .upsert({
+      sicil_no: sicil,
+      storage_path: storagePath,
+      dosya_adi: file.name,
+      mime_type: file.type,
+      updated_at: new Date().toISOString(),
+      updated_by: user.id,
+    })
+  if (dbErr) return { hata: dbErr.message }
+
+  const yeniKayit = {
+    storage_path: storagePath,
+    dosya_adi: file.name,
+    mime_type: file.type,
+  }
+
+  await writePerformansImzaAuditLogSafe(supabase, {
+    amirSicil: sicil,
+    islem: onceki ? 'degistir' : 'yukle',
+    ozet: onceki ? 'Amir imzası değiştirildi' : 'Amir imzası yüklendi',
+    onceki: onceki ?? null,
+    sonraki: yeniKayit,
+  })
+
+  revalidatePath('/performans/tanimlar/imzalar')
+  return {}
 }

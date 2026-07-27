@@ -18,6 +18,7 @@ export type MenuModulKey =
   | 'iletisimYonetimi'
   | 'stratejikYonetim'
   | 'yerelBilgi'
+  | 'isgYonetimi'
   | 'yetkilendirme'
   | 'hayaletProfil'
   | 'tanimlar'
@@ -42,6 +43,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'iletisimYonetimi', labelKisa: 'İletişim', label: 'İletişim Yönetimi', pathPrefixes: ['/iletisim-yonetimi'] },
   { key: 'stratejikYonetim', labelKisa: 'Stratejik', label: 'Stratejik Yönetim', pathPrefixes: ['/stratejik-yonetim'] },
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
+  { key: 'isgYonetimi', labelKisa: 'İSG', label: 'İSG Yönetimi', pathPrefixes: ['/isg'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'hayaletProfil', labelKisa: 'Hayalet', label: 'Hayalet Profil', pathPrefixes: ['/yetkilendirme/hayalet-profil'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
@@ -128,9 +130,9 @@ export function kullaniciPathAllowed(
   if (path.startsWith('/egitim')) {
     return false
   }
-  // Performans: 1./2. amir kullanıcıları dönem listesine erişebilmeli
+  // Performans: modül izni gerekli
   if (path.startsWith('/performans')) {
-    return true
+    return menuModulAcik('performansYonetimi', menuIzinleri)
   }
   if (path.startsWith('/yetkilendirme')) {
     if (path === '/yetkilendirme/hayalet-profil') {
@@ -180,6 +182,10 @@ export function kullaniciPathAllowed(
     return menuModulAcik('yerelBilgi', menuIzinleri)
   }
 
+  if (path.startsWith('/isg')) {
+    return menuModulAcik('isgYonetimi', menuIzinleri)
+  }
+
   if (path.startsWith('/iletisim-yonetimi')) {
     return menuModulAcik('iletisimYonetimi', menuIzinleri)
   }
@@ -221,11 +227,10 @@ export function sidebarGrupGoster(
     'İletişim Yönetimi': 'iletisimYonetimi',
     'Stratejik Yönetim': 'stratejikYonetim',
     'Yerel Bilgi Yönetimi': 'yerelBilgi',
+    'İSG Yönetimi': 'isgYonetimi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }
-  /** Kullanıcı: amir değerlendirmesi için performans menüsü her zaman görünür */
-  if (accessMode === 'kullanici' && grupEtiket === 'Performans Yönetimi') return true
   const key = map[grupEtiket]
   if (!key) return true
   return menuModulAcik(key, menuIzinleri)

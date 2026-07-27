@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { resolvePerformansOturum } from '@/lib/performans-oturum'
 import { performansDegerlendirmeYapabilir } from '@/lib/performans-degerlendirme-erisim'
+import { performansGuncelYilDonemId } from '@/lib/performans-donem-coz'
 import PerformansDegerlendirmeYapilamazMesaji from '@/components/performans/PerformansDegerlendirmeYapilamazMesaji'
+import PerformansGuncelDonemYokMesaji from '@/components/performans/PerformansGuncelDonemYokMesaji'
 import PerformansDonemClient from '@/components/performans/PerformansDonemClient'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import {
@@ -26,6 +29,11 @@ export default async function PerformansDegerlendirmePage() {
   if (!oturum.adminBypass && oturum.sicil) {
     const yapabilir = await performansDegerlendirmeYapabilir(supabase, oturum.sicil)
     if (!yapabilir) return <PerformansDegerlendirmeYapilamazMesaji />
+
+    const guncelYil = new Date().getFullYear()
+    const donemId = await performansGuncelYilDonemId(supabase, guncelYil)
+    if (donemId) redirect(`/performans/degerlendirme/${donemId}`)
+    return <PerformansGuncelDonemYokMesaji yil={guncelYil} />
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,41 +1,82 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess } from '@/lib/app-access'
+import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
+import { resolvePerformansOturum } from '@/lib/performans-oturum'
+import { performansGuncelYilDonemId } from '@/lib/performans-donem-coz'
+import {
+  performansDonemListesiYukle,
+  performansRaporlamaVeriYukle,
+} from '@/lib/performans-raporlama-yukle'
 import PerformansRaporlamaClient from '@/components/performans/PerformansRaporlamaClient'
+import PerformansDegerlendirmeYapilamazMesaji from '@/components/performans/PerformansDegerlendirmeYapilamazMesaji'
 
-export default async function PerformansRaporlamaPage() {
+export default async function PerformansRaporlamaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ donem_id?: string }>
+}) {
+  const sp = await searchParams
   const supabase = await createClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
-  const { data: rows } = await db
-    .from('performans_degerlendirme')
-    .select('id, sicil_no, ortalama, durum, donem:performans_donem(yil)')
-    .not('ortalama', 'is', null)
-    .lte('ortalama', 59)
-    .order('ortalama', { ascending: true })
+  const access = await getAppAccess(supabase, user.id)
+  const hayaletDurum = await hayaletProfilDurumCoz(supabase, access)
+  const oturum = await resolvePerformansOturum(supabase, user.id, access, hayaletDurum)
 
-  const siciller = [...new Set((rows ?? []).map((r: { sicil_no: string }) => r.sicil_no))] as string[]
-  const adMap: Record<string, string> = {}
-  if (siciller.length > 0) {
-    const { data: cal } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
-    ;(cal ?? []).forEach(c => {
-      if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no
-    })
+  const donemler = await performansDonemListesiYukle(supabase)
+  let seciliDonemId = sp.donem_id ? Number(sp.donem_id) : null
+  if (!seciliDonemId || !donemler.some(d => d.id === seciliDonemId)) {
+    seciliDonemId =
+      (await performansGuncelYilDonemId(supabase)) ?? donemler[0]?.id ?? null
   }
 
-  const satirlar = (rows ?? []).map((r: {
-    id: number
-    sicil_no: string
-    ortalama: number | null
-    durum: string
-    donem: { yil: number } | null
-  }) => ({
-    id: r.id,
-    sicil_no: r.sicil_no,
-    ad_soyad: adMap[r.sicil_no] ?? r.sicil_no,
-    yil: r.donem?.yil ?? 0,
-    ortalama: r.ortalama,
-    durum: r.durum,
-  }))
+  const kapsam = {
+    currentSicil: oturum.sicil,
+    adminBypass: oturum.adminBypass,
+  }
 
-  return <PerformansRaporlamaClient satirlar={satirlar} />
+  if (!seciliDonemId) {
+    return (
+      <Suspense fallback={<p className="text-sm text-slate-500 p-6">Rapor yükleniyor…</p>}>
+        <PerformansRaporlamaClient
+          donemler={[]}
+          seciliDonemId={0}
+          ek3FlatListe={[]}
+          mudurlukler={[]}
+          ek2Satirlar={[]}
+          donemEtiket="—"
+          hayaletAktif={oturum.hayaletAktif}
+        />
+      </Suspense>
+    )
+  }
+
+  const { veri } = await performansRaporlamaVeriYukle(supabase, seciliDonemId, kapsam)
+
+  if (veri && !veri.erisimVar) {
+    return <PerformansDegerlendirmeYapilamazMesaji />
+  }
+
+  const donem = veri?.donem ?? donemler.find(d => d.id === seciliDonemId)
+  const donemEtiket = donem
+    ? 'sira_no' in donem && donem.sira_no
+      ? `${donem.yil} / ${donem.sira_no}`
+      : String(donem.yil)
+    : '—'
+
+  return (
+    <Suspense fallback={<p className="text-sm text-slate-500 p-6">Rapor yükleniyor…</p>}>
+      <PerformansRaporlamaClient
+        donemler={donemler}
+        seciliDonemId={seciliDonemId}
+        ek3FlatListe={veri?.ek3FlatListe ?? []}
+        mudurlukler={veri?.mudurlukler ?? []}
+        ek2Satirlar={veri?.ek2Satirlar ?? []}
+        donemEtiket={donemEtiket}
+        hayaletAktif={oturum.hayaletAktif}
+      />
+    </Suspense>
+  )
 }

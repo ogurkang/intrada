@@ -26,12 +26,18 @@ export default function PermissionGate({ access, children, terfiMenuHref = '/ter
         <p className="mt-2 text-sm text-violet-900/90">
           Bu ekrana hayalet modda erişilemez. Yalnızca performans yönetimi kullanılabilir.
         </p>
-        <p className="mt-5">
+        <p className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link
             href="/performans/degerlendirme"
             className="text-sm font-semibold text-violet-950 underline underline-offset-2 hover:text-violet-800"
           >
             Performans değerlendirme
+          </Link>
+          <Link
+            href="/performans/raporlama"
+            className="text-sm font-semibold text-violet-950 underline underline-offset-2 hover:text-violet-800"
+          >
+            Raporlama
           </Link>
         </p>
       </div>

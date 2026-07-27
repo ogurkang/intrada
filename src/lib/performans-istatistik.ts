@@ -12,6 +12,7 @@ export type PerformansDegOzet = {
   puan_amir2?: number | null
   amir1_sicil?: string | null
   amir2_sicil?: string | null
+  iade_notu?: string | null
 }
 
 export function amir1Tamamlandi(r: Pick<PerformansDegOzet, 'durum' | 'tek_amir'>): boolean {

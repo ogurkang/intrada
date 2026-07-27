@@ -4,7 +4,9 @@ import { getAppAccess } from '@/lib/app-access'
 import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { resolvePerformansOturum } from '@/lib/performans-oturum'
 import PerformansDonemDashboardClient, {
+  type MudurlukPersonelGrubu,
   type PersonelSatir,
+  type PerformansLandingModu,
 } from '@/components/performans/PerformansDonemDashboardClient'
 import PerformansDegerlendirmeYapilamazMesaji from '@/components/performans/PerformansDegerlendirmeYapilamazMesaji'
 import { performansAmirErisimCoz } from '@/lib/performans-degerlendirme-erisim'
@@ -18,6 +20,7 @@ import {
   kadroMudurlukIndeksi,
   mudurlukByNormHaritasi,
   performansKadroMudurlukEslesir,
+  performansMudurlukKayitEslesir,
   performansKadroUygun,
   performansMudurlukCoz,
   performansMudurlukEslesir,
@@ -30,6 +33,16 @@ import {
 import {
   performansAmirErisimOlustur,
   performansAmirSatirGorulebilir,
+  performansBaskanDogrudanSatirlari,
+  performansBaskanLandingMi,
+  performansBaskanPersonelSatirlari,
+  performansBbyAmir1LandingMi,
+  performansBbyAmir1MudurSatirlari,
+  performansBbyAmir2FlatListeOlustur,
+  performansBbyAmir2LandingMi,
+  performansBbyAmir2MudurGruplariOlustur,
+  performansBbyAmir2PersonelSatirlari,
+  performansMudurLandingMi,
   type PerformansAmirErisim,
 } from '@/lib/performans-amir-erisim'
 import type { OrgBirimSatir } from '@/lib/performans-amir'
@@ -40,7 +53,7 @@ export default async function PerformansDonemDashboardPage({
   searchParams,
 }: {
   params: Promise<{ donem_id: string }>
-  searchParams: Promise<{ mudurluk?: string }>
+  searchParams: Promise<{ mudurluk?: string; bby2?: string; baskan?: string }>
 }) {
   const { donem_id: donemIdStr } = await params
   const sp = await searchParams
@@ -153,6 +166,7 @@ export default async function PerformansDonemDashboardPage({
     puan_amir2: number | null
     amir1_sicil: string | null
     amir2_sicil: string | null
+    iade_notu: string | null
   }
 
   const liste: PerformansDegOzet[] = (rows ?? []).flatMap((r: DegRow) => {
@@ -187,12 +201,12 @@ export default async function PerformansDonemDashboardPage({
       puan_amir2: r.puan_amir2,
       amir1_sicil: r.amir1_sicil,
       amir2_sicil: r.amir2_sicil,
+      iade_notu: r.iade_notu,
     }]
   })
 
   let amirErisim: PerformansAmirErisim | null = null
 
-  // Amir atamalarını canlı çöz (DB senkronu gecikmiş olsa bile düğmeler doğru kalsın)
   if (birimler.length > 0) {
     for (const r of liste) {
       const unvan = etkinUnvanMap.get(r.sicil_no)
@@ -231,71 +245,269 @@ export default async function PerformansDonemDashboardPage({
       : liste.filter(r => performansAmirSatirGorulebilir(r, currentSicil!, amirErisim!))
 
   const ilerleme = donemIlerlemeOzet(filtreliListe)
+
+  const mudurLanding =
+    !admin &&
+    amirErisim != null &&
+    currentSicil != null &&
+    performansMudurLandingMi(
+      currentSicil,
+      birimler,
+      kadroRaw,
+      filtreliListe,
+      etkinUnvanMap,
+      amirErisim,
+    )
+
+  const baskanLanding =
+    !admin &&
+    !mudurLanding &&
+    currentSicil != null &&
+    performansBaskanLandingMi(currentSicil, birimler, kadroRaw, filtreliListe)
+
+  const bbyAmir1Goster =
+    !admin &&
+    !mudurLanding &&
+    !baskanLanding &&
+    amirErisim != null &&
+    currentSicil != null &&
+    performansBbyAmir1LandingMi(
+      currentSicil,
+      birimler,
+      filtreliListe,
+      etkinUnvanMap,
+      amirErisim,
+    )
+
+  const bbyAmir2Goster =
+    !admin &&
+    !mudurLanding &&
+    !baskanLanding &&
+    amirErisim != null &&
+    currentSicil != null &&
+    performansBbyAmir2LandingMi(
+      currentSicil,
+      birimler,
+      filtreliListe,
+      etkinUnvanMap,
+      amirErisim,
+    )
+
+  const ozelLanding = mudurLanding || baskanLanding || bbyAmir1Goster || bbyAmir2Goster
+
+  const bbyAmir2Satirlar =
+    bbyAmir2Goster && currentSicil
+      ? performansBbyAmir2PersonelSatirlari(currentSicil, filtreliListe, etkinUnvanMap)
+      : []
+
+  const baskanPersonelSatirlar =
+    baskanLanding && currentSicil
+      ? performansBaskanPersonelSatirlari(currentSicil, filtreliListe, etkinUnvanMap, birimler)
+      : []
+
+  const baskanDogrudanSatirlar =
+    baskanLanding && currentSicil
+      ? performansBaskanDogrudanSatirlari(currentSicil, birimler, filtreliListe, etkinUnvanMap)
+      : []
+
   const gorulebilirMudurlukAdlari =
     amirErisim == null
       ? mudurlukAdlari
-      : mudurlukAdlari.filter(m =>
-          filtreliListe.some(r => performansKadroMudurlukEslesir(m, r.kadro_mudurlugu)),
-        )
+      : baskanLanding
+        ? mudurlukAdlari.filter(m =>
+            baskanPersonelSatirlar.some(r => performansKadroMudurlukEslesir(m, r.kadro_mudurlugu)),
+          )
+        : bbyAmir2Goster
+          ? mudurlukAdlari.filter(m =>
+              bbyAmir2Satirlar.some(r => performansKadroMudurlukEslesir(m, r.kadro_mudurlugu)),
+            )
+          : mudurlukAdlari.filter(m =>
+              filtreliListe.some(r => performansKadroMudurlukEslesir(m, r.kadro_mudurlugu)),
+            )
+
   const mudurlukEslesir = admin
     ? (mudurlukAdi: string, r: Pick<PerformansDegOzet, 'mudurluk_adi' | 'gorev_mudurlugu' | 'kadro_mudurlugu'>) =>
         performansMudurlukEslesir(mudurlukAdi, r)
     : (mudurlukAdi: string, r: Pick<PerformansDegOzet, 'kadro_mudurlugu'>) =>
         performansKadroMudurlukEslesir(mudurlukAdi, r.kadro_mudurlugu)
 
+  const hubKaynakListe = baskanLanding
+    ? baskanPersonelSatirlar
+    : bbyAmir2Goster
+      ? bbyAmir2Satirlar
+      : filtreliListe
+
   const mudurlukler = mudurlukSatirlariOlustur(
     gorulebilirMudurlukAdlari,
-    filtreliListe,
+    hubKaynakListe,
     mudurlukEslesir,
   )
 
-  if (!admin && amirErisim && gorulebilirMudurlukAdlari.length === 0) {
+  if (!admin && amirErisim && filtreliListe.length === 0) {
     return <PerformansDegerlendirmeYapilamazMesaji />
   }
 
   const seciliMudurluk = sp.mudurluk?.trim() || null
+  const bby2Detay = sp.bby2 === '1'
+  const baskanDetay = sp.baskan === '1'
+
   if (
     seciliMudurluk &&
+    !ozelLanding &&
     amirErisim &&
     !gorulebilirMudurlukAdlari.some(m => performansKadroMudurlukEslesir(m, seciliMudurluk))
   ) {
     return <PerformansDegerlendirmeYapilamazMesaji />
   }
-  let personeller: PersonelSatir[] = []
 
-  if (seciliMudurluk) {
-    const filtreli = filtreliListe.filter(r => mudurlukEslesir(seciliMudurluk, r))
-    personeller = filtreli.map((r, i) => {
-      const kadroUnvan = performansPersonelEtkinUnvan(
-        r.sicil_no,
-        seciliMudurluk,
-        kadroRaw,
-        mudurlukByNorm,
-      )
-      return {
-        siraNo: i + 1,
-        id: r.id!,
-        sicil_no: r.sicil_no,
-        ad_soyad: adMap[r.sicil_no] ?? r.sicil_no,
-        kadro_unvani: kadroUnvan,
-        puan_amir1: r.puan_amir1 ?? null,
-        puan_amir2: r.puan_amir2 ?? null,
-        tek_amir: r.tek_amir,
-        durum: r.durum,
-        iade_notu: (r as { iade_notu?: string | null }).iade_notu ?? null,
-        amir1_sicil: r.amir1_sicil ?? null,
-        amir2_sicil: r.amir2_sicil ?? null,
-      }
-    })
+  if (
+    seciliMudurluk &&
+    bbyAmir2Goster &&
+    bby2Detay &&
+    !bbyAmir2Satirlar.some(r => performansMudurlukKayitEslesir(seciliMudurluk, r))
+  ) {
+    return <PerformansDegerlendirmeYapilamazMesaji />
   }
+
+  if (
+    seciliMudurluk &&
+    baskanLanding &&
+    baskanDetay &&
+    !baskanPersonelSatirlar.some(r => performansKadroMudurlukEslesir(seciliMudurluk, r.kadro_mudurlugu))
+  ) {
+    return <PerformansDegerlendirmeYapilamazMesaji />
+  }
+
+  function personelSatirOlustur(
+    r: PerformansDegOzet,
+    siraNo: number,
+    mudurlukAdi: string,
+  ): PersonelSatir {
+    const kadroUnvan = performansPersonelEtkinUnvan(
+      r.sicil_no,
+      mudurlukAdi,
+      kadroRaw,
+      mudurlukByNorm,
+    )
+    return {
+      siraNo,
+      id: r.id!,
+      sicil_no: r.sicil_no,
+      ad_soyad: adMap[r.sicil_no] ?? r.sicil_no,
+      kadro_unvani: kadroUnvan,
+      puan_amir1: r.puan_amir1 ?? null,
+      puan_amir2: r.puan_amir2 ?? null,
+      tek_amir: r.tek_amir,
+      durum: r.durum,
+      iade_notu: r.iade_notu ?? null,
+      amir1_sicil: r.amir1_sicil ?? null,
+      amir2_sicil: r.amir2_sicil ?? null,
+    }
+  }
+
+  let personeller: PersonelSatir[] = []
+  let mudurlukGruplari: MudurlukPersonelGrubu[] = []
+  let bbyMudurListesi: PersonelSatir[] = []
+  let bbyAmir2FlatListe: import('@/lib/performans-amir-erisim').BbyAmir2FlatSatir[] = []
+  let baskanDogrudanListesi: PersonelSatir[] = []
+
+  const bbyAmir1Satirlar =
+    bbyAmir1Goster && currentSicil
+      ? performansBbyAmir1MudurSatirlari(currentSicil, filtreliListe, etkinUnvanMap)
+      : []
+
+  let gosterimIlerleme = ilerleme
+  if (bbyAmir1Goster && !bbyAmir2Goster) {
+    gosterimIlerleme = donemIlerlemeOzet(bbyAmir1Satirlar)
+  } else if (bbyAmir2Goster && !bbyAmir1Goster) {
+    gosterimIlerleme = donemIlerlemeOzet(bbyAmir2Satirlar)
+  } else if (baskanLanding) {
+    gosterimIlerleme = donemIlerlemeOzet([...baskanDogrudanSatirlar, ...baskanPersonelSatirlar])
+  }
+
+  const seciliMudurlukBby2Mi =
+    seciliMudurluk != null &&
+    bbyAmir2Goster &&
+    bbyAmir2Satirlar.some(r => performansMudurlukKayitEslesir(seciliMudurluk, r))
+
+  const seciliMudurlukBaskanPersonelMi =
+    seciliMudurluk != null &&
+    baskanLanding &&
+    baskanPersonelSatirlar.some(r => performansKadroMudurlukEslesir(seciliMudurluk, r.kadro_mudurlugu))
+
+  const efektifBby2Detay = bby2Detay || seciliMudurlukBby2Mi
+
+  if (mudurLanding) {
+    mudurlukGruplari = gorulebilirMudurlukAdlari.flatMap(mudurlukAdi => {
+      const filtreli = filtreliListe.filter(r =>
+        performansKadroMudurlukEslesir(mudurlukAdi, r.kadro_mudurlugu),
+      )
+      if (filtreli.length === 0) return []
+      return [{
+        mudurlukAdi,
+        personeller: filtreli.map((r, i) => personelSatirOlustur(r, i + 1, mudurlukAdi)),
+      }]
+    })
+  } else if (seciliMudurluk) {
+    const kaynak = seciliMudurlukBby2Mi
+      ? bbyAmir2Satirlar
+      : seciliMudurlukBaskanPersonelMi
+        ? baskanPersonelSatirlar
+        : filtreliListe
+    const filtreli = kaynak.filter(r =>
+      seciliMudurlukBby2Mi || seciliMudurlukBaskanPersonelMi
+        ? performansMudurlukKayitEslesir(seciliMudurluk, r)
+        : mudurlukEslesir(seciliMudurluk, r),
+    )
+    personeller = filtreli.map((r, i) => personelSatirOlustur(r, i + 1, seciliMudurluk))
+  } else {
+    if (bbyAmir1Goster) {
+      bbyMudurListesi = bbyAmir1Satirlar.map((r, i) => {
+        const mud = r.mudurluk_adi ?? r.kadro_mudurlugu ?? ''
+        return {
+          ...personelSatirOlustur(r, i + 1, mud),
+          mudurluk_adi: r.mudurluk_adi ?? r.kadro_mudurlugu ?? null,
+        }
+      })
+    }
+    if (bbyAmir2Goster) {
+      bbyAmir2FlatListe = performansBbyAmir2FlatListeOlustur(bbyAmir2Satirlar, adMap)
+    }
+    if (baskanLanding) {
+      baskanDogrudanListesi = baskanDogrudanSatirlar.map((r, i) => {
+        const mud = r.mudurluk_adi ?? r.kadro_mudurlugu ?? ''
+        return {
+          ...personelSatirOlustur(r, i + 1, mud),
+          mudurluk_adi: r.mudurluk_adi ?? r.kadro_mudurlugu ?? null,
+        }
+      })
+    }
+  }
+
+  const landingModu: PerformansLandingModu = mudurLanding
+    ? 'mudur'
+    : baskanLanding
+      ? 'baskan'
+      : bbyAmir1Goster
+        ? 'bby1'
+        : bbyAmir2Goster
+          ? 'bby2'
+          : 'normal'
 
   return (
     <PerformansDonemDashboardClient
       donem={donem}
-      ilerleme={ilerleme}
+      ilerleme={gosterimIlerleme}
       mudurlukler={mudurlukler}
       personeller={personeller}
-      seciliMudurluk={seciliMudurluk}
+      mudurlukGruplari={mudurlukGruplari}
+      bbyMudurListesi={bbyMudurListesi}
+      bbyAmir2FlatListe={bbyAmir2FlatListe}
+      baskanDogrudanListesi={baskanDogrudanListesi}
+      seciliMudurluk={mudurLanding ? null : seciliMudurluk}
+      landingModu={landingModu}
+      bby2Detay={efektifBby2Detay}
+      baskanDetay={baskanDetay}
       isAdmin={admin}
       amirErisim={amirErisim}
     />

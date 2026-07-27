@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import MalDetayClient from '@/components/bildirim/MalDetayClient'
 import PersonelDetayClient from '@/components/personel/PersonelDetayClient'
 import { resolveAppLinkSlug } from '@/lib/app-link-resolve'
@@ -33,6 +34,10 @@ interface Props {
 export default async function Page({ params }: Props) {
   const { slug } = await params
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const access = user ? await getAppAccess(supabase, user.id) : null
+  const gecmisGoster = access ? isAdminLike(access) : false
+  const performansGoster = access ? isAdminLike(access) : false
 
   const linked = await resolveAppLinkSlug(supabase, slug)
 
@@ -40,6 +45,29 @@ export default async function Page({ params }: Props) {
     const data = await fetchPersonelDetayPageData(supabase, linked.sicil_no, '')
     if (!data) notFound()
     const { calisan, kaynak, ...rest } = data
+
+    let performansKayitlari: { yil: number; ortalama: number | null }[] = []
+    if (performansGoster) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: perfRows } = await (supabase as any)
+          .from('performans_degerlendirme')
+          .select('ortalama, durum, donem:performans_donem(yil)')
+          .eq('sicil_no', calisan.sicil_no)
+          .in('durum', ['tamamlandi', 'amir2_onay'])
+          .not('ortalama', 'is', null)
+        performansKayitlari = (perfRows ?? [])
+          .map((r: { ortalama: number | null; donem: { yil: number } | null }) => ({
+            yil: r.donem?.yil ?? 0,
+            ortalama: r.ortalama,
+          }))
+          .filter((r: { yil: number }) => r.yil > 0)
+          .sort((a: { yil: number }, b: { yil: number }) => b.yil - a.yil)
+      } catch {
+        performansKayitlari = []
+      }
+    }
+
     return (
       <div>
         <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
@@ -58,7 +86,7 @@ export default async function Page({ params }: Props) {
           calisan={calisan as Tables<'calisan'>}
           kadrolar={rest.kadrolar}
           hareketler={rest.hareketler}
-          auditLoglar={rest.auditLoglar}
+          auditLoglar={gecmisGoster ? rest.auditLoglar : []}
           izinHaklari={rest.izinHaklari}
           izinHareketleri={rest.izinHareketleri}
           terfiKayitlari={rest.terfiKayitlari}
@@ -70,6 +98,9 @@ export default async function Page({ params }: Props) {
           tanimGostergeKha={rest.tanimGostergeKha}
           terfiOncesiTarihce={rest.terfiOncesiTarihce}
           onKisiselGuncelle={calisanGuncelle}
+          gecmisGoster={gecmisGoster}
+          performansGoster={performansGoster}
+          performansKayitlari={performansKayitlari}
         />
       </div>
     )

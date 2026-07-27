@@ -39,6 +39,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   const access = user ? await getAppAccess(supabase, user.id) : null
   const saltOkunur = access?.mode === 'kullanici'
   const gecmisGoster = access ? isAdminLike(access) : true
+  const performansGoster = access ? isAdminLike(access) : false
 
   const data = await fetchPersonelDetayPageData(supabase, sicilSegment, kaynak)
 
@@ -94,42 +95,27 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   })
   if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
 
-  // Yayınlanmış dönem sonuçları (personel Performans Bilgileri sekmesi)
-  let performansKayitlari: {
-    yil: number
-    ortalama: number | null
-    puan_amir1: number | null
-    puan_amir2: number | null
-    durum: string
-    form_tipi: string
-  }[] = []
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: perfRows } = await (supabase as any)
-      .from('performans_degerlendirme')
-      .select('ortalama, puan_amir1, puan_amir2, durum, form_tipi, donem:performans_donem(yil, durum)')
-      .eq('sicil_no', calisan.sicil_no)
-      .in('durum', ['tamamlandi', 'amir2_onay'])
-    performansKayitlari = (perfRows ?? [])
-      .filter((r: { donem?: { durum?: string } | null }) => r.donem?.durum === 'Yayınlandı')
-      .map((r: {
-        ortalama: number | null
-        puan_amir1: number | null
-        puan_amir2: number | null
-        durum: string
-        form_tipi: string
-        donem: { yil: number } | null
-      }) => ({
-        yil: r.donem?.yil ?? 0,
-        ortalama: r.ortalama,
-        puan_amir1: r.puan_amir1,
-        puan_amir2: r.puan_amir2,
-        durum: r.durum,
-        form_tipi: r.form_tipi,
-      }))
-      .sort((a: { yil: number }, b: { yil: number }) => b.yil - a.yil)
-  } catch {
-    performansKayitlari = []
+  // Tamamlanmış performans sonuçları — yalnızca admin personel kartında
+  let performansKayitlari: { yil: number; ortalama: number | null }[] = []
+  if (performansGoster) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: perfRows } = await (supabase as any)
+        .from('performans_degerlendirme')
+        .select('ortalama, durum, donem:performans_donem(yil)')
+        .eq('sicil_no', calisan.sicil_no)
+        .in('durum', ['tamamlandi', 'amir2_onay'])
+        .not('ortalama', 'is', null)
+      performansKayitlari = (perfRows ?? [])
+        .map((r: { ortalama: number | null; donem: { yil: number } | null }) => ({
+          yil: r.donem?.yil ?? 0,
+          ortalama: r.ortalama,
+        }))
+        .filter((r: { yil: number }) => r.yil > 0)
+        .sort((a: { yil: number }, b: { yil: number }) => b.yil - a.yil)
+    } catch {
+      performansKayitlari = []
+    }
   }
 
   return (
@@ -164,6 +150,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         onKisiselGuncelle={saltOkunur ? undefined : calisanGuncelle}
         saltOkunur={saltOkunur}
         gecmisGoster={gecmisGoster}
+        performansGoster={performansGoster}
         yerleskeAdi={yerleskeAdi}
         konumMetni={konumMetni}
         performansKayitlari={performansKayitlari}
