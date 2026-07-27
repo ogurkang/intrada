@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
+import GorevYeriListeGuncellendiModal from '@/components/rapor/GorevYeriListeGuncellendiModal'
 import type { Tables } from '@/types/database'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
 import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
@@ -13,7 +14,7 @@ type FC = Tables<'firma_calisanlar'>
 interface Props {
   kayitlar:   FC[]
   mudurluler: string[]
-  onEkle:     (fd: FormData) => Promise<{ hata?: string }>
+  onEkle:     (fd: FormData) => Promise<{ hata?: string; gorev_yeri_liste_guncellendi?: boolean }>
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
   onSil:      (id: number) => Promise<{ hata?: string }>
 }
@@ -104,6 +105,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
   const [formAcik, setFormAcik]       = useState(false)
   const [secili, setSecili]           = useState<FC | null>(null)
   const [hata, setHata]               = useState<string | null>(null)
+  const [gorevListeModal, setGorevListeModal] = useState(false)
   const [isPending, startTransition]  = useTransition()
   const [sayfa, setSayfa]             = useState(0)
 
@@ -210,9 +212,18 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
     e.preventDefault(); setHata(null)
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      const res = secili ? await onGuncelle(secili.id, fd) : await onEkle(fd)
-      if (res.hata) setHata(res.hata)
-      else kapat()
+      if (secili) {
+        const res = await onGuncelle(secili.id, fd)
+        if (res.hata) setHata(res.hata)
+        else kapat()
+      } else {
+        const res = await onEkle(fd)
+        if (res.hata) setHata(res.hata)
+        else if (res.gorev_yeri_liste_guncellendi) {
+          kapat()
+          setGorevListeModal(true)
+        } else kapat()
+      }
     })
   }
 
@@ -225,6 +236,7 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
 
   return (
     <div>
+      <GorevYeriListeGuncellendiModal open={gorevListeModal} onClose={() => setGorevListeModal(false)} />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-800">ADABEL Personeli</h1>

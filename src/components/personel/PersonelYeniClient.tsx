@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
+import GorevYeriListeGuncellendiModal from '@/components/rapor/GorevYeriListeGuncellendiModal'
 import { personelDetayHref } from '@/lib/personel-link'
 import PersonelAdresAlanlari from '@/components/personel/PersonelAdresAlanlari'
 import type { MahalleTanimSatir } from '@/lib/personel-adres'
@@ -23,6 +24,8 @@ export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitl
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [gorevListeModal, setGorevListeModal] = useState(false)
+  const [gorevListeSonuc, setGorevListeSonuc] = useState<{ sicil_no?: string; public_id?: string } | null>(null)
   const [gorevTuru, setGorevTuru] = useState('Çalışan')
   const gorevTarihGoster = gorevTuruBitisGoster(gorevTuru)
   const gorevTarihZorunlu = gorevTuruTarihZorunlu(gorevTuru)
@@ -37,6 +40,10 @@ export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitl
     calisanEkle(fd).then((res) => {
       if (res.hata) {
         setHata(res.hata)
+        setIsPending(false)
+      } else if (res.gorev_yeri_liste_guncellendi) {
+        setGorevListeSonuc({ sicil_no: res.sicil_no, public_id: res.public_id })
+        setGorevListeModal(true)
         setIsPending(false)
       } else {
         if (window.opener) {
@@ -55,8 +62,25 @@ export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitl
     })
   }
 
+  function gorevListeModalKapat() {
+    setGorevListeModal(false)
+    const sonuc = gorevListeSonuc
+    setGorevListeSonuc(null)
+    if (window.opener) {
+      window.opener.postMessage('refresh', '*')
+      window.close()
+    } else if (sonuc?.public_id) {
+      router.push(`/link/${sonuc.public_id}`)
+    } else if (sonuc?.sicil_no) {
+      router.push(personelDetayHref({ sicil_no: sonuc.sicil_no }))
+    } else {
+      router.push('/personel')
+    }
+  }
+
   return (
     <div>
+      <GorevYeriListeGuncellendiModal open={gorevListeModal} onClose={gorevListeModalKapat} />
       <div className="mb-6 flex items-center gap-4">
         <Link href="/personel"
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">

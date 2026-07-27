@@ -2,8 +2,20 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-27T08:18:29.708Z",
+  "generatedAt": "2026-07-27T08:54:15.127Z",
   "commits": [
+    {
+      "hash": "af847ce",
+      "fullHash": "af847ceb5b4d9a77032087a4c1b0ecf53caf4f8f",
+      "date": "2026-07-27",
+      "subject": "fix(dashboard): asil kadro statu sayisini kadro listesi ile hizala"
+    },
+    {
+      "hash": "a9afef2",
+      "fullHash": "a9afef2b5e84db762c65a82a1a1a4c93f20d45cd",
+      "date": "2026-07-27",
+      "subject": "fix(performans): IK SMS mudurluk eslesme arguman sirasini duzelt"
+    },
     {
       "hash": "0bcaf8a",
       "fullHash": "0bcaf8afe68db57835a7d319da34bfe581f90ce1",
@@ -231,18 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "02a2517852a3040e2c6549ef671449585c1be9c4",
       "date": "2026-07-04",
       "subject": "fix(terfi): kadro bazli eslestirme, personel hareketi senkronu ve kapsam disi kayitlar"
-    },
-    {
-      "hash": "edb690a",
-      "fullHash": "edb690ac710c874af5a4741e51ba9694c2c014a0",
-      "date": "2026-07-03",
-      "subject": "fix(personel-hareketleri): kadro eslemesi, islem no PH# ve goruntule SSR"
-    },
-    {
-      "hash": "cdf547e",
-      "fullHash": "cdf547e7c25758bd00b6f566c75f9f5518e60bb9",
-      "date": "2026-07-02",
-      "subject": "feat(personel-hareketleri): yeni kayit formu degistir ile birlestir, kadro sinif sutunu"
     }
   ]
 }

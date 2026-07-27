@@ -15,6 +15,7 @@ import {
   degisiklikOzeti,
   degisiklikPayload,
 } from '@/lib/personel-audit'
+import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
@@ -124,6 +125,12 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
     sonraki: sonrakiSnap,
   })
 
+  if (asil) {
+    await gorevYeriListeSenkronizeEt(supabase, {
+      otomatikEkleKeys: [`kadro:${asil}`],
+    })
+  }
+
   revalidatePath('/kadro')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   if (inserted?.id) revalidatePath(`/kadro/${inserted.id}`)
@@ -219,6 +226,14 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
       ref_id: String(id),
       onceki: payload.onceki,
       sonraki: payload.sonraki,
+    })
+  }
+
+  const mudurlukDegisti =
+    String(mevcut?.kadro_mudurlugu ?? '').trim() !== String(str(formData, 'kadro_mudurlugu') ?? '').trim()
+  if (asil && mudurlukDegisti) {
+    await gorevYeriListeSenkronizeEt(supabase, {
+      otomatikEkleKeys: [`kadro:${asil}`],
     })
   }
 

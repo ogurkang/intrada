@@ -482,7 +482,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
   }
 
   const istatistik = useMemo(() => ({
-    dolu:  data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Asil').length,
+    asil:  data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Asil').length,
     vekil: data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Vekil').length,
     bos:   data.filter(k => !k.ayrilis_tarihi && kadroDurumEtiketi(k) === 'Boş').length,
   }), [data])
@@ -545,8 +545,8 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       {/* Özet kartlar */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-2xl font-bold text-slate-800">{istatistik.dolu}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Dolu</p>
+          <p className="text-2xl font-bold text-slate-800">{istatistik.asil}</p>
+          <p className="text-xs text-slate-500 mt-0.5">Asil</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <p className="text-2xl font-bold text-slate-800">{istatistik.vekil}</p>

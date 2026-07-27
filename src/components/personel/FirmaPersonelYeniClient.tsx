@@ -3,18 +3,28 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import GorevYeriListeGuncellendiModal from '@/components/rapor/GorevYeriListeGuncellendiModal'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 interface Props {
   mudurluler: string[]
   ogrenimler: string[]
-  onEkle: (fd: FormData) => Promise<{ hata?: string; id?: number; public_id?: string }>
+  onEkle: (fd: FormData) => Promise<{ hata?: string; id?: number; public_id?: string; gorev_yeri_liste_guncellendi?: boolean }>
 }
 
 export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, onEkle }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [gorevListeModal, setGorevListeModal] = useState(false)
+
+  async function kayitSonrasiYonlendir() {
+    broadcastIntradaRefresh('firma-calisanlar')
+    window.close()
+    setTimeout(() => {
+      if (document.visibilityState === 'visible') router.push('/firma-calisanlar')
+    }, 300)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -25,17 +35,23 @@ export default function FirmaPersonelYeniClient({ mudurluler, ogrenimler, onEkle
     if (res.hata) {
       setHata(res.hata)
       setIsPending(false)
+    } else if (res.gorev_yeri_liste_guncellendi) {
+      setGorevListeModal(true)
+      setIsPending(false)
     } else {
-      broadcastIntradaRefresh('firma-calisanlar')
-      window.close()
-      setTimeout(() => {
-        if (document.visibilityState === 'visible') router.push('/firma-calisanlar')
-      }, 300)
+      await kayitSonrasiYonlendir()
     }
   }
 
   return (
     <div>
+      <GorevYeriListeGuncellendiModal
+        open={gorevListeModal}
+        onClose={() => {
+          setGorevListeModal(false)
+          void kayitSonrasiYonlendir()
+        }}
+      />
       <div className="mb-6 flex items-center gap-4">
         <Link href="/firma-calisanlar"
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">

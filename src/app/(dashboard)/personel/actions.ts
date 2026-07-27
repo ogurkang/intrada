@@ -5,10 +5,11 @@ import { revalidatePath } from 'next/cache'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
 import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
 import { personelAdresFormdan } from '@/lib/personel-adres'
+import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 
 export async function calisanEkle(
   formData: FormData
-): Promise<{ hata?: string; sicil_no?: string; public_id?: string }> {
+): Promise<{ hata?: string; sicil_no?: string; public_id?: string; gorev_yeri_liste_guncellendi?: boolean }> {
   const sicil_no = String(formData.get('sicil_no') ?? '').trim().toUpperCase()
   const ad_soyad = String(formData.get('ad_soyad') ?? '').trim()
 
@@ -78,6 +79,17 @@ export async function calisanEkle(
     .single()
 
   if (error) return { hata: error.message }
+
+  if (inserted?.sicil_no) {
+    await gorevYeriListeSenkronizeEt(supabase, {
+      otomatikEkleKeys: [`kadro:${inserted.sicil_no}`],
+    })
+  }
+
   revalidatePath('/personel')
-  return { sicil_no: inserted?.sicil_no, public_id: inserted?.public_id }
+  return {
+    sicil_no: inserted?.sicil_no,
+    public_id: inserted?.public_id,
+    gorev_yeri_liste_guncellendi: true,
+  }
 }

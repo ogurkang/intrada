@@ -21,6 +21,7 @@ import {
   gecerliYerleskeIdKaynak,
 } from '@/lib/yerleske-adresi'
 import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
+import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 
 /** gg.aa.yyyy formatındaki tarihi yyyy-mm-dd'ye çevirir */
 function parseTarihFromNeden(neden: string | null): string | null {
@@ -78,7 +79,7 @@ async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>
   return `A${maks + 1}`
 }
 
-export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string }> {
+export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string; gorev_yeri_liste_guncellendi?: boolean }> {
   const ad_soyad = str(fd, 'ad_soyad')
   if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
 
@@ -132,9 +133,19 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
     })
   }
 
+  if (inserted?.id) {
+    await gorevYeriListeSenkronizeEt(supabase, {
+      otomatikEkleKeys: [`firma:${inserted.id}`],
+    })
+  }
+
   revalidatePath('/firma-calisanlar')
   if (inserted?.id) await revalidateFirmaCalisanPaths(inserted.id)
-  return { id: inserted?.id, public_id: inserted?.public_id }
+  return {
+    id: inserted?.id,
+    public_id: inserted?.public_id,
+    gorev_yeri_liste_guncellendi: true,
+  }
 }
 
 export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: string }> {
