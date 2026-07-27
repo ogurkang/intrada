@@ -176,7 +176,7 @@ export default function DashboardClient({
               key={etiket}
               baslik={etiket}
               deger={statuSayilari[etiket]}
-              alt="asil kadro"
+              alt="asil dolu kadro"
               renk={STATU_KART_RENK[etiket]}
               href="/personel"
             />

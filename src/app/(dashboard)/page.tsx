@@ -4,7 +4,7 @@ import KullaniciAnaSayfa from '@/components/dashboard/KullaniciAnaSayfa'
 import type { GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlaticiWidget'
 import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
-import { dashboardStatuSayilariHesapla } from '@/lib/dashboard-statu-sayilari'
+import { dashboardStatuSayilariHesapla, dashboardKadroSatirlariYukle } from '@/lib/dashboard-statu-sayilari'
 import { izinDurumDegistir } from './izin/actions'
 import type {
   KadroDoluluk, IzinIstatistik, BekleyenIzin,
@@ -31,19 +31,13 @@ export default async function DashboardPage() {
   const bugun    = new Date().toISOString().split('T')[0]
 
   const [
-    { data: kadroRaw },
+    kadroRaw,
     { data: izinYilRaw },
     { data: bekleyenRaw },
     { data: tatilRaw },
     { data: izindekiRaw },
   ] = await Promise.all([
-    // Kadro doluluk + asil kadro statü sayıları (ayrılmamış kayıtlar)
-    supabase
-      .from('kadro_hareketleri')
-      .select(
-        'durumu, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, gorev_unvani, kadro_unvani',
-      )
-      .is('ayrilis_tarihi', null),
+    dashboardKadroSatirlariYukle(supabase),
 
     // Bu yılın tüm izin hareketleri (durum dağılımı)
     supabase
@@ -188,7 +182,7 @@ export default async function DashboardPage() {
     if (k.durumu === 'Vekil') kadroDoluluk.vekil++
     if (k.durumu === 'Boş') kadroDoluluk.bos++
   })
-  const statuSayilari = dashboardStatuSayilariHesapla(kadroRaw ?? [], bugun)
+  const statuSayilari = dashboardStatuSayilariHesapla(kadroRaw)
 
   // İzin istatistik
   const izinIstatistik: IzinIstatistik = { taslak: 0, onaylandi: 0, iptal: 0, degistirildi: 0 }

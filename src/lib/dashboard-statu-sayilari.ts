@@ -1,8 +1,4 @@
-import {
-  kadroBaslangic,
-  kadroSatirAktifMi,
-  type KadroRaporRow,
-} from '@/lib/rapor-statuye-gore-cinsiyet'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { trNormalize } from '@/lib/turkce-search'
 
 export const DASHBOARD_STATU_ETIKETLERI = [
@@ -14,6 +10,19 @@ export const DASHBOARD_STATU_ETIKETLERI = [
 ] as const
 
 export type DashboardStatuEtiket = (typeof DASHBOARD_STATU_ETIKETLERI)[number]
+
+export type DashboardKadroSatir = {
+  durumu?: string | null
+  asil?: string | null
+  statu?: string | null
+  ayrilis_tarihi?: string | null
+  gorev_unvani?: string | null
+  kadro_unvani?: string | null
+  iptal_karar_tarihi?: string | null
+  iptal_karar_no?: string | null
+}
+
+const KADRO_SAYFA = 1000
 
 function normStatu(s: string | null | undefined): string {
   return String(s ?? '')
@@ -36,10 +45,20 @@ function statuEtiketBul(
   return null
 }
 
-/** Asil kadro satırına göre (rapor snapshot ile aynı mantık) aktif personel statü sayıları. */
+/** Kadro listesi ile uyumlu: iptal değil, asil dolu, ayrılış yok. */
+export function kadroAsilAktifSatirMi(k: DashboardKadroSatir): boolean {
+  if (k.iptal_karar_tarihi || k.iptal_karar_no) return false
+  if (!k.asil?.trim()) return false
+  if (k.ayrilis_tarihi) return false
+  return true
+}
+
+/**
+ * Aktif asil kadro satırlarına göre statü sayıları.
+ * Kadro hareketleri ekranındaki «Asil» + statü sekmesi mantığıyla uyumludur (satır bazlı).
+ */
 export function dashboardStatuSayilariHesapla(
-  kadro: KadroRaporRow[],
-  D: string,
+  kadro: DashboardKadroSatir[],
 ): Record<DashboardStatuEtiket, number> {
   const say: Record<DashboardStatuEtiket, number> = {
     Memur: 0,
@@ -49,22 +68,39 @@ export function dashboardStatuSayilariHesapla(
     'Belediye Başkanı': 0,
   }
 
-  const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadro) {
-    const sicil = r.asil?.trim()
-    if (!sicil) continue
-    const list = byAsil.get(sicil) ?? []
-    list.push(r)
-    byAsil.set(sicil, list)
-  }
-
-  for (const [, rows] of byAsil) {
-    const aktif = rows.filter(r => kadroSatirAktifMi(r, D))
-    if (aktif.length === 0) continue
-    const secilen = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
-    const etiket = statuEtiketBul(secilen.statu, secilen.gorev_unvani ?? secilen.kadro_unvani)
+    if (!kadroAsilAktifSatirMi(r)) continue
+    const etiket = statuEtiketBul(r.statu, r.gorev_unvani ?? r.kadro_unvani)
     if (etiket) say[etiket] += 1
   }
 
   return say
+}
+
+/** Dashboard KPI: ayrılmamış tüm kadro satırları (1000 satır limitini aşmamak için sayfalı). */
+export async function dashboardKadroSatirlariYukle(
+  supabase: SupabaseClient,
+): Promise<DashboardKadroSatir[]> {
+  const out: DashboardKadroSatir[] = []
+  let from = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('kadro_hareketleri')
+      .select(
+        'durumu, asil, statu, ayrilis_tarihi, gorev_unvani, kadro_unvani, iptal_karar_tarihi, iptal_karar_no',
+      )
+      .is('ayrilis_tarihi', null)
+      .order('kadro_sira_no')
+      .range(from, from + KADRO_SAYFA - 1)
+
+    if (error) throw new Error(error.message)
+
+    const rows = (data ?? []) as DashboardKadroSatir[]
+    out.push(...rows)
+    if (rows.length < KADRO_SAYFA) break
+    from += KADRO_SAYFA
+  }
+
+  return out
 }
