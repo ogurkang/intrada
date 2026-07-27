@@ -1,9 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
-import EgitimIstatistikClient, {
-  type IstatistikDonem, type IstatistikEgitim, type IstatistikPersonel,
+import EgitimIstatistikShell from '@/components/egitim/EgitimIstatistikShell'
+import type {
+  IstatistikDonem,
+  IstatistikEgitim,
+  IstatistikPersonel,
 } from '@/components/egitim/EgitimIstatistikClient'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { istatistikKatilimKaydet } from './actions'
+
+export const dynamic = 'force-dynamic'
 
 interface Props {
   searchParams: Promise<{ donem?: string }>
@@ -29,12 +34,12 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
 
   if (!seciliDonem) {
     return (
-      <EgitimIstatistikClient
+      <EgitimIstatistikShell
         donemler={donemler}
         seciliDonem={null}
         egitimler={[]}
         personeller={[]}
-        katilimSet={new Set()}
+        katilimKeys={[]}
       />
     )
   }
@@ -68,14 +73,12 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
     egitim_bitis:     e.egitim_bitis,
   }))
 
-  const katilimSet = new Set<string>(
-    (katilimRaw ?? []).map(k => `${k.sicil_no}:${k.egitim_id}`)
-  )
+  const katilimKeys = (katilimRaw ?? []).map(k => `${k.sicil_no}:${k.egitim_id}`)
 
   const katilimAuditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
     'egitim_istatistik_katilim',
-    Array.from(katilimSet),
+    katilimKeys,
   )
 
   const adMap: Record<string, string> = {}
@@ -97,12 +100,12 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
   )
 
   return (
-    <EgitimIstatistikClient
+    <EgitimIstatistikShell
       donemler={donemler}
       seciliDonem={seciliDonem}
       egitimler={egitimler}
       personeller={personeller}
-      katilimSet={katilimSet}
+      katilimKeys={katilimKeys}
       donemId={seciliDonemId ?? undefined}
       mudurlukMap={mudurlukMap}
       katilimAuditLoglarByRefId={katilimAuditLoglarByRefId}

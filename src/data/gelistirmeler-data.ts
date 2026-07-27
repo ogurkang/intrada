@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-27T08:54:15.127Z",
+  "generatedAt": "2026-07-27T13:38:34.446Z",
   "commits": [
+    {
+      "hash": "77a9351",
+      "fullHash": "77a935117fa9cd6bab95fe363d42644bb1494019",
+      "date": "2026-07-27",
+      "subject": "feat(rapor,kadro): gorev yeri listesi siralama ve kadro asil ozeti"
+    },
     {
       "hash": "af847ce",
       "fullHash": "af847ceb5b4d9a77032087a4c1b0ecf53caf4f8f",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "34601138beafe66202afca851be2e89ff8b15879",
       "date": "2026-07-07",
       "subject": "feat(ayy,kesintiler): donem turu ve secili imza basliklari"
-    },
-    {
-      "hash": "02a2517",
-      "fullHash": "02a2517852a3040e2c6549ef671449585c1be9c4",
-      "date": "2026-07-04",
-      "subject": "fix(terfi): kadro bazli eslestirme, personel hareketi senkronu ve kapsam disi kayitlar"
     }
   ]
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
@@ -41,7 +41,7 @@ interface Props {
   seciliDonem:    IstatistikDonem | null
   egitimler:      IstatistikEgitim[]
   personeller:    IstatistikPersonel[]
-  katilimSet:     Set<string>  // "sicil_no:egitim_id"
+  katilimKeys:    string[]  // "sicil_no:egitim_id"
   donemId?:       number
   mudurlukMap?:   Record<string, string>
   katilimAuditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
@@ -116,16 +116,21 @@ function KatilimTikGecmis({ logs }: { logs: Tables<'personel_audit_log'>[] | und
 }
 
 export default function EgitimIstatistikClient({
-  donemler, seciliDonem, egitimler, personeller, katilimSet, donemId, mudurlukMap = {},
+  donemler, seciliDonem, egitimler, personeller, katilimKeys, donemId, mudurlukMap = {},
   katilimAuditLoglarByRefId = {}, onKatilimKaydet,
 }: Props) {
+  const katilimSet = useMemo(() => new Set(katilimKeys), [katilimKeys])
   const [mudFiltre, setMudFiltre] = useState('')
   const [arama, setArama] = useState('')
   const [turSekme, setTurSekme] = useState<'Program' | 'Diğer'>(TUR_PROGRAM)
   const [isaretleMode, setIsaretleMode] = useState(false)
-  const [yerelKatilim, setYerelKatilim] = useState<Set<string>>(new Set(katilimSet))
+  const [yerelKatilim, setYerelKatilim] = useState<Set<string>>(() => new Set(katilimKeys))
   const [isPending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isaretleMode) setYerelKatilim(new Set(katilimKeys))
+  }, [katilimKeys, isaretleMode])
 
   const mudurluler = useMemo(() =>
     [...new Set(personeller.map(p => p.mudurluk ?? 'Belirtilmemiş'))].sort((a, b) => a.localeCompare(b, 'tr'))
@@ -240,13 +245,13 @@ export default function EgitimIstatistikClient({
         </div>
         <div>
           {!isaretleMode ? (
-            <button type="button" onClick={() => { setIsaretleMode(true); setYerelKatilim(new Set(katilimSet)) }}
+            <button type="button" onClick={() => { setIsaretleMode(true); setYerelKatilim(new Set(katilimKeys)) }}
               className="px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors">
               Eğitimleri İşaretle
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => { setIsaretleMode(false); setYerelKatilim(new Set(katilimSet)) }}
+              <button type="button" onClick={() => { setIsaretleMode(false); setYerelKatilim(new Set(katilimKeys)) }}
                 className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">
                 İptal
               </button>

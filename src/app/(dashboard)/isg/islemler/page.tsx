@@ -1,24 +1,17 @@
-import Link from 'next/link'
+import IsgIslemlerHubClient from '@/components/isg/IsgIslemlerHubClient'
+
+export const dynamic = 'force-dynamic'
 
 export default function IsgIslemlerPage() {
-  return (
-    <div>
-      <div className="mb-6">
-        <Link
-          href="/isg"
-          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
-        >
-          ← İSG Yönetimi
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-800">İSG — İşlemler</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          İş sağlığı ve güvenliği işlem ekranları bu bölüme eklenecektir.
-        </p>
-      </div>
+  const satirlar = [
+    {
+      id: 'saglik-taramasi',
+      baslik: 'Sağlık Taraması',
+      aciklama: 'Dönem bazlı sağlık taraması ve muayene işaretlemeleri.',
+      href: '/isg/islemler/saglik-taramasi',
+      renk: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    },
+  ] as const
 
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
-        Henüz tanımlı işlem bulunmuyor.
-      </div>
-    </div>
-  )
+  return <IsgIslemlerHubClient satirlar={[...satirlar]} />
 }

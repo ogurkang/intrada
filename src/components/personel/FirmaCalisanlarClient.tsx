@@ -66,9 +66,13 @@ function firmaCalisanSirala(
       if (aGecerli && bGecerli) fark = ta - tb
       else if (aGecerli !== bGecerli) fark = aGecerli ? -1 : 1
     } else if (sutun === 'durum') {
-      const da = isFirmaCalisanAktif(a.ayrilis_tarihi) ? '0' : '1'
-      const db = isFirmaCalisanAktif(b.ayrilis_tarihi) ? '0' : '1'
-      fark = da.localeCompare(db, 'tr')
+      if (sekme === 'ayrilanlar') {
+        fark = naturalCompare(String(a.ayrilis_nedeni ?? ''), String(b.ayrilis_nedeni ?? ''))
+      } else {
+        const da = isFirmaCalisanAktif(a.ayrilis_tarihi) ? '0' : '1'
+        const db = isFirmaCalisanAktif(b.ayrilis_tarihi) ? '0' : '1'
+        fark = da.localeCompare(db, 'tr')
+      }
     } else if (sutun === 'mudurluk') {
       const ma = `${a.gorev_mudurlugu ?? ''} ${a.gorevi ?? ''}`.trim()
       const mb = `${b.gorev_mudurlugu ?? ''} ${b.gorevi ?? ''}`.trim()
@@ -298,7 +302,11 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
                 label={sekme === 'ayrilanlar' ? 'Ayrılış Tarihi' : 'Giriş Tarihi'}
                 orta
               />
-              <ThSutun sutun="durum" label="Durum" orta />
+              <ThSutun
+                sutun="durum"
+                label={sekme === 'ayrilanlar' ? 'Ayrılış Nedeni' : 'Durum'}
+                orta
+              />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -322,7 +330,9 @@ export default function FirmaCalisanlarClient({ kayitlar, mudurluler, onEkle, on
                   {sekme === 'ayrilanlar' ? tarihFmt(k.ayrilis_tarihi) : tarihFmt(k.kuruma_giris_tarihi)}
                 </td>
                 <td className="px-4 py-3 text-center">
-                  {!isFirmaCalisanAktif(k.ayrilis_tarihi) ? (
+                  {sekme === 'ayrilanlar' ? (
+                    <span className="text-xs text-slate-600">{k.ayrilis_nedeni?.trim() || '—'}</span>
+                  ) : !isFirmaCalisanAktif(k.ayrilis_tarihi) ? (
                     <span className="inline-flex flex-col items-center gap-0.5">
                       <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs font-medium">Ayrıldı</span>
                       <span className="text-[10px] text-slate-400">{tarihFmt(k.ayrilis_tarihi)}</span>
