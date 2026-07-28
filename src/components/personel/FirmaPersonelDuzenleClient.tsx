@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { firmaCalisanDetayHref } from '@/lib/firma-calisan-link'
-import type { YerleskeSecenek } from '@/lib/yerleske-adresi'
+import {
+  etkinYerleskeIdKaynak,
+  yerleskeSecenekleriKaynak,
+  type YerleskeSecenek,
+} from '@/lib/yerleske-adresi'
 
 type FC = Tables<'firma_calisanlar'>
 
@@ -14,16 +18,46 @@ interface Props {
   mudurluler: string[]
   ogrenimler: string[]
   ayrilisNedenleri: string[]
-  yerleskeSecenekleri: YerleskeSecenek[]
+  yerleskeHarita: Record<string, YerleskeSecenek[]>
+  sirketYerleskeHarita: Record<string, YerleskeSecenek[]>
   seciliYerleskeId: number | null
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
 }
 
-export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogrenimler, ayrilisNedenleri, yerleskeSecenekleri, seciliYerleskeId, onGuncelle }: Props) {
+export default function FirmaPersonelDuzenleClient({
+  kayit,
+  mudurluler,
+  ogrenimler,
+  ayrilisNedenleri,
+  yerleskeHarita,
+  sirketYerleskeHarita,
+  seciliYerleskeId,
+  onGuncelle,
+}: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const k = kayit
+
+  const mudMap = useMemo(() => new Map(Object.entries(yerleskeHarita)), [yerleskeHarita])
+  const sirketMap = useMemo(() => new Map(Object.entries(sirketYerleskeHarita)), [sirketYerleskeHarita])
+
+  const [gorevMud, setGorevMud] = useState(k.gorev_mudurlugu ?? '')
+  const [yerleskeId, setYerleskeId] = useState(
+    seciliYerleskeId != null ? String(seciliYerleskeId) : '',
+  )
+
+  const yerleskeSecenekleri = useMemo(
+    () => yerleskeSecenekleriKaynak(mudMap, sirketMap, 'firma', gorevMud, gorevMud),
+    [mudMap, sirketMap, gorevMud],
+  )
+
+  function gorevMudDegisti(yeniMud: string) {
+    setGorevMud(yeniMud)
+    const list = yerleskeSecenekleriKaynak(mudMap, sirketMap, 'firma', yeniMud, yeniMud)
+    const etkin = etkinYerleskeIdKaynak(mudMap, sirketMap, 'firma', yeniMud, null, yeniMud)
+    setYerleskeId(etkin != null ? String(etkin) : list[0] ? String(list[0].id) : '')
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -107,13 +141,19 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Görev Yeri</label>
               {mudurluler.length ? (
-                <select name="gorev_mudurlugu" defaultValue={k.gorev_mudurlugu ?? ''}
+                <select
+                  name="gorev_mudurlugu"
+                  value={gorevMud}
+                  onChange={e => gorevMudDegisti(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
                   <option value="">— Seçin —</option>
                   {mudurluler.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               ) : (
-                <input name="gorev_mudurlugu" defaultValue={k.gorev_mudurlugu ?? ''}
+                <input
+                  name="gorev_mudurlugu"
+                  value={gorevMud}
+                  onChange={e => gorevMudDegisti(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                   placeholder="Tanımlar > Müdürlükler'den ekleyin" />
               )}
@@ -125,7 +165,10 @@ export default function FirmaPersonelDuzenleClient({ kayit, mudurluler, ogreniml
                   Görev yeri için tanımlı yerleşke yok.
                 </p>
               ) : (
-                <select name="yerleske_adresi_id" defaultValue={seciliYerleskeId ?? ''}
+                <select
+                  name="yerleske_adresi_id"
+                  value={yerleskeId}
+                  onChange={e => setYerleskeId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
                   {yerleskeSecenekleri.map(y => (
                     <option key={y.id} value={y.id}>{y.ad}</option>

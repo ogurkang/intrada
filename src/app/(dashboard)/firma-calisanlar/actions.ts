@@ -19,6 +19,8 @@ import {
   mudurlukYerleskeHaritasi,
   sirketYerleskeHaritasi,
   gecerliYerleskeIdKaynak,
+  etkinYerleskeIdKaynak,
+  normMudStr,
 } from '@/lib/yerleske-adresi'
 import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
@@ -79,6 +81,75 @@ async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>
   return `A${maks + 1}`
 }
 
+async function firmaYerleskeHaritalariYukle(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const [tanimSatirlar, sirketSatirlar] = await Promise.all([
+    fetchMudurlukYerleskeTanimSatirlari(supabase),
+    fetchSirketYerleskeTanimSatirlari(supabase),
+  ])
+  return {
+    yerleskeHarita: mudurlukYerleskeHaritasi(tanimSatirlar),
+    sirketYerleskeHarita: sirketYerleskeHaritasi(sirketSatirlar),
+  }
+}
+
+function firmaYerleskeAta(input: {
+  yerleskeHarita: ReturnType<typeof mudurlukYerleskeHaritasi>
+  sirketYerleskeHarita: ReturnType<typeof sirketYerleskeHaritasi>
+  gorevMud: string | null
+  mevcutMud: string | null | undefined
+  mevcutYerleskeId: number | null | undefined
+  formYerleskeVar: boolean
+  formYerleskeRaw: string
+}): { yerleskeId: number | null; hata?: string } {
+  const gorevMud = input.gorevMud
+  const mudDegisti = normMudStr(input.mevcutMud) !== normMudStr(gorevMud)
+
+  if (mudDegisti) {
+    return {
+      yerleskeId: etkinYerleskeIdKaynak(
+        input.yerleskeHarita,
+        input.sirketYerleskeHarita,
+        'firma',
+        gorevMud,
+        null,
+        gorevMud,
+      ),
+    }
+  }
+
+  if (input.formYerleskeVar) {
+    if (!input.formYerleskeRaw) return { yerleskeId: null }
+    const yId = Number(input.formYerleskeRaw)
+    if (!Number.isInteger(yId) || yId <= 0) {
+      return { yerleskeId: null, hata: 'Geçersiz yerleşke seçimi.' }
+    }
+    if (
+      !gecerliYerleskeIdKaynak(
+        input.yerleskeHarita,
+        input.sirketYerleskeHarita,
+        'firma',
+        gorevMud,
+        yId,
+        gorevMud,
+      )
+    ) {
+      return { yerleskeId: null, hata: 'Seçilen yerleşke, görev yeri ile eşleşmiyor.' }
+    }
+    return { yerleskeId: yId }
+  }
+
+  return {
+    yerleskeId: etkinYerleskeIdKaynak(
+      input.yerleskeHarita,
+      input.sirketYerleskeHarita,
+      'firma',
+      gorevMud,
+      input.mevcutYerleskeId ?? null,
+      gorevMud,
+    ),
+  }
+}
+
 export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: number; public_id?: string; gorev_yeri_liste_guncellendi?: boolean }> {
   const ad_soyad = str(fd, 'ad_soyad')
   if (!ad_soyad) return { hata: 'Ad soyad zorunludur.' }
@@ -86,6 +157,20 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
   const supabase = await createClient()
 
   const sicil_no = await sonrakiSicilNo(supabase)
+  const gorevMud = str(fd, 'gorev_mudurlugu')
+
+  let yerleske_adresi_id: number | null = null
+  if (gorevMud) {
+    const { yerleskeHarita, sirketYerleskeHarita } = await firmaYerleskeHaritalariYukle(supabase)
+    yerleske_adresi_id = etkinYerleskeIdKaynak(
+      yerleskeHarita,
+      sirketYerleskeHarita,
+      'firma',
+      gorevMud,
+      null,
+      gorevMud,
+    )
+  }
 
   const { data: inserted, error } = await supabase
     .from('firma_calisanlar')
@@ -100,9 +185,10 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
       telefon:             str(fd, 'telefon'),
       e_posta:             str(fd, 'e_posta'),
       kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
-      gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
+      gorev_mudurlugu:     gorevMud,
       gorevi:              str(fd, 'gorevi'),
       meslegi:             str(fd, 'meslegi'),
+      yerleske_adresi_id,
     })
     .select('id, public_id')
     .single()
@@ -120,10 +206,10 @@ export async function firmaEkle(fd: FormData): Promise<{ hata?: string; id?: num
       telefon:             str(fd, 'telefon'),
       e_posta:             str(fd, 'e_posta'),
       kuruma_giris_tarihi: tarih(fd, 'kuruma_giris_tarihi'),
-      gorev_mudurlugu:     str(fd, 'gorev_mudurlugu'),
+      gorev_mudurlugu:     gorevMud,
       gorevi:              str(fd, 'gorevi'),
       meslegi:             str(fd, 'meslegi'),
-      yerleske_adresi_id:  null,
+      yerleske_adresi_id,
     })
     await writeFirmaAuditLogSafe(supabase, {
       firmaId: inserted.id,
@@ -167,22 +253,18 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
 
   const gorevMud = str(fd, 'gorev_mudurlugu')
 
-  const yerleskeRaw = String(fd.get('yerleske_adresi_id') ?? '').trim()
-  let yerleske_adresi_id: number | null = null
-  if (yerleskeRaw) {
-    const yId = Number(yerleskeRaw)
-    if (!Number.isInteger(yId) || yId <= 0) return { hata: 'Geçersiz yerleşke seçimi.' }
-    const [tanimSatirlar, sirketSatirlar] = await Promise.all([
-      fetchMudurlukYerleskeTanimSatirlari(supabase),
-      fetchSirketYerleskeTanimSatirlari(supabase),
-    ])
-    const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
-    const sirketYerleskeHarita = sirketYerleskeHaritasi(sirketSatirlar)
-    if (!gecerliYerleskeIdKaynak(yerleskeHarita, sirketYerleskeHarita, 'firma', gorevMud, yId, gorevMud)) {
-      return { hata: 'Seçilen yerleşke, görev yeri ile eşleşmiyor.' }
-    }
-    yerleske_adresi_id = yId
-  }
+  const { yerleskeHarita, sirketYerleskeHarita } = await firmaYerleskeHaritalariYukle(supabase)
+  const yerleskeSonuc = firmaYerleskeAta({
+    yerleskeHarita,
+    sirketYerleskeHarita,
+    gorevMud,
+    mevcutMud: mevcut?.gorev_mudurlugu,
+    mevcutYerleskeId: (mevcut as { yerleske_adresi_id?: number | null } | null)?.yerleske_adresi_id,
+    formYerleskeVar: fd.has('yerleske_adresi_id'),
+    formYerleskeRaw: String(fd.get('yerleske_adresi_id') ?? '').trim(),
+  })
+  if (yerleskeSonuc.hata) return { hata: yerleskeSonuc.hata }
+  const yerleske_adresi_id = yerleskeSonuc.yerleskeId
 
   const guncelleme = {
     ad_soyad,

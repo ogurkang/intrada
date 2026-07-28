@@ -2,8 +2,20 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-28T06:59:12.778Z",
+  "generatedAt": "2026-07-28T14:03:43.282Z",
   "commits": [
+    {
+      "hash": "f34624b",
+      "fullHash": "f34624ba61cc0d671adfd1a60fe10ed686b8ce74",
+      "date": "2026-07-28",
+      "subject": "feat(rapor): gorev yeri kayit sifirlama ve cift kaydet dugmesi"
+    },
+    {
+      "hash": "9cd1607",
+      "fullHash": "9cd1607c253ce03b343e5ef6442e555349ba3e9f",
+      "date": "2026-07-28",
+      "subject": "feat(rapor,isg): referans sira kaydi, denetim geri yukleme ve SSR duzeltmeleri"
+    },
     {
       "hash": "e79339a",
       "fullHash": "e79339a485dd62abdc1d087ce9533dd6a00512f5",
@@ -231,18 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "af4061df584da6aab46e7ff954c3e712c6ab028f",
       "date": "2026-07-08",
       "subject": "fix(rapor): gorev turu listesine calisan harici tum turleri dahil et"
-    },
-    {
-      "hash": "83171aa",
-      "fullHash": "83171aaac5bf648918d5a604e97058f43fc2f447",
-      "date": "2026-07-08",
-      "subject": "fix(ayy): fark doneminde zabita kesintisini normal kurala esitle"
-    },
-    {
-      "hash": "afbca45",
-      "fullHash": "afbca45aa6eb878b2cad88f54692b30c913fd158",
-      "date": "2026-07-08",
-      "subject": "fix(build): donem_turu audit select yalnizca AYY tablosunda kullanilsin"
     }
   ]
 }

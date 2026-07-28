@@ -11,7 +11,6 @@ import {
   fetchMudurlukYerleskeTanimSatirlari,
   mudurlukYerleskeHaritasi,
   sirketYerleskeHaritasi,
-  yerleskeSecenekleriKaynak,
 } from '@/lib/yerleske-adresi'
 import { fetchSirketYerleskeTanimSatirlari } from '@/lib/personel-gorev-konum'
 import type { Tables } from '@/types/database'
@@ -72,13 +71,6 @@ export default async function FirmaPersonelDuzenlePage({
   const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
   const sirketYerleskeHarita = sirketYerleskeHaritasi(sirketSatirlar)
   const gorevMud = String(k.gorev_mudurlugu ?? '').trim()
-  const yerleskeSecenekleri = yerleskeSecenekleriKaynak(
-    yerleskeHarita,
-    sirketYerleskeHarita,
-    'firma',
-    gorevMud,
-    gorevMud,
-  )
   const seciliYerleskeId = etkinYerleskeIdKaynak(
     yerleskeHarita,
     sirketYerleskeHarita,
@@ -87,6 +79,9 @@ export default async function FirmaPersonelDuzenlePage({
     (k as { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null,
     gorevMud,
   )
+
+  const yerleskeHaritaKayit = Object.fromEntries(yerleskeHarita)
+  const sirketYerleskeHaritaKayit = Object.fromEntries(sirketYerleskeHarita)
 
   return (
     <div>
@@ -107,7 +102,8 @@ export default async function FirmaPersonelDuzenlePage({
         mudurluler={mudurluler}
         ogrenimler={ogrenimler}
         ayrilisNedenleri={ayrilisNedenleri as string[]}
-        yerleskeSecenekleri={yerleskeSecenekleri}
+        yerleskeHarita={yerleskeHaritaKayit}
+        sirketYerleskeHarita={sirketYerleskeHaritaKayit}
         seciliYerleskeId={seciliYerleskeId}
         onGuncelle={firmaGuncelle}
       />
