@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/database'
 import RaporGecmisPanel from '@/components/rapor/RaporGecmisPanel'
 import type { RaporYonetimSatir } from '@/lib/rapor-yonetim-load'
+import { gorevYeriListeDenetimdenGeriYukle } from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
 
 type AuditLog = Tables<'personel_audit_log'>
 
@@ -29,6 +31,7 @@ function tarihSaatGoster(v: string | null | undefined): string {
 }
 
 export default function RaporYonetimClient({ raporlar, auditLoglarByKod, kullaniciModu }: Props) {
+  const router = useRouter()
   const [gecmisKod, setGecmisKod] = useState<string | null>(null)
   const gecmisRapor = gecmisKod ? raporlar.find(r => r.kod === gecmisKod) : null
 
@@ -115,6 +118,12 @@ export default function RaporYonetimClient({ raporlar, auditLoglarByKod, kullani
         onKapat={() => setGecmisKod(null)}
         auditLoglar={gecmisKod ? (auditLoglarByKod[gecmisKod] ?? []) : []}
         baslik={gecmisRapor ? `Kapsam Geçmişi — ${gecmisRapor.baslik}` : undefined}
+        geriYuklemeAktif={gecmisKod === 'GYL'}
+        onGeriYukle={gecmisKod === 'GYL' ? gorevYeriListeDenetimdenGeriYukle : undefined}
+        onGeriYukleBasarili={() => {
+          setGecmisKod(null)
+          router.refresh()
+        }}
       />
     </div>
   )

@@ -16,6 +16,8 @@ export interface RaporKapsamSnapshot {
   rapor_olusturulma_tarihi?: string | null
   kayit_sayisi?: number | null
   kayit_ozet?: string | null
+  /** Tam kayıt anahtarı listesi — denetim günlüğünden geri yükleme için. */
+  kayit_keyleri?: string[] | null
   yil?: number | null
   sira_bas?: number | null
   sira_bit?: number | null
@@ -42,7 +44,21 @@ export function raporAyarListeKapsamSnapshot(
     rapor_olusturulma_tarihi: raporOlusturulmaTarihi ?? null,
     kayit_sayisi: list.length,
     kayit_ozet: raporKayitOzet(list),
+    kayit_keyleri: list,
   }
+}
+
+/** Denetim günlüğü payload'ından tam kayıt anahtarı listesini çıkarır. */
+export function raporAuditKayitKeyleriCikar(payload: unknown): string[] | null {
+  if (!payload || typeof payload !== 'object') return null
+  const keys = (payload as Record<string, unknown>).kayit_keyleri
+  if (!Array.isArray(keys)) return null
+  const list = normalizeKeys(keys as string[])
+  return list.length ? list : null
+}
+
+export function raporAuditGeriYuklenebilir(payload: unknown): boolean {
+  return raporAuditKayitKeyleriCikar(payload) != null
 }
 
 export function raporExcelAralikKapsamSnapshot(input: {
@@ -138,11 +154,32 @@ export async function logRaporAyarListeDegisikligi(
   if (degisiklikler.length === 0) return
 
   const payload = degisiklikPayload(degisiklikler)
+  payload.onceki.kayit_keyleri = normalizeKeys(oncekiKeys)
+  payload.sonraki.kayit_keyleri = normalizeKeys(sonrakiKeys)
   await writeRaporKapsamAuditLogSafe(supabase, {
     raporKod,
     islem: 'Kapsam Güncelle',
     ozet: degisiklikOzeti(degisiklikler, 'Rapor kapsamı güncellendi'),
     onceki: payload.onceki as RaporKapsamSnapshot,
     sonraki: payload.sonraki as RaporKapsamSnapshot,
+  })
+}
+
+/** Manuel düzenlenen sırayı aynen kaydeder; tam liste denetim günlüğüne yazılır. */
+export async function logRaporAyarListeReferansKaydi(
+  supabase: SupabaseClient,
+  raporKod: string,
+  oncekiKeys: string[],
+  sonrakiKeys: string[],
+): Promise<void> {
+  const olusturulma = await raporOlusturulmaTarihiAl(supabase, raporKod)
+  const oncekiSnap = raporAyarListeKapsamSnapshot(oncekiKeys, olusturulma)
+  const sonrakiSnap = raporAyarListeKapsamSnapshot(sonrakiKeys, olusturulma)
+  await writeRaporKapsamAuditLogSafe(supabase, {
+    raporKod,
+    islem: 'Referans Sıralama Kaydı',
+    ozet: `Referans sıralama kaydedildi (${sonrakiKeys.length} kayıt). Denetim günlüğünden geri yüklenebilir; sonraki otomatik güncellemeler bu sıra üzerinden kuralları uygular.`,
+    onceki: oncekiSnap,
+    sonraki: sonrakiSnap,
   })
 }

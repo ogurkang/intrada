@@ -21,6 +21,8 @@ export type GorevYeriListeAyarSatir = {
   mudurluk: string | null
 }
 
+type ListeBlokLider = 'baskan' | 'bby' | 'mudur'
+
 function normMud(v: string | null | undefined): string {
   return String(v ?? '')
     .trim()
@@ -37,6 +39,69 @@ function adSoyadSirala(a: GorevYerineGoreListeSatir, b: GorevYerineGoreListeSati
   return a.ad_soyad.localeCompare(b.ad_soyad, 'tr')
 }
 
+function satirBlokLideri(s: GorevYerineGoreListeSatir): ListeBlokLider | null {
+  const v = gorevYerineGoreUnvanVurgu(s.unvan, s.fiili_gorev)
+  if (v === 'belediye_baskani') return 'baskan'
+  if (v === 'baskan_yardimci') return 'bby'
+  if (v === 'mudur') return 'mudur'
+  return null
+}
+
+function blokIdForLider(s: GorevYerineGoreListeSatir, lider: ListeBlokLider): string {
+  if (lider === 'baskan') return `blok:baskan:${s.kayit_key}`
+  if (lider === 'bby') return `blok:bby:${s.kayit_key}`
+  return `blok:mud:${mudurlukAnahtar(s.mudurluk)}`
+}
+
+function mudurlukBlokId(s: GorevYerineGoreListeSatir): string {
+  return `blok:mud:${mudurlukAnahtar(s.mudurluk)}`
+}
+
+/**
+ * Kayıtlı sıradan blok düzeni çıkarır:
+ * Belediye Başkanı → BBY + bağlı personel → müdürlük + personel …
+ */
+function blokHaritasiOlustur(
+  oncekiKeyOrder: string[],
+  satirByKey: Map<string, GorevYerineGoreListeSatir>,
+): { blokOrder: string[]; keyToBlok: Map<string, string> } {
+  const blokOrder: string[] = []
+  const keyToBlok = new Map<string, string>()
+  let currentBlok = ''
+
+  for (const key of oncekiKeyOrder) {
+    const s = satirByKey.get(key)
+    if (!s) continue
+
+    const lider = satirBlokLideri(s)
+    if (lider) {
+      currentBlok = blokIdForLider(s, lider)
+      if (!blokOrder.includes(currentBlok)) blokOrder.push(currentBlok)
+    } else if (!currentBlok) {
+      currentBlok = mudurlukBlokId(s)
+      if (!blokOrder.includes(currentBlok)) blokOrder.push(currentBlok)
+    }
+
+    keyToBlok.set(key, currentBlok || mudurlukBlokId(s))
+  }
+
+  return { blokOrder, keyToBlok }
+}
+
+function yeniKayitBlokId(
+  s: GorevYerineGoreListeSatir,
+  blokOrder: string[],
+): string {
+  const lider = satirBlokLideri(s)
+  if (lider) return blokIdForLider(s, lider)
+
+  const mudBlok = mudurlukBlokId(s)
+  if (blokOrder.includes(mudBlok)) return mudBlok
+
+  // Aktif BBY bloğu varsa son BBY bloğuna ekleme yapılmaz; müdürlük bloğu açılır.
+  return mudBlok
+}
+
 /** Aktif müdür → memur → sözleşmeli → işçi → ADABEL. */
 export function gorevYerineGoreListeKategorisi(satir: GorevYerineGoreListeSatir): GorevYerineGoreListeKategori {
   if (satir.kaynak === 'firma' || satir.statu === FIRMA_STATU_ETIKET) return 'adabel'
@@ -49,8 +114,10 @@ export function gorevYerineGoreListeKategorisi(satir: GorevYerineGoreListeSatir)
 }
 
 /**
- * Kayıt listesi sırası: müdürlük → statü kategorisi → mevcut sıra korunur;
- * yeni kayıt veya müdürlük değişen kayıt ilgili grubun sonuna alınır.
+ * Kayıt listesi sırası:
+ * - Üst düzey: Belediye Başkanı → BBY grupları → müdürlük grupları (kayıtlı sıradan)
+ * - Grup içi: müdür → memur → sözleşmeli → işçi → ADABEL
+ * - Yeni / müdürlük değişen kayıt ilgili grubun sonuna alınır
  */
 export function gorevYerineGoreListeSiraOlustur(
   satirlar: GorevYerineGoreListeSatir[],
@@ -66,35 +133,40 @@ export function gorevYerineGoreListeSiraOlustur(
     ...otomatikEkleKeys.filter(k => satirByKey.has(k)),
   ])
 
-  const mudurlukOrder: string[] = []
-  const mudSeen = new Set<string>()
-  for (const k of oncekiKeyOrder) {
-    const s = satirByKey.get(k)
-    if (!s) continue
-    const m = mudurlukAnahtar(s.mudurluk)
-    if (!mudSeen.has(m)) {
-      mudSeen.add(m)
-      mudurlukOrder.push(m)
-    }
+  const { blokOrder: oncekiBlokOrder, keyToBlok: oncekiKeyToBlok } = blokHaritasiOlustur(
+    oncekiKeyOrder,
+    satirByKey,
+  )
+
+  const blokOrder = [...oncekiBlokOrder]
+  const keyToBlok = new Map(oncekiKeyToBlok)
+
+  for (const key of otomatikEkleKeys) {
+    if (!satirByKey.has(key) || keyToBlok.has(key)) continue
+    const s = satirByKey.get(key)!
+    const blok = yeniKayitBlokId(s, blokOrder)
+    keyToBlok.set(key, blok)
+    if (!blokOrder.includes(blok)) blokOrder.push(blok)
   }
-  for (const s of satirlar) {
-    if (!dahilKeys.has(s.kayit_key)) continue
-    const m = mudurlukAnahtar(s.mudurluk)
-    if (!mudSeen.has(m)) {
-      mudSeen.add(m)
-      mudurlukOrder.push(m)
-    }
+
+  for (const key of dahilKeys) {
+    if (keyToBlok.has(key)) continue
+    const s = satirByKey.get(key)
+    if (!s) continue
+    const blok = yeniKayitBlokId(s, blokOrder)
+    keyToBlok.set(key, blok)
+    if (!blokOrder.includes(blok)) blokOrder.push(blok)
   }
 
   const result: string[] = []
   const eklendi = new Set<string>()
 
-  for (const mud of mudurlukOrder) {
+  for (const blokId of blokOrder) {
     for (const kat of GOREV_YERI_KATEGORI_SIRASI) {
       const bucket = satirlar.filter(
         s =>
           dahilKeys.has(s.kayit_key) &&
-          mudurlukAnahtar(s.mudurluk) === mud &&
+          keyToBlok.get(s.kayit_key) === blokId &&
           gorevYerineGoreListeKategorisi(s) === kat,
       )
       if (bucket.length === 0) continue
@@ -111,6 +183,7 @@ export function gorevYerineGoreListeSiraOlustur(
         const transfer =
           !prev ||
           mudurlukAnahtar(prev.mudurluk) !== mudurlukAnahtar(s.mudurluk) ||
+          keyToBlok.get(key) !== oncekiKeyToBlok.get(key) ||
           otomatikEkleKeys.includes(key)
         if (transfer) sona.push(key)
         else stable.push(key)
@@ -122,11 +195,7 @@ export function gorevYerineGoreListeSiraOlustur(
         }
       }
 
-      sona.sort((a, b) => {
-        const sa = satirByKey.get(a)!
-        const sb = satirByKey.get(b)!
-        return adSoyadSirala(sa, sb)
-      })
+      sona.sort((a, b) => adSoyadSirala(satirByKey.get(a)!, satirByKey.get(b)!))
 
       for (const key of [...stable, ...sona]) {
         if (!eklendi.has(key)) {

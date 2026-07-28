@@ -3,12 +3,17 @@
 import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Tables } from '@/types/database'
+import RaporGecmisPanel from '@/components/rapor/RaporGecmisPanel'
 import {
   gorevYerineGoreUnvanSatirClass,
   gorevYerineGoreUnvanVurgu,
   type GorevYerineGoreListeSatir,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
-import { gorevYeriListeAyarKaydet } from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
+import {
+  gorevYeriListeDenetimdenGeriYukle,
+  gorevYeriListeReferansSiraKaydet,
+} from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
 
 const SATIR_RENK_ACIKLAMA =
   'Satır renkleri: Belediye Başkanı — açık mavi (Unvanı); Belediye Başkan Yardımcısı — açık turuncu (Unvanı); açık yeşil: yalnızca «müdürü» kelimesi — önce Unvanı, yoksa Fiili Görevi. Excel aynı kuralı kullanır.'
@@ -21,6 +26,7 @@ interface Props {
   anlikTarihEtiket: string
   aciklama: string
   excelHref?: string
+  auditLoglar?: Tables<'personel_audit_log'>[]
 }
 
 export default function GorevYerineGoreListeClient({
@@ -30,9 +36,11 @@ export default function GorevYerineGoreListeClient({
   anlikTarihEtiket,
   aciklama,
   excelHref,
+  auditLoglar = [],
 }: Props) {
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
+  const [gecmisAcik, setGecmisAcik] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [filtre, setFiltre] = useState('')
   const [secilenArama, setSecilenArama] = useState('')
@@ -147,15 +155,19 @@ export default function GorevYerineGoreListeClient({
     })
   }
 
-  function ayarKaydet() {
+  function referansSiraKaydet() {
     setMesaj(null)
     startTransition(async () => {
-      const res = await gorevYeriListeAyarKaydet(seciliListKeyler)
+      const res = await gorevYeriListeReferansSiraKaydet(seciliListKeyler)
       if (res.hata) {
         setMesaj(res.hata)
         return
       }
-      setMesaj('Liste ayarı kaydedildi.')
+      setMesaj(
+        res.kayitSayisi != null
+          ? `Referans sıralama kaydedildi (${res.kayitSayisi} kayıt). Denetim Geçmişi üzerinden geri yüklenebilir.`
+          : 'Referans sıralama kaydedildi.',
+      )
       router.refresh()
     })
   }
@@ -224,6 +236,20 @@ export default function GorevYerineGoreListeClient({
             >
               Excel İndir
             </Link>
+          )}
+          {auditLoglar.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setGecmisAcik(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-amber-300 rounded-lg text-sm text-amber-800 bg-amber-50 hover:bg-amber-100"
+              title="Denetim günlüğünden liste sırasını geri yükle"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.5 2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 9.5A9 9 0 113 12m.5-2.5L1.75 7.25M3.5 9.5L6 8.75" />
+              </svg>
+              Denetim Geçmişi
+            </button>
           )}
         </div>
       </div>
@@ -366,10 +392,22 @@ export default function GorevYerineGoreListeClient({
               </div>
             </div>
           </div>
-          <div className="pt-2 border-t border-slate-200 flex justify-end">
-            <button onClick={ayarKaydet} disabled={isPending} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm">
-              {isPending ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+          <div className="pt-2 border-t border-slate-200 space-y-3">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Sıralamayı bitirdikten sonra <strong className="font-medium text-slate-700">Referans Sıralamayı Kaydet</strong>{' '}
+              ile ekrandaki sıra aynen kaydedilir. Denetim günlüğünden geri yüklenebilir; yeni personel ve müdürlük
+              değişikliklerinde kurallar bu sıra üzerinden uygulanmaya devam eder.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={referansSiraKaydet}
+                disabled={isPending || seciliListKeyler.length === 0}
+                className="px-5 py-2.5 rounded-lg bg-teal-700 text-white text-sm font-medium hover:bg-teal-600 disabled:opacity-50"
+              >
+                {isPending ? 'Kaydediliyor…' : 'Referans Sıralamayı Kaydet'}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -411,6 +449,18 @@ export default function GorevYerineGoreListeClient({
           </table>
         </div>
       )}
+      <RaporGecmisPanel
+        acik={gecmisAcik}
+        onKapat={() => setGecmisAcik(false)}
+        auditLoglar={auditLoglar}
+        baslik="Görev Yerine Göre Liste — Denetim Geçmişi"
+        geriYuklemeAktif
+        onGeriYukle={gorevYeriListeDenetimdenGeriYukle}
+        onGeriYukleBasarili={() => {
+          setGecmisAcik(false)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

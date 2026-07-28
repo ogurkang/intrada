@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import IsgSaglikTaramasiDetayClient from '@/components/isg/IsgSaglikTaramasiDetayClient'
+import IsgSaglikTaramasiDetayShell from '@/components/isg/IsgSaglikTaramasiDetayShell'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { isgSaglikKayitAuditRefId } from '@/lib/isg-saglik-taramasi-kayit-audit'
 import { isgSaglikTaramasiAktifPersonelYukle } from '@/lib/isg-saglik-taramasi-personel'
@@ -37,17 +37,17 @@ export default async function IsgSaglikTaramasiDetayPage({ params }: Props) {
     .select('sicil_no, tarama, muayene')
     .eq('donem_id', donemId)
 
-  const taramaSet = new Set<string>()
-  const muayeneSet = new Set<string>()
+  const taramaKeys: string[] = []
+  const muayeneKeys: string[] = []
   const auditRefIds: string[] = []
 
   for (const k of kayitRaw ?? []) {
     if (k.tarama) {
-      taramaSet.add(k.sicil_no)
+      taramaKeys.push(k.sicil_no)
       auditRefIds.push(isgSaglikKayitAuditRefId(k.sicil_no, 'tarama', donemId))
     }
     if (k.muayene) {
-      muayeneSet.add(k.sicil_no)
+      muayeneKeys.push(k.sicil_no)
       auditRefIds.push(isgSaglikKayitAuditRefId(k.sicil_no, 'muayene', donemId))
     }
   }
@@ -59,7 +59,7 @@ export default async function IsgSaglikTaramasiDetayPage({ params }: Props) {
   )
 
   return (
-    <IsgSaglikTaramasiDetayClient
+    <IsgSaglikTaramasiDetayShell
       donem={{
         id: donemRaw.id,
         sira_no: donemRaw.sira_no,
@@ -68,8 +68,8 @@ export default async function IsgSaglikTaramasiDetayPage({ params }: Props) {
         bitis_tarihi: donemRaw.bitis_tarihi,
       }}
       personeller={personeller}
-      taramaSet={taramaSet}
-      muayeneSet={muayeneSet}
+      taramaKeys={taramaKeys}
+      muayeneKeys={muayeneKeys}
       kayitAuditLoglarByRefId={kayitAuditLoglarByRefId}
       onKaydet={isgSaglikTaramasiKayitKaydet}
     />

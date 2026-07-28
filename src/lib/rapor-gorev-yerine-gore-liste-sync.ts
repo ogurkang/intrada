@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import { logRaporAyarListeDegisikligi } from '@/lib/rapor-audit'
+import { logRaporAyarListeDegisikligi, logRaporAyarListeReferansKaydi, raporAuditKayitKeyleriCikar } from '@/lib/rapor-audit'
 import type { GorevYerineGoreListeSatir } from '@/lib/rapor-gorev-yerine-gore-liste'
 import { gorevYerineGoreListeSatirlariYukle } from '@/lib/rapor-gorev-yerine-gore-liste-yukle'
 import {
@@ -28,7 +28,7 @@ async function gorevYeriListeAyarYaz(
   supabase: SupabaseClient,
   keys: string[],
   satirByKey: Map<string, GorevYerineGoreListeSatir>,
-  opts: { logAudit?: boolean; oncekiKeys?: string[] } = {},
+  opts: { logAudit?: boolean; logReferans?: boolean; oncekiKeys?: string[]; revalidate?: boolean } = {},
 ): Promise<{ hata?: string }> {
   const { error: delErr } = await sb.from('rapor_gorev_yeri_liste_ayar').delete().neq('id', 0)
   if (delErr) return { hata: delErr.message }
@@ -43,26 +43,32 @@ async function gorevYeriListeAyarYaz(
     if (insErr) return { hata: insErr.message }
   }
 
-  if (opts.logAudit && opts.oncekiKeys) {
+  if (opts.logReferans && opts.oncekiKeys) {
+    await logRaporAyarListeReferansKaydi(supabase, 'GYL', opts.oncekiKeys, keys)
+  } else if (opts.logAudit && opts.oncekiKeys) {
     await logRaporAyarListeDegisikligi(supabase, 'GYL', opts.oncekiKeys, keys)
   }
 
-  revalidatePath('/rapor')
-  revalidatePath('/rapor/gorev-yerine-gore-liste')
-  revalidatePath('/api/rapor/gorev-yerine-gore-liste/excel')
+  if (opts.revalidate !== false) {
+    revalidatePath('/rapor')
+    revalidatePath('/rapor/gorev-yerine-gore-liste')
+    revalidatePath('/api/rapor/gorev-yerine-gore-liste/excel')
+  }
   return {}
 }
 
 export type GorevYeriListeSenkronOpts = {
-  /** Yeni eklenen kayıtlar — listeye otomatik eklenir ve grubun sonuna alınır. */
+  /** Yeni eklenen kayıtlar — listeye otomatik eklenir, ilgili grubun sonuna alınır. */
   otomatikEkleKeys?: string[]
   /** Manuel kayıt sonrası denetim günlüğü. */
   logAudit?: boolean
+  /** false: sayfa render sırasında cache invalidation yapılmaz (Next.js kuralı). */
+  revalidate?: boolean
 }
 
 /**
- * Kayıt listesini güncel verilere göre yeniden sıralar.
- * Müdürlük değişimi ve yeni kayıtlar ilgili statü grubunun sonuna taşınır.
+ * Kayıt listesini güncel verilere göre senkronize eder.
+ * Blok sırası (Başkan → BBY → müdürlük) korunur; grup içi statü sıralaması uygulanır.
  */
 export async function gorevYeriListeSenkronizeEt(
   supabase: SupabaseClient,
@@ -111,6 +117,7 @@ export async function gorevYeriListeSenkronizeEt(
   const yaz = await gorevYeriListeAyarYaz(sb, supabase, yeniSira, satirByKey, {
     logAudit: opts.logAudit,
     oncekiKeys,
+    revalidate: opts.revalidate,
   })
   if (yaz.hata) return { hata: yaz.hata }
   return { guncellendi: true }
@@ -156,4 +163,113 @@ export async function gorevYeriListeAyarKaydetInternal(
     logAudit: true,
     oncekiKeys,
   })
+}
+
+/**
+ * Toplu güncelle ekranındaki sırayı aynen kaydeder (kurallar yeniden sıralamaz).
+ * Denetim günlüğüne tam liste yazılır; sonraki sync kuralları bu sıra üzerinden uygular.
+ */
+export async function gorevYeriListeReferansSiraKaydetInternal(
+  supabase: SupabaseClient,
+  kayitKeyleri: string[],
+): Promise<{ hata?: string; kayitSayisi?: number }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const temiz: string[] = []
+  const seen = new Set<string>()
+  for (const k of kayitKeyleri) {
+    const key = String(k ?? '').trim()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    temiz.push(key)
+  }
+  if (!temiz.length) return { hata: 'Kaydedilecek kayıt yok.' }
+
+  const { data: mevcutRows, error: mevcutErr } = await sb
+    .from('rapor_gorev_yeri_liste_ayar')
+    .select('kayit_key')
+    .order('sira_no', { ascending: true })
+  if (mevcutErr) return { hata: mevcutErr.message }
+  const oncekiKeys = (mevcutRows ?? []).map((r: { kayit_key: string }) => r.kayit_key)
+
+  const { satirlar, hata: yukleHata } = await gorevYerineGoreListeSatirlariYukle(supabase)
+  if (yukleHata) return { hata: yukleHata }
+  const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
+
+  const sirali = temiz.filter(k => satirByKey.has(k))
+  if (!sirali.length) return { hata: 'Geçerli personel kaydı bulunamadı.' }
+
+  const yaz = await gorevYeriListeAyarYaz(sb, supabase, sirali, satirByKey, {
+    logReferans: true,
+    oncekiKeys,
+  })
+  if (yaz.hata) return yaz
+  return { kayitSayisi: sirali.length }
+}
+
+/**
+ * Denetim günlüğündeki kayıt sırasını geri yükler.
+ * Blok hiyerarşisi (Başkan → BBY → müdürlük) korunur; yeni personel ilgili grubun sonuna eklenir.
+ */
+export async function gorevYeriListeDenetimdenGeriYukleInternal(
+  supabase: SupabaseClient,
+  auditLogId: number,
+): Promise<{ hata?: string; yuklenen?: number }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
+  const { data: log, error: logErr } = await supabase
+    .from('personel_audit_log')
+    .select('*')
+    .eq('id', auditLogId)
+    .eq('ref_table', 'rapor_tanim')
+    .eq('ref_id', 'GYL')
+    .maybeSingle()
+  if (logErr) return { hata: logErr.message }
+  if (!log) return { hata: 'Denetim kaydı bulunamadı.' }
+
+  const keysFromAudit =
+    raporAuditKayitKeyleriCikar(log.sonraki) ?? raporAuditKayitKeyleriCikar(log.onceki)
+  if (!keysFromAudit?.length) {
+    return {
+      hata:
+        'Bu kayıtta tam liste sırası yok (eski format). Önce manuel kayıt yapın veya daha yeni bir denetim kaydı seçin.',
+    }
+  }
+
+  const { satirlar, hata: yukleHata } = await gorevYerineGoreListeSatirlariYukle(supabase)
+  if (yukleHata) return { hata: yukleHata }
+  const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
+
+  const restoredKeys = keysFromAudit.filter(k => satirByKey.has(k))
+  if (!restoredKeys.length) {
+    return { hata: 'Denetim kaydındaki personelin hiçbiri güncel listede bulunamadı.' }
+  }
+
+  const restoredSet = new Set(restoredKeys)
+  const yeniKeys = satirlar.map(s => s.kayit_key).filter(k => !restoredSet.has(k))
+
+  const oncekiAyar: GorevYeriListeAyarSatir[] = restoredKeys.map(k => ({
+    kayit_key: k,
+    mudurluk: satirByKey.get(k)?.mudurluk ?? null,
+  }))
+
+  const referansKayit = String(log.islem ?? '') === 'Referans Sıralama Kaydı'
+  const sirali = referansKayit && yeniKeys.length === 0
+    ? restoredKeys
+    : gorevYerineGoreListeSiraOlustur(satirlar, oncekiAyar, yeniKeys)
+
+  const { data: mevcutRows, error: mevcutErr } = await sb
+    .from('rapor_gorev_yeri_liste_ayar')
+    .select('kayit_key')
+    .order('sira_no', { ascending: true })
+  if (mevcutErr) return { hata: mevcutErr.message }
+  const oncekiKeys = (mevcutRows ?? []).map((r: { kayit_key: string }) => r.kayit_key)
+
+  const yaz = await gorevYeriListeAyarYaz(sb, supabase, sirali, satirByKey, {
+    logAudit: true,
+    oncekiKeys,
+  })
+  if (yaz.hata) return yaz
+  return { yuklenen: sirali.length }
 }

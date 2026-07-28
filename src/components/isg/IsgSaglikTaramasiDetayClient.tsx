@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
@@ -18,8 +18,8 @@ export interface IsgSaglikTaramasiDonemOzet {
 interface Props {
   donem: IsgSaglikTaramasiDonemOzet
   personeller: IsgSaglikTaramasiPersonel[]
-  taramaSet: Set<string>
-  muayeneSet: Set<string>
+  taramaKeys: string[]
+  muayeneKeys: string[]
   kayitAuditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
   onKaydet?: (
     donemId: number,
@@ -97,20 +97,30 @@ const EXCEL_YESIL = '#217346'
 export default function IsgSaglikTaramasiDetayClient({
   donem,
   personeller,
-  taramaSet,
-  muayeneSet,
+  taramaKeys,
+  muayeneKeys,
   kayitAuditLoglarByRefId = {},
   onKaydet,
 }: Props) {
+  const taramaSet = useMemo(() => new Set(taramaKeys), [taramaKeys])
+  const muayeneSet = useMemo(() => new Set(muayeneKeys), [muayeneKeys])
+
   const [mudFiltre, setMudFiltre] = useState('')
   const [statuFiltre, setStatuFiltre] = useState('')
   const [arama, setArama] = useState('')
   const [isaretleMode, setIsaretleMode] = useState(false)
-  const [yerelTarama, setYerelTarama] = useState<Set<string>>(new Set(taramaSet))
-  const [yerelMuayene, setYerelMuayene] = useState<Set<string>>(new Set(muayeneSet))
+  const [yerelTarama, setYerelTarama] = useState<Set<string>>(() => new Set(taramaKeys))
+  const [yerelMuayene, setYerelMuayene] = useState<Set<string>>(() => new Set(muayeneKeys))
   const [isPending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [excelYukleniyor, setExcelYukleniyor] = useState(false)
+
+  useEffect(() => {
+    if (!isaretleMode) {
+      setYerelTarama(new Set(taramaKeys))
+      setYerelMuayene(new Set(muayeneKeys))
+    }
+  }, [taramaKeys, muayeneKeys, isaretleMode])
 
   const mudurluler = useMemo(
     () =>
@@ -289,8 +299,8 @@ export default function IsgSaglikTaramasiDetayClient({
               type="button"
               onClick={() => {
                 setIsaretleMode(true)
-                setYerelTarama(new Set(taramaSet))
-                setYerelMuayene(new Set(muayeneSet))
+                setYerelTarama(new Set(taramaKeys))
+                setYerelMuayene(new Set(muayeneKeys))
               }}
               className="px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
             >
@@ -302,8 +312,8 @@ export default function IsgSaglikTaramasiDetayClient({
                 type="button"
                 onClick={() => {
                   setIsaretleMode(false)
-                  setYerelTarama(new Set(taramaSet))
-                  setYerelMuayene(new Set(muayeneSet))
+                  setYerelTarama(new Set(taramaKeys))
+                  setYerelMuayene(new Set(muayeneKeys))
                 }}
                 className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
               >

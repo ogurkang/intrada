@@ -17,7 +17,7 @@ export default async function GorevYerineGoreListePage() {
     year: 'numeric',
   })
 
-  await gorevYeriListeSenkronizeEt(supabase)
+  await gorevYeriListeSenkronizeEt(supabase, { revalidate: false })
 
   const { satirlar, hata } = await gorevYerineGoreListeSatirlariYukle(supabase)
 
@@ -37,6 +37,14 @@ export default async function GorevYerineGoreListePage() {
   const secilmeyenSatirlar = satirlar.filter(s => !seciliSet.has(s.kayit_key))
   const kayitListesiSatirlari = ayarliSatirlar
 
+  const { data: auditRaw } = await supabase
+    .from('personel_audit_log')
+    .select('*')
+    .eq('ref_table', 'rapor_tanim')
+    .eq('ref_id', 'GYL')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
   return (
     <div>
       {hata && (
@@ -53,6 +61,7 @@ export default async function GorevYerineGoreListePage() {
         anlikTarihEtiket={anlikTarihEtiket}
         aciklama={LISTE_ACIKLAMA}
         excelHref="/api/rapor/gorev-yerine-gore-liste/excel"
+        auditLoglar={auditRaw ?? []}
       />
     </div>
   )

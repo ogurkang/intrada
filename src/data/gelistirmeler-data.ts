@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-27T13:38:34.446Z",
+  "generatedAt": "2026-07-28T06:59:12.778Z",
   "commits": [
+    {
+      "hash": "e79339a",
+      "fullHash": "e79339a485dd62abdc1d087ce9533dd6a00512f5",
+      "date": "2026-07-27",
+      "subject": "feat(isg,egitim): saglik taramasi modulu, filtreli excel ve istatistik SSR duzeltmesi"
+    },
     {
       "hash": "77a9351",
       "fullHash": "77a935117fa9cd6bab95fe363d42644bb1494019",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "afbca45aa6eb878b2cad88f54692b30c913fd158",
       "date": "2026-07-08",
       "subject": "fix(build): donem_turu audit select yalnizca AYY tablosunda kullanilsin"
-    },
-    {
-      "hash": "3460113",
-      "fullHash": "34601138beafe66202afca851be2e89ff8b15879",
-      "date": "2026-07-07",
-      "subject": "feat(ayy,kesintiler): donem turu ve secili imza basliklari"
     }
   ]
 }

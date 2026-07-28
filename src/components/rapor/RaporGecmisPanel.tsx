@@ -1,8 +1,12 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
 import type { Tables } from '@/types/database'
-import { raporKapsamDiffSatirlari, raporKapsamDegerGoster } from '@/lib/rapor-audit'
+import {
+  raporAuditGeriYuklenebilir,
+  raporKapsamDiffSatirlari,
+  raporKapsamDegerGoster,
+} from '@/lib/rapor-audit'
 
 type AuditLog = Tables<'personel_audit_log'>
 
@@ -11,6 +15,10 @@ interface Props {
   onKapat: () => void
   auditLoglar: AuditLog[]
   baslik?: string
+  /** Geri yükleme butonu göster (GYL gibi liste kapsamı raporları). */
+  geriYuklemeAktif?: boolean
+  onGeriYukle?: (auditLogId: number) => Promise<{ hata?: string; yuklenen?: number }>
+  onGeriYukleBasarili?: () => void
 }
 
 function islemBadgeClass(islem: string): string {
@@ -20,14 +28,27 @@ function islemBadgeClass(islem: string): string {
   return 'bg-slate-100 text-slate-700'
 }
 
-export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }: Props) {
+export default function RaporGecmisPanel({
+  acik,
+  onKapat,
+  auditLoglar,
+  baslik,
+  geriYuklemeAktif = false,
+  onGeriYukle,
+  onGeriYukleBasarili,
+}: Props) {
   const [acikSatirId, setAcikSatirId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
+  const [geriYukleHata, setGeriYukleHata] = useState<string | null>(null)
+  const [geriYukleBasari, setGeriYukleBasari] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     if (!acik) {
       setAcikSatirId(null)
       setSearch('')
+      setGeriYukleHata(null)
+      setGeriYukleBasari(null)
     }
   }, [acik])
 
@@ -41,6 +62,29 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
       return actor.includes(q) || ozet.includes(q) || islem.includes(q)
     })
   }, [auditLoglar, search])
+
+  function geriYukleTikla(logId: number) {
+    if (!onGeriYukle || isPending) return
+    const onay = window.confirm(
+      'Bu denetim kaydındaki liste sırası geri yüklenecek. Mevcut sıralama değişecek. Devam edilsin mi?',
+    )
+    if (!onay) return
+    setGeriYukleHata(null)
+    setGeriYukleBasari(null)
+    startTransition(async () => {
+      const res = await onGeriYukle(logId)
+      if (res.hata) {
+        setGeriYukleHata(res.hata)
+        return
+      }
+      const mesaj =
+        res.yuklenen != null
+          ? `${res.yuklenen} kayıt geri yüklendi.`
+          : 'Liste sırası geri yüklendi.'
+      setGeriYukleBasari(mesaj)
+      onGeriYukleBasarili?.()
+    })
+  }
 
   if (!acik) return null
 
@@ -63,7 +107,7 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
           </button>
         </div>
 
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center gap-2">
           <input
             type="search"
             value={search}
@@ -71,10 +115,18 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
             placeholder="Özet veya kullanıcı ara…"
             className="min-w-[220px] flex-1 max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
           />
-          <span className="text-xs text-slate-500 ml-auto">
+          <span className="text-xs text-slate-500 sm:ml-auto">
             {filtreli.length} / {auditLoglar.length} kayıt
           </span>
         </div>
+        {(geriYukleHata || geriYukleBasari) && (
+          <div
+            className={`mx-5 mt-3 px-3 py-2 rounded-lg text-sm ${
+              geriYukleHata ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+            }`}>
+            {geriYukleHata ?? geriYukleBasari}
+          </div>
+        )}
 
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm min-w-[720px]">
@@ -84,12 +136,15 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">İşlem</th>
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Özet</th>
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">İşlemi Yapan</th>
+                {geriYuklemeAktif && (
+                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 w-28">Geri Yükle</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtreli.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={geriYuklemeAktif ? 5 : 4} className="px-4 py-10 text-center text-slate-400">
                     {auditLoglar.length === 0
                       ? 'Bu rapor için henüz kapsam değişikliği kaydı yok.'
                       : 'Filtreye uyan kayıt bulunamadı.'}
@@ -99,6 +154,8 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
                 filtreli.map(log => {
                   const satirAcik = acikSatirId === log.id
                   const diffSatirlari = raporKapsamDiffSatirlari(log.onceki, log.sonraki)
+                  const geriYuklenebilir =
+                    geriYuklemeAktif && !!onGeriYukle && raporAuditGeriYuklenebilir(log.sonraki)
                   return (
                     <Fragment key={log.id}>
                       <tr
@@ -115,10 +172,27 @@ export default function RaporGecmisPanel({ acik, onKapat, auditLoglar, baslik }:
                         </td>
                         <td className="px-4 py-3 text-slate-600">{log.ozet}</td>
                         <td className="px-4 py-3 text-slate-500">{log.actor_email ?? 'Sistem'}</td>
+                        {geriYuklemeAktif && (
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            {geriYuklenebilir ? (
+                              <button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() => geriYukleTikla(log.id)}
+                                className="px-2.5 py-1 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 disabled:opacity-50">
+                                {isPending ? '…' : 'Geri Yükle'}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-slate-400" title="Eski format — tam liste yok">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                       {satirAcik && (
                         <tr className="bg-slate-50/60">
-                          <td colSpan={4} className="px-4 py-4">
+                          <td colSpan={geriYuklemeAktif ? 5 : 4} className="px-4 py-4">
                             {diffSatirlari.length === 0 ? (
                               <p className="text-xs text-slate-500 italic">Kapsam detayı yok.</p>
                             ) : (
