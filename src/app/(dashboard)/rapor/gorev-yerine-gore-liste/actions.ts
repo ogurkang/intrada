@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   gorevYeriListeAyarKaydetInternal,
   gorevYeriListeDenetimdenGeriYukleInternal,
+  gorevYeriListeKayitListesiSifirlaInternal,
   gorevYeriListeReferansSiraKaydetInternal,
 } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 
@@ -24,4 +25,9 @@ export async function gorevYeriListeDenetimdenGeriYukle(
 ): Promise<{ hata?: string; yuklenen?: number }> {
   const supabase = await createClient()
   return gorevYeriListeDenetimdenGeriYukleInternal(supabase, auditLogId)
+}
+
+export async function gorevYeriListeKayitListesiSifirla(): Promise<{ hata?: string; silinen?: number }> {
+  const supabase = await createClient()
+  return gorevYeriListeKayitListesiSifirlaInternal(supabase)
 }

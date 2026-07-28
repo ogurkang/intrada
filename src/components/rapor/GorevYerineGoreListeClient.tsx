@@ -11,6 +11,7 @@ import {
   type GorevYerineGoreListeSatir,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
 import {
+  gorevYeriListeAyarKaydet,
   gorevYeriListeDenetimdenGeriYukle,
   gorevYeriListeReferansSiraKaydet,
 } from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
@@ -152,6 +153,19 @@ export default function GorevYerineGoreListeClient({
       next[idx] = next[hedef]
       next[hedef] = tmp
       return next
+    })
+  }
+
+  function ayarKaydet() {
+    setMesaj(null)
+    startTransition(async () => {
+      const res = await gorevYeriListeAyarKaydet(seciliListKeyler)
+      if (res.hata) {
+        setMesaj(res.hata)
+        return
+      }
+      setMesaj('Liste kurallara göre kaydedildi.')
+      router.refresh()
     })
   }
 
@@ -394,11 +408,19 @@ export default function GorevYerineGoreListeClient({
           </div>
           <div className="pt-2 border-t border-slate-200 space-y-3">
             <p className="text-xs text-slate-500 leading-relaxed">
-              Sıralamayı bitirdikten sonra <strong className="font-medium text-slate-700">Referans Sıralamayı Kaydet</strong>{' '}
-              ile ekrandaki sıra aynen kaydedilir. Denetim günlüğünden geri yüklenebilir; yeni personel ve müdürlük
-              değişikliklerinde kurallar bu sıra üzerinden uygulanmaya devam eder.
+              <strong className="font-medium text-slate-700">Referans Sıralamayı Kaydet</strong> ekrandaki sırayı aynen
+              kaydeder (denetim günlüğünden geri yüklenebilir). <strong className="font-medium text-slate-700">Kaydet</strong>{' '}
+              kurallara göre yeniden sıralayıp kaydeder.
             </p>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={ayarKaydet}
+                disabled={isPending || seciliListKeyler.length === 0}
+                className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-800 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+              >
+                {isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              </button>
               <button
                 type="button"
                 onClick={referansSiraKaydet}

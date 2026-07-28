@@ -207,6 +207,34 @@ export async function gorevYeriListeReferansSiraKaydetInternal(
   return { kayitSayisi: sirali.length }
 }
 
+/** Kayıt listesini tamamen boşaltır (sıfırdan sıralama için). */
+export async function gorevYeriListeKayitListesiSifirlaInternal(
+  supabase: SupabaseClient,
+): Promise<{ hata?: string; silinen?: number }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
+  const { data: mevcutRows, error: mevcutErr } = await sb
+    .from('rapor_gorev_yeri_liste_ayar')
+    .select('kayit_key')
+    .order('sira_no', { ascending: true })
+  if (mevcutErr) return { hata: mevcutErr.message }
+  const oncekiKeys = (mevcutRows ?? []).map((r: { kayit_key: string }) => r.kayit_key)
+  const silinen = oncekiKeys.length
+
+  const { error: delErr } = await sb.from('rapor_gorev_yeri_liste_ayar').delete().neq('id', 0)
+  if (delErr) return { hata: delErr.message }
+
+  if (silinen > 0) {
+    await logRaporAyarListeDegisikligi(supabase, 'GYL', oncekiKeys, [])
+  }
+
+  revalidatePath('/rapor')
+  revalidatePath('/rapor/gorev-yerine-gore-liste')
+  revalidatePath('/api/rapor/gorev-yerine-gore-liste/excel')
+  return { silinen }
+}
+
 /**
  * Denetim günlüğündeki kayıt sırasını geri yükler.
  * Blok hiyerarşisi (Başkan → BBY → müdürlük) korunur; yeni personel ilgili grubun sonuna eklenir.
