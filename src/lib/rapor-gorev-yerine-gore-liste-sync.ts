@@ -4,6 +4,7 @@ import { logRaporAyarListeDegisikligi, logRaporAyarListeReferansKaydi, raporAudi
 import type { GorevYerineGoreListeSatir } from '@/lib/rapor-gorev-yerine-gore-liste'
 import { gorevYerineGoreListeSatirlariYukle } from '@/lib/rapor-gorev-yerine-gore-liste-yukle'
 import {
+  gorevYerineGoreListeArtimliSenkron,
   gorevYerineGoreListeSiraOlustur,
   type GorevYeriListeAyarSatir,
 } from '@/lib/rapor-gorev-yerine-gore-liste-siralama'
@@ -67,8 +68,8 @@ export type GorevYeriListeSenkronOpts = {
 }
 
 /**
- * Kayıt listesini güncel verilere göre senkronize eder.
- * Blok sırası (Başkan → BBY → müdürlük) korunur; grup içi statü sıralaması uygulanır.
+ * Kayıt listesini güncel verilere göre artımlı senkronize eder.
+ * Mevcut sıra korunur; yalnızca ayrılanlar çıkarılır, müdürlük değişen ve yeni kayıtlar bloğun sonuna eklenir.
  */
 export async function gorevYeriListeSenkronizeEt(
   supabase: SupabaseClient,
@@ -97,7 +98,7 @@ export async function gorevYeriListeSenkronizeEt(
     .filter((a: GorevYeriListeAyarSatir) => a.kayit_key)
 
   const oncekiKeys = oncekiAyar.map(a => a.kayit_key)
-  const yeniSira = gorevYerineGoreListeSiraOlustur(satirlar, oncekiAyar, otomatikEkleKeys)
+  const yeniSira = gorevYerineGoreListeArtimliSenkron(satirlar, oncekiAyar, otomatikEkleKeys)
 
   const siraDegisti =
     yeniSira.length !== oncekiKeys.length || yeniSira.some((k, i) => k !== oncekiKeys[i])
@@ -235,6 +236,28 @@ export async function gorevYeriListeKayitListesiSifirlaInternal(
   return { silinen }
 }
 
+/** GYL denetim günlüğü kayıtlarını siler. */
+export async function gorevYeriListeDenetimGecmisiSifirlaInternal(
+  supabase: SupabaseClient,
+): Promise<{ hata?: string; silinen?: number }> {
+  const { data: mevcut, error: selErr } = await supabase
+    .from('personel_audit_log')
+    .select('id')
+    .eq('ref_table', 'rapor_tanim')
+    .eq('ref_id', 'GYL')
+  if (selErr) return { hata: selErr.message }
+
+  const ids = (mevcut ?? []).map(r => r.id)
+  if (!ids.length) return { silinen: 0 }
+
+  const { error: delErr } = await supabase.from('personel_audit_log').delete().in('id', ids)
+  if (delErr) return { hata: delErr.message }
+
+  revalidatePath('/rapor')
+  revalidatePath('/rapor/gorev-yerine-gore-liste')
+  return { silinen: ids.length }
+}
+
 /**
  * Denetim günlüğündeki kayıt sırasını geri yükler.
  * Blok hiyerarşisi (Başkan → BBY → müdürlük) korunur; yeni personel ilgili grubun sonuna eklenir.
@@ -283,9 +306,16 @@ export async function gorevYeriListeDenetimdenGeriYukleInternal(
   }))
 
   const referansKayit = String(log.islem ?? '') === 'Referans Sıralama Kaydı'
-  const sirali = referansKayit && yeniKeys.length === 0
-    ? restoredKeys
-    : gorevYerineGoreListeSiraOlustur(satirlar, oncekiAyar, yeniKeys)
+  const sirali =
+    referansKayit && yeniKeys.length === 0
+      ? restoredKeys
+      : referansKayit
+        ? gorevYerineGoreListeArtimliSenkron(
+            satirlar,
+            oncekiAyar,
+            yeniKeys,
+          )
+        : gorevYerineGoreListeSiraOlustur(satirlar, oncekiAyar, yeniKeys)
 
   const { data: mevcutRows, error: mevcutErr } = await sb
     .from('rapor_gorev_yeri_liste_ayar')

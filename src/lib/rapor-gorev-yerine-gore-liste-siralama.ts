@@ -222,3 +222,89 @@ export function gorevYerineGoreListeSiraOlustur(
 
   return result
 }
+
+/** Mevcut sırayı korur; yalnızca müdürlük değişen ve yeni kayıtları ilgili bloğun sonuna ekler. */
+function blokaSonunaEkle(
+  keys: string[],
+  satirByKey: Map<string, GorevYerineGoreListeSatir>,
+  eklenecekKey: string,
+): string[] {
+  const s = satirByKey.get(eklenecekKey)
+  if (!s) return keys.filter(k => k !== eklenecekKey)
+
+  const mevcut = keys.filter(k => k !== eklenecekKey)
+  if (!mevcut.length) return [eklenecekKey]
+
+  const { blokOrder, keyToBlok } = blokHaritasiOlustur(mevcut, satirByKey)
+  const hedefBlok = yeniKayitBlokId(s, blokOrder)
+
+  let insertAt = -1
+  for (let i = 0; i < mevcut.length; i++) {
+    if (keyToBlok.get(mevcut[i]) === hedefBlok) insertAt = i
+  }
+  if (insertAt >= 0) {
+    const next = [...mevcut]
+    next.splice(insertAt + 1, 0, eklenecekKey)
+    return next
+  }
+
+  const fullBlokOrder = blokOrder.includes(hedefBlok) ? blokOrder : [...blokOrder, hedefBlok]
+  const hedefIdx = fullBlokOrder.indexOf(hedefBlok)
+  insertAt = mevcut.length
+  for (let i = 0; i < mevcut.length; i++) {
+    const b = keyToBlok.get(mevcut[i])
+    if (!b) continue
+    const bIdx = fullBlokOrder.indexOf(b)
+    if (bIdx > hedefIdx) {
+      insertAt = i
+      break
+    }
+  }
+
+  const next = [...mevcut]
+  next.splice(insertAt, 0, eklenecekKey)
+  return next
+}
+
+/**
+ * Referans / kayıtlı sırayı bozmadan senkronize eder.
+ * Yalnızca ayrılanları çıkarır, müdürlük değişen ve yeni kayıtları bloğun sonuna ekler.
+ */
+export function gorevYerineGoreListeArtimliSenkron(
+  satirlar: GorevYerineGoreListeSatir[],
+  oncekiAyar: GorevYeriListeAyarSatir[],
+  otomatikEkleKeys: string[] = [],
+): string[] {
+  const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s]))
+  const oncekiByKey = new Map(oncekiAyar.map(a => [a.kayit_key, a]))
+
+  let keys = oncekiAyar.map(a => a.kayit_key).filter(k => satirByKey.has(k))
+
+  const eklenecek: string[] = []
+  const eklenecekSet = new Set<string>()
+
+  for (const key of keys) {
+    const prev = oncekiByKey.get(key)
+    const s = satirByKey.get(key)
+    if (s && prev && mudurlukAnahtar(prev.mudurluk) !== mudurlukAnahtar(s.mudurluk)) {
+      if (!eklenecekSet.has(key)) {
+        eklenecekSet.add(key)
+        eklenecek.push(key)
+      }
+    }
+  }
+
+  for (const key of otomatikEkleKeys) {
+    if (!satirByKey.has(key) || eklenecekSet.has(key)) continue
+    eklenecekSet.add(key)
+    eklenecek.push(key)
+  }
+
+  keys = keys.filter(k => !eklenecekSet.has(k))
+
+  for (const key of eklenecek) {
+    keys = blokaSonunaEkle(keys, satirByKey, key)
+  }
+
+  return keys
+}
