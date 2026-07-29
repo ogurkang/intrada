@@ -2,10 +2,15 @@
 
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { malBildirimDetayHref } from '@/lib/mal-bildirim-route'
+import { malBildirimDetayHref, malBildirimYeniKopyalaHref } from '@/lib/mal-bildirim-route'
 import DashboardAnaSayfaLink from '@/components/ui/DashboardAnaSayfaLink'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { CopKutusuSilDugmesi, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import {
+  CopKutusuSilDugmesi,
+  KalemDuzenleLink,
+  KopyalaDugmesi,
+  SaatGecmisDugmesi,
+} from '@/components/ui/TabloIslemIkonlari'
 import { malAuditDegerGoster, malAuditDiffSatirlari } from '@/lib/mal-audit'
 import type { Tables } from '@/types/database'
 
@@ -129,6 +134,10 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false, audi
                       sayi={auditLoglar.length}
                       onClick={() => setGecmisRefId(refId)}
                       title="Mal beyanı değişiklik geçmişi"
+                    />
+                    <KopyalaDugmesi
+                      title="Mal beyanını kopyala"
+                      onClick={() => router.push(malBildirimYeniKopyalaHref(kayit))}
                     />
                     <KalemDuzenleLink
                       href={duzenleHref}

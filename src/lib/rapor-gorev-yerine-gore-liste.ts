@@ -1,5 +1,6 @@
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
-import { performansMudurUnvaniMi } from '@/lib/performans-unvan'
+import { kadroSatirAktifMi } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { kadroGorevUnvani, performansMudurUnvaniMi } from '@/lib/performans-unvan'
 import { trNormalize } from '@/lib/turkce-search'
 import type { PersonelKonumCtx } from '@/lib/personel-gorev-konum'
 import { personelKonumMetni } from '@/lib/personel-gorev-konum'
@@ -31,19 +32,25 @@ export function gorevYerineGoreUnvanVurgu(
   return null
 }
 
-/** Asıl/vekil tüm kadrolarda «… Müdürü» unvanı varsa onu kullan (vekil müdürler için). */
-export function gorevYerineGoreListeUnvanSec(
-  kadroRows: Array<{ gorev_unvani?: string | null; kadro_unvani?: string | null }>,
-  fallback: string | null | undefined,
-): string {
+/** Asıl/vekil müdür kadro satırı — unvan, müdürlük ve fiili görev buradan türetilir. */
+export function gorevYerineGoreListeKadroSatirSec(
+  kadroRows: KadroGenis[],
+  sicil: string,
+  D: string,
+): KadroGenis | null {
+  const hedef = sicil.trim()
+  if (!hedef) return null
+
   for (const r of kadroRows) {
-    for (const uv of [r.gorev_unvani, r.kadro_unvani]) {
-      const u = String(uv ?? '').trim()
-      if (u && performansMudurUnvaniMi(u)) return u
-    }
+    if (!kadroSatirAktifMi(r, D)) continue
+    const asil = String(r.asil ?? '').trim()
+    const vekil = String(r.vekil ?? '').trim()
+    if (asil !== hedef && vekil !== hedef) continue
+
+    const u = kadroGorevUnvani(r)
+    if (u && performansMudurUnvaniMi(u)) return r
   }
-  const fb = String(fallback ?? '').trim()
-  return fb || '—'
+  return null
 }
 
 export function gorevYerineGoreUnvanSatirClass(v: GorevYerineGoreUnvanVurgu): string {
@@ -117,6 +124,14 @@ export function mudurlukKonumGoster(harita: Map<string, string>, mudRaw: string 
   return harita.get(normMudStr(mud)) ?? '—'
 }
 
+/** Görev yeri listesi: kadro hareketlerindeki görev müdürlüğü (personel kartı görev yerinden bağımsız). */
+export function fiiliGorevKadroListe(
+  kadroGorevMudurlugu: string | null | undefined,
+): string {
+  const gm = String(kadroGorevMudurlugu ?? '').trim()
+  return gm || '—'
+}
+
 /** Görev Bilgileri kuralı: önce personel kartındaki görev yeri, yoksa kadro görev müdürlüğü */
 export function fiiliGorevKadro(
   calisanGorevYeri: string | null | undefined,
@@ -138,7 +153,11 @@ function cinsiyetGoster(c: string | null | undefined): string {
   return v || '—'
 }
 
-export type KadroGenis = KadroRaporRow & { gorev_unvani?: string | null }
+export type KadroGenis = KadroRaporRow & {
+  gorev_unvani?: string | null
+  kadro_unvani?: string | null
+  vekil?: string | null
+}
 
 export type GorevYerineGoreListeKayit =
   | {
@@ -169,7 +188,7 @@ export function gorevYerineGoreListeSatirUret(
   row: GorevYerineGoreListeKayit,
 ): GorevYerineGoreListeSatir {
   if (row.kind === 'kadro') {
-    const mudurluk = String(row.kadro.kadro_mudurlugu ?? '').trim() || '—'
+    const mudurluk = String(row.kadro.gorev_mudurlugu ?? row.kadro.kadro_mudurlugu ?? '').trim() || '—'
     const konumMudurluk =
       String(row.kadro.gorev_mudurlugu ?? '').trim() || String(row.kadro.kadro_mudurlugu ?? '').trim()
     const yId = etkinYerleskeId(
@@ -177,6 +196,7 @@ export function gorevYerineGoreListeSatirUret(
       konumMudurluk,
       row.yerleske_adresi_id ?? null,
     )
+    const unvanMetni = kadroGorevUnvani(row.kadro)
     return {
       kayit_key: row.kayit_key,
       kaynak: 'kadro',
@@ -189,9 +209,9 @@ export function gorevYerineGoreListeSatirUret(
         yerleskeId: yId,
       }),
       cinsiyet: cinsiyetGoster(row.cinsiyet),
-      unvan: String(row.kadro.gorev_unvani ?? '').trim() || '—',
+      unvan: unvanMetni || '—',
       statu: row.statuEtiket,
-      fiili_gorev: fiiliGorevKadro(row.gorev_yeri, row.kadro.gorev_mudurlugu),
+      fiili_gorev: fiiliGorevKadroListe(row.kadro.gorev_mudurlugu),
     }
   }
   const mudurluk = String(row.gorev_mudurlugu ?? '').trim() || '—'

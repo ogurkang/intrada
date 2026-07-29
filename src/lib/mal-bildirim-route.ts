@@ -40,3 +40,8 @@ export function malBildirimDetayHref(k: { public_id?: string | null; id: number 
 export function malBildirimDetayHrefPersonelSaltOkunur(k: { public_id?: string | null; id: number }): string {
   return `${malBildirimDetayHref(k)}?salt=1`
 }
+
+/** Yeni beyan formunu mevcut kayıttan kopyalayarak açar. */
+export function malBildirimYeniKopyalaHref(k: { public_id?: string | null; id: number }): string {
+  return `/bildirim/mal/yeni?kopyala=${encodeURIComponent(malBildirimUrlSegment(k))}`
+}

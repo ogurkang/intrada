@@ -7,11 +7,12 @@ import {
   fetchSirketYerleskeTanimSatirlari,
 } from '@/lib/personel-gorev-konum'
 import {
+  gorevYerineGoreListeKadroSatirSec,
   gorevYerineGoreListeSatirUret,
-  gorevYerineGoreListeUnvanSec,
   type GorevYerineGoreListeSatir,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
+import { kadroGorevUnvani } from '@/lib/performans-unvan'
 import {
   FIRMA_STATU_ETIKET,
   TANIMSIZ_STATU_ETIKET,
@@ -134,8 +135,15 @@ export async function gorevYerineGoreListeSatirlariYukle(
     const rows = kadroBySicil.get(c.sicil_no) ?? []
     const sec = secilenKadroSatirAsil(rows, D)
     const kBase = sec ?? bosKadro(c.sicil_no)
-    const gorevUnvani = gorevYerineGoreListeUnvanSec(rows, kBase.gorev_unvani)
-    const k: KadroGenis = { ...kBase, gorev_unvani: gorevUnvani !== '—' ? gorevUnvani : kBase.gorev_unvani }
+    const mudurSatir = gorevYerineGoreListeKadroSatirSec(rows, c.sicil_no, D)
+    const kKaynak = mudurSatir ?? kBase
+    const k: KadroGenis = {
+      ...kBase,
+      gorev_unvani: kadroGorevUnvani(kKaynak) || kBase.gorev_unvani,
+      kadro_unvani: kKaynak.kadro_unvani ?? kBase.kadro_unvani,
+      gorev_mudurlugu: kKaynak.gorev_mudurlugu ?? kBase.gorev_mudurlugu,
+      kadro_mudurlugu: kKaynak.kadro_mudurlugu ?? kBase.kadro_mudurlugu,
+    }
     const rawStatu = sec?.statu
     const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
     return {

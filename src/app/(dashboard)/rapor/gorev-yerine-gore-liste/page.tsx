@@ -5,7 +5,7 @@ import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-
 import { gorevYerineGoreListeSatirlariYukle } from '@/lib/rapor-gorev-yerine-gore-liste-yukle'
 
 const LISTE_ACIKLAMA =
-  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Cinsiyet: personel kartı. Unvan: kadro hareketlerindeki görev unvanı (ADABEL: görevi alanı). Fiili görev: Görev Bilgileri’ndeki görev yeri doluysa o metin, değilse kadro görev müdürlüğü (ADABEL: görev müdürlüğü).'
+  'Konum: Tanımlar > Şirket (görev yeri / görev müdürlüğü), personelin yerleşke ataması veya müdürlük–yerleşke eşlemesi. Cinsiyet: personel kartı. Unvan / müdürlük / fiili görev: kadro hareketleri (müdür kadrosu varsa asil/vekil fark etmeksizin «… Müdürü» unvanlı satır; ADABEL: görevi alanı).'
 
 export default async function GorevYerineGoreListePage() {
   const supabase = await createClient()

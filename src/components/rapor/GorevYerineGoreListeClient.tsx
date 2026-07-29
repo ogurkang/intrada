@@ -16,7 +16,7 @@ import {
 } from '@/app/(dashboard)/rapor/gorev-yerine-gore-liste/actions'
 
 const SATIR_RENK_ACIKLAMA =
-  'Satır renkleri: Belediye Başkanı — açık mavi (Unvanı); Belediye Başkan Yardımcısı — açık turuncu (Unvanı); açık yeşil: yalnızca «müdürü» kelimesi — önce Unvanı, yoksa Fiili Görevi. Excel aynı kuralı kullanır.'
+  'Satır renkleri: Belediye Başkanı — açık mavi (Unvanı); Belediye Başkan Yardımcısı — açık turuncu (Unvanı); açık yeşil: kadro hareketlerindeki unvanda «müdürü» (asil/vekil). Excel aynı kuralı kullanır.'
 
 interface Props {
   satirlar: GorevYerineGoreListeSatir[]

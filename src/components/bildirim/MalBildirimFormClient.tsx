@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PersonelAramaSecim, { type PersonelAramaOge } from '@/components/bildirim/PersonelAramaSecim'
@@ -123,12 +123,17 @@ export type MalDuzenleInitial = {
   onay_tarihi: string | null
 }
 
+/** Yeni kayıt formuna kopyalanan beyan (id / onay tarihi yok). */
+export type MalKopyalaInitial = Omit<MalDuzenleInitial, 'id' | 'public_id'>
+
 type PropsCreate = {
   mode: 'create'
   memurlar: PersonelSecenek[]
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
   /** Kullanıcı: yalnızca kendi sicili (salt okunur) */
   kullaniciKendiSicil?: string
+  /** Liste ekranından kopyalanan kaynak beyan */
+  kopyalaInitial?: MalKopyalaInitial
 }
 
 type PropsEdit = {
@@ -596,6 +601,46 @@ function haklarSatirDolu(row: HaklarFormSatir): boolean {
   return Boolean(row.unsur.trim() || row.edinme_sekli.trim())
 }
 
+function malFormInitialDoldur(
+  init: MalDuzenleInitial | MalKopyalaInitial,
+  setters: {
+    setMaasRaw: (v: string) => void
+    setAciklama: (v: string) => void
+    setBeyanTuru: (v: string) => void
+    setOnayTarihi: (v: string) => void
+    setKimlikSatirlari: (v: KimlikFormSatir[]) => void
+    setTasinmazSatirlari: (v: TasinmazFormSatir[]) => void
+    setKooperatifSatirlari: (v: KooperatifFormSatir[]) => void
+    setTasitSatirlari: (v: TasitFormSatir[]) => void
+    setDigerTasinirSatirlari: (v: DigerTasinirFormSatir[]) => void
+    setBankaMenkulSatirlari: (v: BankaMenkulFormSatir[]) => void
+    setAltinMucevherSatirlari: (v: AltinMucevherFormSatir[]) => void
+    setBorcAlacakSatirlari: (v: BorcAlacakFormSatir[]) => void
+    setHaklarSatirlari: (v: HaklarFormSatir[]) => void
+  },
+) {
+  const n = init.son_net_maas
+  setters.setMaasRaw(n != null && Number.isFinite(Number(n)) ? formatTrMoneyDisplay(Number(n)) : '')
+  setters.setAciklama(init.aciklama ?? '')
+  setters.setBeyanTuru(init.beyan_turu ?? '')
+  setters.setOnayTarihi(tarihInputDegeri(init.onay_tarihi))
+  const kRows = kimlikJsonToSatirlar(init.kimlik_json, {
+    ad_soyad: init.ad_soyad ?? init.sicil_no,
+    dogum_tarihi: init.dogum_tarihi,
+    dogum_yeri: init.dogum_yeri,
+    tckn: init.tckn,
+  })
+  setters.setKimlikSatirlari(kRows)
+  setters.setTasinmazSatirlari(tasinmazJsonToSatirlar(init.tasinmaz_json, kRows.length))
+  setters.setKooperatifSatirlari(kooperatifJsonToSatirlar(init.kooperatif_json, kRows.length))
+  setters.setTasitSatirlari(tasitJsonToSatirlar(init.tasitlar_json, kRows.length))
+  setters.setDigerTasinirSatirlari(digerTasinirJsonToSatirlar(init.diger_tasinirlar_json, kRows.length))
+  setters.setBankaMenkulSatirlari(bankaMenkulJsonToSatirlar(init.banka_menkul_json, kRows.length))
+  setters.setAltinMucevherSatirlari(altinMucevherJsonToSatirlar(init.altin_mucevher_json, kRows.length))
+  setters.setBorcAlacakSatirlari(borcAlacakJsonToSatirlar(init.borc_alacak_json))
+  setters.setHaklarSatirlari(haklarJsonToSatirlar(init.haklar_json, kRows.length))
+}
+
 export default function MalBildirimFormClient(props: MalBildirimFormClientProps) {
   const router = useRouter()
   const isCreate = props.mode === 'create'
@@ -631,34 +676,53 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
   const [acikOnay, setAcikOnay] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-
+  const skipSicilKimlikReset = useRef(false)
+  const kopyalaInitial = isCreate && 'kopyalaInitial' in props ? props.kopyalaInitial : undefined
+  const kopyalaKaynakAd = kopyalaInitial?.ad_soyad ?? null
 
   const duzenleKayitId = !isCreate ? props.initial.id : 0
+
+  /* Kopyalama: kaynak beyanı yeni forma aktar */
+  useEffect(() => {
+    if (!isCreate || !kopyalaInitial) return
+    const init = kopyalaInitial
+    skipSicilKimlikReset.current = true
+    setSicil(init.sicil_no)
+    malFormInitialDoldur(init, {
+      setMaasRaw,
+      setAciklama,
+      setBeyanTuru,
+      setOnayTarihi,
+      setKimlikSatirlari,
+      setTasinmazSatirlari,
+      setKooperatifSatirlari,
+      setTasitSatirlari,
+      setDigerTasinirSatirlari,
+      setBankaMenkulSatirlari,
+      setAltinMucevherSatirlari,
+      setBorcAlacakSatirlari,
+      setHaklarSatirlari,
+    })
+  }, [isCreate, kopyalaInitial])
 
   /* Düzenleme: sunucu verisinden formu doldur (id değişince yeniden) */
   useEffect(() => {
     if (isCreate) return
-    const init = props.initial
-    const n = init.son_net_maas
-    setMaasRaw(n != null && Number.isFinite(Number(n)) ? formatTrMoneyDisplay(Number(n)) : '')
-    setAciklama(init.aciklama ?? '')
-    setBeyanTuru(init.beyan_turu ?? '')
-    setOnayTarihi(tarihInputDegeri(init.onay_tarihi))
-    const kRows = kimlikJsonToSatirlar(init.kimlik_json, {
-      ad_soyad: init.ad_soyad ?? init.sicil_no,
-      dogum_tarihi: init.dogum_tarihi,
-      dogum_yeri: init.dogum_yeri,
-      tckn: init.tckn,
+    malFormInitialDoldur(props.initial, {
+      setMaasRaw,
+      setAciklama,
+      setBeyanTuru,
+      setOnayTarihi,
+      setKimlikSatirlari,
+      setTasinmazSatirlari,
+      setKooperatifSatirlari,
+      setTasitSatirlari,
+      setDigerTasinirSatirlari,
+      setBankaMenkulSatirlari,
+      setAltinMucevherSatirlari,
+      setBorcAlacakSatirlari,
+      setHaklarSatirlari,
     })
-    setKimlikSatirlari(kRows)
-    setTasinmazSatirlari(tasinmazJsonToSatirlar(init.tasinmaz_json, kRows.length))
-    setKooperatifSatirlari(kooperatifJsonToSatirlar(init.kooperatif_json, kRows.length))
-    setTasitSatirlari(tasitJsonToSatirlar(init.tasitlar_json, kRows.length))
-    setDigerTasinirSatirlari(digerTasinirJsonToSatirlar(init.diger_tasinirlar_json, kRows.length))
-    setBankaMenkulSatirlari(bankaMenkulJsonToSatirlar(init.banka_menkul_json, kRows.length))
-    setAltinMucevherSatirlari(altinMucevherJsonToSatirlar(init.altin_mucevher_json, kRows.length))
-    setBorcAlacakSatirlari(borcAlacakJsonToSatirlar(init.borc_alacak_json))
-    setHaklarSatirlari(haklarJsonToSatirlar(init.haklar_json, kRows.length))
   }, [isCreate, duzenleKayitId])
 
   const ogeler: PersonelAramaOge[] = useMemo(
@@ -686,6 +750,10 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
 
   useEffect(() => {
     if (!isCreate) return
+    if (skipSicilKimlikReset.current) {
+      skipSicilKimlikReset.current = false
+      return
+    }
     if (!sicil) {
       setKimlikSatirlari([])
       return
@@ -1405,7 +1473,11 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
     })
   }
 
-  const baslik = isCreate ? 'Yeni Mal Bildirimi' : 'Mal Bildirimi - Düzenle'
+  const baslik = isCreate
+    ? kopyalaInitial
+      ? 'Mal Bildirimi - Kopyala'
+      : 'Yeni Mal Bildirimi'
+    : 'Mal Bildirimi - Düzenle'
   const listLink = isCreate ? '/bildirim/mal' : malBildirimDetayHref(props.initial)
 
   return (
@@ -1417,6 +1489,13 @@ export default function MalBildirimFormClient(props: MalBildirimFormClientProps)
           {isCreate ? 'Listeye dön' : '← Kayda dön'}
         </Link>
       </div>
+
+      {kopyalaInitial && (
+        <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mb-4">
+          <strong>{kopyalaKaynakAd ?? kopyalaInitial.sicil_no}</strong> personelinin mal beyanı
+          kopyalandı. Personeli veya alanları gerekirse değiştirip yeni kayıt olarak kaydedin.
+        </p>
+      )}
 
       {isCreate && (
         <p className="text-sm text-slate-500 mb-4">
