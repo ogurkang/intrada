@@ -9,6 +9,7 @@ import {
 import {
   gorevYerineGoreListeKadroSatirSec,
   gorevYerineGoreListeSatirUret,
+  gorevYerineGoreListeUnvanMetni,
   type GorevYerineGoreListeSatir,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
@@ -137,9 +138,10 @@ export async function gorevYerineGoreListeSatirlariYukle(
     const kBase = sec ?? bosKadro(c.sicil_no)
     const mudurSatir = gorevYerineGoreListeKadroSatirSec(rows, c.sicil_no, D)
     const kKaynak = mudurSatir ?? kBase
+    const unvanMetni = gorevYerineGoreListeUnvanMetni(rows, c.sicil_no, D, kadroGorevUnvani(kBase))
     const k: KadroGenis = {
       ...kBase,
-      gorev_unvani: kadroGorevUnvani(kKaynak) || kBase.gorev_unvani,
+      gorev_unvani: unvanMetni !== '—' ? unvanMetni : kBase.gorev_unvani,
       kadro_unvani: kKaynak.kadro_unvani ?? kBase.kadro_unvani,
       gorev_mudurlugu: kKaynak.gorev_mudurlugu ?? kBase.gorev_mudurlugu,
       kadro_mudurlugu: kKaynak.kadro_mudurlugu ?? kBase.kadro_mudurlugu,

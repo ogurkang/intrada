@@ -32,7 +32,49 @@ export function gorevYerineGoreUnvanVurgu(
   return null
 }
 
-/** Asıl/vekil müdür kadro satırı — unvan, müdürlük ve fiili görev buradan türetilir. */
+/** Personelin asil/vekil müdür kadrolarındaki benzersiz «… Müdürü» unvanları. */
+export function gorevYerineGoreListeMudurUnvanlari(
+  kadroRows: KadroGenis[],
+  sicil: string,
+  D: string,
+): string[] {
+  const hedef = sicil.trim()
+  if (!hedef) return []
+
+  const seen = new Set<string>()
+  const out: string[] = []
+
+  for (const r of kadroRows) {
+    if (!kadroSatirAktifMi(r, D)) continue
+    const asil = String(r.asil ?? '').trim()
+    const vekil = String(r.vekil ?? '').trim()
+    if (asil !== hedef && vekil !== hedef) continue
+
+    const u = kadroGorevUnvani(r)
+    if (!u || !performansMudurUnvaniMi(u)) continue
+    const key = trNormalize(u)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(u)
+  }
+
+  return out.sort((a, b) => a.localeCompare(b, 'tr'))
+}
+
+/** Unvan sütunu: birden fazla müdürlük müdürlüğü varsa « - » ile birleştirilir. */
+export function gorevYerineGoreListeUnvanMetni(
+  kadroRows: KadroGenis[],
+  sicil: string,
+  D: string,
+  fallback: string | null | undefined,
+): string {
+  const mudurUnvanlar = gorevYerineGoreListeMudurUnvanlari(kadroRows, sicil, D)
+  if (mudurUnvanlar.length) return mudurUnvanlar.join(' - ')
+  const fb = String(fallback ?? '').trim()
+  return fb || '—'
+}
+
+/** İlk müdür kadro satırı — müdürlük / fiili görev alanları için. */
 export function gorevYerineGoreListeKadroSatirSec(
   kadroRows: KadroGenis[],
   sicil: string,
