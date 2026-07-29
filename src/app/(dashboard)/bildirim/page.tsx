@@ -5,6 +5,7 @@ import { loadAuditLoglarByRefTables, hubSonIslemFromLogs, type ModulHubAuditTip 
 
 const BILDIRIM_REF_TABLES = [
   'calisan_ogrenim',
+  'personel_sendika',
   'aile_bildirimi',
   'mal_bildirimi',
   'pasaport_islemleri',
@@ -49,6 +50,9 @@ export default async function BildirimHubPage() {
   const sendikaIstifaCountQ = kullaniciSicil
     ? supabase.from('sendika_istifa_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('sendika_istifa_bildirimleri').select('*', { count: 'exact', head: true })
+  const sendikaCountQ = kullaniciSicil
+    ? supabase.from('personel_sendika').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil).eq('aktif', true)
+    : supabase.from('personel_sendika').select('*', { count: 'exact', head: true }).eq('aktif', true)
 
   const [
     { count: ogrenimSayisi },
@@ -61,6 +65,7 @@ export default async function BildirimHubPage() {
     { count: calismaBelgesiSayisi },
     { count: besIptalSayisi },
     { count: sendikaIstifaSayisi },
+    { count: sendikaSayisi },
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
@@ -73,6 +78,7 @@ export default async function BildirimHubPage() {
     calismaBelgesiCountQ,
     besIptalCountQ,
     sendikaIstifaCountQ,
+    sendikaCountQ,
     loadAuditLoglarByRefTables(supabase, [...BILDIRIM_REF_TABLES]),
   ])
 
@@ -231,6 +237,23 @@ export default async function BildirimHubPage() {
       ),
     },
     {
+      key: 'sendika',
+      baslik: 'Sendika Bildirimi',
+      aciklama: 'Personel sendika üyelik değişiklikleri',
+      href: '/bildirim/sendika',
+      refTable: 'personel_sendika' as const,
+      sayi: sendikaSayisi ?? 0,
+      birim: 'aktif kayıt',
+      renk: 'border-purple-200 bg-purple-50',
+      ikonRenk: 'bg-purple-100 text-purple-600',
+      auditTip: 'sendika' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
+    {
       key: 'sendika-istifa',
       baslik: 'Sendika İstifa İşlemleri',
       aciklama: 'Sendika istifa bildirimi dilekçesi oluşturma ve Word çıktısı',
@@ -252,7 +275,7 @@ export default async function BildirimHubPage() {
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []

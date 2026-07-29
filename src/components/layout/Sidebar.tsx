@@ -62,7 +62,14 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? { href: '/personel', label: 'Çalışanlar' }
+      ? {
+          href: '/personel',
+          label: 'Çalışanlar',
+          children: [
+            { href: '/personel', label: 'Personel Listesi' },
+            { href: '/personel/sendika-atama', label: 'Sendika Bilgileri' },
+          ],
+        }
       : { href: calisanlarHref, label: 'Personel Kartım' }
 
   return [
@@ -94,6 +101,8 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/rapor/statuye-gore-hizmet', label: 'Statüye Göre Hizmet Raporu' },
       { href: '/rapor/konuma-gore-cinsiyet', label: 'Konuma Göre Cinsiyet Raporu' },
       { href: '/rapor/yerleske-adresine-gore-personel-sayi', label: 'Yerleşke Adresine Göre Personel Sayısı' },
+      { href: '/rapor/sendika-bilgilerine-gore-personel-liste', label: 'Sendika Bilgilerine Göre Personel Listesi' },
+      { href: '/rapor/sendika-bilgilerine-gore-personel-sayi', label: 'Sendika Bilgilerine Göre Personel Sayısı' },
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },
@@ -135,6 +144,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     items: [
       { href: '/bildirim',         label: 'Genel Bakış'      },
       { href: '/bildirim/ogrenim', label: 'Öğrenim Bildirimi'},
+      { href: '/bildirim/sendika', label: 'Sendika Bildirimi'},
       { href: '/bildirim/aile',    label: 'Aile Bildirimi'   },
       { href: '/bildirim/mal',     label: 'Mal Bildirimi'    },
       { href: '/bildirim/pasaport',label: 'Pasaport İşlemleri'},
@@ -284,6 +294,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/tanimlar/unvan',      label: 'Unvan'         },
       { href: '/tanimlar/mudurluk',   label: 'Müdürlük'      },
       { href: '/tanimlar/yerleske-adresi', label: 'Yerleşke Adresleri' },
+      { href: '/tanimlar/sendika-bilgileri', label: 'Sendika Bilgileri' },
       { href: '/tanimlar/adres', label: 'Adres' },
       { href: '/tanimlar/statu',      label: 'Statü'         },
       { href: '/tanimlar/hareket-tanimlari', label: 'Hareket Tanımları' },

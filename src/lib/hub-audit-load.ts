@@ -12,6 +12,7 @@ export type ModulHubAuditTip =
   | 'harcirah-talep'
   | 'calisma-belgesi'
   | 'bes-iptal'
+  | 'sendika'
   | 'sendika-istifa'
 
 export interface HubSonIslemOzet {

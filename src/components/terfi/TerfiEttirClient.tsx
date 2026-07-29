@@ -60,29 +60,29 @@ function puanGoster(v: string | null | undefined) {
 
 function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
   if (ogrenimTerfi) return 'bg-purple-600 !text-white'
-  if (durum === 'Derece İlerledi') return 'bg-green-100 text-green-800'
-  if (durum === 'Sadece Kademe') return 'bg-slate-100 text-slate-700'
-  if (durum === 'Kıdem Yılı İlerledi') return 'bg-blue-100 text-blue-700'
-  if (durum === 'İyi Hal İlerlemesi') return 'bg-indigo-100 text-indigo-700'
+  if (durum.includes('Derece İlerledi')) return 'bg-green-100 text-green-800'
+  if (durum.includes('Sadece Kademe')) return 'bg-slate-100 text-slate-700'
+  if (durum.includes('Kıdem Yılı İlerledi')) return 'bg-blue-100 text-blue-700'
+  if (durum.includes('İyi Hal İlerlemesi')) return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
-  if (durum === 'Eğitim Sınırında') return 'bg-red-100 text-red-800'
+  if (durum.includes('Eğitim Sınırında')) return 'bg-red-100 text-red-800'
   return 'bg-slate-50 text-slate-600'
 }
 
 function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS.Style> {
   if (ogrenimTerfi)
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9333EA' } }, font: { color: { argb: 'FFFFFFFF' } } }
-  if (durum === 'Derece İlerledi')
+  if (durum.includes('Derece İlerledi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }, font: { color: { argb: 'FF166534' } } }
-  if (durum === 'Sadece Kademe')
+  if (durum.includes('Sadece Kademe'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, font: { color: { argb: 'FF334155' } } }
-  if (durum === 'Kıdem Yılı İlerledi')
+  if (durum.includes('Kıdem Yılı İlerledi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }, font: { color: { argb: 'FF1D4ED8' } } }
-  if (durum === 'İyi Hal İlerlemesi')
+  if (durum.includes('İyi Hal İlerlemesi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }, font: { color: { argb: 'FF4338CA' } } }
   if (durum.includes('Tavan'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }, font: { color: { argb: 'FF78350F' } } }
-  if (durum === 'Eğitim Sınırında')
+  if (durum.includes('Eğitim Sınırında'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE2E2' } }, font: { color: { argb: 'FF991B1B' } } }
   return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF475569' } } }
 }

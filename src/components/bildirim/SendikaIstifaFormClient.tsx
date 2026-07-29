@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition, useEffect } from 'react'
 import PersonelAramaSecim from '@/components/bildirim/PersonelAramaSecim'
 import type { BildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
@@ -18,10 +18,11 @@ type Sonuc = { hata?: string; ok?: boolean; id?: number }
 interface Props {
   personeller: BildirimFormPersonel[]
   sabitSicil?: string
+  aktifSendikaUzunAd?: Record<string, string>
   onKaydet: (fd: FormData) => Promise<Sonuc>
 }
 
-export default function SendikaIstifaFormClient({ personeller, sabitSicil, onKaydet }: Props) {
+export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktifSendikaUzunAd = {}, onKaydet }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
@@ -37,6 +38,15 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, onKay
     () => personeller.find(p => p.sicil_no === seciliSicil) ?? null,
     [personeller, seciliSicil],
   )
+
+  useEffect(() => {
+    if (!seciliSicil) {
+      setSendikaAdi('')
+      return
+    }
+    const uzun = aktifSendikaUzunAd[seciliSicil]
+    if (uzun) setSendikaAdi(uzun)
+  }, [seciliSicil, aktifSendikaUzunAd])
 
   const tcknUygun = bildirimTcknGecerliMi(secili?.tckn)
   const formHazir = Boolean(seciliSicil && tcknUygun && sendikaAdi.trim())

@@ -214,8 +214,18 @@ export type TerfiEttirOnizlemeSatir = {
 type KazancLookup = (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
 
 function birlesDurum(a: TerfiEttirDurumEtiket, b: TerfiEttirDurumEtiket): TerfiEttirDurumEtiket {
-  if (a !== '—') return a
-  return b
+  const labels = new Set<string>()
+  const ekle = (x: TerfiEttirDurumEtiket) => {
+    if (x === '—') return
+    for (const p of x.split(', ')) {
+      const t = p.trim()
+      if (t) labels.add(t)
+    }
+  }
+  ekle(a)
+  ekle(b)
+  if (!labels.size) return '—'
+  return [...labels].join(', ') as TerfiEttirDurumEtiket
 }
 
 function yilIleri(t: string | null | undefined, yil: number): string | null {

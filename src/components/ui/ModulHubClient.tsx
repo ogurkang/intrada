@@ -28,6 +28,7 @@ import {
   sendikaIstifaAuditDiffSatirlari,
   sendikaIstifaAuditDegerGoster,
 } from '@/lib/sendika-istifa-audit'
+import { sendikaAuditDiffSatirlari, sendikaAuditDegerGoster } from '@/lib/sendika-audit'
 
 type AuditLog = Tables<'personel_audit_log'>
 type DiffFn = (onceki: unknown, sonraki: unknown) => {
@@ -66,6 +67,10 @@ const AUDIT_TIP_MAP: Record<ModulHubAuditTip, { diffSatirlari: DiffFn; degerGost
   'bes-iptal': {
     diffSatirlari: besIptalAuditDiffSatirlari,
     degerGoster: besIptalAuditDegerGoster,
+  },
+  sendika: {
+    diffSatirlari: sendikaAuditDiffSatirlari,
+    degerGoster: sendikaAuditDegerGoster,
   },
   'sendika-istifa': {
     diffSatirlari: sendikaIstifaAuditDiffSatirlari,

@@ -2,8 +2,38 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-28T14:03:43.282Z",
+  "generatedAt": "2026-07-29T13:55:49.838Z",
   "commits": [
+    {
+      "hash": "5cc21e7",
+      "fullHash": "5cc21e7ff162c6b5be287352daeb720652e7961c",
+      "date": "2026-07-29",
+      "subject": "feat(rapor): GYL coklu mudur unvanini tire ile birlestir"
+    },
+    {
+      "hash": "99f5834",
+      "fullHash": "99f5834e18f22d96058ea849106872fb0e0de8cb",
+      "date": "2026-07-29",
+      "subject": "feat(bildirim): mal beyani listesine kopyala islemi"
+    },
+    {
+      "hash": "3d52342",
+      "fullHash": "3d5234278a4952aca09c71f89f7163fd65e66f38",
+      "date": "2026-07-29",
+      "subject": "fix(rapor): vekil mudur unvanini GYL listesinde kullan"
+    },
+    {
+      "hash": "616b84f",
+      "fullHash": "616b84fe13bd3660fd515c10f9fce12f2f770bf2",
+      "date": "2026-07-28",
+      "subject": "feat(rapor): GYL referans sirasini koruyan artimli sync"
+    },
+    {
+      "hash": "18a4483",
+      "fullHash": "18a44837357e18a829eff11bbd36d6e42e7899b2",
+      "date": "2026-07-28",
+      "subject": "fix(adabel): gorev yeri degisince yerleske otomatik guncelle"
+    },
     {
       "hash": "f34624b",
       "fullHash": "f34624ba61cc0d671adfd1a60fe10ed686b8ce74",
@@ -213,36 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "f9418293b0ada2deab19c817e57cceed5276fc26",
       "date": "2026-07-10",
       "subject": "AYY: kapali donemde salt okunur izin goruntuleme ve arada kalan izin uyarisi."
-    },
-    {
-      "hash": "de81662",
-      "fullHash": "de81662b777be5ba54f75b261339596f388f28fa",
-      "date": "2026-07-10",
-      "subject": "Sosyal Hak IZY devir SD zincirini duzelt ve regresyon testleri ekle."
-    },
-    {
-      "hash": "f32f592",
-      "fullHash": "f32f5925ce102b7a004420813eb003eca048a272",
-      "date": "2026-07-09",
-      "subject": "Pasaport dilekçesi alt bilgisinde telefon etiketini düzenle."
-    },
-    {
-      "hash": "36eed7e",
-      "fullHash": "36eed7ed73336435921b8959c49727f3fe0d1bcc",
-      "date": "2026-07-09",
-      "subject": "Pasaport dilekçesine telefon bilgisini ekle."
-    },
-    {
-      "hash": "ec0b41f",
-      "fullHash": "ec0b41f333fc2f17e126297d87f60d8bada412d0",
-      "date": "2026-07-08",
-      "subject": "feat(pasaport): ayrilan personel (emekli/istifa) formu ve durum sutunu"
-    },
-    {
-      "hash": "af4061d",
-      "fullHash": "af4061df584da6aab46e7ff954c3e712c6ab028f",
-      "date": "2026-07-08",
-      "subject": "fix(rapor): gorev turu listesine calisan harici tum turleri dahil et"
     }
   ]
 }

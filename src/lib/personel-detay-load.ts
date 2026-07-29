@@ -25,6 +25,15 @@ export type PersonelDetayLoadResult = {
   izinHareketleri: Tables<'izin_hareketleri'>[]
   terfiKayitlari: Tables<'terfi_hareketleri'>[]
   ogrenimler: Tables<'calisan_ogrenim'>[]
+  sendikalar: {
+    id: number
+    kisa_ad: string
+    uzun_ad: string
+    statu: string
+    baslangic_tarihi: string
+    bitis_tarihi: string | null
+    aktif: boolean
+  }[]
   aileBildirimi: Tables<'aile_bildirimi'> | null
   malKayitlari: PersonelDetayMalRow[]
   egitimKatilimlari: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
@@ -89,6 +98,7 @@ export async function fetchPersonelDetayPageData(
     { data: izinHareketleriRaw },
     { data: terfiRaw },
     { data: ogrenimRaw },
+    { data: sendikaRaw },
     { data: aileRaw },
     { data: malKayitlariRaw },
     { data: katilimRaw },
@@ -134,6 +144,11 @@ export async function fetchPersonelDetayPageData(
       .select('*')
       .eq('sicil_no', sicil_no)
       .order('mezuniyet_yili', { ascending: false }),
+    supabase
+      .from('personel_sendika')
+      .select('id, baslangic_tarihi, bitis_tarihi, aktif, tanim_sendika(kisa_ad, uzun_ad, statu)')
+      .eq('sicil_no', sicil_no)
+      .order('baslangic_tarihi', { ascending: false }),
     supabase.from('aile_bildirimi').select('*').eq('sicil_no', sicil_no).maybeSingle(),
     supabase
       .from('mal_bildirimi')
@@ -164,6 +179,18 @@ export async function fetchPersonelDetayPageData(
   const izinHareketleri = (izinHareketleriRaw ?? []) as Tables<'izin_hareketleri'>[]
   const terfiKayitlari = (terfiRaw ?? []) as Tables<'terfi_hareketleri'>[]
   const ogrenimler = sortCalisanOgrenimByTuru((ogrenimRaw ?? []) as Tables<'calisan_ogrenim'>[])
+  const sendikalar = (sendikaRaw ?? []).map(r => {
+    const t = (r.tanim_sendika as unknown) as { kisa_ad: string; uzun_ad: string; statu: string } | null
+    return {
+      id: r.id as number,
+      kisa_ad: t?.kisa_ad ?? '—',
+      uzun_ad: t?.uzun_ad ?? '—',
+      statu: t?.statu ?? '—',
+      baslangic_tarihi: r.baslangic_tarihi as string,
+      bitis_tarihi: (r.bitis_tarihi as string | null) ?? null,
+      aktif: r.aktif as boolean,
+    }
+  })
   const aileBildirimi = (aileRaw ?? null) as Tables<'aile_bildirimi'> | null
   const malKayitlari = (malKayitlariRaw ?? []).map(r => ({
     id: r.id,
@@ -259,6 +286,7 @@ export async function fetchPersonelDetayPageData(
     izinHareketleri,
     terfiKayitlari,
     ogrenimler,
+    sendikalar,
     aileBildirimi,
     malKayitlari,
     egitimKatilimlari,

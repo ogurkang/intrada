@@ -82,6 +82,36 @@ export interface Database {
         }
         Relationships: []
       }
+      tanim_sendika: {
+        Row: {
+          id: number
+          statu: string
+          kisa_ad: string
+          uzun_ad: string
+          aktif: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          statu: string
+          kisa_ad: string
+          uzun_ad: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          statu?: string
+          kisa_ad?: string
+          uzun_ad?: string
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_adres_mahalle: {
         Row: {
           id: number
@@ -1433,6 +1463,39 @@ export interface Database {
         Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
         Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
         Relationships: [{ foreignKeyName: "calisan_ogrenim_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
+      }
+      personel_sendika: {
+        Row: {
+          id: number
+          sicil_no: string
+          sendika_id: number
+          baslangic_tarihi: string
+          bitis_tarihi: string | null
+          aktif: boolean
+          kayit_zamani: string
+        }
+        Insert: {
+          id?: number
+          sicil_no: string
+          sendika_id: number
+          baslangic_tarihi?: string
+          bitis_tarihi?: string | null
+          aktif?: boolean
+          kayit_zamani?: string
+        }
+        Update: {
+          id?: number
+          sicil_no?: string
+          sendika_id?: number
+          baslangic_tarihi?: string
+          bitis_tarihi?: string | null
+          aktif?: boolean
+          kayit_zamani?: string
+        }
+        Relationships: [
+          { foreignKeyName: "personel_sendika_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] },
+          { foreignKeyName: "personel_sendika_sendika_id_fkey"; columns: ["sendika_id"]; isOneToOne: false; referencedRelation: "tanim_sendika"; referencedColumns: ["id"] },
+        ]
       }
       aile_bildirimi: {
         Row: {

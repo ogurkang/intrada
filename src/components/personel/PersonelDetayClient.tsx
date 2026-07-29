@@ -37,6 +37,7 @@ export type PersonelMalBildirimOzet = {
 const SEKMELER = [
   'Kişisel Bilgiler',
   'Öğrenim Bilgileri',
+  'Sendika Bilgisi',
   'Aile Bilgileri',
   'Mal Bildirimleri',
   'Kadro Bilgileri',
@@ -58,6 +59,15 @@ interface Props {
   izinHareketleri: IzinHareketi[]
   terfiKayitlari: TH[]
   ogrenimler: Ogrenim[]
+  sendikalar?: {
+    id: number
+    kisa_ad: string
+    uzun_ad: string
+    statu: string
+    baslangic_tarihi: string
+    bitis_tarihi: string | null
+    aktif: boolean
+  }[]
   aileBildirimi: Aile | null
   malKayitlari?: PersonelMalBildirimOzet[]
   egitimKatilimlari?: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
@@ -354,6 +364,57 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
                   </td>
                 </tr>
               )})}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SendikaTab({
+  sendikalar,
+}: {
+  sendikalar: NonNullable<Props['sendikalar']>
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h2 className="text-sm font-semibold text-slate-700">Sendika Bilgisi</h2>
+        <p className="text-xs text-slate-500 mt-1">Üyelik geçmişi</p>
+      </div>
+      {sendikalar.length === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-8">Sendika kaydı bulunamadı.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Statü</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Kısa Ad</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Uzun Ad</th>
+                <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Başlangıç</th>
+                <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Bitiş</th>
+                <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Durum</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sendikalar.map(s => (
+                <tr key={s.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-slate-700">{s.statu}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{s.kisa_ad}</td>
+                  <td className="px-4 py-3 text-slate-600">{s.uzun_ad}</td>
+                  <td className="px-4 py-3 text-center tabular-nums text-slate-600">{tarihFormatla(s.baslangic_tarihi)}</td>
+                  <td className="px-4 py-3 text-center tabular-nums text-slate-600">{tarihFormatla(s.bitis_tarihi)}</td>
+                  <td className="px-4 py-3 text-center">
+                    {s.aktif ? (
+                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Aktif</span>
+                    ) : (
+                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Pasif</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -1377,7 +1438,7 @@ function GecmisTab({ auditLoglar }: { auditLoglar: AuditLog[] }) {
 export default function PersonelDetayClient({
   kaynak, calisan, kadrolar, hareketler, izinHaklari, izinHareketleri,
   auditLoglar,
-  terfiKayitlari, ogrenimler, aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
+  terfiKayitlari, ogrenimler, sendikalar = [], aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
   tanimGostergeKha = null,
   terfiOncesiTarihce = [],
   saltOkunur = false,
@@ -1405,6 +1466,10 @@ export default function PersonelDetayClient({
     }
     if (sekmeParam === 'ogrenim') {
       setAktif('Öğrenim Bilgileri')
+      return
+    }
+    if (sekmeParam === 'sendika') {
+      setAktif('Sendika Bilgisi')
       return
     }
     if (sekmeParam === 'aile') {
@@ -1494,6 +1559,7 @@ export default function PersonelDetayClient({
         <div className="p-6">
           {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} kadrolar={kadrolar} yerleskeAdi={yerleskeAdi} konumMetni={konumMetni} />}
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
+          {aktif === 'Sendika Bilgisi'      && <SendikaTab sendikalar={sendikalar} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
           {aktif === 'Mal Bildirimleri'     && <MalBildirimTab malKayitlari={malKayitlari} />}
           {aktif === 'Kadro Bilgileri'      && (

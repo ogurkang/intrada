@@ -141,6 +141,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         izinHareketleri={rest.izinHareketleri}
         terfiKayitlari={rest.terfiKayitlari}
         ogrenimler={rest.ogrenimler}
+        sendikalar={rest.sendikalar}
         aileBildirimi={rest.aileBildirimi}
         malKayitlari={rest.malKayitlari}
         egitimKatilimlari={rest.egitimKatilimlari}

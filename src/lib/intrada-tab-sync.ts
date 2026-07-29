@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 /** Aynı kökteki diğer sekmelerde `router.refresh()` tetiklemek için */
 export const INTRADA_TAB_CHANNEL = 'intrada'
 
-export type IntradaTabScope = 'izin' | 'aile' | 'mal' | 'kesintiler' | 'ogrenim' | 'kazanc' | 'terfi' | 'firma-calisanlar' | 'performans'
+export type IntradaTabScope = 'izin' | 'aile' | 'mal' | 'kesintiler' | 'ogrenim' | 'sendika' | 'kazanc' | 'terfi' | 'firma-calisanlar' | 'performans'
 
 export type IntradaTabMsg = { type: 'router-refresh'; scope: IntradaTabScope }
 
