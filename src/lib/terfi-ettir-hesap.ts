@@ -8,9 +8,9 @@ export type TerfiEttirDurumEtiket =
   | 'Eğitim Sınırında'
   | 'Kıdem Yılı İlerledi'
   | 'İyi Hal İlerlemesi'
-  | 'Lisede Hazırlık Okudu'
-  | 'Yüksek Lisansı Tamamladı'
-  | 'Doktorayı Tamamladı'
+  | 'Hazırlık Okudu'
+  | 'Yükseklisansını Tamamladı'
+  | 'Doktorasını Tamamladı'
   | '—'
 
 /** Lise → min 3; Ön Lisans / Lisans → min 1 */

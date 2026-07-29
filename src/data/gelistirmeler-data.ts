@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-29T13:55:49.838Z",
+  "generatedAt": "2026-07-29T14:19:42.799Z",
   "commits": [
+    {
+      "hash": "9e92451",
+      "fullHash": "9e92451c3e51576902d39e4883cc5559354281c6",
+      "date": "2026-07-29",
+      "subject": "feat(sendika): sendika modulu, raporlar ve terfi durum birlestirme"
+    },
     {
       "hash": "5cc21e7",
       "fullHash": "5cc21e7ff162c6b5be287352daeb720652e7961c",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "f6071dfbe9ddd5db23782dc8f49748e21209819d",
       "date": "2026-07-10",
       "subject": "Gelistirmeler verisini son commitlerle senkronize et."
-    },
-    {
-      "hash": "f941829",
-      "fullHash": "f9418293b0ada2deab19c817e57cceed5276fc26",
-      "date": "2026-07-10",
-      "subject": "AYY: kapali donemde salt okunur izin goruntuleme ve arada kalan izin uyarisi."
     }
   ]
 }

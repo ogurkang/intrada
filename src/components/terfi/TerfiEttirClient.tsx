@@ -170,13 +170,27 @@ export default function TerfiEttirClient({
 
   const ogrenimAdayPersoneller = useMemo(() => {
     const listede = new Set(satirlar.map(r => r.sicil_no))
-    const terfiEdilmis = new Set(
-      islemLoglari.filter(l => !l.geri_alindi).map(l => l.sicil_no),
-    )
-    return memurPersoneller.filter(
-      p => !listede.has(p.sicil_no) && !terfiEdilmis.has(p.sicil_no),
-    )
-  }, [memurPersoneller, satirlar, islemLoglari])
+    return memurPersoneller.filter(p => !listede.has(p.sicil_no))
+  }, [memurPersoneller, satirlar])
+
+  const geriAlinabilirLoglar = useMemo(
+    () => islemLoglari.filter(l => !l.geri_alindi),
+    [islemLoglari],
+  )
+
+  const tumGeriAlSecili = useMemo(() => {
+    if (!geriAlinabilirLoglar.length) return false
+    return geriAlinabilirLoglar.every(l => seciliGeriAl[l.id])
+  }, [geriAlinabilirLoglar, seciliGeriAl])
+
+  function toggleGeriAlHepsi() {
+    const next = !tumGeriAlSecili
+    setSeciliGeriAl(prev => {
+      const m = { ...prev }
+      for (const l of geriAlinabilirLoglar) m[l.id] = next
+      return m
+    })
+  }
 
   function ogrenimOlayDegistir(sicil: string, olay: TerfiOgrenimOlayTipi) {
     const kaynak = kaynakBySicil.get(sicil)
@@ -769,7 +783,15 @@ export default function TerfiEttirClient({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="px-4 py-2.5 text-left">Seç</th>
+              <th className="px-4 py-2.5 text-left w-10">
+                <input
+                  type="checkbox"
+                  checked={tumGeriAlSecili}
+                  onChange={toggleGeriAlHepsi}
+                  title="Tümünü seç"
+                  disabled={!geriAlinabilirLoglar.length}
+                />
+              </th>
               <th className="px-4 py-2.5 text-left">Sicil</th>
               <th className="px-4 py-2.5 text-left">İşlem Tarihi</th>
               <th className="px-4 py-2.5 text-left">Durum</th>

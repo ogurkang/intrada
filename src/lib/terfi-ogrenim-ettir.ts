@@ -16,9 +16,9 @@ export const TERFI_OGRENIM_OLAY_SECENEKLERI: {
   label: string
   kisaLabel: string
 }[] = [
-  { value: 'hazirlik', label: 'Lisede Hazırlık Okudu', kisaLabel: 'Lise' },
-  { value: 'yuksek_lisans', label: 'Yüksek Lisansı Tamamladı', kisaLabel: 'Yüksek' },
-  { value: 'doktora', label: 'Doktorayı Tamamladı', kisaLabel: 'Doktora' },
+  { value: 'hazirlik', label: 'Hazırlık Okudu', kisaLabel: 'Lise' },
+  { value: 'yuksek_lisans', label: 'Yükseklisansını Tamamladı', kisaLabel: 'Yüksek' },
+  { value: 'doktora', label: 'Doktorasını Tamamladı', kisaLabel: 'Doktora' },
 ]
 
 export function ogrenimOlayEtiket(tip: TerfiOgrenimOlayTipi): string {

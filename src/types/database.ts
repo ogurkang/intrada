@@ -1810,16 +1810,19 @@ export interface Database {
           id: number; donem_id: number; sicil_no: string; terfi_id: number
           onceki: Json; sonraki: Json; islem_tarihi: string
           geri_alindi: boolean; geri_alma_tarihi: string | null
+          ogrenim_terfi: boolean; ogrenim_olay: 'hazirlik' | 'yuksek_lisans' | 'doktora' | null
         }
         Insert: {
           id?: number; donem_id: number; sicil_no: string; terfi_id: number
           onceki: Json; sonraki: Json; islem_tarihi?: string
           geri_alindi?: boolean; geri_alma_tarihi?: string | null
+          ogrenim_terfi?: boolean; ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora' | null
         }
         Update: {
           id?: number; donem_id?: number; sicil_no?: string; terfi_id?: number
           onceki?: Json; sonraki?: Json; islem_tarihi?: string
           geri_alindi?: boolean; geri_alma_tarihi?: string | null
+          ogrenim_terfi?: boolean; ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora' | null
         }
         Relationships: [
           { foreignKeyName: "terfi_donem_islem_log_donem_id_fkey"; columns: ["donem_id"]; isOneToOne: false; referencedRelation: "terfi_donem"; referencedColumns: ["id"] },

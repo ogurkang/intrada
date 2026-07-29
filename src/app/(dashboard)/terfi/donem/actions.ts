@@ -325,6 +325,8 @@ export async function terfiEttirKaydet(
       onceki: oncekiSnap,
       sonraki,
       geri_alindi: false,
+      ogrenim_terfi: !!s.ogrenim_terfi,
+      ogrenim_olay: s.ogrenim_terfi ? (s.ogrenim_olay ?? null) : null,
     })
     if (logErr) return { hata: logErr.message }
 

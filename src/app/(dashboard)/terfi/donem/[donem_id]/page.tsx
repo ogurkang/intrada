@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { terfiTarihPenceresiOncekiDonem } from '@/lib/terfi-donem-aralik'
-import { buildTerfiEttirOnizleme, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { buildTerfiEttirOnizleme, type TerfiEttirDurumEtiket, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { ogrenimOlayEtiket, type TerfiOgrenimOlayTipi } from '@/lib/terfi-ogrenim-ettir'
 import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import TerfiEttirClient from '@/components/terfi/TerfiEttirClient'
 import { terfiGeriAlTek, terfiGeriAlToplu } from '@/app/(dashboard)/terfi/donem/actions'
@@ -107,7 +108,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
   const initialRows = buildTerfiEttirOnizleme(kaynaklar, bas, bit, kazancLookup)
   const { data: logRows } = await supabase
     .from('terfi_donem_islem_log')
-    .select('id, sicil_no, islem_tarihi, geri_alindi, onceki, sonraki, terfi_id')
+    .select('id, sicil_no, islem_tarihi, geri_alindi, onceki, sonraki, terfi_id, ogrenim_terfi, ogrenim_olay')
     .eq('donem_id', id)
     .order('islem_tarihi', { ascending: false })
 
@@ -156,6 +157,12 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
     const kaynak = kaynakBySicil.get(log.sicil_no)
     const onc: LogSnap = (log.onceki ?? {}) as LogSnap
     const son: LogSnap = (log.sonraki ?? {}) as LogSnap
+    const ogrenimTerfi = !!log.ogrenim_terfi
+    const ogrenimOlay = log.ogrenim_olay as TerfiOgrenimOlayTipi | null
+    const durum: TerfiEttirDurumEtiket =
+      ogrenimTerfi && ogrenimOlay
+        ? (ogrenimOlayEtiket(ogrenimOlay) as TerfiEttirDurumEtiket)
+        : (durumBySicil.get(log.sicil_no) ?? '—')
     return {
       sicil_no: log.sicil_no,
       ad_soyad: kaynak?.ad_soyad ?? log.sicil_no,
@@ -184,8 +191,10 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       yan_odeme_yeni: ds(son.yan_odeme),
       sds_eski: ds(onc.sds_orani),
       sds_yeni: ds(son.sds_orani),
-      durum: durumBySicil.get(log.sicil_no) ?? '—',
+      durum,
       terfi_id: log.terfi_id ?? null,
+      ogrenim_terfi: ogrenimTerfi || undefined,
+      ogrenim_olay: ogrenimOlay ?? undefined,
       payload: {
         kha_derece: son.kha_derece ?? null,
         kha_kademe: son.kha_kademe ?? null,
