@@ -1,4 +1,5 @@
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
+import { performansMudurUnvaniMi } from '@/lib/performans-unvan'
 import { trNormalize } from '@/lib/turkce-search'
 import type { PersonelKonumCtx } from '@/lib/personel-gorev-konum'
 import { personelKonumMetni } from '@/lib/personel-gorev-konum'
@@ -28,6 +29,21 @@ export function gorevYerineGoreUnvanVurgu(
   const f = String(fiiliGorev ?? '').trim()
   if (f && f !== '—' && trNormalize(f).includes(MUDURU_NORM)) return 'mudur'
   return null
+}
+
+/** Asıl/vekil tüm kadrolarda «… Müdürü» unvanı varsa onu kullan (vekil müdürler için). */
+export function gorevYerineGoreListeUnvanSec(
+  kadroRows: Array<{ gorev_unvani?: string | null; kadro_unvani?: string | null }>,
+  fallback: string | null | undefined,
+): string {
+  for (const r of kadroRows) {
+    for (const uv of [r.gorev_unvani, r.kadro_unvani]) {
+      const u = String(uv ?? '').trim()
+      if (u && performansMudurUnvaniMi(u)) return u
+    }
+  }
+  const fb = String(fallback ?? '').trim()
+  return fb || '—'
 }
 
 export function gorevYerineGoreUnvanSatirClass(v: GorevYerineGoreUnvanVurgu): string {

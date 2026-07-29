@@ -8,6 +8,7 @@ import {
 } from '@/lib/personel-gorev-konum'
 import {
   gorevYerineGoreListeSatirUret,
+  gorevYerineGoreListeUnvanSec,
   type GorevYerineGoreListeSatir,
   type KadroGenis,
 } from '@/lib/rapor-gorev-yerine-gore-liste'
@@ -23,6 +24,14 @@ function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
   return out
+}
+
+function kadroSicileEkle(map: Map<string, KadroGenis[]>, sicil: string | null | undefined, row: KadroGenis) {
+  const s = String(sicil ?? '').trim()
+  if (!s) return
+  const list = map.get(s) ?? []
+  list.push(row)
+  map.set(s, list)
 }
 
 function bosKadro(sicil: string): KadroGenis {
@@ -106,26 +115,27 @@ export async function gorevYerineGoreListeSatirlariYukle(
   const yerleskeBySicil = new Map(kadroCalisan.map(c => [c.sicil_no, c.yerleske_adresi_id ?? null]))
 
   const sicilList = [...aktifSiciller]
-  const kadroByAsil = new Map<string, KadroGenis[]>()
-  for (const part of chunk(sicilList, 120)) {
+  const kadroBySicil = new Map<string, KadroGenis[]>()
+  for (const part of chunk(sicilList, 80)) {
     const { data: kRows } = await supabase
       .from('kadro_hareketleri')
       .select(
-        'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu, gorev_unvani',
+        'asil, vekil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu, gorev_unvani, kadro_unvani',
       )
-      .in('asil', part)
+      .or(part.map(s => `asil.eq.${s},vekil.eq.${s}`).join(','))
     for (const r of kRows ?? []) {
-      if (!r.asil) continue
-      const list = kadroByAsil.get(r.asil) ?? []
-      list.push(r as KadroGenis)
-      kadroByAsil.set(r.asil, list)
+      const row = r as KadroGenis
+      kadroSicileEkle(kadroBySicil, r.asil, row)
+      kadroSicileEkle(kadroBySicil, r.vekil, row)
     }
   }
 
   const kadroSatirlarRaw = kadroCalisan.map(c => {
-    const rows = kadroByAsil.get(c.sicil_no) ?? []
+    const rows = kadroBySicil.get(c.sicil_no) ?? []
     const sec = secilenKadroSatirAsil(rows, D)
-    const k = sec ?? bosKadro(c.sicil_no)
+    const kBase = sec ?? bosKadro(c.sicil_no)
+    const gorevUnvani = gorevYerineGoreListeUnvanSec(rows, kBase.gorev_unvani)
+    const k: KadroGenis = { ...kBase, gorev_unvani: gorevUnvani !== '—' ? gorevUnvani : kBase.gorev_unvani }
     const rawStatu = sec?.statu
     const statuEtiket = etiketAnahtari(etiketler, rawStatu) || TANIMSIZ_STATU_ETIKET
     return {
