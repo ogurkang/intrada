@@ -91,6 +91,7 @@ export default async function Page({ params }: Props) {
           izinHareketleri={rest.izinHareketleri}
           terfiKayitlari={rest.terfiKayitlari}
           ogrenimler={rest.ogrenimler}
+          sendikalar={rest.sendikalar}
           aileBildirimi={rest.aileBildirimi}
           malKayitlari={rest.malKayitlari}
           egitimKatilimlari={rest.egitimKatilimlari}
