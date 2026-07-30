@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import ExcelJS from 'exceljs'
 import type { KazancPuan, TerfiEttirOnizlemeSatir, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import {
@@ -71,7 +72,7 @@ function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
 
 function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS.Style> {
   if (ogrenimTerfi)
-    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9333EA' } }, font: { color: { argb: 'FFFFFFFF' } } }
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF9333EA' } } }
   if (durum.includes('Derece İlerledi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }, font: { color: { argb: 'FF166534' } } }
   if (durum.includes('Sadece Kademe'))
@@ -111,6 +112,7 @@ export default function TerfiEttirClient({
   onGeriAlTek,
   onGeriAlToplu,
 }: Props) {
+  const router = useRouter()
   const [satirlar, setSatirlar] = useState<TerfiEttirOnizlemeSatir[]>(initialRows)
   const [secili, setSecili] = useState<Record<string, boolean>>({})
   const [seciliGeriAl, setSeciliGeriAl] = useState<Record<number, boolean>>({})
@@ -453,7 +455,11 @@ export default function TerfiEttirClient({
     startTransition(async () => {
       const res = await terfiEttirKaydet(donemId, payload)
       if (res.hata) setHata(res.hata)
-      else setBasari(`${payload.length} kayıt terfi ettirildi.`)
+      else {
+        setBasari(`${payload.length} kayıt terfi ettirildi.`)
+        setSecili({})
+        router.refresh()
+      }
     })
   }
 
@@ -464,7 +470,10 @@ export default function TerfiEttirClient({
     startTransition(async () => {
       const res = await onGeriAlTek(donemId, logId)
       if (res.hata) setHata(res.hata)
-      else setBasari('Terfi kaydı geri alındı.')
+      else {
+        setBasari('Terfi kaydı geri alındı.')
+        router.refresh()
+      }
     })
   }
 
@@ -486,6 +495,7 @@ export default function TerfiEttirClient({
       else {
         setBasari(`${res.geriAlinan ?? logIds.length} kayıt geri alındı.`)
         setSeciliGeriAl({})
+        router.refresh()
       }
     })
   }
@@ -775,9 +785,9 @@ export default function TerfiEttirClient({
             type="button"
             onClick={handleGeriAlToplu}
             disabled={isPending}
-            className="text-xs font-medium text-red-700 border border-red-200 bg-red-50 px-3 py-1.5 rounded hover:bg-red-100 disabled:opacity-50"
+            className="text-sm font-medium text-white bg-slate-800 px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 shadow-sm"
           >
-            Seçili Terfileri Geri Al
+            {isPending ? 'İşleniyor…' : 'Seçili Terfileri Geri Al'}
           </button>
         </div>
         <table className="w-full text-sm">

@@ -1,20 +1,29 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import TanimAktifSecim from '@/components/tanimlar/TanimAktifSecim'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
+import { tanimYerleskeAuditDegerGoster, tanimYerleskeAuditDiffSatirlari } from '@/lib/tanim-yerleske-audit'
 import type { Tables } from '@/types/database'
-import {
-  yerleskeAdresiGuncelle,
-  yerleskeAdresiToggleAktif,
-} from '@/app/(dashboard)/tanimlar/yerleske-adresi/actions'
+import { yerleskeAdresiGuncelle } from '@/app/(dashboard)/tanimlar/yerleske-adresi/actions'
 
 type YerleskeRow = Tables<'tanim_yerleske_adresi'>
 
-export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[] }) {
+type Props = {
+  data: YerleskeRow[]
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
+}
+
+export default function YerleskeAdresiTanimClient({ data, auditLoglarByRefId = {} }: Props) {
+  const router = useRouter()
   const saltOkunur = useTanimlarSaltOkunur()
   const [duzenleSatir, setDuzenleSatir] = useState<YerleskeRow | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -26,9 +35,14 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
     startTransition(async () => {
       const res = await yerleskeAdresiGuncelle(duzenleSatir.id, fd)
       if (res.hata) setSunuciHata(res.hata)
-      else setDuzenleSatir(null)
+      else {
+        setDuzenleSatir(null)
+        router.refresh()
+      }
     })
   }
+
+  const gecmisLoglar = gecmisRefId ? auditLoglarByRefId[gecmisRefId] ?? [] : []
 
   return (
     <div>
@@ -37,8 +51,6 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
         {!saltOkunur && (
           <Link
             href="/tanimlar/yerleske-adresi/ekle"
-            target="_blank"
-            rel="noopener noreferrer"
             className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -61,14 +73,14 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
               <th className="text-left px-5 py-3 font-semibold text-slate-600">Yerleşke Adı</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600">Adresi</th>
               <th className="text-center px-5 py-3 font-semibold text-slate-600 w-28">Durum</th>
-              <th className="text-right px-5 py-3 font-semibold text-slate-600 w-40">İşlem</th>
+              <th className="text-right px-5 py-3 font-semibold text-slate-600 w-28">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {data.length === 0 && (
               <tr>
                 <td colSpan={5} className="text-center py-12 text-slate-400">
-                  Henüz kayıt yok. &ldquo;Yerleşke Adresi Ekle&rdquo; yeni sekmede açılır.
+                  Henüz kayıt yok.
                 </td>
               </tr>
             )}
@@ -86,35 +98,22 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
                     {row.aktif ? 'Aktif' : 'Pasif'}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right">
-                  {!saltOkunur && (
-                    <div className="flex justify-end gap-2 flex-wrap">
-                      <button
-                        type="button"
+                <td className="px-5 py-3">
+                  <div className="flex justify-end items-center gap-1">
+                    <SaatGecmisDugmesi
+                      sayi={(auditLoglarByRefId[String(row.id)] ?? []).length}
+                      onClick={() => setGecmisRefId(String(row.id))}
+                    />
+                    {!saltOkunur && (
+                      <KalemDuzenleDugmesi
                         onClick={() => {
                           setSunuciHata(null)
                           setDuzenleSatir(row)
                         }}
-                        className="text-sky-600 hover:text-sky-800 text-xs font-medium"
-                      >
-                        Değiştir
-                      </button>
-                      <button
-                        type="button"
                         disabled={isPending}
-                        onClick={() => {
-                          setSunuciHata(null)
-                          startTransition(async () => {
-                            const res = await yerleskeAdresiToggleAktif(row.id, row.aktif)
-                            if (res.hata) setSunuciHata(res.hata)
-                          })
-                        }}
-                        className="text-slate-600 hover:text-slate-900 text-xs font-medium"
-                      >
-                        {row.aktif ? 'Pasifleştir' : 'Aktifleştir'}
-                      </button>
-                    </div>
-                  )}
+                      />
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -124,7 +123,7 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
 
       <Modal
         open={!!duzenleSatir}
-        title="Yerleşke Adresi — Değiştir"
+        title="Yerleşke Adresi — Düzenle"
         onClose={() => {
           setDuzenleSatir(null)
           setSunuciHata(null)
@@ -155,17 +154,7 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
                 className="border border-slate-300 rounded-lg px-3 py-2"
               />
             </label>
-            <fieldset className="border border-slate-200 rounded-lg p-3">
-              <legend className="text-xs font-medium text-slate-600 px-1">Durum</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="aktif" value="true" defaultChecked={duzenleSatir.aktif} />
-                Aktif
-              </label>
-              <label className="flex items-center gap-2 text-sm mt-1">
-                <input type="radio" name="aktif" value="false" defaultChecked={!duzenleSatir.aktif} />
-                Pasif
-              </label>
-            </fieldset>
+            <TanimAktifSecim defaultAktif={duzenleSatir.aktif} />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
@@ -185,6 +174,15 @@ export default function YerleskeAdresiTanimClient({ data }: { data: YerleskeRow[
           </form>
         )}
       </Modal>
+
+      <AuditGecmisPanel
+        acik={gecmisRefId != null}
+        onKapat={() => setGecmisRefId(null)}
+        auditLoglar={gecmisLoglar}
+        baslik="Yerleşke tanımı — işlem geçmişi"
+        diffSatirlari={tanimYerleskeAuditDiffSatirlari}
+        degerGoster={tanimYerleskeAuditDegerGoster}
+      />
     </div>
   )
 }

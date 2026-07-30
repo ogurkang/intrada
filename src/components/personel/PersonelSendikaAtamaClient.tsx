@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { personelSendikaAtamaKaydet } from '@/app/(dashboard)/bildirim/sendika/actions'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 import { kadroStatuSendikaGrubu } from '@/lib/sendika-statu'
 
 export type PersonelSendikaAtamaSatir = {
@@ -18,11 +20,13 @@ interface Props {
 }
 
 export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: Props) {
+  const router = useRouter()
   const [arama, setArama] = useState('')
   const [secimler, setSecimler] = useState<Record<string, number | ''>>({})
   const [topluSendika, setTopluSendika] = useState<number | ''>('')
   const [seciliSiciller, setSeciliSiciller] = useState<Set<string>>(new Set())
   const [hata, setHata] = useState<string | null>(null)
+  const [basari, setBasari] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
@@ -35,6 +39,28 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
         (p.mevcut_kisa_ad ?? '').toLocaleLowerCase('tr-TR').includes(q),
     )
   }, [personeller, arama])
+
+  const seciliStatuGruplari = useMemo(() => {
+    const gruplar = new Set<string>()
+    for (const sicil of seciliSiciller) {
+      const p = personeller.find(x => x.sicil_no === sicil)
+      const g = kadroStatuSendikaGrubu(p?.statu ?? null)
+      if (g) gruplar.add(g)
+    }
+    return gruplar
+  }, [seciliSiciller, personeller])
+
+  const topluSendikaSecenekleri = useMemo(() => {
+    if (!seciliStatuGruplari.size) return sendikalar
+    return sendikalar.filter(s => seciliStatuGruplari.has(s.statu))
+  }, [sendikalar, seciliStatuGruplari])
+
+  useEffect(() => {
+    if (topluSendika === '') return
+    if (!topluSendikaSecenekleri.some(s => s.id === topluSendika)) {
+      setTopluSendika('')
+    }
+  }, [topluSendika, topluSendikaSecenekleri])
 
   function sendikalarForStatu(statu: string | null) {
     const g = kadroStatuSendikaGrubu(statu)
@@ -49,9 +75,11 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
 
   function kaydet() {
     setHata(null)
-    const satirlar = filtreli
+    setBasari(null)
+    const satirlar = personeller
       .map(p => {
-        const v = satirDeger(p.sicil_no, p.mevcut_sendika_id)
+        if (!(p.sicil_no in secimler)) return null
+        const v = secimler[p.sicil_no]
         if (v === '' || v === p.mevcut_sendika_id) return null
         return { sicil_no: p.sicil_no, sendika_id: Number(v) }
       })
@@ -68,17 +96,46 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
       else {
         setSecimler({})
         setSeciliSiciller(new Set())
+        setBasari(`${satirlar.length} personelin sendika bilgisi güncellendi.`)
+        broadcastIntradaRefresh('sendika')
+        router.refresh()
       }
     })
   }
 
   function topluUygula() {
-    if (topluSendika === '') return
-    const yeni: Record<string, number | ''> = { ...secimler }
-    for (const sicil of seciliSiciller) {
-      yeni[sicil] = topluSendika
+    setHata(null)
+    setBasari(null)
+    if (topluSendika === '') {
+      setHata('Toplu uygulamak için sendika seçin.')
+      return
     }
+    if (!seciliSiciller.size) {
+      setHata('Toplu uygulamak için en az bir personel işaretleyin.')
+      return
+    }
+
+    const sendika = sendikalar.find(s => s.id === topluSendika)
+    if (!sendika) return
+
+    const yeni: Record<string, number | ''> = { ...secimler }
+    let uygulanan = 0
+    for (const sicil of seciliSiciller) {
+      const p = personeller.find(x => x.sicil_no === sicil)
+      if (!p) continue
+      const g = kadroStatuSendikaGrubu(p.statu)
+      if (g !== sendika.statu) continue
+      yeni[sicil] = topluSendika
+      uygulanan++
+    }
+
+    if (!uygulanan) {
+      setHata('Seçilen sendika, işaretli personelin statüsüne uygun değil.')
+      return
+    }
+
     setSecimler(yeni)
+    setBasari(`${uygulanan} personele "${sendika.kisa_ad}" uygulandı. Kaydetmeyi unutmayın.`)
   }
 
   return (
@@ -91,6 +148,7 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
       </div>
 
       {hata && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{hata}</div>}
+      {basari && <div className="mb-4 bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm">{basari}</div>}
 
       <div className="flex flex-wrap gap-3 mb-4 items-end">
         <input
@@ -104,8 +162,12 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
           onChange={e => setTopluSendika(e.target.value ? Number(e.target.value) : '')}
           className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white min-w-[180px]"
         >
-          <option value="">Toplu sendika seç…</option>
-          {sendikalar.map(s => (
+          <option value="">
+            {seciliSiciller.size
+              ? 'Toplu sendika seç…'
+              : 'Önce personel işaretleyin…'}
+          </option>
+          {topluSendikaSecenekleri.map(s => (
             <option key={s.id} value={s.id}>
               [{s.statu}] {s.kisa_ad}
             </option>
@@ -154,8 +216,9 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
             {filtreli.map(p => {
               const opts = sendikalarForStatu(p.statu)
               const val = satirDeger(p.sicil_no, p.mevcut_sendika_id)
+              const degisti = p.sicil_no in secimler && secimler[p.sicil_no] !== '' && secimler[p.sicil_no] !== p.mevcut_sendika_id
               return (
-                <tr key={p.sicil_no} className="hover:bg-slate-50">
+                <tr key={p.sicil_no} className={degisti ? 'bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-slate-50'}>
                   <td className="px-3 py-2">
                     <input
                       type="checkbox"
@@ -178,17 +241,19 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
                     {opts.length ? (
                       <select
                         className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white"
-                        value={val}
-                        onChange={e =>
+                        value={val === '' ? '' : String(val)}
+                        onChange={e => {
+                          setHata(null)
+                          setBasari(null)
                           setSecimler(prev => ({
                             ...prev,
                             [p.sicil_no]: e.target.value ? Number(e.target.value) : '',
                           }))
-                        }
+                        }}
                       >
                         <option value="">— Seçin —</option>
                         {opts.map(s => (
-                          <option key={s.id} value={s.id}>
+                          <option key={s.id} value={String(s.id)}>
                             {s.kisa_ad}
                           </option>
                         ))}

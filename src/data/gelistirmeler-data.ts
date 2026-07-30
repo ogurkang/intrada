@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-29T14:19:42.799Z",
+  "generatedAt": "2026-07-30T05:58:34.503Z",
   "commits": [
+    {
+      "hash": "578bd02",
+      "fullHash": "578bd0239c03ffe0d472dabbf9eb66b8fa04fac1",
+      "date": "2026-07-29",
+      "subject": "feat(terfi): ogrenim aciklama, geri al tumunu sec ve yeniden secim"
+    },
     {
       "hash": "9e92451",
       "fullHash": "9e92451c3e51576902d39e4883cc5559354281c6",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "857c8b4ce86dba27da1477d269e8e2da79622b79",
       "date": "2026-07-10",
       "subject": "fix(build): DonemListClient onEkle uyari tipi ve sosyal_hak_secim sorgusu."
-    },
-    {
-      "hash": "f6071df",
-      "fullHash": "f6071dfbe9ddd5db23782dc8f49748e21209819d",
-      "date": "2026-07-10",
-      "subject": "Gelistirmeler verisini son commitlerle senkronize et."
     }
   ]
 }

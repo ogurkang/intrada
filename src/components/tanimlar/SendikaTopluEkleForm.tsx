@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { sendikaBilgileriTopluEkle } from '@/app/(dashboard)/tanimlar/sendika-bilgileri/actions'
 
 type BosSatir = { statu: string; kisa_ad: string; uzun_ad: string }
@@ -14,9 +15,12 @@ function bosSatir(): BosSatir {
 interface Props {
   saltOkunur?: boolean
   onBasarili?: () => void
+  /** Kayıt sonrası yönlendirilecek liste sayfası */
+  redirectTo?: string
 }
 
-export default function SendikaTopluEkleForm({ saltOkunur = false, onBasarili }: Props) {
+export default function SendikaTopluEkleForm({ saltOkunur = false, onBasarili, redirectTo }: Props) {
+  const router = useRouter()
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [ekleSatirlar, setEkleSatirlar] = useState<BosSatir[]>([bosSatir()])
@@ -50,8 +54,9 @@ export default function SendikaTopluEkleForm({ saltOkunur = false, onBasarili }:
       const res = await sendikaBilgileriTopluEkle(satirlar)
       if (res.hata) setSunuciHata(res.hata)
       else {
-        setEkleSatirlar([bosSatir()])
         onBasarili?.()
+        if (redirectTo) router.push(redirectTo)
+        else setEkleSatirlar([bosSatir()])
       }
     })
   }

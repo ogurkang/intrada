@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
 
@@ -87,7 +88,7 @@ export async function personelSendikaEkle(
 
   revalidatePath('/bildirim/sendika')
   revalidatePath('/personel/sendika-atama')
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return { id: inserted?.id }
 }
 
@@ -153,7 +154,7 @@ export async function sendikaBildirimGuncelle(id: number, fd: FormData): Promise
 
   revalidatePath('/bildirim/sendika')
   revalidatePath('/personel/sendika-atama')
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 
@@ -187,7 +188,7 @@ export async function sendikaBildirimSil(id: number): Promise<{ hata?: string }>
 
   revalidatePath('/bildirim/sendika')
   revalidatePath('/personel/sendika-atama')
-  revalidatePath(`/personel/${sicil_no}`)
+  await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
 

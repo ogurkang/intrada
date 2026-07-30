@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { gostergeTopluEkle } from '@/app/(dashboard)/tanimlar/gosterge/actions'
 
 const DERECE_SEC = Array.from({ length: 15 }, (_, i) => i + 1)
@@ -15,9 +16,11 @@ function bosSatir(): BosSatir {
 interface Props {
   saltOkunur?: boolean
   onBasarili?: () => void
+  redirectTo?: string
 }
 
-export default function GostergeTopluEkleForm({ saltOkunur = false, onBasarili }: Props) {
+export default function GostergeTopluEkleForm({ saltOkunur = false, onBasarili, redirectTo }: Props) {
+  const router = useRouter()
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [ekleSatirlar, setEkleSatirlar] = useState<BosSatir[]>([bosSatir()])
@@ -49,8 +52,9 @@ export default function GostergeTopluEkleForm({ saltOkunur = false, onBasarili }
       const res = await gostergeTopluEkle(satirlar)
       if (res.hata) setSunuciHata(res.hata)
       else {
-        setEkleSatirlar([bosSatir()])
         onBasarili?.()
+        if (redirectTo) router.push(redirectTo)
+        else setEkleSatirlar([bosSatir()])
       }
     })
   }

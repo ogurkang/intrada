@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import YerleskeAdresiTanimClient from '@/components/tanimlar/YerleskeAdresiTanimClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import type { Tables } from '@/types/database'
 
-type YerleskeRow = Tables<'tanim_yerleske_adresi'>
+export const dynamic = 'force-dynamic'
 
 export default async function YerleskeAdresiPage() {
   const supabase = await createClient()
@@ -12,7 +13,9 @@ export default async function YerleskeAdresiPage() {
     .order('yerleske_adi')
     .order('id')
 
-  const kayitlar: YerleskeRow[] = data ?? []
+  const kayitlar = (data ?? []) as Tables<'tanim_yerleske_adresi'>[]
+  const ids = kayitlar.map(r => String(r.id))
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(supabase, 'tanim_yerleske_adresi', ids)
 
   return (
     <>
@@ -21,7 +24,7 @@ export default async function YerleskeAdresiPage() {
           Veri yüklenirken hata: {error.message}
         </div>
       )}
-      <YerleskeAdresiTanimClient data={kayitlar} />
+      <YerleskeAdresiTanimClient data={kayitlar} auditLoglarByRefId={auditLoglarByRefId} />
     </>
   )
 }

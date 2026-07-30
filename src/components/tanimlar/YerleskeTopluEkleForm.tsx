@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { yerleskeAdresiTopluEkle } from '@/app/(dashboard)/tanimlar/yerleske-adresi/actions'
 
 type BosSatir = { yerleske_adi: string; adres: string }
@@ -12,9 +13,11 @@ function bosSatir(): BosSatir {
 interface Props {
   saltOkunur?: boolean
   onBasarili?: () => void
+  redirectTo?: string
 }
 
-export default function YerleskeTopluEkleForm({ saltOkunur = false, onBasarili }: Props) {
+export default function YerleskeTopluEkleForm({ saltOkunur = false, onBasarili, redirectTo }: Props) {
+  const router = useRouter()
   const [sunuciHata, setSunuciHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [ekleSatirlar, setEkleSatirlar] = useState<BosSatir[]>([bosSatir()])
@@ -47,8 +50,9 @@ export default function YerleskeTopluEkleForm({ saltOkunur = false, onBasarili }
       const res = await yerleskeAdresiTopluEkle(satirlar)
       if (res.hata) setSunuciHata(res.hata)
       else {
-        setEkleSatirlar([bosSatir()])
         onBasarili?.()
+        if (redirectTo) router.push(redirectTo)
+        else setEkleSatirlar([bosSatir()])
       }
     })
   }

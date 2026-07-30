@@ -4,6 +4,7 @@ import { Fragment, useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Tables } from '@/types/database'
+import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
@@ -1448,7 +1449,10 @@ export default function PersonelDetayClient({
   konumMetni = null,
   performansKayitlari = [],
 }: Props) {
+  const router = useRouter()
   const searchParams = useSearchParams()
+  useIntradaTabRefresh('sendika', router)
+  useIntradaTabRefresh('ogrenim', router)
   const [aktif, setAktif] = useState<Sekme>('Kişisel Bilgiler')
   const sekmeler = useMemo(() => {
     let liste: Sekme[] = [...SEKMELER]
