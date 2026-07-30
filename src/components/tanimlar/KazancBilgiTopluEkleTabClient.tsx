@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
 import { useMemo, useState, useTransition } from 'react'
 import type { KazancGrupAyar } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
 import { kazancBilgiGruplariEkle } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
@@ -142,18 +143,8 @@ export default function KazancBilgiTopluEkleTabClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
-          <Link
-            href="/tanimlar/kazanc-bilgi"
-            className="text-sm border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 font-medium"
-          >
-            ← Kazanç listesi
-          </Link>
-          <Link
-            href={`/tanimlar/kazanc-bilgi/${unvanId}`}
-            className="text-sm border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50"
-          >
-            ← Detaya dön
-          </Link>
+          <TanimEkleListeGeriLink href="/tanimlar/kazanc-bilgi" label="Kazanç listesi" />
+          <TanimEkleListeGeriLink href={`/tanimlar/kazanc-bilgi/${unvanId}`} label="Detaya dön" />
         </div>
       </div>
 

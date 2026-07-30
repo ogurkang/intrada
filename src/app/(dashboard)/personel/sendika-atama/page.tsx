@@ -50,6 +50,7 @@ export default async function PersonelSendikaAtamaPage() {
   const personeller = calisanFiltreli
     .filter(c => aktifAday.has(c.sicil_no))
     .filter(c => Boolean(secilenKadroSatirAsil(kadroByAsil.get(c.sicil_no) ?? [], D)))
+    .filter(c => !sendikaBySicil.has(c.sicil_no))
     .map(c => {
       const kadro = secilenKadroSatirAsil(kadroByAsil.get(c.sicil_no) ?? [], D)
       const uyelik = sendikaBySicil.get(c.sicil_no)

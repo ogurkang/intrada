@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { broadcastIntradaRefresh, useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import Modal from '@/components/ui/Modal'
+import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import {
   kazancOgrenimlerSekmeListesi,
@@ -301,12 +302,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
             <p className="text-sm text-slate-500 mt-0.5">Aynı puanlı öğrenimler tek satırda listelenir</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0 sm:justify-end">
-            <Link
-              href="/tanimlar/kazanc-bilgi"
-              className="text-sm border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 font-medium"
-            >
-              ← Kazanç listesi
-            </Link>
+            <TanimEkleListeGeriLink href="/tanimlar/kazanc-bilgi" label="Kazanç listesi" />
             {!saltOkunur && (
               <Link
                 href={`/tanimlar/kazanc-bilgi/${unvanId}/toplu-ekle`}

@@ -143,7 +143,7 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Sendika Bilgileri</h1>
         <p className="text-sm text-slate-600 mt-1">
-          Aktif personelin sendika üyeliğini statüsüne uygun sendika listesinden atayın. Her kayıt önceki aktif üyeliği pasifleştirir.
+          Henüz sendika atanmamış aktif personel listelenir. Statüsüne uygun sendikadan atama yapın; kayıt sonrası personel listeden düşer.
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
         <input
           value={arama}
           onChange={e => setArama(e.target.value)}
-          placeholder="Ad, sicil veya sendika ara…"
+          placeholder="Ad veya sicil ara…"
           className="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-lg text-sm"
         />
         <select
