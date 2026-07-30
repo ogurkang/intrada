@@ -43,6 +43,25 @@ export async function fetchPersonelSendikaAtDate(
   return bySicil
 }
 
+/** Aktif sendika üyeliklerini pasifleştirir; pasifleştirilen kayıt sayısını döner. */
+export async function pasiflestirAktifPersonelSendika(
+  supabase: SupabaseClient,
+  sicil_no: string,
+  bitis_tarihi: string,
+  haricId: number | null = null,
+): Promise<number> {
+  let q = supabase
+    .from('personel_sendika')
+    .update({ aktif: false, bitis_tarihi })
+    .eq('sicil_no', sicil_no)
+    .eq('aktif', true)
+    .select('id')
+  if (haricId != null) q = q.neq('id', haricId)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return data?.length ?? 0
+}
+
 export async function fetchAktifPersonelSendika(
   supabase: SupabaseClient,
 ): Promise<Map<string, PersonelSendikaJoinRow>> {

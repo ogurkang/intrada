@@ -6,11 +6,15 @@ import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
 import { getBildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { pasiflestirAktifPersonelSendika } from '@/lib/personel-sendika-load'
+import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 
 export interface BildirimActionSonuc {
   ok?: boolean
   hata?: string
   id?: number
+  /** Sendika istifa: aktif üyelik pasifleştirildi mi */
+  sendikaPasiflestirildi?: boolean
 }
 
 function str(fd: FormData, key: string): string {
@@ -176,6 +180,15 @@ export async function sendikaIstifaEkle(formData: FormData): Promise<BildirimAct
 
   if (error) return { hata: error.message }
 
+  const bitisTarihi = new Date().toISOString().slice(0, 10)
+  let sendikaPasiflestirildi = false
+  try {
+    const pasifSayisi = await pasiflestirAktifPersonelSendika(supabase, sicil, bitisTarihi)
+    sendikaPasiflestirildi = pasifSayisi > 0
+  } catch (e) {
+    return { hata: e instanceof Error ? e.message : 'Sendika üyeliği pasifleştirilemedi.' }
+  }
+
   await writePersonelAuditLogSafe(supabase, {
     sicil_no: sicil,
     modul: 'sendika-istifa',
@@ -187,5 +200,8 @@ export async function sendikaIstifaEkle(formData: FormData): Promise<BildirimAct
   })
 
   revalidatePath('/bildirim/sendika-istifa')
-  return { ok: true, id: inserted?.id as number }
+  revalidatePath('/bildirim/sendika')
+  revalidatePath('/personel/sendika-atama')
+  await revalidatePersonelDetayPaths(sicil)
+  return { ok: true, id: inserted?.id as number, sendikaPasiflestirildi }
 }

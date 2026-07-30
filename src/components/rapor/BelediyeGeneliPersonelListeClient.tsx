@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import IsgRaporUstBaslik from '@/components/isg/IsgRaporUstBaslik'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { BelediyeGeneliPersonelSatir } from '@/lib/rapor-belediye-geneli-personel-liste'
 
@@ -20,6 +21,9 @@ interface Props {
   tabs: BelediyeGeneliPersonelTabVerisi[]
   raporBasePath: string
   excelBasePath: string
+  /** ISG vb. — geri düğmesi Excel yanında */
+  geriHref?: string
+  geriLabel?: string
 }
 
 export default function BelediyeGeneliPersonelListeClient({
@@ -29,6 +33,8 @@ export default function BelediyeGeneliPersonelListeClient({
   tabs,
   raporBasePath,
   excelBasePath,
+  geriHref,
+  geriLabel = '← Rapor Yönetimi',
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
@@ -43,39 +49,58 @@ export default function BelediyeGeneliPersonelListeClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="max-w-4xl">
-          <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
-            ← Rapor Yönetimi
-          </Link>
-          <h1 className="text-2xl font-bold text-slate-800">Belediye Geneli Personel Listesi</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Belediye genelindeki aktif personelin kimlik, statü, kadro ve görev bilgileri.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {aktif && (
-            <Link
-              href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
-              className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
-            >
-              Excel İndir ({aktif.label})
+      {geriHref ? (
+        <IsgRaporUstBaslik
+          baslik="Belediye Geneli Personel Listesi"
+          aciklama="Belediye genelindeki aktif personelin kimlik, statü, kadro ve görev bilgileri."
+          geriHref={geriHref}
+          geriLabel={geriLabel}
+          excelHref={
+            aktif
+              ? `${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`
+              : undefined
+          }
+          excelLabel={aktif ? `Excel İndir (${aktif.label})` : 'Excel İndir'}
+          yil={yil}
+          minYil={minYil}
+          maxYil={maxYil}
+          onYilChange={yilDegistir}
+        />
+      ) : (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="max-w-4xl">
+            <Link href="/rapor" className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
+              ← Rapor Yönetimi
             </Link>
-          )}
-          <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
-          <select
-            value={yil}
-            onChange={e => yilDegistir(Number(e.target.value))}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-          >
-            {Array.from({ length: maxYil - minYil + 1 }, (_, i) => minYil + i).map(y => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+            <h1 className="text-2xl font-bold text-slate-800">Belediye Geneli Personel Listesi</h1>
+            <p className="text-sm text-slate-600 mt-1">
+              Belediye genelindeki aktif personelin kimlik, statü, kadro ve görev bilgileri.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {aktif && (
+              <Link
+                href={`${excelBasePath}?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}`}
+                className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+              >
+                Excel İndir ({aktif.label})
+              </Link>
+            )}
+            <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
+            <select
+              value={yil}
+              onChange={e => yilDegistir(Number(e.target.value))}
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+            >
+              {Array.from({ length: maxYil - minYil + 1 }, (_, i) => minYil + i).map(y => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border-b border-slate-200 overflow-x-auto">
         <nav className="flex gap-0 min-w-max" aria-label="Dönem sekmeleri">

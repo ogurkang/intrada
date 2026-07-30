@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import Link from 'next/link'
+import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
 import type { Tables } from '@/types/database'
 import type { IsgSaglikTaramasiPersonel } from '@/lib/isg-saglik-taramasi-personel'
 import type { IsgSaglikKayitTur } from '@/lib/isg-saglik-taramasi-kayit-audit'
@@ -228,34 +228,28 @@ export default function IsgSaglikTaramasiDetayClient({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/isg/islemler/saglik-taramasi"
-            className="text-sm text-slate-500 hover:text-slate-800 transition-colors shrink-0"
-          >
-            ← Dönem Listesi
-          </Link>
-          <span className="text-slate-300 shrink-0">/</span>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-800">{donem.donem_adi}</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Sıra {donem.sira_no} · {tarihAraligi(donem.baslangic_tarihi, donem.bitis_tarihi)} ·{' '}
-              {personeller.length} personel
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-slate-800">{donem.donem_adi}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Sıra {donem.sira_no} · {tarihAraligi(donem.baslangic_tarihi, donem.bitis_tarihi)} ·{' '}
+            {personeller.length} personel
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={excelIndir}
-          disabled={excelYukleniyor || filtreli.length === 0}
-          className="inline-flex items-center gap-2 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap shrink-0 disabled:opacity-50"
-          style={{ backgroundColor: EXCEL_YESIL }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          {excelYukleniyor ? 'Hazırlanıyor…' : 'Excel İndir'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
+          <TanimEkleListeGeriLink href="/isg/islemler/saglik-taramasi" label="Dönem listesi" />
+          <button
+            type="button"
+            onClick={excelIndir}
+            disabled={excelYukleniyor || filtreli.length === 0}
+            className="inline-flex items-center gap-2 text-white text-sm px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap disabled:opacity-50"
+            style={{ backgroundColor: EXCEL_YESIL }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {excelYukleniyor ? 'Hazırlanıyor…' : 'Excel İndir'}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

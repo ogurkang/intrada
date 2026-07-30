@@ -12,25 +12,33 @@ export type IsgIslemHubSatir = {
 
 type Props = {
   satirlar: IsgIslemHubSatir[]
+  baslik?: string
+  aciklama?: string
+  geriHref?: string
+  geriLabel?: string
 }
 
 const DEFAULT_RENK = 'border-amber-200 bg-amber-50 text-amber-900'
 
-export default function IsgIslemlerHubClient({ satirlar }: Props) {
+export default function IsgIslemlerHubClient({
+  satirlar,
+  baslik = 'İSG — İşlemler',
+  aciklama = 'İşlem kartına tıklayarak ilgili ekrana gidin.',
+  geriHref = '/isg',
+  geriLabel = '← İSG Yönetimi',
+}: Props) {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div className="min-w-0">
           <Link
-            href="/isg"
+            href={geriHref}
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
-            ← İSG Yönetimi
+            {geriLabel}
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800">İSG — İşlemler</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            İşlem kartına tıklayarak ilgili ekrana gidin.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{aciklama}</p>
         </div>
       </div>
 

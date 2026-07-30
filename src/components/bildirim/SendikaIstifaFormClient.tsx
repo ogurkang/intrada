@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition, useEffect } from 'react'
 import PersonelAramaSecim from '@/components/bildirim/PersonelAramaSecim'
+import Modal from '@/components/ui/Modal'
+import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 import type { BildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
 import {
@@ -13,7 +15,7 @@ import {
   sendikaIstifaTarihFormat,
 } from '@/lib/sendika-istifa-belge'
 
-type Sonuc = { hata?: string; ok?: boolean; id?: number }
+type Sonuc = { hata?: string; ok?: boolean; id?: number; sendikaPasiflestirildi?: boolean }
 
 interface Props {
   personeller: BildirimFormPersonel[]
@@ -26,6 +28,7 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
+  const [bilgiModalAcik, setBilgiModalAcik] = useState(false)
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
   const [sendikaAdi, setSendikaAdi] = useState('')
 
@@ -64,6 +67,11 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
         )
       : null
 
+  function listeyeDon() {
+    router.push('/bildirim/sendika-istifa')
+    router.refresh()
+  }
+
   function gonder() {
     setHata(null)
     if (!seciliSicil) {
@@ -89,9 +97,18 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
         setHata(sonuc.hata)
         return
       }
-      router.push('/bildirim/sendika-istifa')
-      router.refresh()
+      if (sonuc?.ok) {
+        if (sonuc.sendikaPasiflestirildi) broadcastIntradaRefresh('sendika')
+        setBilgiModalAcik(true)
+        return
+      }
+      listeyeDon()
     })
+  }
+
+  function bilgiModalKapat() {
+    setBilgiModalAcik(false)
+    listeyeDon()
   }
 
   return (
@@ -186,6 +203,22 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
           )}
         </div>
       </div>
+
+      <Modal open={bilgiModalAcik} onClose={bilgiModalKapat} title="Sendika üyeliği güncellendi" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          Personelin mevcut sendika üyelik bilgisi pasif duruma gelmiştir. Yeni bir sendika üyesi olduğunda Sendika
+          Bildirimi ekranından işlem yapmayı unutmayınız.
+        </p>
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={bilgiModalKapat}
+            className="inline-flex items-center rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 transition-colors"
+          >
+            Tamam
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

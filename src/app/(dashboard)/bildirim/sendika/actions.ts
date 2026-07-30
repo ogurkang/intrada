@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { pasiflestirAktifPersonelSendika } from '@/lib/personel-sendika-load'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
@@ -29,21 +30,6 @@ async function personelAyrilmisMi(supabase: SupabaseServer, sicil_no: string): P
   return (data?.length ?? 0) > 0
 }
 
-async function oncekiAktifleriPasiflestir(
-  supabase: SupabaseServer,
-  sicil_no: string,
-  bitis_tarihi: string,
-  haricId: number | null,
-) {
-  let q = supabase
-    .from('personel_sendika')
-    .update({ aktif: false, bitis_tarihi })
-    .eq('sicil_no', sicil_no)
-    .eq('aktif', true)
-  if (haricId != null) q = q.neq('id', haricId)
-  await q
-}
-
 async function sendikaMeta(supabase: SupabaseServer, sendika_id: number) {
   const { data } = await supabase.from('tanim_sendika').select('kisa_ad, uzun_ad').eq('id', sendika_id).maybeSingle()
   return data
@@ -63,7 +49,7 @@ export async function personelSendikaEkle(
   const meta = await sendikaMeta(supabase, sendika_id)
   if (!meta) return { hata: 'Sendika tanımı bulunamadı.' }
 
-  await oncekiAktifleriPasiflestir(supabase, sicil_no, baslangic, null)
+  await pasiflestirAktifPersonelSendika(supabase, sicil_no, baslangic, null)
 
   const payload = {
     sicil_no,

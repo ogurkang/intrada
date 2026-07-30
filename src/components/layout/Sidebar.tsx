@@ -60,17 +60,7 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
 }
 
 function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
-  const calisanlarItem: MenuItem =
-    calisanlarHref === '/personel'
-      ? {
-          href: '/personel',
-          label: 'Çalışanlar',
-          children: [
-            { href: '/personel', label: 'Personel Listesi' },
-            { href: '/personel/sendika-atama', label: 'Sendika Bilgileri' },
-          ],
-        }
-      : { href: calisanlarHref, label: 'Personel Kartım' }
+  const calisanlarItem: MenuItem = { href: calisanlarHref, label: calisanlarHref === '/personel' ? 'Çalışanlar' : 'Personel Kartım' }
 
   return [
   {
