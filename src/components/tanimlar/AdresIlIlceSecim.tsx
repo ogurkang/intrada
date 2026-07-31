@@ -11,6 +11,7 @@ type Props = {
   disabled?: boolean
   ilName?: string
   ilceName?: string
+  className?: string
 }
 
 export default function AdresIlIlceSecim({
@@ -21,11 +22,12 @@ export default function AdresIlIlceSecim({
   disabled,
   ilName = 'il',
   ilceName = 'ilce',
+  className = 'grid grid-cols-1 sm:grid-cols-2 gap-4',
 }: Props) {
   const ilceler = useMemo(() => [...ilcelerForIl(il)], [il])
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className={className}>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">İl</label>
         <select

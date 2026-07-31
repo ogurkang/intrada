@@ -11,6 +11,7 @@ const BILDIRIM_REF_TABLES = [
   'pasaport_islemleri',
   'hizmet_birlestirme_islemleri',
   'mehil_izni_bildirimleri',
+  'aylik_izin_bildirimleri',
   'harcirah_talep_bildirimleri',
   'calisma_belgesi_bildirimleri',
   'bes_iptal_bildirimleri',
@@ -38,6 +39,9 @@ export default async function BildirimHubPage() {
   const mehilCountQ = kullaniciSicil
     ? supabase.from('mehil_izni_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('mehil_izni_bildirimleri').select('*', { count: 'exact', head: true })
+  const aylikIzinCountQ = kullaniciSicil
+    ? supabase.from('aylik_izin_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
+    : supabase.from('aylik_izin_bildirimleri').select('*', { count: 'exact', head: true })
   const harcirahCountQ = kullaniciSicil
     ? supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true }).eq('sicil_no', kullaniciSicil)
     : supabase.from('harcirah_talep_bildirimleri').select('*', { count: 'exact', head: true })
@@ -61,6 +65,7 @@ export default async function BildirimHubPage() {
     { count: pasaportSayisi },
     { count: hizmetSayisi },
     { count: mehilSayisi },
+    { count: aylikIzinSayisi },
     { count: harcirahSayisi },
     { count: calismaBelgesiSayisi },
     { count: besIptalSayisi },
@@ -74,6 +79,7 @@ export default async function BildirimHubPage() {
     pasaportCountQ,
     hizmetCountQ,
     mehilCountQ,
+    aylikIzinCountQ,
     harcirahCountQ,
     calismaBelgesiCountQ,
     besIptalCountQ,
@@ -186,6 +192,23 @@ export default async function BildirimHubPage() {
       ),
     },
     {
+      key: 'aylik-izin',
+      baslik: 'Aylık İzin İşlemleri',
+      aciklama: '657 SK m.108(e) aylık izin talep dilekçesi oluşturma ve Word çıktısı',
+      href: '/bildirim/aylik-izin',
+      refTable: 'aylik_izin_bildirimleri' as const,
+      sayi: aylikIzinSayisi ?? 0,
+      birim: 'form',
+      renk: 'border-cyan-200 bg-cyan-50',
+      ikonRenk: 'bg-cyan-100 text-cyan-600',
+      auditTip: 'aylik-izin' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+        </svg>
+      ),
+    },
+    {
       key: 'harcirah-talep',
       baslik: 'Harcırah Talep Bildirimi',
       aciklama: '6245 SK harcırah talep bildirimi oluşturma ve Word çıktısı',
@@ -275,7 +298,7 @@ export default async function BildirimHubPage() {
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, aylık izin, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []

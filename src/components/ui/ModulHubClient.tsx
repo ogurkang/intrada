@@ -15,6 +15,7 @@ import {
   hizmetBirlestirmeAuditDegerGoster,
 } from '@/lib/hizmet-birlestirme-audit'
 import { mehilIzniAuditDiffSatirlari, mehilIzniAuditDegerGoster } from '@/lib/mehil-izni-audit'
+import { aylikIzinAuditDiffSatirlari, aylikIzinAuditDegerGoster } from '@/lib/aylik-izin-audit'
 import {
   harcirahTalepAuditDiffSatirlari,
   harcirahTalepAuditDegerGoster,
@@ -55,6 +56,10 @@ const AUDIT_TIP_MAP: Record<ModulHubAuditTip, { diffSatirlari: DiffFn; degerGost
   'mehil-izni': {
     diffSatirlari: mehilIzniAuditDiffSatirlari,
     degerGoster: mehilIzniAuditDegerGoster,
+  },
+  'aylik-izin': {
+    diffSatirlari: aylikIzinAuditDiffSatirlari,
+    degerGoster: aylikIzinAuditDegerGoster,
   },
   'harcirah-talep': {
     diffSatirlari: harcirahTalepAuditDiffSatirlari,

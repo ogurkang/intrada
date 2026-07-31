@@ -1237,6 +1237,30 @@ export interface Database {
         }
         Relationships: []
       }
+      aylik_izin_bildirimleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          unvan: string; mudurluk: string
+          baslangic_tarihi: string; bitis_tarihi: string
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          unvan: string; mudurluk: string
+          baslangic_tarihi: string; bitis_tarihi: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          unvan?: string; mudurluk?: string
+          baslangic_tarihi?: string; bitis_tarihi?: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
       harcirah_talep_bildirimleri: {
         Row: {
           id: number; sicil_no: string; ad_soyad: string; tckn: string | null

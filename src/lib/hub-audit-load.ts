@@ -9,6 +9,7 @@ export type ModulHubAuditTip =
   | 'pasaport'
   | 'hizmet-birlestirme'
   | 'mehil-izni'
+  | 'aylik-izin'
   | 'harcirah-talep'
   | 'calisma-belgesi'
   | 'bes-iptal'

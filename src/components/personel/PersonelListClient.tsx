@@ -13,15 +13,75 @@ interface Props {
   data: Satir[]
 }
 
+type SortSutun = 'sicil_no' | 'ad_soyad' | 'tckn' | 'dogum_tarihi'
+type SortYon = 'asc' | 'desc'
+
+const SAYFA_BOYUTU = 10
+
 function tarihFormatla(t: string | null) {
   if (!t) return '—'
   return new Date(t).toLocaleDateString('tr-TR')
+}
+
+function tarihSiralaDegeri(t: string | null): number {
+  if (!t) return Number.NaN
+  const ts = Date.parse(t)
+  return Number.isFinite(ts) ? ts : Number.NaN
+}
+
+/** Rakam ve metin parçalarına bölerek doğal sıralama yapar (1 < 2 < 10 < 20). */
+function naturalCompare(a: string, b: string): number {
+  const re = /(\d+)|(\D+)/g
+  const ap = a.match(re) ?? []
+  const bp = b.match(re) ?? []
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    const x = ap[i] ?? ''
+    const y = bp[i] ?? ''
+    if (x === y) continue
+    const nx = parseInt(x, 10)
+    const ny = parseInt(y, 10)
+    if (!isNaN(nx) && !isNaN(ny)) return nx - ny
+    return x.localeCompare(y, 'tr')
+  }
+  return 0
+}
+
+function personelSirala(liste: Satir[], sutun: SortSutun, yon: SortYon): Satir[] {
+  return [...liste].sort((a, b) => {
+    let fark = 0
+    if (sutun === 'dogum_tarihi') {
+      const ta = tarihSiralaDegeri(a.dogum_tarihi)
+      const tb = tarihSiralaDegeri(b.dogum_tarihi)
+      const aGecerli = Number.isFinite(ta)
+      const bGecerli = Number.isFinite(tb)
+      if (aGecerli && bGecerli) fark = ta - tb
+      else if (aGecerli !== bGecerli) fark = aGecerli ? -1 : 1
+    } else {
+      fark = naturalCompare(String(a[sutun] ?? ''), String(b[sutun] ?? ''))
+    }
+    return yon === 'asc' ? fark : -fark
+  })
+}
+
+function SortIkon({ aktif, yon }: { aktif: boolean; yon: SortYon }) {
+  if (!aktif) {
+    return (
+      <span className="ml-1 text-slate-300">
+        <svg className="inline w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      </span>
+    )
+  }
+  return yon === 'asc' ? <span className="ml-1 text-blue-500">↑</span> : <span className="ml-1 text-blue-500">↓</span>
 }
 
 export default function PersonelListClient({ data }: Props) {
   const router = useRouter()
   const [arama, setArama] = useState('')
   const [sayfa, setSayfa] = useState(0)
+  const [sortSutun, setSortSutun] = useState<SortSutun>('sicil_no')
+  const [sortYon, setSortYon] = useState<SortYon>('asc')
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -30,26 +90,50 @@ export default function PersonelListClient({ data }: Props) {
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
   }, [])
-  const SAYFA_BOYUTU = 10
-
-  const sirali = useMemo(() =>
-    [...data].sort((a, b) => parseInt(a.sicil_no) - parseInt(b.sicil_no)),
-  [data])
 
   const filtreli = useMemo(() => {
-    setSayfa(0)
     const q = trNormalize(arama)
-    if (!q) return sirali
-    return sirali.filter(p =>
+    if (!q) return data
+    return data.filter(p =>
       trNormalize(p.sicil_no).includes(q) ||
       trNormalize(p.ad_soyad).includes(q) ||
       p.tckn?.includes(q)
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sirali, arama])
+  }, [data, arama])
 
-  const toplamSayfa = Math.ceil(filtreli.length / SAYFA_BOYUTU)
-  const sayfadaki   = filtreli.slice(sayfa * SAYFA_BOYUTU, (sayfa + 1) * SAYFA_BOYUTU)
+  const siraliFiltreli = useMemo(
+    () => personelSirala(filtreli, sortSutun, sortYon),
+    [filtreli, sortSutun, sortYon],
+  )
+
+  useEffect(() => setSayfa(0), [arama, sortSutun, sortYon])
+
+  const toplamSayfa = Math.max(1, Math.ceil(siraliFiltreli.length / SAYFA_BOYUTU))
+  const sayfadaki = siraliFiltreli.slice(sayfa * SAYFA_BOYUTU, (sayfa + 1) * SAYFA_BOYUTU)
+
+  function handleSutunTikla(sutun: SortSutun) {
+    if (sortSutun === sutun) {
+      setSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortSutun(sutun)
+      setSortYon('asc')
+    }
+  }
+
+  function ThSutun({ sutun, label, className }: { sutun: SortSutun; label: string; className?: string }) {
+    const aktif = sortSutun === sutun
+    return (
+      <th
+        className={`px-4 py-3 font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 transition-colors text-left ${
+          aktif ? 'text-blue-600 bg-blue-50' : ''
+        } ${className ?? ''}`}
+        onClick={() => handleSutunTikla(sutun)}
+      >
+        {label}
+        <SortIkon aktif={aktif} yon={sortYon} />
+      </th>
+    )
+  }
 
   return (
     <div>
@@ -96,14 +180,14 @@ export default function PersonelListClient({ data }: Props) {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-14">Sıra No</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Sicil No</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Adı Soyadı</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-36">TCKN</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Doğum Tarihi</th>
+                <ThSutun sutun="sicil_no" label="Sicil No" className="w-28" />
+                <ThSutun sutun="ad_soyad" label="Adı Soyadı" />
+                <ThSutun sutun="tckn" label="TCKN" className="w-36" />
+                <ThSutun sutun="dogum_tarihi" label="Doğum Tarihi" className="w-32" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtreli.length === 0 && (
+              {siraliFiltreli.length === 0 && (
                 <tr>
                   <td colSpan={5} className="text-center py-16 text-slate-400">
                     {arama ? `"${arama}" için sonuç bulunamadı.` : 'Henüz personel kaydı yok.'}
@@ -126,11 +210,11 @@ export default function PersonelListClient({ data }: Props) {
             </tbody>
           </table>
         </div>
-        {filtreli.length > 0 && (
+        {siraliFiltreli.length > 0 && (
           <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
             <span className="text-xs text-slate-400">
               {arama
-                ? `${filtreli.length} / ${data.length} kayıt · Sayfa ${sayfa + 1}/${toplamSayfa}`
+                ? `${siraliFiltreli.length} / ${data.length} kayıt · Sayfa ${sayfa + 1}/${toplamSayfa}`
                 : `Toplam ${data.length} kayıt · Sayfa ${sayfa + 1}/${toplamSayfa}`}
             </span>
             <div className="flex items-center gap-1">

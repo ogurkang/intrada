@@ -154,6 +154,7 @@ export function kullaniciPathAllowed(
       path.startsWith('/bildirim/pasaport') ||
       path.startsWith('/bildirim/hizmet-birlestirme') ||
       path.startsWith('/bildirim/mehil-izni') ||
+      path.startsWith('/bildirim/aylik-izin') ||
       path.startsWith('/bildirim/harcirah-talep') ||
       path.startsWith('/bildirim/calisma-belgesi') ||
       path.startsWith('/bildirim/bes-iptal') ||

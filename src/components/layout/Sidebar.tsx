@@ -140,6 +140,7 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
       { href: '/bildirim/pasaport',label: 'Pasaport İşlemleri'},
       { href: '/bildirim/hizmet-birlestirme', label: 'Hizmet Birleştirme İşlemleri' },
       { href: '/bildirim/mehil-izni', label: 'Mehil İzni Bildirimi' },
+      { href: '/bildirim/aylik-izin', label: 'Aylık İzin İşlemleri' },
       { href: '/bildirim/harcirah-talep', label: 'Harcırah Talep Bildirimi' },
       { href: '/bildirim/calisma-belgesi', label: 'Çalışma Belgesi İşlemleri' },
       { href: '/bildirim/bes-iptal', label: 'BES İptal İşlemleri' },
