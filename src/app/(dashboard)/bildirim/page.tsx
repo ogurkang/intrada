@@ -193,8 +193,8 @@ export default async function BildirimHubPage() {
     },
     {
       key: 'aylik-izin',
-      baslik: 'Aylık İzin İşlemleri',
-      aciklama: '657 SK m.108(e) aylık izin talep dilekçesi oluşturma ve Word çıktısı',
+      baslik: 'Aylıksız İşlemleri',
+      aciklama: '657 SK m.108 aylıksız izin talep dilekçesi oluşturma ve Word çıktısı',
       href: '/bildirim/aylik-izin',
       refTable: 'aylik_izin_bildirimleri' as const,
       sayi: aylikIzinSayisi ?? 0,
@@ -298,7 +298,7 @@ export default async function BildirimHubPage() {
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, aylık izin, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, aylıksız izin, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []

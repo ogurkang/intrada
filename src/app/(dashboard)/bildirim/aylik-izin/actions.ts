@@ -82,7 +82,7 @@ export async function aylikIzinEkle(formData: FormData): Promise<AylikIzinAction
     sicil_no: sicil,
     modul: 'aylik-izin',
     islem: 'Ekle',
-    ozet: `${personel.ad_soyad} için aylık izin talebi oluşturuldu.`,
+    ozet: `${personel.ad_soyad} için aylıksız izin talebi oluşturuldu.`,
     ref_table: 'aylik_izin_bildirimleri',
     ref_id: String(inserted?.id ?? ''),
     sonraki: {

@@ -55,8 +55,8 @@ export default function KullaniciAnaSayfa({
         emoji: '📅',
       },
       {
-        baslik: 'Aylık İzin İşlemleri',
-        aciklama: '657 SK m.108(e) aylık izin talep dilekçesi oluşturma ve Word çıktısı.',
+        baslik: 'Aylıksız İşlemleri',
+        aciklama: '657 SK m.108 aylıksız izin talep dilekçesi oluşturma ve Word çıktısı.',
         href: '/bildirim/aylik-izin',
         emoji: '🏖️',
       },

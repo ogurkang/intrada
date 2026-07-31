@@ -91,7 +91,7 @@ export default function AylikIzinListeClient({ kayitlar, auditLoglarByRefId }: P
         acik={gecmisRefId != null}
         onKapat={() => setGecmisRefId(null)}
         auditLoglar={gecmisRefId ? auditLoglarByRefId[gecmisRefId] ?? [] : []}
-        baslik="Aylık İzin Talebi Geçmişi"
+        baslik="Aylıksız İzin Talebi Geçmişi"
         diffSatirlari={aylikIzinAuditDiffSatirlari}
         degerGoster={aylikIzinAuditDegerGoster}
       />

@@ -105,14 +105,14 @@ export async function GET(req: Request) {
 
     const buf = await Packer.toBuffer(doc)
     const safeKey = alanlar.sicil_no || alanlar.tckn || String(kayit.id)
-    const filename = `Aylik_Izin_Talebi_${safeKey}.docx`
+    const filename = `Ayliksiz_Izin_Talebi_${safeKey}.docx`
     const encodedFilename = encodeURIComponent(filename)
 
     return new NextResponse(new Uint8Array(buf), {
       headers: {
         'Content-Type':
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="Aylik_Izin_Talebi.docx"; filename*=UTF-8''${encodedFilename}`,
+        'Content-Disposition': `attachment; filename="Ayliksiz_Izin_Talebi.docx"; filename*=UTF-8''${encodedFilename}`,
       },
     })
   } catch (err) {

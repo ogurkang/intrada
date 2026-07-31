@@ -138,12 +138,12 @@ export default function AylikIzinFormClient({ personeller, sabitSicil, onKaydet 
           href="/bildirim/aylik-izin"
           className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
         >
-          ← Aylık İzin İşlemleri
+          ← Aylıksız İşlemleri
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Yeni Aylık İzin Talebi</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Yeni Aylıksız İzin Talebi</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
           Personel seçildiğinde sicil, unvan ve müdürlük bilgileri kadro kaydından alınır. Başlangıç
-          ve bitiş tarihlerini girerek 657 SK m.108(e) aylık izin dilekçesi oluşturabilirsiniz.
+          ve bitiş tarihlerini girerek 657 SK m.108 aylıksız izin dilekçesi oluşturabilirsiniz.
         </p>
       </div>
 

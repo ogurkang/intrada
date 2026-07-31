@@ -50,9 +50,9 @@ export default async function AylikIzinPage() {
           >
             ← Bildirim Modülü
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800">Aylık İzin İşlemleri</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Aylıksız İşlemleri</h1>
           <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-            657 SK m.108(e) aylık izin talep formları aşağıda listelenir. Word belgesi indirerek
+            657 SK m.108 aylıksız izin talep formları aşağıda listelenir. Word belgesi indirerek
             dilekçe çıktısı alabilirsiniz.
           </p>
         </div>

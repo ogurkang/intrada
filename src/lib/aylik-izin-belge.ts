@@ -47,7 +47,7 @@ export function aylikIzinMetinOlustur(p: {
   return (
     `Belediyenizde ${sicil} sicil numarası ile ${unvan} olarak ${mud} çalışmaktayım. ` +
     `657 sayılı Devlet Memurları Kanunu'nun 108. Maddesine istinaden ${bas} – ${bit} ` +
-    `tarihleri arasında aylık izin kullanmak istiyorum. Gereğini arz ederim.`
+    `tarihleri arasında aylıksız izin kullanmak istiyorum. Gereğini arz ederim.`
   )
 }
 

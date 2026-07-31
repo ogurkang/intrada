@@ -68,9 +68,9 @@ export default async function AylikIzinDetayPage({ params }: Props) {
             href="/bildirim/aylik-izin"
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
-            ← Aylık İzin İşlemleri
+            ← Aylıksız İşlemleri
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800">Aylık İzin Talebi Detayı</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Aylıksız İzin Talebi Detayı</h1>
         </div>
         <a
           href={`/api/bildirim/aylik-izin/word?id=${kayit.id}`}
