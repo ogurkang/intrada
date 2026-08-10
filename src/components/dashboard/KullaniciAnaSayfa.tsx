@@ -61,6 +61,12 @@ export default function KullaniciAnaSayfa({
         emoji: '🏖️',
       },
       {
+        baslik: 'Yarı Zamanlı Çalışma İşlemleri',
+        aciklama: '657 SK Eki m.43 yarı zamanlı çalışma dilekçesi ve ek form oluşturma.',
+        href: '/bildirim/yari-zamanli-calisma',
+        emoji: '⏱️',
+      },
+      {
         baslik: 'Harcırah Talep Bildirimi',
         aciklama: 'Harcırah talep bildirimi oluşturma ve Word çıktısı.',
         href: '/bildirim/harcirah-talep',

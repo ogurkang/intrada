@@ -5,6 +5,7 @@ import SendikaBilgilerineGorePersonelListeClient, {
 import { fetchPersonelSendikaAtDate } from '@/lib/personel-sendika-load'
 import {
   parseSendikaIdsParam,
+  parseStatuParam,
   sendikaBilgilerineGorePersonelListe,
 } from '@/lib/rapor-sendika-bilgileri'
 import { periyotSonGunu, type KadroRaporRow, type RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -23,12 +24,13 @@ function sonGunuMetin(D: string): string {
 export default async function SendikaBilgilerineGorePersonelListePage({
   searchParams,
 }: {
-  searchParams: Promise<{ y?: string; s?: string }>
+  searchParams: Promise<{ y?: string; s?: string; st?: string }>
 }) {
   const sp = await searchParams
   const parsed = parseInt(sp.y ?? '', 10)
   const yil = Number.isFinite(parsed) ? Math.min(MAX_YIL, Math.max(MIN_YIL, parsed)) : new Date().getFullYear()
   const initialSendikaIds = parseSendikaIdsParam(sp.s)
+  const initialStatuIds = parseStatuParam(sp.st)
 
   const supabase = await createClient()
   const [{ data: kadroRaw }, { data: calisanRaw }, { data: mudurlukRaw }, { data: sendikaRaw }] = await Promise.all([
@@ -36,7 +38,7 @@ export default async function SendikaBilgilerineGorePersonelListePage({
       .from('kadro_hareketleri')
       .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu')
       .not('asil', 'is', null),
-    supabase.from('calisan').select('sicil_no, ad_soyad'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, telefon'),
     supabase.from('tanim_mudurluk').select('id, mudurluk_adi'),
     supabase.from('tanim_sendika').select('*').eq('aktif', true),
   ])
@@ -49,7 +51,11 @@ export default async function SendikaBilgilerineGorePersonelListePage({
     kadroByAsil.set(k.asil, list)
   }
   const mudurlukById = new Map((mudurlukRaw ?? []).map(m => [m.id, m.mudurluk_adi] as const))
-  const calisanlar = (calisanRaw ?? []).map(c => ({ sicil_no: c.sicil_no, ad_soyad: c.ad_soyad ?? c.sicil_no }))
+  const calisanlar = (calisanRaw ?? []).map(c => ({
+    sicil_no: c.sicil_no,
+    ad_soyad: c.ad_soyad ?? c.sicil_no,
+    telefon: c.telefon,
+  }))
   const tumSendikalar = sortTanimSendika((sendikaRaw ?? []) as Tables<'tanim_sendika'>[]).map(s => ({
     id: s.id,
     kisa_ad: s.kisa_ad,
@@ -70,6 +76,10 @@ export default async function SendikaBilgilerineGorePersonelListePage({
     })
   }
 
+  const tumStatuler = [...new Set(tabs.flatMap(t => t.satirlar.map(r => r.statu)).filter(s => s && s !== '—'))].sort((a, b) =>
+    a.localeCompare(b, 'tr'),
+  )
+
   return (
     <SendikaBilgilerineGorePersonelListeClient
       yil={yil}
@@ -77,7 +87,9 @@ export default async function SendikaBilgilerineGorePersonelListePage({
       maxYil={MAX_YIL}
       tabs={tabs}
       tumSendikalar={tumSendikalar}
+      tumStatuler={tumStatuler}
       initialSendikaIds={initialSendikaIds}
+      initialStatuIds={initialStatuIds}
     />
   )
 }

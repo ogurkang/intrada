@@ -10,6 +10,7 @@ export type ModulHubAuditTip =
   | 'hizmet-birlestirme'
   | 'mehil-izni'
   | 'aylik-izin'
+  | 'yari-zamanli-calisma'
   | 'harcirah-talep'
   | 'calisma-belgesi'
   | 'bes-iptal'

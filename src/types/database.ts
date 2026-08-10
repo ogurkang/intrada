@@ -1261,6 +1261,33 @@ export interface Database {
         }
         Relationships: []
       }
+      yari_zamanli_calisma_bildirimleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          unvan: string; mudurluk: string
+          cocuk_dogum_tarihi: string; yari_zamanli_baslangic_tarihi: string; normal_zamanli_donus_tarihi: string
+          calisma_programi: unknown
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          unvan: string; mudurluk: string
+          cocuk_dogum_tarihi: string; yari_zamanli_baslangic_tarihi: string; normal_zamanli_donus_tarihi: string
+          calisma_programi?: unknown
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          unvan?: string; mudurluk?: string
+          cocuk_dogum_tarihi?: string; yari_zamanli_baslangic_tarihi?: string; normal_zamanli_donus_tarihi?: string
+          calisma_programi?: unknown
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
       harcirah_talep_bildirimleri: {
         Row: {
           id: number; sicil_no: string; ad_soyad: string; tckn: string | null

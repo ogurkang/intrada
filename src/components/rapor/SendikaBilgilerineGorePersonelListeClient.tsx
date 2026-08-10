@@ -25,7 +25,16 @@ interface Props {
   maxYil: number
   tabs: SendikaPersonelListeTabVerisi[]
   tumSendikalar: SendikaSecenek[]
+  tumStatuler: string[]
   initialSendikaIds: number[]
+  initialStatuIds: string[]
+}
+
+function filtreUrlParcalari(sendikaFiltreler: number[], statuFiltreler: string[]): string {
+  const p: string[] = []
+  if (sendikaFiltreler.length) p.push(`s=${sendikaFiltreler.join(',')}`)
+  if (statuFiltreler.length) p.push(`st=${statuFiltreler.map(encodeURIComponent).join(',')}`)
+  return p.length ? `&${p.join('&')}` : ''
 }
 
 export default function SendikaBilgilerineGorePersonelListeClient({
@@ -34,30 +43,39 @@ export default function SendikaBilgilerineGorePersonelListeClient({
   maxYil,
   tabs,
   tumSendikalar,
+  tumStatuler,
   initialSendikaIds,
+  initialStatuIds,
 }: Props) {
   const router = useRouter()
   const [sekmeIndex, setSekmeIndex] = useState(0)
   const [sendikaFiltreler, setSendikaFiltreler] = useState<number[]>(initialSendikaIds)
+  const [statuFiltreler, setStatuFiltreler] = useState<string[]>(initialStatuIds)
   const aktif = tabs[sekmeIndex]
 
   const gorunenSatirlar = useMemo(() => {
     if (!aktif) return []
-    if (!sendikaFiltreler.length) return aktif.satirlar
-    const secili = new Set(sendikaFiltreler)
-    return aktif.satirlar.filter(r => secili.has(r.sendika_id))
-  }, [aktif, sendikaFiltreler])
+    let rows = aktif.satirlar
+    if (sendikaFiltreler.length) {
+      const secili = new Set(sendikaFiltreler)
+      rows = rows.filter(r => secili.has(r.sendika_id))
+    }
+    if (statuFiltreler.length) {
+      const secili = new Set(statuFiltreler)
+      rows = rows.filter(r => secili.has(r.statu))
+    }
+    return rows
+  }, [aktif, sendikaFiltreler, statuFiltreler])
 
   const yilDegistir = useCallback(
     (y: number) => {
-      const s = sendikaFiltreler.join(',')
-      const q = s ? `?y=${y}&s=${s}` : `?y=${y}`
-      router.push(`/rapor/sendika-bilgilerine-gore-personel-liste${q}`)
+      const ek = filtreUrlParcalari(sendikaFiltreler, statuFiltreler)
+      router.push(`/rapor/sendika-bilgilerine-gore-personel-liste?y=${y}${ek}`)
     },
-    [router, sendikaFiltreler],
+    [router, sendikaFiltreler, statuFiltreler],
   )
 
-  const excelSendika = sendikaFiltreler.length ? `&s=${sendikaFiltreler.join(',')}` : ''
+  const excelFiltre = filtreUrlParcalari(sendikaFiltreler, statuFiltreler)
 
   return (
     <div className="space-y-6">
@@ -72,7 +90,7 @@ export default function SendikaBilgilerineGorePersonelListeClient({
         <div className="flex flex-wrap items-center gap-2 justify-end">
           {aktif && (
             <Link
-              href={`/api/rapor/sendika-bilgilerine-gore-personel-liste/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${excelSendika}`}
+              href={`/api/rapor/sendika-bilgilerine-gore-personel-liste/excel?y=${yil}&p=${aktif.periyot === 'yillik' ? 'yillik' : aktif.periyot}${excelFiltre}`}
               className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Excel İndir ({aktif.label})
@@ -103,6 +121,36 @@ export default function SendikaBilgilerineGorePersonelListeClient({
                       }
                     />
                     [{s.statu}] {s.kisa_ad}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </details>
+          <label className="text-sm text-slate-600 whitespace-nowrap">Statü</label>
+          <details className="relative">
+            <summary className="list-none cursor-pointer min-w-[160px] max-w-[min(100vw-2rem,240px)] px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-700">
+              {statuFiltreler.length ? `${statuFiltreler.length} statü seçili` : 'Tümü'}
+            </summary>
+            <div className="absolute right-0 z-10 mt-1 w-56 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs text-slate-500">Checkbox ile seçiniz</p>
+                <button type="button" onClick={() => setStatuFiltreler([])} className="text-xs text-slate-500 hover:text-slate-700">
+                  Temizle
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {tumStatuler.map(st => (
+                  <label key={st} className="inline-flex items-center gap-2 text-xs text-slate-700 w-full">
+                    <input
+                      type="checkbox"
+                      checked={statuFiltreler.includes(st)}
+                      onChange={e =>
+                        setStatuFiltreler(prev =>
+                          e.target.checked ? Array.from(new Set([...prev, st])) : prev.filter(x => x !== st),
+                        )
+                      }
+                    />
+                    {st}
                   </label>
                 ))}
               </div>
@@ -157,8 +205,8 @@ export default function SendikaBilgilerineGorePersonelListeClient({
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[200px]">Adı Soyadı</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[200px]">Müdürlüğü</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 w-28">Statü</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-700 w-36">Cep Telefonu</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-700 w-40">Sendika Kısa Adı</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[240px]">Sendika Uzun Adı</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -176,8 +224,8 @@ export default function SendikaBilgilerineGorePersonelListeClient({
                         <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>
                         <td className="px-4 py-2.5 text-slate-700">{row.mudurluk}</td>
                         <td className="px-4 py-2.5 text-slate-700">{row.statu}</td>
+                        <td className="px-4 py-2.5 text-slate-700 tabular-nums">{row.telefon}</td>
                         <td className="px-4 py-2.5 text-slate-800 font-medium">{row.kisa_ad}</td>
-                        <td className="px-4 py-2.5 text-slate-600">{row.uzun_ad}</td>
                       </tr>
                     ))
                   )}

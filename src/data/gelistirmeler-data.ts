@@ -2,8 +2,44 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-07-30T05:58:34.503Z",
+  "generatedAt": "2026-08-10T10:38:21.008Z",
   "commits": [
+    {
+      "hash": "783d2dd",
+      "fullHash": "783d2dde7267a961de76ab9172924ccfc650218f",
+      "date": "2026-07-31",
+      "subject": "fix(bildirim): aylik izin etiketlerini ayliksiz olarak guncelle"
+    },
+    {
+      "hash": "7d04a5d",
+      "fullHash": "7d04a5de6f3f4d27e90bf3f5116e4c19a53b2348",
+      "date": "2026-07-31",
+      "subject": "feat(bildirim,personel): aylik izin modulu, personel liste/yeni iyilestirmeleri"
+    },
+    {
+      "hash": "c034972",
+      "fullHash": "c034972e7c08acb717e52489dae606addd50800b",
+      "date": "2026-07-30",
+      "subject": "feat(isg,sendika): ISG raporlari, istifa pasiflestirme ve UI duzenlemeleri"
+    },
+    {
+      "hash": "0a76cf3",
+      "fullHash": "0a76cf3db0f2372f253f41f2cd5b957b377af69f",
+      "date": "2026-07-30",
+      "subject": "fix(personel): link sayfasinda sendika bilgisi sekmesi verisi"
+    },
+    {
+      "hash": "2023f97",
+      "fullHash": "2023f9762bd07d7c2a5800f73776a294c0e6372e",
+      "date": "2026-07-30",
+      "subject": "feat(sendika,tanimlar): sendika-atama filtresi ve liste donus dugmesi"
+    },
+    {
+      "hash": "dd5f716",
+      "fullHash": "dd5f7169b641b9d896e777594b256801a8f0c505",
+      "date": "2026-07-30",
+      "subject": "feat(tanimlar,terfi,sendika): liste donusu, audit ikonlari ve terfi yenileme"
+    },
     {
       "hash": "578bd02",
       "fullHash": "578bd0239c03ffe0d472dabbf9eb66b8fa04fac1",
@@ -207,42 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "e2c3c4b857b95f869841d3cde537e4033bf63de0",
       "date": "2026-07-13",
       "subject": "feat(sosyal-hak): Ali 180 Haziran K=43 manuel override"
-    },
-    {
-      "hash": "b708979",
-      "fullHash": "b7089797fdc0d28aafc77db3d9b73f56af910cc4",
-      "date": "2026-07-13",
-      "subject": "feat(dashboard): kullanici ana sayfasina pasaport ve hizmet birlestirme kisayollari"
-    },
-    {
-      "hash": "d2ea0e1",
-      "fullHash": "d2ea0e180b341497d3381b035d5cbc05c20a1b88",
-      "date": "2026-07-13",
-      "subject": "fix(hizmet-birlestirme): onizleme ve Word'de yalniz tarih goster"
-    },
-    {
-      "hash": "f1b9f7e",
-      "fullHash": "f1b9f7e6a8026f9248a619fca53b18a080357365",
-      "date": "2026-07-13",
-      "subject": "feat(bildirim): Hizmet Birlestirme Islemleri formu ve Word ciktisi"
-    },
-    {
-      "hash": "a178e28",
-      "fullHash": "a178e28ba7875f7b6c7c55b29a54c4cc20aec6c3",
-      "date": "2026-07-10",
-      "subject": "feat(rapor): ogrenim durumuna gore iletisim bilgileri listesi"
-    },
-    {
-      "hash": "014e17f",
-      "fullHash": "014e17f4b9dde4252bfd1bc5c3b78450f990889b",
-      "date": "2026-07-10",
-      "subject": "feat(kesintiler): Zabita Havuzu sol menu ve genel bakis karti"
-    },
-    {
-      "hash": "857c8b4",
-      "fullHash": "857c8b4ce86dba27da1477d269e8e2da79622b79",
-      "date": "2026-07-10",
-      "subject": "fix(build): DonemListClient onEkle uyari tipi ve sosyal_hak_secim sorgusu."
     }
   ]
 }
