@@ -1,7 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import type { AyyHesapSonucu, AyyPersonelOzet } from '@/lib/ayy-hesap'
+import type { AyyHesapSonucu, AyyPersonelOzet, AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
+import {
+  AYY_OZET_BOLUM,
+  AYY_OZET_BOLUM_SIRASI,
+  ayyOzetPersonelGrupla,
+  type AyyOzetBolumKey,
+} from '@/lib/ayy-ozet-grupla'
 
 interface Donem {
   id: number
@@ -17,6 +23,7 @@ interface Props {
   donem:      Donem
   sonuc:      AyyHesapSonucu
   tatilSayisi: number
+  statuBazliPersonel: AyyStatuBazliPersonel[]
 }
 
 type Sekme = 'ozet' | 'takipteki' | 'donemdeki' | 'askidaki'
@@ -101,18 +108,23 @@ function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; et
   )
 }
 
-export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi }: Props) {
+export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi, statuBazliPersonel }: Props) {
   const [sekme, setSekme] = useState<Sekme>('ozet')
   const [arama, setArama] = useState('')
 
   const toplamKesinti = useMemo(() => sonuc.personeller.reduce((s, p) => s + p.K, 0), [sonuc])
 
-  // Zabıtaları listenin en altına taşı (kalın)
   function zabitalariAltaTasi<T extends { isZabita?: boolean }>(list: T[]): T[] {
     const diger = list.filter(p => !p.isZabita)
     const zabitalar = list.filter(p => p.isZabita)
     return [...diger, ...zabitalar]
   }
+
+  const ozetGruplar = useMemo(
+    () => ayyOzetPersonelGrupla(sonuc.personeller, statuBazliPersonel),
+    [sonuc.personeller, statuBazliPersonel],
+  )
+
   const toplamSD      = useMemo(() => sonuc.personeller.reduce((s, p) => s + p.SD, 0), [sonuc])
   const zabitaSayisi  = useMemo(() => sonuc.personeller.filter(p => p.isZabita).length, [sonuc])
 
@@ -124,6 +136,20 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi }: Props) {
       p.sicil_no.toLocaleLowerCase('tr-TR').includes(q)
     )
   }
+
+  const filtreliOzetGruplar = useMemo(() => {
+    const out = {} as Record<AyyOzetBolumKey, AyyPersonelOzet[]>
+    for (const key of AYY_OZET_BOLUM_SIRASI) {
+      out[key] = filtreUygula(ozetGruplar[key])
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ozetGruplar, arama])
+
+  const ozetFiltreliToplam = useMemo(
+    () => AYY_OZET_BOLUM_SIRASI.reduce((n, key) => n + filtreliOzetGruplar[key].length, 0),
+    [filtreliOzetGruplar],
+  )
 
   const sekmeler: { key: Sekme; label: string; sayisi: number }[] = [
     { key: 'ozet',      label: 'Genel Özet',      sayisi: sonuc.personeller.length  },
@@ -209,7 +235,32 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi }: Props) {
       <p className="text-xs text-slate-400 mb-3">{sekmeAciklamalar[sekme]}</p>
 
       {/* İçerik */}
-      <PersonelTablosu satirlar={sekmeData[sekme]} etiket={sekmeler.find(s => s.key === sekme)?.label ?? ''} />
+      {sekme === 'ozet' ? (
+        ozetFiltreliToplam === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <p className="text-sm">
+              {arama ? 'Arama kriterine uygun personel bulunamadı.' : 'Genel Özet bu dönemde kayıt yok.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {AYY_OZET_BOLUM_SIRASI.map(key => {
+              const satirlar = filtreliOzetGruplar[key]
+              if (satirlar.length === 0) return null
+              return (
+                <section key={key}>
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
+                    {AYY_OZET_BOLUM[key]}
+                  </h3>
+                  <PersonelTablosu satirlar={satirlar} etiket={AYY_OZET_BOLUM[key]} />
+                </section>
+              )
+            })}
+          </div>
+        )
+      ) : (
+        <PersonelTablosu satirlar={sekmeData[sekme]} etiket={sekmeler.find(s => s.key === sekme)?.label ?? ''} />
+      )}
     </div>
   )
 }

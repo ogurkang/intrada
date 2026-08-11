@@ -9,7 +9,6 @@ import {
   type AyyDetayData,
   type AyyDetayIzin,
 } from '@/app/(dashboard)/kesintiler/ayy/[donem_id]/actions'
-import { ayyHesapla } from '@/lib/ayy-hesap'
 import AyyOzetDisplay from '@/components/kesintiler/AyyOzetDisplay'
 
 interface Props {
@@ -108,7 +107,9 @@ export default function AyyDetayClient({ donemId }: Props) {
   const [data, setData] = useState<AyyDetayData | null>(null)
   const [hata, setHata] = useState<string | null>(null)
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [ozetData, setOzetData] = useState<{ donem: { id: number; donem_adi: string | null; donem_turu?: string | null; baslangic_tarihi: string; bitis_tarihi: string; durum?: 'Açık' | 'Kapalı' }; sonuc: Awaited<ReturnType<typeof ayyHesapla>>; tatilSayisi: number } | null>(null)
+  const [ozetData, setOzetData] = useState<
+    Extract<Awaited<ReturnType<typeof ayyOzetHesapla>>, { sonuc: unknown }> | null
+  >(null)
   const [izinDuzenleAcik, setIzinDuzenleAcik] = useState(false)
   const [excelMenuAcik, setExcelMenuAcik] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -319,6 +320,7 @@ export default function AyyDetayClient({ donemId }: Props) {
               donem={ozetData.donem}
               sonuc={ozetData.sonuc}
               tatilSayisi={ozetData.tatilSayisi}
+              statuBazliPersonel={ozetData.statuBazliPersonel}
             />
           ) : data.islenecek.length === 0 ? (
             <div className="py-12 text-center text-slate-500">

@@ -14,7 +14,7 @@ import {
   ayySdSonrakiDonemIcin,
   createAyyHavuzMemo,
 } from '@/lib/ayy-donem-havuz'
-import { ayyHesapla } from '@/lib/ayy-hesap'
+import { ayyHesapla, type AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
 
 export interface AyyDetayIzin {
   sira_no:  string
@@ -88,7 +88,12 @@ export async function ayyDetayYukle(donem_id: number): Promise<AyyDetayData | { 
 /** Özet önizleme: havuz + OD ile tek hesap (istemci ile aynı kaynak). */
 export async function ayyOzetHesapla(donem_id: number): Promise<
   | { hata: string }
-  | { donem: AyyDetayData['donem']; sonuc: ReturnType<typeof ayyHesapla>; tatilSayisi: number }
+  | {
+      donem: AyyDetayData['donem']
+      sonuc: ReturnType<typeof ayyHesapla>
+      tatilSayisi: number
+      statuBazliPersonel: AyyStatuBazliPersonel[]
+    }
 > {
   const supabase = await createClient()
   const donem = await ayyLoadDonem(supabase, donem_id)
@@ -147,6 +152,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
     },
     sonuc,
     tatilSayisi: tatiller.length,
+    statuBazliPersonel,
   }
 }
 

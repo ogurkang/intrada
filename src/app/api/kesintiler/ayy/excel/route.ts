@@ -13,7 +13,13 @@ import {
   ayySdSonrakiDonemIcin,
   createAyyHavuzMemo,
 } from '@/lib/ayy-donem-havuz'
-import { ayyHesapla } from '@/lib/ayy-hesap'
+import { ayyHesapla, type AyyPersonelOzet } from '@/lib/ayy-hesap'
+import {
+  AYY_OZET_BOLUM,
+  AYY_OZET_BOLUM_SIRASI,
+  ayyOzetPersonelGrupla,
+  ayyOzetToplamPersonel,
+} from '@/lib/ayy-ozet-grupla'
 import { applyGridBorders } from '@/lib/kesintiler-excel'
 
 function tarih(t: string | null) {
@@ -117,16 +123,29 @@ export async function GET(request: NextRequest) {
     return [...diger, ...zabitalar]
   }
 
+  function ozetBolumEkle(baslik: string, liste: AyyPersonelOzet[]) {
+    if (liste.length === 0) return
+    rows.push(mergeSatir(baslik))
+    mergeRows.push(rows.length - 1)
+    rows.push(headers)
+    liste.forEach(p => rows.push(satir(p)))
+  }
+
   if (tip === 'ozet') {
+    const gruplar = ayyOzetPersonelGrupla(sonuc.personeller, statuBazliPersonel)
+
     rows.push(mergeSatir('Aylık Yemek — Genel Özet'))
     mergeRows.push(rows.length - 1)
     rows.push(mergeSatir(donemMetin))
     mergeRows.push(rows.length - 1)
-    rows.push(headers)
-    if (sonuc.personeller.length === 0) {
+
+    if (ayyOzetToplamPersonel(gruplar) === 0) {
+      rows.push(headers)
       rows.push(['', '', 'Kayıt Yok', ...bosSatir.slice(4)])
     } else {
-      zabitalariAlta(sonuc.personeller).forEach(p => rows.push(satir(p)))
+      for (const key of AYY_OZET_BOLUM_SIRASI) {
+        ozetBolumEkle(AYY_OZET_BOLUM[key], gruplar[key])
+      }
     }
   } else {
     rows.push(mergeSatir('Aylık Yemek'))
