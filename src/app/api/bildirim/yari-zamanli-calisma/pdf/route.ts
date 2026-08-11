@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { yzcBelgeAlanlari, yzcTarihFormat } from '@/lib/yari-zamanli-calisma-belge'
-import { yzcPdfBuffer } from '@/lib/yari-zamanli-calisma-pdf'
+
+export const runtime = 'nodejs'
 
 export async function GET(req: Request) {
   try {
@@ -45,6 +46,7 @@ export async function GET(req: Request) {
 
     const tarih = kayit.created_at ? yzcTarihFormat(new Date(kayit.created_at)) : yzcTarihFormat()
     const alanlar = yzcBelgeAlanlari(kayit, tarih)
+    const { yzcPdfBuffer } = await import('@/lib/yari-zamanli-calisma-pdf')
     const buf = await yzcPdfBuffer(alanlar)
     const safeKey = alanlar.sicil_no || alanlar.tckn || String(kayit.id)
     const filename = `Yari_Zamanli_Calisma_${safeKey}.pdf`

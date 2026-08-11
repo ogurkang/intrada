@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["pdfkit"],
   async redirects() {
     return [{ source: '/personel/gorev-bilgileri', destination: '/personel', permanent: true }]
   },
@@ -13,6 +14,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/bildirim/aile/excel': ['./public/templates/**/*'],
     '/api/bildirim/mal/excel': ['./public/templates/**/*'],
+    '/api/bildirim/yari-zamanli-calisma/pdf': [
+      './node_modules/pdfkit/js/data/**/*',
+      './node_modules/dejavu-fonts-ttf/ttf/**/*',
+    ],
   },
 };
 

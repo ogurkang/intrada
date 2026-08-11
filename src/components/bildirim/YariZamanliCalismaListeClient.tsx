@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { GozDetayLink, IndirLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { GozDetayLink, IndirLink, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { yzcAuditDegerGoster, yzcAuditDiffSatirlari } from '@/lib/yari-zamanli-calisma-audit'
 import { yzcTarihGoster } from '@/lib/yari-zamanli-calisma-belge'
 import type { Tables } from '@/types/database'
@@ -38,7 +38,7 @@ export default function YariZamanliCalismaListeClient({ kayitlar, auditLoglarByR
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Adı Soyadı</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Doğum Tarihi</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Yarı Zamanlı Dönem</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-36">İşlemler</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-44">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -75,6 +75,7 @@ export default function YariZamanliCalismaListeClient({ kayitlar, auditLoglarByR
                             title="İşlem geçmişi"
                           />
                           <GozDetayLink href={`/bildirim/yari-zamanli-calisma/${k.id}`} title="Detay" />
+                          <KalemDuzenleLink href={`/bildirim/yari-zamanli-calisma/${k.id}/duzenle`} title="Düzenle" />
                           <IndirLink
                             href={`/api/bildirim/yari-zamanli-calisma/pdf?id=${k.id}`}
                             title="PDF İndir"

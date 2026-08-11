@@ -83,7 +83,14 @@ export default async function YariZamanliCalismaDetayPage({ params }: Props) {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Yarı Zamanlı Çalışma Talebi Detayı</h1>
         </div>
-        <a
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/bildirim/yari-zamanli-calisma/${kayit.id}/duzenle`}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            Düzenle
+          </Link>
+          <a
           href={`/api/bildirim/yari-zamanli-calisma/pdf?id=${kayit.id}`}
           className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
         >
@@ -94,6 +101,7 @@ export default async function YariZamanliCalismaDetayPage({ params }: Props) {
           </svg>
           PDF İndir (Dilekçe + Ek)
         </a>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden max-w-2xl">

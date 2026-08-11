@@ -18,9 +18,19 @@ import {
 
 type Sonuc = { hata?: string; ok?: boolean; id?: number }
 
+interface BaslangicDegerleri {
+  cocuk_dogum_tarihi: string
+  yari_zamanli_baslangic_tarihi: string
+  normal_zamanli_donus_tarihi: string
+  calisma_programi: YzcCalismaProgrami
+}
+
 interface Props {
+  mode?: 'create' | 'edit'
+  kayitId?: number
   personeller: BildirimFormPersonel[]
   sabitSicil?: string
+  baslangic?: BaslangicDegerleri
   onKaydet: (fd: FormData) => Promise<Sonuc>
 }
 
@@ -57,15 +67,29 @@ function TarihSecim({
   )
 }
 
-export default function YariZamanliCalismaFormClient({ personeller, sabitSicil, onKaydet }: Props) {
+export default function YariZamanliCalismaFormClient({
+  mode = 'create',
+  kayitId,
+  personeller,
+  sabitSicil,
+  baslangic,
+  onKaydet,
+}: Props) {
   const router = useRouter()
+  const duzenleme = mode === 'edit'
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
-  const [cocukDogumTarihi, setCocukDogumTarihi] = useState('')
-  const [yariZamanliBaslangic, setYariZamanliBaslangic] = useState('')
-  const [normalDonusTarihi, setNormalDonusTarihi] = useState('')
-  const [calismaProgrami, setCalismaProgrami] = useState<YzcCalismaProgrami>({})
+  const [cocukDogumTarihi, setCocukDogumTarihi] = useState(baslangic?.cocuk_dogum_tarihi ?? '')
+  const [yariZamanliBaslangic, setYariZamanliBaslangic] = useState(
+    baslangic?.yari_zamanli_baslangic_tarihi ?? '',
+  )
+  const [normalDonusTarihi, setNormalDonusTarihi] = useState(
+    baslangic?.normal_zamanli_donus_tarihi ?? '',
+  )
+  const [calismaProgrami, setCalismaProgrami] = useState<YzcCalismaProgrami>(
+    baslangic?.calisma_programi ?? {},
+  )
 
   const aramaOgeleri = useMemo(
     () => personeller.map(p => ({ sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, alt: p.tckn ?? '' })),
@@ -146,7 +170,7 @@ export default function YariZamanliCalismaFormClient({ personeller, sabitSicil, 
         setHata(sonuc.hata)
         return
       }
-      router.push('/bildirim/yari-zamanli-calisma')
+      router.push(duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma')
       router.refresh()
     })
   }
@@ -155,12 +179,14 @@ export default function YariZamanliCalismaFormClient({ personeller, sabitSicil, 
     <div className="space-y-6">
       <div>
         <Link
-          href="/bildirim/yari-zamanli-calisma"
+          href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
           className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
         >
-          ← Yarı Zamanlı Çalışma İşlemleri
+          ← {duzenleme ? 'Talep Detayı' : 'Yarı Zamanlı Çalışma İşlemleri'}
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Yeni Yarı Zamanlı Çalışma Talebi</h1>
+        <h1 className="text-2xl font-bold text-slate-800">
+          {duzenleme ? 'Yarı Zamanlı Çalışma Talebini Düzenle' : 'Yeni Yarı Zamanlı Çalışma Talebi'}
+        </h1>
         <p className="text-sm text-slate-600 mt-1 max-w-4xl">
           Personel bilgileri kadro kaydından alınır. Dilekçe ile birlikte ekte yer alacak yarı zamanlı çalışma
           formunu doldurun.
@@ -234,9 +260,12 @@ export default function YariZamanliCalismaFormClient({ personeller, sabitSicil, 
               disabled={pending || !formHazir}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
             >
-              {pending ? 'Kaydediliyor…' : 'Oluştur'}
+              {pending ? 'Kaydediliyor…' : duzenleme ? 'Kaydet' : 'Oluştur'}
             </button>
-            <Link href="/bildirim/yari-zamanli-calisma" className="text-sm text-slate-600 hover:text-slate-800">
+            <Link
+              href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
+              className="text-sm text-slate-600 hover:text-slate-800"
+            >
               İptal
             </Link>
           </div>

@@ -57,7 +57,7 @@ export default async function YariZamanliCalismaPage() {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Yarı Zamanlı Çalışma İşlemleri</h1>
           <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-            657 SK Eki m.43 yarı zamanlı çalışma talep formları aşağıda listelenir. Word belgesi dilekçe
+            657 SK Eki m.43 yarı zamanlı çalışma talep formları aşağıda listelenir. PDF belgesi dilekçe
             ve ek formu birlikte indirir.
           </p>
         </div>

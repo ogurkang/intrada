@@ -20,6 +20,7 @@
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
     "@types/pdfkit": "^0.17.6",
+    "dejavu-fonts-ttf": "^2.37.3",
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
     "next": "16.1.6",

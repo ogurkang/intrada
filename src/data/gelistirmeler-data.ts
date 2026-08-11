@@ -2,8 +2,14 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-08-10T10:38:21.008Z",
+  "generatedAt": "2026-08-11T05:59:04.392Z",
   "commits": [
+    {
+      "hash": "e782bd8",
+      "fullHash": "e782bd80957bc6950f66668b8c06c8a9d474a53c",
+      "date": "2026-08-10",
+      "subject": "feat(bildirim,rapor): yari zamanli PDF modulu ve sendika liste iyilestirmeleri"
+    },
     {
       "hash": "783d2dd",
       "fullHash": "783d2dde7267a961de76ab9172924ccfc650218f",
@@ -237,12 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "c94292e522230411f77dda32c64303825ed1a5a1",
       "date": "2026-07-13",
       "subject": "fix: hizmet birleştirme makam metni ve SH K override zincir taşıması"
-    },
-    {
-      "hash": "e2c3c4b",
-      "fullHash": "e2c3c4b857b95f869841d3cde537e4033bf63de0",
-      "date": "2026-07-13",
-      "subject": "feat(sosyal-hak): Ali 180 Haziran K=43 manuel override"
     }
   ]
 }
