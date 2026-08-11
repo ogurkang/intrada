@@ -9,7 +9,7 @@ import { getBildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import {
   yzcCalismaProgramiNormalize,
-  yzcProgramGunSayisi,
+  yzcProgramDogrula,
 } from '@/lib/yari-zamanli-calisma-belge'
 
 export interface YzcActionSonuc {
@@ -58,8 +58,9 @@ export async function yariZamanliCalismaEkle(formData: FormData): Promise<YzcAct
   } catch {
     return { hata: 'Çalışma programı geçersiz.' }
   }
-  if (yzcProgramGunSayisi(calisma_programi) < 3) {
-    return { hata: 'Haftalık çalışma programında en az 3 gün seçilmelidir.' }
+  const programDogrulama = yzcProgramDogrula(calisma_programi)
+  if (!programDogrulama.gecerli) {
+    return { hata: programDogrulama.hatalar.join('\n') }
   }
 
   const personel = await getBildirimFormPersonel(supabase, sicil)
@@ -168,8 +169,9 @@ export async function yariZamanliCalismaGuncelle(id: number, formData: FormData)
   } catch {
     return { hata: 'Çalışma programı geçersiz.' }
   }
-  if (yzcProgramGunSayisi(calisma_programi) < 3) {
-    return { hata: 'Haftalık çalışma programında en az 3 gün seçilmelidir.' }
+  const programDogrulamaGuncelle = yzcProgramDogrula(calisma_programi)
+  if (!programDogrulamaGuncelle.gecerli) {
+    return { hata: programDogrulamaGuncelle.hatalar.join('\n') }
   }
 
   const sicil = String(kayit.sicil_no ?? '').trim()

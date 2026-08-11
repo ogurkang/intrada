@@ -27,6 +27,17 @@ const GUN_KISA: Record<string, string> = {
 
 type PdfDoc = InstanceType<typeof PDFDocument>
 
+/** Resmi yazışmada boş satır aralığı (yaklaşık tek satır yüksekliği × n). */
+function satirAraligi(doc: PdfDoc, fontSize: number, satir = 1): number {
+  font(doc, false)
+  doc.fontSize(fontSize)
+  return doc.currentLineHeight(true) * satir
+}
+
+function besSatir(doc: PdfDoc, fontSize: number): number {
+  return satirAraligi(doc, fontSize, 5)
+}
+
 function pdfBuffer(doc: PdfDoc): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
@@ -96,30 +107,31 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
 
   let y = MARGIN
 
-  // —— Dilekçe (kompakt) ——
+  // —— Dilekçe ——
+  const bodySize = 8
   font(doc, false)
-  doc.fontSize(8).text(alanlar.tarih, MARGIN, y, { width: CONTENT_W, align: 'right', lineGap: 0 })
-  y = doc.y + 4
+  doc.fontSize(bodySize).text(alanlar.tarih, MARGIN, y, { width: CONTENT_W, align: 'right', lineGap: 0 })
+  y = doc.y + besSatir(doc, bodySize)
   font(doc, true)
   doc.fontSize(9).text(YZC_MAKAM, MARGIN, y, { width: CONTENT_W, align: 'center', lineGap: 0 })
   y = doc.y + 2
   font(doc, false)
-  doc.fontSize(8).text(YZC_BIRIM, MARGIN, y, { width: CONTENT_W, align: 'center', lineGap: 0 })
+  doc.fontSize(bodySize).text(YZC_BIRIM, MARGIN, y, { width: CONTENT_W, align: 'center', lineGap: 0 })
   y = doc.y + 6
   doc.text(alanlar.metin, MARGIN, y, { width: CONTENT_W, align: 'justify', indent: 16, lineGap: 0.5 })
-  y = doc.y + 10
+  y = doc.y + besSatir(doc, bodySize)
 
   const imzaX = MARGIN + CONTENT_W * 0.58
   const imzaW = CONTENT_W * 0.42
   font(doc, false)
-  doc.fontSize(8).text(alanlar.tckn, imzaX, y, { width: imzaW, align: 'center', lineGap: 0 })
+  doc.fontSize(bodySize).text(alanlar.tckn, imzaX, y, { width: imzaW, align: 'center', lineGap: 0 })
   font(doc, true)
-  doc.fontSize(8).text(alanlar.ad_soyad.toLocaleUpperCase('tr-TR'), imzaX, doc.y + 1, {
+  doc.fontSize(bodySize).text(alanlar.ad_soyad.toLocaleUpperCase('tr-TR'), imzaX, doc.y + 1, {
     width: imzaW,
     align: 'center',
     lineGap: 0,
   })
-  y = doc.y + 8
+  y = doc.y + besSatir(doc, bodySize)
 
   // —— Ek form ——
   font(doc, true)

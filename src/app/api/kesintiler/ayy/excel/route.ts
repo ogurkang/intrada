@@ -3,10 +3,12 @@ import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import {
   ayyBuildIzinHavuzu,
+  ayyGetMemurSozlesmeliSiciller,
   ayyGetOncekiDonem,
   ayyDonemTuruNorm,
   ayyIzinDbToAyyIzinRow,
   ayyLoadDonem,
+  ayyLoadStatuBazliPersonel,
   ayyLoadTatiller,
   ayySdSonrakiDonemIcin,
   createAyyHavuzMemo,
@@ -60,6 +62,8 @@ export async function GET(request: NextRequest) {
     donem.baslangic_tarihi,
     ayyDonemTuruNorm(donem.donem_turu),
   )
+  const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
+  const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
 
   const sonuc = ayyHesapla({
     donemBas: donem.baslangic_tarihi,
@@ -77,9 +81,10 @@ export async function GET(request: NextRequest) {
           kapatildi_at:     onceki.kapatildi_at ?? null,
         }
       : undefined,
+    statuBazliPersonel,
   })
 
-  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Ham İzin', 'Kesintilen İzin', 'Yemekli Gün', 'Yemek Alacağı Gün', 'Sonraki Döneme']
+  const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Ham İzin', 'Kesilen İzin', 'Yemekli Gün', 'Yemek Alacağı Gün', 'Sonraki Döneme']
   const colCount = headers.length
   const acikGri = {
     fill: { fgColor: { rgb: 'E0E0E0' } },

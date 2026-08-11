@@ -11,7 +11,7 @@ import {
   YZC_BIRIM,
   YZC_MAKAM,
   yzcBelgeAlanlari,
-  yzcProgramGunSayisi,
+  yzcProgramDogrula,
   yzcTarihFormat,
   type YzcCalismaProgrami,
 } from '@/lib/yari-zamanli-calisma-belge'
@@ -102,11 +102,10 @@ export default function YariZamanliCalismaFormClient({
   )
 
   const tcknUygun = bildirimTcknGecerliMi(secili?.tckn)
-  const programGunSayisi = yzcProgramGunSayisi(calismaProgrami)
+  const programDogrulama = useMemo(() => yzcProgramDogrula(calismaProgrami), [calismaProgrami])
   const formHazir =
     Boolean(seciliSicil && tcknUygun && secili?.unvan && secili?.mudurluk) &&
-    Boolean(cocukDogumTarihi && yariZamanliBaslangic && normalDonusTarihi) &&
-    programGunSayisi >= 3
+    Boolean(cocukDogumTarihi && yariZamanliBaslangic && normalDonusTarihi)
 
   const onizlemeAlanlar =
     secili && cocukDogumTarihi && yariZamanliBaslangic && normalDonusTarihi && secili.unvan && secili.mudurluk
@@ -152,8 +151,10 @@ export default function YariZamanliCalismaFormClient({
       setHata('Normal zamanlı çalışmaya dönüş tarihi zorunludur.')
       return
     }
-    if (programGunSayisi < 3) {
-      setHata('Haftalık çalışma programında en az 3 gün seçilmelidir.')
+    if (!programDogrulama.gecerli) {
+      window.alert(
+        ['Çalışma programı kurallara uymuyor:', '', ...programDogrulama.hatalar].join('\n'),
+      )
       return
     }
 
@@ -244,9 +245,6 @@ export default function YariZamanliCalismaFormClient({
 
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <YariZamanliCalismaProgramGrid value={calismaProgrami} onChange={setCalismaProgrami} />
-            {programGunSayisi > 0 && programGunSayisi < 3 ? (
-              <p className="text-xs text-amber-700 mt-3">En az 3 gün seçilmelidir ({programGunSayisi}/3).</p>
-            ) : null}
           </div>
 
           {hata ? (

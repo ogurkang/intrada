@@ -159,3 +159,67 @@ export function yzcBelgeAlanlari(
 export function yzcProgramGunSayisi(program: YzcCalismaProgrami): number {
   return YZC_GUNLER.filter(g => (program[g]?.length ?? 0) > 0).length
 }
+
+/** Her işaretli dilim 30 dakikadır. */
+export const YZC_DILIM_SAAT = 0.5
+export const YZC_MIN_GUN = 3
+export const YZC_MIN_GUNLUK_SAAT = 3
+export const YZC_HEDEF_HAFTALIK_SAAT = 20
+export const YZC_MAX_DILIM = YZC_HEDEF_HAFTALIK_SAAT / YZC_DILIM_SAAT
+
+export function yzcProgramMaxDilimeUlasti(program: YzcCalismaProgrami): boolean {
+  return yzcProgramDilimSayisi(program) >= YZC_MAX_DILIM
+}
+
+export function yzcProgramDilimSayisi(program: YzcCalismaProgrami): number {
+  let n = 0
+  for (const gun of YZC_GUNLER) {
+    n += program[gun]?.length ?? 0
+  }
+  return n
+}
+
+export function yzcProgramToplamSaat(program: YzcCalismaProgrami): number {
+  return yzcProgramDilimSayisi(program) * YZC_DILIM_SAAT
+}
+
+export type YzcProgramGunOzeti = { gun: YzcGun; dilim: number; saat: number }
+
+export function yzcProgramGunlukOzet(program: YzcCalismaProgrami): YzcProgramGunOzeti[] {
+  return YZC_GUNLER.filter(g => (program[g]?.length ?? 0) > 0).map(gun => ({
+    gun,
+    dilim: program[gun]!.length,
+    saat: program[gun]!.length * YZC_DILIM_SAAT,
+  }))
+}
+
+export type YzcProgramDogrulama = {
+  gunSayisi: number
+  toplamSaat: number
+  gunlukOzet: YzcProgramGunOzeti[]
+  hatalar: string[]
+  gecerli: boolean
+}
+
+export function yzcProgramDogrula(program: YzcCalismaProgrami): YzcProgramDogrulama {
+  const gunlukOzet = yzcProgramGunlukOzet(program)
+  const gunSayisi = gunlukOzet.length
+  const toplamSaat = yzcProgramToplamSaat(program)
+  const hatalar: string[] = []
+
+  if (gunSayisi < YZC_MIN_GUN) {
+    hatalar.push(`Haftalık çalışma günü en az ${YZC_MIN_GUN} olmalıdır (şu an: ${gunSayisi}).`)
+  }
+  for (const { gun, saat } of gunlukOzet) {
+    if (saat < YZC_MIN_GUNLUK_SAAT) {
+      hatalar.push(`${gun} günü en az ${YZC_MIN_GUNLUK_SAAT} saat seçilmelidir (şu an: ${saat} saat).`)
+    }
+  }
+  if (toplamSaat !== YZC_HEDEF_HAFTALIK_SAAT) {
+    hatalar.push(
+      `Haftalık toplam çalışma süresi tam ${YZC_HEDEF_HAFTALIK_SAAT} saat olmalıdır (şu an: ${toplamSaat} saat).`,
+    )
+  }
+
+  return { gunSayisi, toplamSaat, gunlukOzet, hatalar, gecerli: hatalar.length === 0 }
+}
