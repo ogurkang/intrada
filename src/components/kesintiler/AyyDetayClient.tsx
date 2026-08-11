@@ -148,6 +148,7 @@ export default function AyyDetayClient({ donemId }: Props) {
         donem: res.donem,
         sonuc: res.sonuc,
         tatilSayisi: res.tatilSayisi,
+        statuBazliPersonel: res.statuBazliPersonel,
       })
     })()
     return () => { iptal = true }
