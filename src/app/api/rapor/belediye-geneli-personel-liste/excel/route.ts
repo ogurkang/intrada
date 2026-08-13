@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     const yil = parseYil(searchParams.get('y'))
     const periyot = parsePeriyot(searchParams.get('p'))
 
-    const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
+    const [{ data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
       supabase
         .from('kadro_hareketleri')
         .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu')
@@ -62,6 +62,7 @@ export async function GET(req: Request) {
       supabase
         .from('calisan')
       .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
+      supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, varsayilan'),
     ])
 
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -82,6 +83,14 @@ export async function GET(req: Request) {
         kan_grubu: c.kan_grubu,
       })
     }
+    const varsayilanOgrenimBySicil = new Map<string, string>()
+    for (const o of ogrenimRaw ?? []) {
+      if (!o?.varsayilan) continue
+      const sicil = String(o.sicil_no ?? '').trim()
+      if (!sicil) continue
+      const ogrenimTuru = String(o.ogrenim_turu ?? '').trim()
+      varsayilanOgrenimBySicil.set(sicil, ogrenimTuru || '—')
+    }
 
     const D = periyotSonGunu(yil, periyot)
     const label = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
@@ -89,9 +98,10 @@ export async function GET(req: Request) {
       D,
       kadro,
       calisanBySicil,
+      varsayilanOgrenimBySicil,
     })
 
-    const cols = 19
+    const cols = 20
     const rows: (string | number)[][] = [
       padRow(cols, ['Belediye Geneli Personel Listesi']),
       padRow(cols, [`Yıl: ${yil} · Sekme: ${label}`]),
@@ -107,6 +117,7 @@ export async function GET(req: Request) {
         'Görev Unvanı',
         'Kadro Müdürlüğü',
         'Görev Müdürlüğü',
+        'Öğrenim',
         'TC Kimlik No',
         'SGK/SSK Sicil No',
         'Kuruma Giriş Tarihi',
@@ -129,6 +140,7 @@ export async function GET(req: Request) {
           r.gorev_unvani,
           r.kadro_mudurlugu,
           r.gorev_mudurlugu,
+          r.ogrenim,
           r.tckn,
           r.sgk_ssk_sicil_no,
           r.kuruma_giris_tarihi,
@@ -141,7 +153,7 @@ export async function GET(req: Request) {
           r.kan_grubu,
         ]),
       ),
-      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
+      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -155,8 +167,8 @@ export async function GET(req: Request) {
     ]
     ws['!cols'] = [
       { wch: 8 }, { wch: 12 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
-      { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-      { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 12 },
+      { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
+      { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 12 },
     ]
 
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
@@ -174,7 +186,7 @@ export async function GET(req: Request) {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 || c === 11 || c === 12 ? 'center' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 || c === 12 || c === 13 ? 'center' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),

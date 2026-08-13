@@ -48,7 +48,7 @@ export default async function BelediyeGeneliPersonelListePage({
     : new Date().getFullYear()
 
   const supabase = await createClient()
-  const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
+  const [{ data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
     supabase
       .from('kadro_hareketleri')
       .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu')
@@ -56,6 +56,7 @@ export default async function BelediyeGeneliPersonelListePage({
     supabase
       .from('calisan')
       .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
+    supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, varsayilan'),
   ])
 
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -76,6 +77,14 @@ export default async function BelediyeGeneliPersonelListePage({
       kan_grubu: c.kan_grubu,
     })
   }
+  const varsayilanOgrenimBySicil = new Map<string, string>()
+  for (const o of ogrenimRaw ?? []) {
+    if (!o?.varsayilan) continue
+    const sicil = String(o.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const ogrenimTuru = String(o.ogrenim_turu ?? '').trim()
+    varsayilanOgrenimBySicil.set(sicil, ogrenimTuru || '—')
+  }
 
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   const tabs: BelediyeGeneliPersonelTabVerisi[] = periyotlar.map(p => {
@@ -84,6 +93,7 @@ export default async function BelediyeGeneliPersonelListePage({
       D,
       kadro,
       calisanBySicil,
+      varsayilanOgrenimBySicil,
     })
     const label = p === 'yillik' ? 'YILLIK' : AYLAR_TR[(p as number) - 1]
     return {

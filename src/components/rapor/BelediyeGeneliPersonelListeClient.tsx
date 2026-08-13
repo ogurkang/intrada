@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import IsgRaporUstBaslik from '@/components/isg/IsgRaporUstBaslik'
 import type { RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -26,6 +26,9 @@ interface Props {
   geriLabel?: string
 }
 
+const TH_CLASS =
+  'sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-slate-700 shadow-[0_1px_0_0_rgb(226,232,240)]'
+
 export default function BelediyeGeneliPersonelListeClient({
   yil,
   minYil,
@@ -40,12 +43,59 @@ export default function BelediyeGeneliPersonelListeClient({
   const [sekmeIndex, setSekmeIndex] = useState(0)
   const aktif = tabs[sekmeIndex]
 
+  const topScrollRef = useRef<HTMLDivElement>(null)
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+  const spacerRef = useRef<HTMLDivElement>(null)
+  const syncingRef = useRef(false)
+
   const yilDegistir = useCallback(
     (y: number) => {
       router.push(`${raporBasePath}?y=${y}`)
     },
     [router, raporBasePath],
   )
+
+  const syncScrollWidth = useCallback(() => {
+    const tableEl = tableScrollRef.current
+    const spacer = spacerRef.current
+    if (!tableEl || !spacer) return
+    spacer.style.width = `${tableEl.scrollWidth}px`
+  }, [])
+
+  useEffect(() => {
+    syncScrollWidth()
+    const tableEl = tableScrollRef.current
+    if (!tableEl) return
+
+    const ro = new ResizeObserver(() => syncScrollWidth())
+    ro.observe(tableEl)
+    const table = tableEl.querySelector('table')
+    if (table) ro.observe(table)
+
+    window.addEventListener('resize', syncScrollWidth)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', syncScrollWidth)
+    }
+  }, [aktif, syncScrollWidth])
+
+  function onTopScroll() {
+    const top = topScrollRef.current
+    const table = tableScrollRef.current
+    if (!top || !table || syncingRef.current) return
+    syncingRef.current = true
+    table.scrollLeft = top.scrollLeft
+    syncingRef.current = false
+  }
+
+  function onTableScroll() {
+    const top = topScrollRef.current
+    const table = tableScrollRef.current
+    if (!top || !table || syncingRef.current) return
+    syncingRef.current = true
+    top.scrollLeft = table.scrollLeft
+    syncingRef.current = false
+  }
 
   return (
     <div className="space-y-6">
@@ -128,35 +178,48 @@ export default function BelediyeGeneliPersonelListeClient({
           </p>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[2400px]">
+            <div
+              ref={topScrollRef}
+              onScroll={onTopScroll}
+              className="overflow-x-auto overflow-y-hidden border-b border-slate-200"
+              aria-label="Yatay kaydırma"
+            >
+              <div ref={spacerRef} className="h-3" />
+            </div>
+            <div
+              ref={tableScrollRef}
+              onScroll={onTableScroll}
+              className="overflow-auto max-h-[min(70vh,720px)]"
+            >
+              <table className="w-full text-sm border-collapse min-w-[2600px]">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-20">Sıra No</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-28">Sicil No</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[180px]">Adı Soyadı</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-24">Cinsiyeti</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Statüsü</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[160px]">Kadro Unvanı</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[160px]">Görev Unvanı</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[180px]">Kadro Müdürlüğü</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[180px]">Görev Müdürlüğü</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-36">TC Kimlik No</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-36">SGK/SSK Sicil No</th>
-                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-28">Kuruma Giriş Tarihi</th>
-                    <th className="text-center px-3 py-3 font-semibold text-slate-700 w-28">Doğum Tarihi</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Doğum Yeri</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Baba Adı</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Anne Adı</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[240px]">Adres</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-32">Cep Telefonu</th>
-                    <th className="text-left px-3 py-3 font-semibold text-slate-700 w-24">Kan Grubu</th>
+                  <tr>
+                    <th className={`${TH_CLASS} text-center w-20`}>Sıra No</th>
+                    <th className={`${TH_CLASS} text-left w-28`}>Sicil No</th>
+                    <th className={`${TH_CLASS} text-left min-w-[180px]`}>Adı Soyadı</th>
+                    <th className={`${TH_CLASS} text-left w-24`}>Cinsiyeti</th>
+                    <th className={`${TH_CLASS} text-left min-w-[120px]`}>Statüsü</th>
+                    <th className={`${TH_CLASS} text-left min-w-[160px]`}>Kadro Unvanı</th>
+                    <th className={`${TH_CLASS} text-left min-w-[160px]`}>Görev Unvanı</th>
+                    <th className={`${TH_CLASS} text-left min-w-[180px]`}>Kadro Müdürlüğü</th>
+                    <th className={`${TH_CLASS} text-left min-w-[180px]`}>Görev Müdürlüğü</th>
+                    <th className={`${TH_CLASS} text-left min-w-[140px]`}>Öğrenim</th>
+                    <th className={`${TH_CLASS} text-left w-36`}>TC Kimlik No</th>
+                    <th className={`${TH_CLASS} text-left w-36`}>SGK/SSK Sicil No</th>
+                    <th className={`${TH_CLASS} text-center w-28`}>Kuruma Giriş Tarihi</th>
+                    <th className={`${TH_CLASS} text-center w-28`}>Doğum Tarihi</th>
+                    <th className={`${TH_CLASS} text-left min-w-[140px]`}>Doğum Yeri</th>
+                    <th className={`${TH_CLASS} text-left min-w-[120px]`}>Baba Adı</th>
+                    <th className={`${TH_CLASS} text-left min-w-[120px]`}>Anne Adı</th>
+                    <th className={`${TH_CLASS} text-left min-w-[240px]`}>Adres</th>
+                    <th className={`${TH_CLASS} text-left w-32`}>Cep Telefonu</th>
+                    <th className={`${TH_CLASS} text-left w-24`}>Kan Grubu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {aktif.satirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={19} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={20} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
@@ -172,6 +235,7 @@ export default function BelediyeGeneliPersonelListeClient({
                         <td className="px-3 py-2.5 text-slate-700">{r.gorev_unvani}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.kadro_mudurlugu}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.gorev_mudurlugu}</td>
+                        <td className="px-3 py-2.5 text-slate-700">{r.ogrenim}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.tckn}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.sgk_ssk_sicil_no}</td>
                         <td className="px-3 py-2.5 text-center text-slate-700">{r.kuruma_giris_tarihi}</td>

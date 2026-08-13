@@ -14,6 +14,7 @@ export interface BelediyeGeneliPersonelSatir {
   gorev_unvani: string
   kadro_mudurlugu: string
   gorev_mudurlugu: string
+  ogrenim: string
   tckn: string
   sgk_ssk_sicil_no: string
   kuruma_giris_tarihi: string
@@ -52,8 +53,9 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
   D: string
   kadro: KadroRaporRow[]
   calisanBySicil: Map<string, BelediyeCalisanRow>
+  varsayilanOgrenimBySicil?: Map<string, string>
 }): BelediyeGeneliPersonelSatir[] {
-  const { D, kadro, calisanBySicil } = input
+  const { D, kadro, calisanBySicil, varsayilanOgrenimBySicil } = input
   const byAsil = new Map<string, KadroRaporRow[]>()
 
   for (const r of kadro ?? []) {
@@ -81,6 +83,7 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
       gorev_unvani: txt(secilen.gorev_unvani),
       kadro_mudurlugu: txt(secilen.kadro_mudurlugu),
       gorev_mudurlugu: txt(secilen.gorev_mudurlugu),
+      ogrenim: txt(varsayilanOgrenimBySicil?.get(sicil)),
       tckn: txt(calisan.tckn),
       sgk_ssk_sicil_no: txt(calisan.sgk_ssk_sicil_no),
       kuruma_giris_tarihi: tarih(kadroBaslangic(secilen)),
