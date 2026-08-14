@@ -5,7 +5,10 @@ import {
   DENETIM_ALT_BOLUMLER,
   DENETIM_BOLUM_META,
   denetimAltBolumYolu,
+  denetimMenuYolu,
   type DenetimBelgeBolumu,
+  type DenetimMenuChild,
+  type DenetimMenuIkonAnahtar,
 } from '@/lib/denetim'
 
 export default async function DenetimBolumSayfa({
@@ -17,25 +20,45 @@ export default async function DenetimBolumSayfa({
 }) {
   if (!Number.isFinite(donemId) || donemId <= 0) notFound()
   const supabase = await createClient()
-  const { data: donem } = await supabase
-    .from('denetim_donem')
-    .select('id, donem_adi')
-    .eq('id', donemId)
-    .maybeSingle()
+  const meta = DENETIM_BOLUM_META[bolum]
+  const [{ data: donem }, { data: parent }] = await Promise.all([
+    supabase.from('denetim_donem').select('id, donem_adi').eq('id', donemId).maybeSingle(),
+    supabase
+      .from('denetim_donem_menu')
+      .select('id, baslik, aciklama, sistem_anahtari')
+      .eq('donem_id', donemId)
+      .eq('sistem_anahtari', meta.path)
+      .maybeSingle(),
+  ])
   if (!donem) notFound()
 
-  const meta = DENETIM_BOLUM_META[bolum]
-  const kartlar = DENETIM_ALT_BOLUMLER[bolum].map(alt => ({
+  let kartlar: DenetimMenuChild[] = DENETIM_ALT_BOLUMLER[bolum].map(alt => ({
     href: denetimAltBolumYolu(donemId, bolum, alt.anahtar),
     label: alt.label,
     aciklama: alt.aciklama,
     ikon: alt.ikon,
   }))
 
+  if (parent) {
+    const { data: children } = await supabase
+      .from('denetim_donem_menu')
+      .select('*')
+      .eq('parent_id', parent.id)
+      .order('sira_no')
+    if (children?.length) {
+      kartlar = children.map(c => ({
+        href: denetimMenuYolu(donemId, c),
+        label: c.baslik,
+        aciklama: c.aciklama ?? undefined,
+        ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
+      }))
+    }
+  }
+
   return (
     <DenetimBolumHubClient
-      baslik={`${meta.label} — ${donem.donem_adi}`}
-      aciklama={meta.aciklama}
+      baslik={`${parent?.baslik ?? meta.label} — ${donem.donem_adi}`}
+      aciklama={parent?.aciklama ?? meta.aciklama}
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
       kartlar={kartlar}

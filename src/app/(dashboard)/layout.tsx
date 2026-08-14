@@ -8,6 +8,7 @@ import { getAppAccess } from '@/lib/app-access'
 import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { ensureAppProfileForAuthUser } from '@/lib/app-profile-ensure'
 import IlkKurulumGuard from '@/components/auth/IlkKurulumGuard'
+import { loadDenetimSidebarAgac } from '@/lib/denetim-menu'
 
 export default async function DashboardLayout({
   children,
@@ -66,6 +67,8 @@ export default async function DashboardLayout({
     process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
     'local-dev'
 
+  const denetimAgac = await loadDenetimSidebarAgac(supabase)
+
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
       <DashboardShell
@@ -74,6 +77,7 @@ export default async function DashboardLayout({
         access={access}
         hayaletDurum={hayaletDurum}
         buildMarker={buildSha}
+        denetimAgac={denetimAgac}
       >
         {children}
       </DashboardShell>

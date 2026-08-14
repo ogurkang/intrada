@@ -238,14 +238,91 @@ export function denetimDonemBolumler(donemId: number): DenetimMenuBolum[] {
   ]
 }
 
+export type DenetimMenuSayfaTuru = 'hub' | 'belge' | 'karar_ay' | 'tasinmaz'
+
+/** Sabit sistem menülerinin dönem köküne göre göreli yolu */
+export const DENETIM_SISTEM_YOL: Record<string, string> = {
+  'karar-bilgileri': 'karar-bilgileri',
+  'encumen-kararlari': 'karar-bilgileri/encumen-kararlari',
+  'meclis-kararlari': 'karar-bilgileri/meclis-kararlari',
+  'mali-bilgiler': 'mali-bilgiler',
+  'gelir-tarifesi': 'mali-bilgiler/gelir-tarifesi',
+  'kesin-hesap': 'mali-bilgiler/kesin-hesap',
+  butce: 'mali-bilgiler/butce',
+  'tasinmaz-bilgileri': 'tasinmaz-bilgileri',
+  'performans-bilgileri': 'performans-bilgileri',
+  'stratejik-plan': 'performans-bilgileri/stratejik-plan',
+  'performans-programi': 'performans-bilgileri/performans-programi',
+  'faaliyet-raporu': 'performans-bilgileri/faaliyet-raporu',
+  'ic-kontrol-bilgileri': 'ic-kontrol-bilgileri',
+  yonetmelikler: 'ic-kontrol-bilgileri/yonetmelikler',
+  ikep: 'ic-kontrol-bilgileri/ikep',
+  'insan-kaynaklari-bilgileri': 'insan-kaynaklari-bilgileri',
+  'sosyal-denge': 'insan-kaynaklari-bilgileri/sosyal-denge',
+  'toplu-is-sozlesmesi': 'insan-kaynaklari-bilgileri/toplu-is-sozlesmesi',
+  'norm-kadro': 'insan-kaynaklari-bilgileri/norm-kadro',
+}
+
+export function denetimMenuYolu(
+  donemId: number,
+  menu: { id: number; sistem_anahtari?: string | null },
+): string {
+  const anahtar = menu.sistem_anahtari ?? ''
+  const rel = DENETIM_SISTEM_YOL[anahtar]
+  if (rel) return `/denetim/donemler/${donemId}/${rel}`
+  return `/denetim/donemler/${donemId}/m/${menu.id}`
+}
+
+export function denetimBolumFromSistem(anahtar: string | null | undefined): DenetimBelgeBolumu | null {
+  switch (anahtar) {
+    case 'mali-bilgiler':
+    case 'gelir-tarifesi':
+    case 'kesin-hesap':
+    case 'butce':
+      return 'mali'
+    case 'performans-bilgileri':
+    case 'stratejik-plan':
+    case 'performans-programi':
+    case 'faaliyet-raporu':
+      return 'performans'
+    case 'ic-kontrol-bilgileri':
+    case 'yonetmelikler':
+    case 'ikep':
+      return 'ic_kontrol'
+    case 'insan-kaynaklari-bilgileri':
+    case 'sosyal-denge':
+    case 'toplu-is-sozlesmesi':
+    case 'norm-kadro':
+      return 'insan_kaynaklari'
+    default:
+      return null
+  }
+}
+
+export function denetimMenuSlugUret(baslik: string): string {
+  const ham = baslik
+    .toLocaleLowerCase('tr-TR')
+    .replaceAll('ı', 'i')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ş', 's')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return ham || 'menu'
+}
+
 /** @deprecated Sol menüde artık dönem listesi kullanılır; geriye dönük referans için. */
 export const DENETIM_BOLUMLER: DenetimMenuBolum[] = [
   {
-    href: '/denetim/donemler',
-    label: 'Denetim Dönemleri',
+    href: '/denetim',
+    label: 'Genel Bakış',
     aciklama: 'Denetim dönemlerini yönetin.',
   },
 ]
+
 
 export function denetimBelgeUzanti(dosyaAdi: string): string {
   const p = dosyaAdi.split('.')

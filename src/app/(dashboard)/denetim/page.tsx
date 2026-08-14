@@ -1,43 +1,56 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import DenetimDonemListeClient, {
+  type DenetimAnaMenuSecenek,
+  type DenetimDonemSatir,
+} from '@/components/denetim/DenetimDonemListeClient'
 
 export default async function DenetimYonetimiPage() {
   const supabase = await createClient()
-  const { data: donemler } = await supabase
-    .from('denetim_donem')
-    .select('id, donem_adi, durum, sira_no')
-    .order('sira_no', { ascending: false })
-    .limit(5)
+  const [{ data }, menuRes] = await Promise.all([
+    supabase
+      .from('denetim_donem')
+      .select('id, sira_no, donem_adi, baslangic_tarihi, bitis_tarihi, durum')
+      .order('sira_no', { ascending: false }),
+    supabase
+      .from('denetim_donem_menu')
+      .select('id, donem_id, baslik, parent_id')
+      .is('parent_id', null)
+      .order('sira_no'),
+  ])
+  const menuler = menuRes.error ? [] : menuRes.data
 
-  const acik = (donemler ?? []).find(d => d.durum === 'Açık')
+  const donemler: DenetimDonemSatir[] = (data ?? []).map(d => ({
+    id: d.id,
+    sira_no: d.sira_no,
+    donem_adi: d.donem_adi,
+    baslangic_tarihi: d.baslangic_tarihi,
+    bitis_tarihi: d.bitis_tarihi,
+    durum: d.durum as 'Açık' | 'Kapalı',
+  }))
+  const donemAd = new Map(donemler.map(d => [d.id, d]))
+
+  const anaMenuler: DenetimAnaMenuSecenek[] = (menuler ?? []).map(m => ({
+    id: m.id,
+    donem_id: m.donem_id,
+    donem_adi: donemAd.get(m.donem_id)?.donem_adi ?? '',
+    baslik: m.baslik,
+    donemKapali: donemAd.get(m.donem_id)?.durum === 'Kapalı',
+  }))
+
+  const acikDonemVar = donemler.some(d => d.durum === 'Açık')
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'denetim_donem',
+    donemler.map(d => String(d.id)),
+  )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Denetim Yönetimi</h1>
-        <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Sayıştay ve benzeri denetimlere hazırlık için dönem oluşturun; her dönem içinde karar, mali,
-          taşınmaz, performans ve iç kontrol menüleri standart olarak yer alır.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link
-          href="/denetim/donemler"
-          className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-5 hover:shadow-md transition-shadow"
-        >
-          <h2 className="font-semibold text-slate-800">Denetim Dönemleri</h2>
-          <p className="text-xs text-slate-600 mt-3 leading-relaxed">
-            Dönem ekleyin, düzenleyin ve dönem detayına girerek standart menülere ulaşın.
-          </p>
-          {acik ? (
-            <p className="text-xs text-emerald-800 mt-3">Aktif dönem: {acik.donem_adi}</p>
-          ) : (
-            <p className="text-xs text-slate-500 mt-3">Şu an açık dönem yok.</p>
-          )}
-          <span className="text-xs font-medium text-indigo-800 mt-4 inline-block">Aç →</span>
-        </Link>
-      </div>
-    </div>
+    <DenetimDonemListeClient
+      donemler={donemler}
+      acikDonemVar={acikDonemVar}
+      auditLoglarByRefId={auditLoglarByRefId}
+      anaMenuler={anaMenuler}
+    />
   )
 }

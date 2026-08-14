@@ -21,6 +21,7 @@ interface DashboardShellProps {
   hayaletDurum?: HayaletProfilDurum | null
   /** Aktif deploy/build kimliği (debug amaçlı). */
   buildMarker?: string
+  denetimAgac?: import('@/lib/denetim-menu').DenetimSidebarDonem[]
 }
 
 export default function DashboardShell({
@@ -31,6 +32,7 @@ export default function DashboardShell({
   access,
   hayaletDurum,
   buildMarker,
+  denetimAgac,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -60,6 +62,7 @@ export default function DashboardShell({
           terfiMenuHref={terfiMenuHref}
           access={access}
           hayaletDurum={hayaletDurum}
+          denetimAgac={denetimAgac}
         />
       </aside>
 

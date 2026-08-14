@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
-import { denetimDonemBolumler, denetimTarihGoster } from '@/lib/denetim'
+import { denetimDonemBolumler, denetimTarihGoster, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
+import { denetimMenuAgaciKur } from '@/lib/denetim-menu'
 
 export default async function DenetimDonemDetayPage({
   params,
@@ -13,26 +14,36 @@ export default async function DenetimDonemDetayPage({
   if (!Number.isFinite(donemId) || donemId <= 0) notFound()
 
   const supabase = await createClient()
-  const { data: donem } = await supabase.from('denetim_donem').select('*').eq('id', donemId).maybeSingle()
+  const [{ data: donem }, { data: menuler }] = await Promise.all([
+    supabase.from('denetim_donem').select('*').eq('id', donemId).maybeSingle(),
+    supabase.from('denetim_donem_menu').select('*').eq('donem_id', donemId).order('sira_no'),
+  ])
   if (!donem) notFound()
 
-  const bolumler = denetimDonemBolumler(donemId)
-  const kartlar = bolumler.map(b => ({
-    href: b.href,
-    label: b.label,
-    aciklama: b.aciklama,
-    ikon: b.ikon,
-  }))
+  const agac = denetimMenuAgaciKur(donemId, menuler ?? [])
+  const kartlar = agac.length
+    ? agac.map(b => ({
+        href: b.href,
+        label: b.label,
+        aciklama: b.aciklama ?? undefined,
+        ikon: b.ikon,
+      }))
+    : denetimDonemBolumler(donemId).map(b => ({
+        href: b.href,
+        label: b.label,
+        aciklama: b.aciklama,
+        ikon: b.ikon as DenetimMenuIkonAnahtar | undefined,
+      }))
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <Link
-            href="/denetim/donemler"
+            href="/denetim"
             className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
           >
-            ← Denetim Dönemleri
+            ← Genel Bakış
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">{donem.donem_adi}</h1>
           <p className="text-sm text-slate-600 mt-1">
@@ -50,7 +61,7 @@ export default async function DenetimDonemDetayPage({
 
       <DenetimBolumHubClient
         baslik="Dönem Menüleri"
-        aciklama="Bu dönem için standart denetim başlıkları."
+        aciklama="Bu dönemin ana alt menüleri."
         geriHref={`/denetim/donemler/${donemId}`}
         geriLabel=""
         kartlar={kartlar}

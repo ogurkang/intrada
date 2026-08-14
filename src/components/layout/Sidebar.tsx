@@ -6,16 +6,15 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
 import { hayaletProfilYetkisiVar, type HayaletProfilDurum } from '@/lib/hayalet-profil'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
-import { createClient } from '@/lib/supabase/client'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
-import { denetimDonemBolumler, denetimDonemIdFromPath } from '@/lib/denetim'
+import type { DenetimSidebarDonem, DenetimSidebarMenu } from '@/lib/denetim-menu'
 import { trNormalize } from '@/lib/turkce-search'
 
 type MenuItem = {
   href: string
   label: string
   newTab?: boolean
-  children?: { href: string; label: string }[]
+  children?: MenuItem[]
 }
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
@@ -26,9 +25,9 @@ function childPathActive(pathname: string, href: string) {
 /** Alt rota eşleşiyorsa üst (Çalışanlar) vurgusu kapalı (children varsa). */
 function itemPathActive(pathname: string, item: MenuItem): boolean {
   if (item.children?.length) {
-    if (item.children.some(c => childPathActive(pathname, c.href))) return false
+    if (item.children.some(c => itemOrSubtreeActive(pathname, c))) return false
   }
-  // Denetim: Genel Bakış / Dönem listesi derin rotalarda yanlış vurgulanmasın
+  // Denetim: Genel Bakış derin rotalarda yanlış vurgulanmasın
   if (item.href === '/denetim' || item.href === '/denetim/donemler') {
     return pathname === item.href
   }
@@ -40,7 +39,7 @@ function itemPathActive(pathname: string, item: MenuItem): boolean {
 }
 
 function itemOrSubtreeActive(pathname: string, item: MenuItem): boolean {
-  if (item.children?.length && item.children.some(c => childPathActive(pathname, c.href))) return true
+  if (item.children?.length && item.children.some(c => itemOrSubtreeActive(pathname, c))) return true
   return pathname === item.href || pathname.startsWith(item.href + '/')
 }
 
@@ -51,7 +50,9 @@ function filterMenuItem(item: MenuItem, q: string): MenuItem | null {
   if (item.children?.length) {
     const parentMatch = trNormalize(item.label).includes(nq)
     if (parentMatch) return item
-    const children = item.children.filter(ch => trNormalize(ch.label).includes(nq))
+    const children = item.children
+      .map(ch => filterMenuItem(ch, trimmed))
+      .filter((ch): ch is MenuItem => ch != null)
     if (children.length) return { ...item, children }
     return null
   }
@@ -69,36 +70,136 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
   return items.length ? { ...grup, items } : null
 }
 
-function buildDenetimItems(pathname: string, donemBaslik: string | null): MenuItem[] {
-  const items: MenuItem[] = [
-    { href: '/denetim', label: 'Genel Bakış' },
-    { href: '/denetim/donemler', label: 'Denetim Dönemleri' },
-  ]
-  const donemId = denetimDonemIdFromPath(pathname)
-  if (donemId == null) return items
-  items.push({
-    href: `/denetim/donemler/${donemId}`,
-    label: donemBaslik?.trim() ? donemBaslik : 'Dönem Özeti',
-  })
-  for (const b of denetimDonemBolumler(donemId)) {
-    items.push({
-      href: b.href,
-      label: b.label,
-      children: b.children?.map(c => ({ href: c.href, label: c.label })),
-    })
+function collectAltAciklar(items: MenuItem[], pathname: string, into: Record<string, boolean>) {
+  for (const i of items) {
+    if (i.children?.length) {
+      into[i.href] = itemOrSubtreeActive(pathname, i)
+      collectAltAciklar(i.children, pathname, into)
+    }
   }
-  return items
+}
+
+function padClass(depth: number) {
+  if (depth <= 0) return 'pl-12 pr-2'
+  if (depth === 1) return 'pl-16 pr-2'
+  return 'pl-20 pr-2'
+}
+
+function leafPadClass(depth: number) {
+  if (depth <= 0) return 'pl-12 pr-4'
+  if (depth === 1) return 'pl-16 pr-4'
+  return 'pl-20 pr-4'
+}
+
+function toDenetimMenuItem(menu: DenetimSidebarMenu): MenuItem {
+  return {
+    href: menu.href,
+    label: menu.label,
+    children: menu.children?.map(toDenetimMenuItem),
+  }
+}
+
+function renderMenuTree(
+  items: MenuItem[],
+  opts: {
+    pathname: string
+    altAciklar: Record<string, boolean>
+    toggleAlt: (href: string) => void
+    onNavigate?: () => void
+    depth: number
+  },
+) {
+  const { pathname, altAciklar, toggleAlt, onNavigate, depth } = opts
+  return items.map(item => {
+    const aktif = itemPathActive(pathname, item)
+    if (item.children?.length) {
+      const altAcik = !!altAciklar[item.href]
+      const altAktif = itemOrSubtreeActive(pathname, item)
+      return (
+        <div key={item.href}>
+          <div className="flex min-w-0 items-stretch">
+            <Link
+              href={item.href}
+              onClick={onNavigate}
+              className={`flex min-w-0 flex-1 items-center gap-2 py-2 text-sm transition-colors ${padClass(depth)} ${
+                aktif || altAktif
+                  ? 'bg-slate-700 font-medium text-white'
+                  : depth > 0
+                    ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+              }`}
+            >
+              <span className={`${depth > 0 ? 'h-1 w-1' : 'h-1.5 w-1.5'} shrink-0 rounded-full bg-current opacity-60`} />
+              <span className="truncate">{item.label}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => toggleAlt(item.href)}
+              aria-expanded={altAcik}
+              aria-label={`${item.label} alt menüsünü aç veya kapat`}
+              className={`shrink-0 border-l border-slate-700/80 px-2 py-2 text-sm transition-colors ${
+                altAktif
+                  ? 'bg-slate-700 text-white'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+              }`}
+            >
+              <svg
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${altAcik ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+          {altAcik ? renderMenuTree(item.children, { ...opts, depth: depth + 1 }) : null}
+        </div>
+      )
+    }
+    const chAktif = childPathActive(pathname, item.href)
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        target={item.newTab ? '_blank' : undefined}
+        rel={item.newTab ? 'noopener noreferrer' : undefined}
+        onClick={onNavigate}
+        className={`flex items-center gap-2 py-1.5 text-sm transition-colors ${leafPadClass(depth)} ${
+          chAktif
+            ? 'bg-slate-700/80 font-medium text-white'
+            : depth > 0
+              ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+        }`}
+      >
+        <span className={`${depth > 0 ? 'h-1 w-1' : 'h-1.5 w-1.5'} rounded-full bg-current opacity-50`} />
+        <span className="truncate">{item.label}</span>
+      </Link>
+    )
+  })
+}
+
+function buildDenetimItems(agac: DenetimSidebarDonem[]): MenuItem[] {
+  return [
+    { href: '/denetim', label: 'Genel Bakış' },
+    ...agac.map(d => ({
+      href: `/denetim/donemler/${d.id}`,
+      label: d.donem_adi,
+      children: d.menus.map(toDenetimMenuItem),
+    })),
+  ]
 }
 
 function buildMenuGroups(
   terfiMenuHref: string,
   calisanlarHref: string,
-  pathname: string,
-  donemBaslik: string | null,
+  denetimAgac: DenetimSidebarDonem[],
 ): MenuGroup[] {
   const calisanlarItem: MenuItem = { href: calisanlarHref, label: calisanlarHref === '/personel' ? 'Çalışanlar' : 'Personel Kartım' }
 
-  const denetimItems = buildDenetimItems(pathname, donemBaslik)
+  const denetimItems = buildDenetimItems(denetimAgac)
 
   return [
   {
@@ -359,6 +460,7 @@ interface SidebarProps {
   terfiMenuHref?: string
   access: AppAccess
   hayaletDurum?: HayaletProfilDurum | null
+  denetimAgac?: DenetimSidebarDonem[]
 }
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
@@ -367,9 +469,14 @@ function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
   return 'kullanici'
 }
 
-export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, hayaletDurum }: SidebarProps) {
+export default function Sidebar({
+  onNavigate,
+  terfiMenuHref = '/terfi',
+  access,
+  hayaletDurum,
+  denetimAgac = [],
+}: SidebarProps) {
   const pathname = usePathname()
-  const [donemBaslik, setDonemBaslik] = useState<string | null>(null)
 
   const calisanlarHref = useMemo(() => {
     if (hayaletDurum?.aktif) return '/performans/degerlendirme'
@@ -381,8 +488,8 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
   }, [access, hayaletDurum])
 
   const menuGroups = useMemo(
-    () => buildMenuGroups(terfiMenuHref, calisanlarHref, pathname, donemBaslik),
-    [terfiMenuHref, calisanlarHref, pathname, donemBaslik],
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac),
+    [terfiMenuHref, calisanlarHref, denetimAgac],
   )
 
   const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}
@@ -440,11 +547,7 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
   })
   const [altAciklar, setAltAciklar] = useState<Record<string, boolean>>(() => {
     const ilk: Record<string, boolean> = {}
-    for (const g of menuGroups) {
-      for (const i of g.items) {
-        if (i.children?.length) ilk[i.href] = itemOrSubtreeActive(pathname, i)
-      }
-    }
+    for (const g of menuGroups) collectAltAciklar(g.items, pathname, ilk)
     return ilk
   })
   const [menuAramaQuery, setMenuAramaQuery] = useState('')
@@ -468,57 +571,27 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
   }
 
   useEffect(() => {
-    const donemId = denetimDonemIdFromPath(pathname)
-    if (donemId == null) {
-      setDonemBaslik(null)
-      return
+    if (pathname === '/denetim' || pathname.startsWith('/denetim/')) {
+      setAciklar(prev => (prev['Denetim Yönetimi'] ? prev : { ...prev, 'Denetim Yönetimi': true }))
     }
-    let iptal = false
-    const supabase = createClient()
-    void supabase
-      .from('denetim_donem')
-      .select('donem_adi')
-      .eq('id', donemId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!iptal) setDonemBaslik(data?.donem_adi ?? null)
-      })
-    return () => {
-      iptal = true
-    }
-  }, [pathname])
-
-  useEffect(() => {
-    const donemId = denetimDonemIdFromPath(pathname)
-    if (donemId == null) return
-
-    setAciklar(prev => (prev['Denetim Yönetimi'] ? prev : { ...prev, 'Denetim Yönetimi': true }))
-
-    setAltAciklar(prev => {
-      let degisti = false
-      const next = { ...prev }
-      for (const b of denetimDonemBolumler(donemId)) {
-        if (b.children?.length && !next[b.href]) {
-          next[b.href] = true
-          degisti = true
-        }
-      }
-      return degisti ? next : prev
-    })
   }, [pathname])
 
   useEffect(() => {
     setAltAciklar(prev => {
       let degisti = false
       const next = { ...prev }
-      for (const g of menuGroups) {
-        for (const i of g.items) {
-          if (i.children?.length && itemOrSubtreeActive(pathname, i) && !next[i.href]) {
-            next[i.href] = true
-            degisti = true
+      function walk(items: MenuItem[]) {
+        for (const i of items) {
+          if (i.children?.length) {
+            if (itemOrSubtreeActive(pathname, i) && !next[i.href]) {
+              next[i.href] = true
+              degisti = true
+            }
+            walk(i.children)
           }
         }
       }
+      for (const g of menuGroups) walk(g.items)
       return degisti ? next : prev
     })
   }, [pathname, menuGroups])
@@ -539,14 +612,18 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
     setAltAciklar(prev => {
       let degisti = false
       const next = { ...prev }
-      for (const g of aramaliGrupList) {
-        for (const i of g.items) {
+      function walk(items: MenuItem[]) {
+        for (const i of items) {
           if (i.children?.length && !next[i.href]) {
             next[i.href] = true
             degisti = true
+            walk(i.children)
+          } else if (i.children?.length) {
+            walk(i.children)
           }
         }
       }
+      for (const g of aramaliGrupList) walk(g.items)
       return degisti ? next : prev
     })
   }, [aramaAktif, menuArama, aramaliGrupList])
@@ -641,86 +718,12 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
 
                 {acik && (
                   <div className="mt-1">
-                    {grup.items.map((item) => {
-                      const aktif = itemPathActive(pathname, item)
-                      if (item.children?.length) {
-                        const altAcik = !!altAciklar[item.href]
-                        const altAktif = itemOrSubtreeActive(pathname, item)
-                        return (
-                          <div key={item.href}>
-                            <div className="flex items-stretch min-w-0">
-                              <Link
-                                href={item.href}
-                                onClick={onNavigate}
-                                className={`flex flex-1 min-w-0 items-center gap-2 pl-12 pr-2 py-2 text-sm transition-colors ${
-                                  aktif || altAktif
-                                    ? 'bg-slate-700 text-white font-medium'
-                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-                                }`}
-                              >
-                                <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-current opacity-60" />
-                                <span className="truncate">{item.label}</span>
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => toggleAlt(item.href)}
-                                aria-expanded={altAcik}
-                                aria-label={`${item.label} alt menüsünü aç veya kapat`}
-                                className={`shrink-0 px-2 py-2 text-sm transition-colors border-l border-slate-700/80 ${
-                                  altAktif
-                                    ? 'bg-slate-700 text-white'
-                                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-                                }`}
-                              >
-                                <svg
-                                  className={`w-3.5 h-3.5 transition-transform duration-200 ${altAcik ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={2.5}
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                            </div>
-                            {altAcik && item.children.map((ch) => {
-                              const chAktif = childPathActive(pathname, ch.href)
-                              return (
-                                <Link
-                                  key={ch.href}
-                                  href={ch.href}
-                                  onClick={onNavigate}
-                                  className={`flex items-center gap-2 pl-16 pr-4 py-1.5 text-sm transition-colors ${
-                                    chAktif
-                                      ? 'bg-slate-700/80 text-white font-medium'
-                                      : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                                  }`}
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-current opacity-50" />
-                                  {ch.label}
-                                </Link>
-                              )
-                            })}
-                          </div>
-                        )
-                      }
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          target={item.newTab ? '_blank' : undefined}
-                          rel={item.newTab ? 'noopener noreferrer' : undefined}
-                          onClick={onNavigate}
-                          className={`flex items-center gap-2 pl-12 pr-4 py-2 text-sm transition-colors ${
-                            aktif
-                              ? 'bg-slate-700 text-white font-medium'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-                          }`}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                          {item.label}
-                        </Link>
-                      )
+                    {renderMenuTree(grup.items, {
+                      pathname,
+                      altAciklar,
+                      toggleAlt,
+                      onNavigate,
+                      depth: 0,
                     })}
                   </div>
                 )}

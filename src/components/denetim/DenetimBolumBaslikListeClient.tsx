@@ -34,7 +34,8 @@ export type DenetimMudurlukSecenek = { id: number; mudurluk_adi: string }
 interface Props {
   donemId: number
   donemAdi: string
-  bolum: DenetimBelgeBolumu
+  menuId: number | null
+  bolum: DenetimBelgeBolumu | null
   bolumLabel: string
   bolumHref: string
   altBolum: string
@@ -53,6 +54,7 @@ const IKON =
 export default function DenetimBolumBaslikListeClient({
   donemId,
   donemAdi,
+  menuId,
   bolum,
   bolumLabel,
   bolumHref,
@@ -79,7 +81,8 @@ export default function DenetimBolumBaslikListeClient({
   function kaydet() {
     const fd = new FormData()
     fd.set('donem_id', String(donemId))
-    fd.set('bolum', bolum)
+    if (menuId) fd.set('menu_id', String(menuId))
+    if (bolum) fd.set('bolum', bolum)
     fd.set('alt_bolum', altBolum)
     fd.set('baslik', baslik)
     fd.set('aciklama', baslikAciklama)

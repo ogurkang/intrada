@@ -1987,12 +1987,67 @@ export interface Database {
           { foreignKeyName: 'denetim_karar_belge_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
         ]
       }
+      denetim_donem_menu: {
+        Row: {
+          id: number
+          donem_id: number
+          parent_id: number | null
+          baslik: string
+          aciklama: string | null
+          slug: string
+          sayfa_turu: 'hub' | 'belge' | 'karar_ay' | 'tasinmaz'
+          sistem_anahtari: string | null
+          ikon: string | null
+          sira_no: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          donem_id: number
+          parent_id?: number | null
+          baslik: string
+          aciklama?: string | null
+          slug: string
+          sayfa_turu: 'hub' | 'belge' | 'karar_ay' | 'tasinmaz'
+          sistem_anahtari?: string | null
+          ikon?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          donem_id?: number
+          parent_id?: number | null
+          baslik?: string
+          aciklama?: string | null
+          slug?: string
+          sayfa_turu?: 'hub' | 'belge' | 'karar_ay' | 'tasinmaz'
+          sistem_anahtari?: string | null
+          ikon?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_donem_menu_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
+          { foreignKeyName: 'denetim_donem_menu_parent_id_fkey'; columns: ['parent_id']; isOneToOne: false; referencedRelation: 'denetim_donem_menu'; referencedColumns: ['id'] },
+        ]
+      }
       denetim_bolum_baslik: {
         Row: {
           id: number
           donem_id: number
-          bolum: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
-          alt_bolum: string
+          menu_id: number | null
+          bolum: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari' | null
+          alt_bolum: string | null
           baslik: string
           aciklama: string | null
           sira_no: number
@@ -2004,8 +2059,9 @@ export interface Database {
         Insert: {
           id?: number
           donem_id: number
-          bolum: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
-          alt_bolum: string
+          menu_id?: number | null
+          bolum?: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari' | null
+          alt_bolum?: string | null
           baslik: string
           aciklama?: string | null
           sira_no?: number
@@ -2017,8 +2073,9 @@ export interface Database {
         Update: {
           id?: number
           donem_id?: number
-          bolum?: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
-          alt_bolum?: string
+          menu_id?: number | null
+          bolum?: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari' | null
+          alt_bolum?: string | null
           baslik?: string
           aciklama?: string | null
           sira_no?: number
@@ -2029,6 +2086,7 @@ export interface Database {
         }
         Relationships: [
           { foreignKeyName: 'denetim_bolum_baslik_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
+          { foreignKeyName: 'denetim_bolum_baslik_menu_id_fkey'; columns: ['menu_id']; isOneToOne: false; referencedRelation: 'denetim_donem_menu'; referencedColumns: ['id'] },
         ]
       }
       denetim_bolum_belge: {
@@ -2278,6 +2336,10 @@ export interface Database {
       dogrula_sifre_sifirla_kimlik: {
         Args: { p_email: string; p_sicil: string; p_tckn: string }
         Returns: boolean
+      }
+      denetim_donem_menu_seed: {
+        Args: { p_donem_id: number }
+        Returns: undefined
       }
     }
     Enums:          { [_ in never]: never }

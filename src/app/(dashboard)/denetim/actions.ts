@@ -10,6 +10,8 @@ import {
   denetimBelgeUzanti,
   denetimAltBolumBul,
   denetimBolumMu,
+  denetimBolumFromSistem,
+  denetimMenuSlugUret,
   DENETIM_BOLUM_META,
   type DenetimBelgeBolumu,
   type DenetimKararTuru,
@@ -40,6 +42,7 @@ function str(fd: FormData, key: string): string {
 }
 
 function revalidateDonem(donemId?: number) {
+  revalidatePath('/', 'layout')
   revalidatePath('/denetim')
   revalidatePath('/denetim/donemler')
   if (donemId) {
@@ -97,6 +100,8 @@ export async function denetimDonemEkle(formData: FormData): Promise<DenetimActio
     if (error.code === '23505') return { hata: 'Açık bir dönem varken yeni dönem açılamaz.' }
     return { hata: error.message }
   }
+
+  await supabase.rpc('denetim_donem_menu_seed', { p_donem_id: inserted.id })
 
   await writeDenetimDonemAudit(supabase, {
     donemId: inserted.id,
@@ -339,24 +344,160 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
   return { ok: true, id: inserted.id }
 }
 
+export async function denetimAnaAltMenuEkle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const donemId = Number.parseInt(str(formData, 'donem_id'), 10)
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  if (!Number.isFinite(donemId) || donemId <= 0) return { hata: 'Dönem seçin.' }
+  if (baslik.length < 2) return { hata: 'Menü adı en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Menü adı en fazla 120 karakter olabilir.' }
+
+  const { data: donem } = await supabase.from('denetim_donem').select('id, durum, donem_adi').eq('id', donemId).maybeSingle()
+  if (!donem) return { hata: 'Dönem bulunamadı.' }
+  if (donem.durum === 'Kapalı') return { hata: 'Kapalı döneme menü eklenemez.' }
+
+  const { data: maxRow } = await supabase
+    .from('denetim_donem_menu')
+    .select('sira_no')
+    .eq('donem_id', donemId)
+    .is('parent_id', null)
+    .order('sira_no', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const slug = `${denetimMenuSlugUret(baslik)}-${Date.now().toString(36)}`
+  const { data: inserted, error } = await supabase
+    .from('denetim_donem_menu')
+    .insert({
+      donem_id: donemId,
+      parent_id: null,
+      baslik,
+      aciklama,
+      slug,
+      sayfa_turu: 'hub' as const,
+      ikon: null,
+      sira_no: (maxRow?.sira_no ?? 0) + 1,
+      created_by: user.id,
+      created_by_email: user.email ?? null,
+    })
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === '23505') return { hata: 'Bu dönemde aynı adlı ana alt menü zaten var.' }
+    return { hata: error.message }
+  }
+
+  revalidateDonem(donemId)
+  return { ok: true, id: inserted.id }
+}
+
+export async function denetimAltMenuEkle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const parentId = Number.parseInt(str(formData, 'parent_id'), 10)
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  if (!Number.isFinite(parentId) || parentId <= 0) return { hata: 'Ana alt menü seçin.' }
+  if (baslik.length < 2) return { hata: 'Menü adı en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Menü adı en fazla 120 karakter olabilir.' }
+
+  const { data: parent } = await supabase
+    .from('denetim_donem_menu')
+    .select('id, donem_id, parent_id, baslik, denetim_donem!inner(durum)')
+    .eq('id', parentId)
+    .maybeSingle()
+  if (!parent) return { hata: 'Ana alt menü bulunamadı.' }
+  if (parent.parent_id != null) return { hata: 'Alt menü yalnızca ana alt menü altına eklenebilir.' }
+  const donemDurumu = Array.isArray(parent.denetim_donem)
+    ? parent.denetim_donem[0]?.durum
+    : parent.denetim_donem?.durum
+  if (donemDurumu === 'Kapalı') return { hata: 'Kapalı döneme menü eklenemez.' }
+
+  const { data: maxRow } = await supabase
+    .from('denetim_donem_menu')
+    .select('sira_no')
+    .eq('parent_id', parentId)
+    .order('sira_no', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const slug = `${denetimMenuSlugUret(baslik)}-${Date.now().toString(36)}`
+  const { data: inserted, error } = await supabase
+    .from('denetim_donem_menu')
+    .insert({
+      donem_id: parent.donem_id,
+      parent_id: parentId,
+      baslik,
+      aciklama,
+      slug,
+      sayfa_turu: 'belge' as const,
+      ikon: null,
+      sira_no: (maxRow?.sira_no ?? 0) + 1,
+      created_by: user.id,
+      created_by_email: user.email ?? null,
+    })
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === '23505') return { hata: 'Bu menüde aynı adlı alt menü zaten var.' }
+    return { hata: error.message }
+  }
+
+  revalidateDonem(parent.donem_id)
+  return { ok: true, id: inserted.id }
+}
+
 export async function denetimBolumBaslikEkle(formData: FormData): Promise<DenetimActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
   const { supabase, user } = gate
 
   const donemId = Number.parseInt(str(formData, 'donem_id'), 10)
+  const menuIdRaw = Number.parseInt(str(formData, 'menu_id'), 10)
   const bolumRaw = str(formData, 'bolum')
   const altBolum = str(formData, 'alt_bolum')
   const baslik = str(formData, 'baslik')
   const aciklama = str(formData, 'aciklama') || null
   if (!Number.isFinite(donemId) || donemId <= 0) return { hata: 'Dönem gerekli.' }
-  if (!denetimBolumMu(bolumRaw)) return { hata: 'Bölüm geçersiz.' }
   if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
   if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
 
-  const bolum = bolumRaw as DenetimBelgeBolumu
-  const alt = denetimAltBolumBul(bolum, altBolum)
-  if (!alt) return { hata: 'Alt menü geçersiz.' }
+  let menuId = Number.isFinite(menuIdRaw) && menuIdRaw > 0 ? menuIdRaw : null
+  let bolum: DenetimBelgeBolumu | null = denetimBolumMu(bolumRaw) ? bolumRaw : null
+  let altEtiket = altBolum
+
+  if (menuId) {
+    const { data: menu } = await supabase
+      .from('denetim_donem_menu')
+      .select('id, donem_id, parent_id, baslik, sayfa_turu, sistem_anahtari')
+      .eq('id', menuId)
+      .eq('donem_id', donemId)
+      .maybeSingle()
+    if (!menu) return { hata: 'Alt menü bulunamadı.' }
+    if (menu.sayfa_turu !== 'belge' || menu.parent_id == null) {
+      return { hata: 'Başlık yalnızca alt menülere eklenebilir.' }
+    }
+    altEtiket = menu.baslik
+    bolum = denetimBolumFromSistem(menu.sistem_anahtari)
+  } else {
+    if (!bolum) return { hata: 'Bölüm geçersiz.' }
+    const alt = denetimAltBolumBul(bolum, altBolum)
+    if (!alt) return { hata: 'Alt menü geçersiz.' }
+    altEtiket = alt.label
+    const { data: menu } = await supabase
+      .from('denetim_donem_menu')
+      .select('id')
+      .eq('donem_id', donemId)
+      .eq('sistem_anahtari', altBolum)
+      .maybeSingle()
+    menuId = menu?.id ?? null
+  }
 
   const { data: donem } = await supabase
     .from('denetim_donem')
@@ -366,20 +507,21 @@ export async function denetimBolumBaslikEkle(formData: FormData): Promise<Deneti
   if (!donem) return { hata: 'Dönem bulunamadı.' }
   if (donem.durum === 'Kapalı') return { hata: 'Kapalı döneme başlık eklenemez.' }
 
-  const { data: maxRow } = await supabase
+  let maxQuery = supabase
     .from('denetim_bolum_baslik')
     .select('sira_no')
     .eq('donem_id', donemId)
-    .eq('bolum', bolum)
-    .eq('alt_bolum', altBolum)
     .order('sira_no', { ascending: false })
     .limit(1)
-    .maybeSingle()
+  if (menuId) maxQuery = maxQuery.eq('menu_id', menuId)
+  else if (bolum) maxQuery = maxQuery.eq('bolum', bolum).eq('alt_bolum', altBolum)
+  const { data: maxRow } = await maxQuery.maybeSingle()
 
   const payload = {
     donem_id: donemId,
+    menu_id: menuId,
     bolum,
-    alt_bolum: altBolum,
+    alt_bolum: altBolum || null,
     baslik,
     aciklama,
     sira_no: (maxRow?.sira_no ?? 0) + 1,
@@ -396,11 +538,12 @@ export async function denetimBolumBaslikEkle(formData: FormData): Promise<Deneti
     return { hata: error.message }
   }
 
+  const bolumEtiket = bolum ? DENETIM_BOLUM_META[bolum].label : 'Menü'
   await writeDenetimBolumBaslikAudit(supabase, {
     baslikId: inserted.id,
     islem: 'Ekle',
-    ozet: `${DENETIM_BOLUM_META[bolum].label} / ${alt.label}: ${baslik} başlığı eklendi.`,
-    sonraki: { baslik, bolum, alt_bolum: altBolum, aciklama, sira_no: payload.sira_no },
+    ozet: `${bolumEtiket} / ${altEtiket}: ${baslik} başlığı eklendi.`,
+    sonraki: { baslik, bolum, alt_bolum: altBolum, menu_id: menuId, aciklama, sira_no: payload.sira_no },
   })
   revalidateDonem(donemId)
   return { ok: true, id: inserted.id }
@@ -450,7 +593,7 @@ export async function denetimBolumBelgeYukle(formData: FormData): Promise<Deneti
 
   const ext = denetimBelgeUzanti(file.name) || 'bin'
   const safeBase = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `belge.${ext}`
-  const storagePath = `bolum/${baslik.donem_id}/${baslik.bolum}/${baslikId}/${Date.now()}_${safeBase}`
+  const storagePath = `bolum/${baslik.donem_id}/${baslik.bolum ?? 'menu'}/${baslikId}/${Date.now()}_${safeBase}`
   const buffer = Buffer.from(await file.arrayBuffer())
   const { error: uploadErr } = await supabase.storage
     .from(DENETIM_BELGE_BUCKET)
