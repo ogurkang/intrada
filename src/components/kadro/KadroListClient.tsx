@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import KadroFormModal from './KadroForm'
 import { kadroDetayHref } from '@/lib/kadro-link'
+import {
+  isciDbExcelIndir,
+  memurDbExcelIndir,
+  type KadroDbUnvan,
+} from '@/lib/kadro-dolu-bos-excel'
 import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 
@@ -34,7 +39,7 @@ interface Props {
   personeller: Personel[]
   statuler: string[]
   mudurluler: string[]
-  unvanlar: { id: number; unvan_adi: string; sinif_adi: string | null }[]
+  unvanlar: KadroDbUnvan[]
   gelisNedenleri?: string[]
   ayrilisNedenleri?: string[]
   onEkle:     (fd: FormData) => Promise<{ hata?: string }>
@@ -495,7 +500,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
           <h1 className="text-2xl font-bold text-slate-800">Kadro Hareketleri</h1>
           <p className="text-sm text-slate-500 mt-0.5">Pozisyon atama ve görev kayıtları</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -503,6 +508,22 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
             <input type="text" placeholder="Ara…" value={aramaQ} onChange={e => setAramaQ(e.target.value)}
               className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 w-44" />
           </div>
+          <button
+            type="button"
+            onClick={() => void memurDbExcelIndir(data, unvanlar)}
+            className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 whitespace-nowrap"
+            title="Memur dolu-boş kadro cetvelini indir"
+          >
+            Memur DB
+          </button>
+          <button
+            type="button"
+            onClick={() => void isciDbExcelIndir(data, unvanlar)}
+            className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-500 whitespace-nowrap"
+            title="İşçi dolu-boş kadro cetvelini indir"
+          >
+            İşçi DB
+          </button>
           <button
             type="button"
             onClick={excelIndir}

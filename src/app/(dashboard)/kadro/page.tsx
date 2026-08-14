@@ -37,7 +37,7 @@ export default async function KadroPage() {
       supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
       supabase.from('tanim_statu').select('statu_adi').eq('aktif', true).order('statu_adi'),
       supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
-      supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true).order('sira_no').order('unvan_adi'),
+      supabase.from('tanim_unvan').select('id, unvan_adi, unvan_kodu, sinif_adi').eq('aktif', true).order('sira_no').order('unvan_adi'),
     ])
 
   const kadroData = (kadroRaw ?? []) as Tables<'kadro_hareketleri'>[]
@@ -61,7 +61,12 @@ export default async function KadroPage() {
         personeller={(calisanRaw ?? []) as { sicil_no: string; ad_soyad: string }[]}
         statuler={(statuRaw ?? []).map(s => s.statu_adi)}
         mudurluler={(mudurRaw ?? []).map(m => m.mudurluk_adi)}
-        unvanlar={(unvanRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi, sinif_adi: u.sinif_adi ?? null }))}
+        unvanlar={(unvanRaw ?? []).map(u => ({
+          id: u.id,
+          unvan_adi: u.unvan_adi,
+          unvan_kodu: u.unvan_kodu ?? null,
+          sinif_adi: u.sinif_adi ?? null,
+        }))}
         gelisNedenleri={gelisNedenleri}
         ayrilisNedenleri={ayrilisNedenleri}
         onEkle={kadroEkle}
