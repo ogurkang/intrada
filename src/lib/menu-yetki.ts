@@ -19,6 +19,7 @@ export type MenuModulKey =
   | 'stratejikYonetim'
   | 'yerelBilgi'
   | 'isgYonetimi'
+  | 'denetimYonetimi'
   | 'yetkilendirme'
   | 'hayaletProfil'
   | 'tanimlar'
@@ -44,6 +45,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'stratejikYonetim', labelKisa: 'Stratejik', label: 'Stratejik Yönetim', pathPrefixes: ['/stratejik-yonetim'] },
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
   { key: 'isgYonetimi', labelKisa: 'İSG', label: 'İSG Yönetimi', pathPrefixes: ['/isg'] },
+  { key: 'denetimYonetimi', labelKisa: 'Denetim', label: 'Denetim Yönetimi', pathPrefixes: ['/denetim'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'hayaletProfil', labelKisa: 'Hayalet', label: 'Hayalet Profil', pathPrefixes: ['/yetkilendirme/hayalet-profil'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
@@ -196,6 +198,10 @@ export function kullaniciPathAllowed(
     return menuModulAcik('stratejikYonetim', menuIzinleri)
   }
 
+  if (path.startsWith('/denetim')) {
+    return menuModulAcik('denetimYonetimi', menuIzinleri)
+  }
+
   return false
 }
 
@@ -230,6 +236,7 @@ export function sidebarGrupGoster(
     'Stratejik Yönetim': 'stratejikYonetim',
     'Yerel Bilgi Yönetimi': 'yerelBilgi',
     'İSG Yönetimi': 'isgYonetimi',
+    'Denetim Yönetimi': 'denetimYonetimi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }

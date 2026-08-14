@@ -1897,6 +1897,175 @@ export interface Database {
           { foreignKeyName: "arazi_kayit_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }
         ]
       }
+      // ─────────────────── DENETİM YÖNETİMİ ───────────────
+      denetim_donem: {
+        Row: {
+          id: number
+          sira_no: number
+          donem_adi: string
+          baslangic_tarihi: string
+          bitis_tarihi: string
+          durum: 'Açık' | 'Kapalı'
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          sira_no: number
+          donem_adi: string
+          baslangic_tarihi: string
+          bitis_tarihi: string
+          durum?: 'Açık' | 'Kapalı'
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          sira_no?: number
+          donem_adi?: string
+          baslangic_tarihi?: string
+          bitis_tarihi?: string
+          durum?: 'Açık' | 'Kapalı'
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: []
+      }
+      denetim_karar_belge: {
+        Row: {
+          id: number
+          donem_id: number
+          karar_turu: 'encumen' | 'meclis'
+          ay: number
+          sorumlu_birim: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type: string | null
+          boyut_byte: number | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          donem_id: number
+          karar_turu: 'encumen' | 'meclis'
+          ay: number
+          sorumlu_birim?: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          donem_id?: number
+          karar_turu?: 'encumen' | 'meclis'
+          ay?: number
+          sorumlu_birim?: string | null
+          dosya_adi?: string
+          storage_path?: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_karar_belge_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
+        ]
+      }
+      denetim_menu: {
+        Row: {
+          id: number
+          mudurluk_id: number
+          baslik: string
+          aciklama: string | null
+          sira_no: number
+          aktif: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          mudurluk_id: number
+          baslik: string
+          aciklama?: string | null
+          sira_no?: number
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          mudurluk_id?: number
+          baslik?: string
+          aciklama?: string | null
+          sira_no?: number
+          aktif?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_menu_mudurluk_id_fkey'; columns: ['mudurluk_id']; isOneToOne: false; referencedRelation: 'tanim_mudurluk'; referencedColumns: ['id'] },
+        ]
+      }
+      denetim_belge: {
+        Row: {
+          id: number
+          menu_id: number
+          dosya_adi: string
+          storage_path: string
+          mime_type: string | null
+          boyut_byte: number | null
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          menu_id: number
+          dosya_adi: string
+          storage_path: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          menu_id?: number
+          dosya_adi?: string
+          storage_path?: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_belge_menu_id_fkey'; columns: ['menu_id']; isOneToOne: false; referencedRelation: 'denetim_menu'; referencedColumns: ['id'] },
+        ]
+      }
     }
 
     Views: {

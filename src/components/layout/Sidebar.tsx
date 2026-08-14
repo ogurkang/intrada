@@ -6,7 +6,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
 import { hayaletProfilYetkisiVar, type HayaletProfilDurum } from '@/lib/hayalet-profil'
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
+import { createClient } from '@/lib/supabase/client'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
+import { denetimDonemBolumler, denetimDonemIdFromPath } from '@/lib/denetim'
 import { trNormalize } from '@/lib/turkce-search'
 
 type MenuItem = {
@@ -25,6 +27,14 @@ function childPathActive(pathname: string, href: string) {
 function itemPathActive(pathname: string, item: MenuItem): boolean {
   if (item.children?.length) {
     if (item.children.some(c => childPathActive(pathname, c.href))) return false
+  }
+  // Denetim: Genel Bakış / Dönem listesi derin rotalarda yanlış vurgulanmasın
+  if (item.href === '/denetim' || item.href === '/denetim/donemler') {
+    return pathname === item.href
+  }
+  // Dönem özeti: yalnızca tam dönem kökü (alt menüler ayrı vurgulanır)
+  if (/^\/denetim\/donemler\/\d+$/.test(item.href)) {
+    return pathname === item.href
   }
   return pathname === item.href || pathname.startsWith(item.href + '/')
 }
@@ -59,8 +69,36 @@ function filterMenuGroup(grup: MenuGroup, q: string): MenuGroup | null {
   return items.length ? { ...grup, items } : null
 }
 
-function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGroup[] {
+function buildDenetimItems(pathname: string, donemBaslik: string | null): MenuItem[] {
+  const items: MenuItem[] = [
+    { href: '/denetim', label: 'Genel Bakış' },
+    { href: '/denetim/donemler', label: 'Denetim Dönemleri' },
+  ]
+  const donemId = denetimDonemIdFromPath(pathname)
+  if (donemId == null) return items
+  items.push({
+    href: `/denetim/donemler/${donemId}`,
+    label: donemBaslik?.trim() ? donemBaslik : 'Dönem Özeti',
+  })
+  for (const b of denetimDonemBolumler(donemId)) {
+    items.push({
+      href: b.href,
+      label: b.label,
+      children: b.children?.map(c => ({ href: c.href, label: c.label })),
+    })
+  }
+  return items
+}
+
+function buildMenuGroups(
+  terfiMenuHref: string,
+  calisanlarHref: string,
+  pathname: string,
+  donemBaslik: string | null,
+): MenuGroup[] {
   const calisanlarItem: MenuItem = { href: calisanlarHref, label: calisanlarHref === '/personel' ? 'Çalışanlar' : 'Personel Kartım' }
+
+  const denetimItems = buildDenetimItems(pathname, donemBaslik)
 
   return [
   {
@@ -243,6 +281,12 @@ function buildMenuGroups(terfiMenuHref: string, calisanlarHref: string): MenuGro
     ],
   },
   {
+    grup: 'Denetim Yönetimi',
+    icon: '📑',
+    accordion: true,
+    items: denetimItems,
+  },
+  {
     grup: 'Stratejik Yönetim',
     icon: '🎯',
     accordion: true,
@@ -325,6 +369,7 @@ function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
 
 export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, hayaletDurum }: SidebarProps) {
   const pathname = usePathname()
+  const [donemBaslik, setDonemBaslik] = useState<string | null>(null)
 
   const calisanlarHref = useMemo(() => {
     if (hayaletDurum?.aktif) return '/performans/degerlendirme'
@@ -336,8 +381,8 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
   }, [access, hayaletDurum])
 
   const menuGroups = useMemo(
-    () => buildMenuGroups(terfiMenuHref, calisanlarHref),
-    [terfiMenuHref, calisanlarHref],
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref, pathname, donemBaslik),
+    [terfiMenuHref, calisanlarHref, pathname, donemBaslik],
   )
 
   const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}
@@ -421,6 +466,46 @@ export default function Sidebar({ onNavigate, terfiMenuHref = '/terfi', access, 
   function toggleAlt(href: string) {
     setAltAciklar(prev => ({ ...prev, [href]: !prev[href] }))
   }
+
+  useEffect(() => {
+    const donemId = denetimDonemIdFromPath(pathname)
+    if (donemId == null) {
+      setDonemBaslik(null)
+      return
+    }
+    let iptal = false
+    const supabase = createClient()
+    void supabase
+      .from('denetim_donem')
+      .select('donem_adi')
+      .eq('id', donemId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!iptal) setDonemBaslik(data?.donem_adi ?? null)
+      })
+    return () => {
+      iptal = true
+    }
+  }, [pathname])
+
+  useEffect(() => {
+    const donemId = denetimDonemIdFromPath(pathname)
+    if (donemId == null) return
+
+    setAciklar(prev => (prev['Denetim Yönetimi'] ? prev : { ...prev, 'Denetim Yönetimi': true }))
+
+    setAltAciklar(prev => {
+      let degisti = false
+      const next = { ...prev }
+      for (const b of denetimDonemBolumler(donemId)) {
+        if (b.children?.length && !next[b.href]) {
+          next[b.href] = true
+          degisti = true
+        }
+      }
+      return degisti ? next : prev
+    })
+  }, [pathname])
 
   useEffect(() => {
     setAltAciklar(prev => {
