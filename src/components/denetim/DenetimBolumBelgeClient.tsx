@@ -7,6 +7,7 @@ import Modal from '@/components/ui/Modal'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import { denetimBolumBelgeYukle } from '@/app/(dashboard)/denetim/actions'
+import { DENETIM_BELGE_MAX_BOYUT } from '@/lib/denetim'
 import {
   denetimBolumBelgeAuditDegerGoster,
   denetimBolumBelgeAuditDiffSatirlari,
@@ -64,19 +65,27 @@ export default function DenetimBolumBelgeClient({
       setHata('Dosya seçin.')
       return
     }
+    if (file.size > DENETIM_BELGE_MAX_BOYUT) {
+      setHata('Dosya en fazla 15 MB olabilir.')
+      return
+    }
     const fd = new FormData()
     fd.set('baslik_id', String(baslikId))
     fd.set('sorumlu_birim', sorumluBirim)
     fd.set('file', file)
     setHata(null)
     startTransition(async () => {
-      const res = await denetimBolumBelgeYukle(fd)
-      if (res.hata) {
-        setHata(res.hata)
-        return
+      try {
+        const res = await denetimBolumBelgeYukle(fd)
+        if (res.hata) {
+          setHata(res.hata)
+          return
+        }
+        setModalAcik(false)
+        router.refresh()
+      } catch {
+        setHata('Belge yüklenemedi. Dosya boyutunu kontrol edip tekrar deneyin.')
       }
-      setModalAcik(false)
-      router.refresh()
     })
   }
 

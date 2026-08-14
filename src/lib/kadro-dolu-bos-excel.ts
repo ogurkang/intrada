@@ -237,9 +237,9 @@ export async function isciDbExcelIndir(kadrolar: Kadro[], unvanlar: KadroDbUnvan
   const rows: Satir[] = [
     ['(VII) SAYILI CETVEL: SÜREKLİ İŞÇİ DOLU-BOŞ KADRO DURUMU'],
     [],
-    ['SÜREKLİ İŞÇİ\nNORM KADRO\nSTANDARDI TOPLAMI', '', '', 'MEVCUT SÜREKLİ İŞÇİ KADROLARI'],
-    ['', '', '', 'DOLU', 'BOŞ', 'TOPLAM'],
-    ['', '', '', tumDolu, tumBos, tumDolu + tumBos],
+    ['SÜREKLİ İŞÇİ\nNORM KADRO\nSTANDARDI TOPLAMI', '', 'MEVCUT SÜREKLİ İŞÇİ KADROLARI'],
+    ['', '', 'DOLU', 'BOŞ', 'TOPLAM'],
+    ['', '', tumDolu, tumBos, tumDolu + tumBos],
     [],
     ['SÜREKLİ İŞÇİ KADRO CETVELİ'],
     ['MEVCUT SÜREKLİ İŞÇİ KADROSUNUN'],
@@ -260,7 +260,7 @@ export async function isciDbExcelIndir(kadrolar: Kadro[], unvanlar: KadroDbUnvan
   ws['!merges'] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
     { s: { r: 2, c: 0 }, e: { r: 4, c: 1 } },
-    { s: { r: 2, c: 3 }, e: { r: 2, c: 4 } },
+    { s: { r: 2, c: 2 }, e: { r: 2, c: 4 } },
     { s: { r: 6, c: 0 }, e: { r: 6, c: 4 } },
     { s: { r: 7, c: 0 }, e: { r: 7, c: 4 } },
     { s: { r: 8, c: 0 }, e: { r: 9, c: 0 } },

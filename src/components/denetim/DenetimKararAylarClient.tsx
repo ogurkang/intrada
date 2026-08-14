@@ -7,7 +7,7 @@ import Modal from '@/components/ui/Modal'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import { denetimKararBelgeYukle } from '@/app/(dashboard)/denetim/actions'
-import { DENETIM_AYLAR_TR, type DenetimKararTuru } from '@/lib/denetim'
+import { DENETIM_AYLAR_TR, DENETIM_BELGE_MAX_BOYUT, type DenetimKararTuru } from '@/lib/denetim'
 import {
   denetimKararAuditDegerGoster,
   denetimKararAuditDiffSatirlari,
@@ -74,6 +74,10 @@ export default function DenetimKararAylarClient({
       setHata('Dosya seçin.')
       return
     }
+    if (file.size > DENETIM_BELGE_MAX_BOYUT) {
+      setHata('Dosya en fazla 15 MB olabilir.')
+      return
+    }
     setHata(null)
     const fd = new FormData()
     fd.set('donem_id', String(donemId))
@@ -82,13 +86,17 @@ export default function DenetimKararAylarClient({
     fd.set('sorumlu_birim', sorumluBirim)
     fd.set('file', file)
     startTransition(async () => {
-      const res = await denetimKararBelgeYukle(fd)
-      if (res.hata) {
-        setHata(res.hata)
-        return
+      try {
+        const res = await denetimKararBelgeYukle(fd)
+        if (res.hata) {
+          setHata(res.hata)
+          return
+        }
+        setYukleAy(null)
+        router.refresh()
+      } catch {
+        setHata('Belge yüklenemedi. Dosya boyutunu kontrol edip tekrar deneyin.')
       }
-      setYukleAy(null)
-      router.refresh()
     })
   }
 
