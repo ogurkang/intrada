@@ -35,13 +35,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Belge görüntülenemedi.' }, { status: 500 })
   }
 
-  await supabase.from('denetim_belge_goruntuleme').insert({
-    belge_turu: tur,
-    belge_id: id,
-    viewed_by: user.id,
-    viewed_by_email: user.email ?? null,
-  })
-
   const safeName = belge.dosya_adi.replace(/["\r\n]/g, '_')
   return new NextResponse(file, {
     headers: {

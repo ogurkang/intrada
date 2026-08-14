@@ -17,12 +17,22 @@ export default async function DenetimOnizlePage({
 
   const supabase = await createClient()
   const table = tur === 'karar' ? 'denetim_karar_belge' : 'denetim_bolum_belge'
-  const { data: belge } = await supabase
-    .from(table)
-    .select('id, dosya_adi, mime_type')
-    .eq('id', id)
-    .maybeSingle()
+  const [{ data: belge }, { data: { user } }] = await Promise.all([
+    supabase.from(table).select('id, dosya_adi, mime_type').eq('id', id).maybeSingle(),
+    supabase.auth.getUser(),
+  ])
   if (!belge) notFound()
+
+  // Görüntüleme kaydı burada tutulur; belge akışı yalnızca PDF'te istendiğinden
+  // Word/Excel belgelerinde de kaydın oluşması gerekir.
+  if (user) {
+    await supabase.from('denetim_belge_goruntuleme').insert({
+      belge_turu: tur,
+      belge_id: id,
+      viewed_by: user.id,
+      viewed_by_email: user.email ?? null,
+    })
+  }
 
   return (
     <DenetimOnizlemeClient

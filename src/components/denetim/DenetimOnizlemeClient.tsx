@@ -20,12 +20,23 @@ export default function DenetimOnizlemeClient({ belgeUrl, dosyaAdi, mimeType }: 
         </button>
       </div>
       <div className="relative flex-1 bg-slate-700" onContextMenu={e => e.preventDefault()}>
-        <iframe
-          src={`${belgeUrl}${pdf ? '#toolbar=0&navpanes=0' : ''}`}
-          title={dosyaAdi}
-          className="absolute inset-0 h-full min-h-[720px] w-full border-0 bg-white"
-          sandbox="allow-same-origin allow-scripts"
-        />
+        {pdf ? (
+          <iframe
+            src={`${belgeUrl}#toolbar=0&navpanes=0`}
+            title={dosyaAdi}
+            className="absolute inset-0 h-full min-h-[720px] w-full border-0 bg-white"
+          />
+        ) : (
+          <div className="flex h-full min-h-[420px] items-center justify-center p-8">
+            <div className="max-w-md rounded-xl border border-slate-600 bg-slate-800 p-6 text-center text-slate-200">
+              <p className="text-sm font-medium">Bu belge tarayıcıda görüntülenemiyor.</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Word ve Excel dosyaları yalnızca indirilerek açılabildiğinden, salt görüntüleme kuralı gereği
+                burada gösterilmez. Belgenin görüntülenebilmesi için PDF biçiminde yüklenmesi gerekir.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
