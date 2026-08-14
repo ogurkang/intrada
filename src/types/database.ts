@@ -1987,6 +1987,121 @@ export interface Database {
           { foreignKeyName: 'denetim_karar_belge_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
         ]
       }
+      denetim_bolum_baslik: {
+        Row: {
+          id: number
+          donem_id: number
+          bolum: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
+          alt_bolum: string
+          baslik: string
+          aciklama: string | null
+          sira_no: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          donem_id: number
+          bolum: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
+          alt_bolum: string
+          baslik: string
+          aciklama?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          donem_id?: number
+          bolum?: 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
+          alt_bolum?: string
+          baslik?: string
+          aciklama?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_bolum_baslik_donem_id_fkey'; columns: ['donem_id']; isOneToOne: false; referencedRelation: 'denetim_donem'; referencedColumns: ['id'] },
+        ]
+      }
+      denetim_bolum_belge: {
+        Row: {
+          id: number
+          baslik_id: number
+          sorumlu_birim: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type: string | null
+          boyut_byte: number | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          baslik_id: number
+          sorumlu_birim?: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          baslik_id?: number
+          sorumlu_birim?: string | null
+          dosya_adi?: string
+          storage_path?: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'denetim_bolum_belge_baslik_id_fkey'; columns: ['baslik_id']; isOneToOne: true; referencedRelation: 'denetim_bolum_baslik'; referencedColumns: ['id'] },
+        ]
+      }
+      denetim_belge_goruntuleme: {
+        Row: {
+          id: number
+          belge_turu: 'karar' | 'bolum'
+          belge_id: number
+          viewed_by: string | null
+          viewed_by_email: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: number
+          belge_turu: 'karar' | 'bolum'
+          belge_id: number
+          viewed_by?: string | null
+          viewed_by_email?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: number
+          belge_turu?: 'karar' | 'bolum'
+          belge_id?: number
+          viewed_by?: string | null
+          viewed_by_email?: string | null
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       denetim_menu: {
         Row: {
           id: number

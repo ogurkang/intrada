@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import Modal from '@/components/ui/Modal'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import { denetimKararBelgeYukle } from '@/app/(dashboard)/denetim/actions'
 import { DENETIM_AYLAR_TR, type DenetimKararTuru } from '@/lib/denetim'
 import {
@@ -13,6 +13,7 @@ import {
   denetimKararAuditDiffSatirlari,
 } from '@/lib/denetim-audit'
 import type { Tables } from '@/types/database'
+import type { DenetimGoruntulemeGrubu } from '@/lib/denetim-goruntuleme'
 
 export type DenetimKararAySatir = {
   ay: number
@@ -34,6 +35,7 @@ interface Props {
   satirlar: DenetimKararAySatir[]
   mudurlukler: DenetimMudurlukSecenek[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
+  goruntulemelerByRefId: Record<string, DenetimGoruntulemeGrubu[]>
 }
 
 const IKON =
@@ -48,6 +50,7 @@ export default function DenetimKararAylarClient({
   satirlar,
   mudurlukler,
   auditLoglarByRefId,
+  goruntulemelerByRefId,
 }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -126,6 +129,7 @@ export default function DenetimKararAylarClient({
               {satirlar.map(s => {
                 const logKey = s.belge_id != null ? String(s.belge_id) : ''
                 const loglar = logKey ? auditLoglarByRefId[logKey] ?? [] : []
+                const goruntulemeler = logKey ? goruntulemelerByRefId[logKey] ?? [] : []
                 return (
                   <tr key={s.ay} className="hover:bg-slate-50/80">
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{s.ay}</td>
@@ -139,7 +143,7 @@ export default function DenetimKararAylarClient({
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-center gap-1">
                         <SaatGecmisDugmesi
-                          sayi={loglar.length}
+                          sayi={loglar.length + goruntulemeler.reduce((n, g) => n + g.tarihler.length, 0)}
                           onClick={() => {
                             if (s.belge_id != null) setGecmisRefId(String(s.belge_id))
                           }}
@@ -147,7 +151,7 @@ export default function DenetimKararAylarClient({
                         />
                         {s.belge_id != null ? (
                           <a
-                            href={`/api/denetim/karar-belge?id=${s.belge_id}`}
+                            href={`/denetim/onizle?tur=karar&id=${s.belge_id}`}
                             target="_blank"
                             rel="noreferrer"
                             className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
@@ -245,10 +249,11 @@ export default function DenetimKararAylarClient({
         </div>
       </Modal>
 
-      <AuditGecmisPanel
+      <DenetimBelgeGecmisPanel
         acik={gecmisRefId != null}
         onKapat={() => setGecmisRefId(null)}
         auditLoglar={gecmisRefId ? auditLoglarByRefId[gecmisRefId] ?? [] : []}
+        goruntulemeler={gecmisRefId ? goruntulemelerByRefId[gecmisRefId] ?? [] : []}
         baslik="Karar Belgesi Geçmişi"
         diffSatirlari={denetimKararAuditDiffSatirlari}
         degerGoster={denetimKararAuditDegerGoster}

@@ -1,12 +1,6 @@
-import DenetimYakindaSayfa from '@/components/denetim/DenetimYakindaSayfa'
+import DenetimAltBolumSayfa from '@/components/denetim/DenetimAltBolumSayfa'
 
 export default async function Page({ params }: { params: Promise<{ donemId: string }> }) {
-  const donemId = (await params).donemId
-  return (
-    <DenetimYakindaSayfa
-      bolum={{ href: `/denetim/donemler/${donemId}/performans-bilgileri/stratejik-plan`, label: 'Stratejik Plan', aciklama: 'Performans bilgileri kapsamında stratejik plan.' }}
-      geriHref={`/denetim/donemler/${donemId}/performans-bilgileri`}
-      geriLabel="← Performans Bilgileri"
-    />
-  )
+  const donemId = Number.parseInt((await params).donemId, 10)
+  return <DenetimAltBolumSayfa donemId={donemId} bolum="performans" altBolum="stratejik-plan" />
 }

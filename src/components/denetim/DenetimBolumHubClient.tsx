@@ -116,6 +116,30 @@ function MenuIkon({ ikon, className = 'w-6 h-6' }: { ikon?: DenetimMenuIkonAnaht
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M8 11h8M8 15h5" />
         </svg>
       )
+    case 'insankaynaklari':
+      return (
+        <svg {...common} aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+        </svg>
+      )
+    case 'sosyaldenge':
+      return (
+        <svg {...common} aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M5 7h14M7 7l-4 7h8L7 7zm10 0l-4 7h8l-4-7zM8 21h8" />
+        </svg>
+      )
+    case 'sozlesme':
+      return (
+        <svg {...common} aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8l3 3v13H5V4h3zm1 7h6m-6 4h6M8 4v3h8V4" />
+        </svg>
+      )
+    case 'normkadro':
+      return (
+        <svg {...common} aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16v14H4V5zm4 4h8M8 13h3m2 0h3M8 17h3m2 0h3" />
+        </svg>
+      )
     default:
       return (
         <svg {...common} aria-hidden>
@@ -141,6 +165,10 @@ const IKON_TON: Record<string, string> = {
   ickontrol: 'bg-rose-100 text-rose-700',
   yonetmelik: 'bg-rose-100 text-rose-700',
   ikep: 'bg-orange-100 text-orange-800',
+  insankaynaklari: 'bg-fuchsia-100 text-fuchsia-700',
+  sosyaldenge: 'bg-purple-100 text-purple-700',
+  sozlesme: 'bg-violet-100 text-violet-700',
+  normkadro: 'bg-pink-100 text-pink-700',
 }
 
 export default function DenetimBolumHubClient({

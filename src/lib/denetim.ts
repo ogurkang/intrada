@@ -35,6 +35,88 @@ export const DENETIM_AYLAR_TR = [
 ] as const
 
 export type DenetimKararTuru = 'encumen' | 'meclis'
+export type DenetimBelgeBolumu = 'mali' | 'performans' | 'ic_kontrol' | 'insan_kaynaklari'
+export type DenetimBelgeTuru = 'karar' | 'bolum'
+
+export const DENETIM_BOLUM_META: Record<
+  DenetimBelgeBolumu,
+  { label: string; path: string; aciklama: string }
+> = {
+  mali: {
+    label: 'Mali Bilgiler',
+    path: 'mali-bilgiler',
+    aciklama: 'Gelir tarifesi, kesin hesap, bütçe ve ek mali belge başlıkları.',
+  },
+  performans: {
+    label: 'Performans Bilgileri',
+    path: 'performans-bilgileri',
+    aciklama: 'Stratejik plan, performans programı, faaliyet raporu ve ek başlıklar.',
+  },
+  ic_kontrol: {
+    label: 'İç Kontrol Bilgileri',
+    path: 'ic-kontrol-bilgileri',
+    aciklama: 'Yönetmelikler, İKEP ve ek iç kontrol belge başlıkları.',
+  },
+  insan_kaynaklari: {
+    label: 'İnsan Kaynakları Bilgileri',
+    path: 'insan-kaynaklari-bilgileri',
+    aciklama: 'Sosyal denge, toplu iş sözleşmesi ve norm kadro belgeleri.',
+  },
+}
+
+export function denetimBolumMu(value: string): value is DenetimBelgeBolumu {
+  return (
+    value === 'mali' ||
+    value === 'performans' ||
+    value === 'ic_kontrol' ||
+    value === 'insan_kaynaklari'
+  )
+}
+
+export type DenetimAltBolum = {
+  anahtar: string
+  label: string
+  aciklama: string
+  ikon: DenetimMenuIkonAnahtar
+}
+
+/** Bölüm altındaki sabit menüler; başlıklar bunların içine eklenir. */
+export const DENETIM_ALT_BOLUMLER: Record<DenetimBelgeBolumu, DenetimAltBolum[]> = {
+  mali: [
+    { anahtar: 'gelir-tarifesi', label: 'Gelir Tarifesi', aciklama: 'Gelir tarifesi belgeleri.', ikon: 'gelir' },
+    { anahtar: 'kesin-hesap', label: 'Kesin Hesap', aciklama: 'Kesin hesap belgeleri.', ikon: 'hesap' },
+    { anahtar: 'butce', label: 'Bütçe', aciklama: 'Bütçe belgeleri.', ikon: 'butce' },
+  ],
+  performans: [
+    { anahtar: 'stratejik-plan', label: 'Stratejik Plan', aciklama: 'Stratejik plan belgeleri.', ikon: 'stratejik' },
+    { anahtar: 'performans-programi', label: 'Performans Programı', aciklama: 'Performans programı belgeleri.', ikon: 'program' },
+    { anahtar: 'faaliyet-raporu', label: 'Faaliyet Raporu', aciklama: 'Faaliyet raporu belgeleri.', ikon: 'rapor' },
+  ],
+  ic_kontrol: [
+    { anahtar: 'yonetmelikler', label: 'Yönetmelikler', aciklama: 'Yönetmelik belgeleri.', ikon: 'yonetmelik' },
+    { anahtar: 'ikep', label: 'İKEP', aciklama: 'İç Kontrol Eylem Planı belgeleri.', ikon: 'ikep' },
+  ],
+  insan_kaynaklari: [
+    { anahtar: 'sosyal-denge', label: 'Sosyal Denge', aciklama: 'Sosyal denge sözleşmesi ve ilgili belgeler.', ikon: 'sosyaldenge' },
+    { anahtar: 'toplu-is-sozlesmesi', label: 'Toplu İş Sözleşmesi', aciklama: 'Toplu iş sözleşmesi ve ilgili belgeler.', ikon: 'sozlesme' },
+    { anahtar: 'norm-kadro', label: 'Norm Kadro', aciklama: 'Norm kadro cetvelleri ve ilgili belgeler.', ikon: 'normkadro' },
+  ],
+}
+
+export function denetimAltBolumBul(
+  bolum: DenetimBelgeBolumu,
+  anahtar: string,
+): DenetimAltBolum | null {
+  return DENETIM_ALT_BOLUMLER[bolum].find(a => a.anahtar === anahtar) ?? null
+}
+
+export function denetimAltBolumYolu(
+  donemId: number,
+  bolum: DenetimBelgeBolumu,
+  anahtar: string,
+): string {
+  return `/denetim/donemler/${donemId}/${DENETIM_BOLUM_META[bolum].path}/${anahtar}`
+}
 
 export type DenetimMenuIkonAnahtar =
   | 'karar'
@@ -52,6 +134,10 @@ export type DenetimMenuIkonAnahtar =
   | 'ickontrol'
   | 'yonetmelik'
   | 'ikep'
+  | 'insankaynaklari'
+  | 'sosyaldenge'
+  | 'sozlesme'
+  | 'normkadro'
 
 export type DenetimMenuChild = {
   href: string
@@ -136,6 +222,17 @@ export function denetimDonemBolumler(donemId: number): DenetimMenuBolum[] {
       children: [
         { href: `${base}/ic-kontrol-bilgileri/yonetmelikler`, label: 'Yönetmelikler', ikon: 'yonetmelik' },
         { href: `${base}/ic-kontrol-bilgileri/ikep`, label: 'İKEP', ikon: 'ikep' },
+      ],
+    },
+    {
+      href: `${base}/insan-kaynaklari-bilgileri`,
+      label: 'İnsan Kaynakları Bilgileri',
+      aciklama: 'Sosyal denge, toplu iş sözleşmesi ve norm kadro.',
+      ikon: 'insankaynaklari',
+      children: [
+        { href: `${base}/insan-kaynaklari-bilgileri/sosyal-denge`, label: 'Sosyal Denge', ikon: 'sosyaldenge' },
+        { href: `${base}/insan-kaynaklari-bilgileri/toplu-is-sozlesmesi`, label: 'Toplu İş Sözleşmesi', ikon: 'sozlesme' },
+        { href: `${base}/insan-kaynaklari-bilgileri/norm-kadro`, label: 'Norm Kadro', ikon: 'normkadro' },
       ],
     },
   ]

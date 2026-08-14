@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { loadDenetimGoruntulemelerGrouped } from '@/lib/denetim-goruntuleme'
 import DenetimKararAylarClient, {
   type DenetimKararAySatir,
   type DenetimMudurlukSecenek,
@@ -51,11 +52,14 @@ export default async function MeclisKararlariPage({
   }))
 
   const belgeIds = satirlar.filter(s => s.belge_id != null).map(s => String(s.belge_id))
-  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
-    supabase,
-    'denetim_karar_belge',
-    belgeIds,
-  )
+  const [auditLoglarByRefId, goruntulemelerByRefId] = await Promise.all([
+    loadAuditLoglarGroupedByRefId(supabase, 'denetim_karar_belge', belgeIds),
+    loadDenetimGoruntulemelerGrouped(
+      supabase,
+      'karar',
+      satirlar.filter(s => s.belge_id != null).map(s => s.belge_id as number),
+    ),
+  ])
 
   return (
     <DenetimKararAylarClient
@@ -67,6 +71,7 @@ export default async function MeclisKararlariPage({
       satirlar={satirlar}
       mudurlukler={mudurlukler}
       auditLoglarByRefId={auditLoglarByRefId}
+      goruntulemelerByRefId={goruntulemelerByRefId}
     />
   )
 }

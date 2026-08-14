@@ -8,11 +8,18 @@ import {
   DENETIM_BELGE_MAX_BOYUT,
   denetimBelgeMimeCoz,
   denetimBelgeUzanti,
+  denetimAltBolumBul,
+  denetimBolumMu,
+  DENETIM_BOLUM_META,
+  type DenetimBelgeBolumu,
   type DenetimKararTuru,
 } from '@/lib/denetim'
 import {
+  denetimBolumBelgeAuditSnapshot,
   denetimDonemAuditSnapshot,
   denetimKararAuditSnapshot,
+  writeDenetimBolumBaslikAudit,
+  writeDenetimBolumBelgeAudit,
   writeDenetimDonemAudit,
   writeDenetimKararAudit,
 } from '@/lib/denetim-audit'
@@ -329,5 +336,185 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
   })
 
   revalidateDonem(donemId)
+  return { ok: true, id: inserted.id }
+}
+
+export async function denetimBolumBaslikEkle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const donemId = Number.parseInt(str(formData, 'donem_id'), 10)
+  const bolumRaw = str(formData, 'bolum')
+  const altBolum = str(formData, 'alt_bolum')
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  if (!Number.isFinite(donemId) || donemId <= 0) return { hata: 'Dönem gerekli.' }
+  if (!denetimBolumMu(bolumRaw)) return { hata: 'Bölüm geçersiz.' }
+  if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
+
+  const bolum = bolumRaw as DenetimBelgeBolumu
+  const alt = denetimAltBolumBul(bolum, altBolum)
+  if (!alt) return { hata: 'Alt menü geçersiz.' }
+
+  const { data: donem } = await supabase
+    .from('denetim_donem')
+    .select('id, durum')
+    .eq('id', donemId)
+    .maybeSingle()
+  if (!donem) return { hata: 'Dönem bulunamadı.' }
+  if (donem.durum === 'Kapalı') return { hata: 'Kapalı döneme başlık eklenemez.' }
+
+  const { data: maxRow } = await supabase
+    .from('denetim_bolum_baslik')
+    .select('sira_no')
+    .eq('donem_id', donemId)
+    .eq('bolum', bolum)
+    .eq('alt_bolum', altBolum)
+    .order('sira_no', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const payload = {
+    donem_id: donemId,
+    bolum,
+    alt_bolum: altBolum,
+    baslik,
+    aciklama,
+    sira_no: (maxRow?.sira_no ?? 0) + 1,
+    created_by: user.id,
+    created_by_email: user.email ?? null,
+  }
+  const { data: inserted, error } = await supabase
+    .from('denetim_bolum_baslik')
+    .insert(payload)
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === '23505') return { hata: 'Bu menüde aynı adlı başlık zaten var.' }
+    return { hata: error.message }
+  }
+
+  await writeDenetimBolumBaslikAudit(supabase, {
+    baslikId: inserted.id,
+    islem: 'Ekle',
+    ozet: `${DENETIM_BOLUM_META[bolum].label} / ${alt.label}: ${baslik} başlığı eklendi.`,
+    sonraki: { baslik, bolum, alt_bolum: altBolum, aciklama, sira_no: payload.sira_no },
+  })
+  revalidateDonem(donemId)
+  return { ok: true, id: inserted.id }
+}
+
+export async function denetimBolumBelgeYukle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const baslikId = Number.parseInt(str(formData, 'baslik_id'), 10)
+  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
+  const file = formData.get('file')
+  if (!Number.isFinite(baslikId) || baslikId <= 0) return { hata: 'Başlık gerekli.' }
+  if (!(file instanceof File) || file.size === 0) return { hata: 'Dosya seçin.' }
+  if (file.size > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+
+  const mime = denetimBelgeMimeCoz(file.name, file.type)
+  if (!mime) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
+
+  const { data: baslik } = await supabase
+    .from('denetim_bolum_baslik')
+    .select('id, donem_id, bolum, baslik, denetim_donem!inner(durum)')
+    .eq('id', baslikId)
+    .maybeSingle()
+  if (!baslik) return { hata: 'Başlık bulunamadı.' }
+  const donemDurumu = Array.isArray(baslik.denetim_donem)
+    ? baslik.denetim_donem[0]?.durum
+    : baslik.denetim_donem?.durum
+  if (donemDurumu === 'Kapalı') return { hata: 'Kapalı döneme belge yüklenemez.' }
+
+  if (sorumlu_birim) {
+    const { data: mudurluk } = await supabase
+      .from('tanim_mudurluk')
+      .select('id')
+      .eq('mudurluk_adi', sorumlu_birim)
+      .eq('aktif', true)
+      .maybeSingle()
+    if (!mudurluk) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
+  }
+
+  const { data: mevcut } = await supabase
+    .from('denetim_bolum_belge')
+    .select('*')
+    .eq('baslik_id', baslikId)
+    .maybeSingle()
+
+  const ext = denetimBelgeUzanti(file.name) || 'bin'
+  const safeBase = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `belge.${ext}`
+  const storagePath = `bolum/${baslik.donem_id}/${baslik.bolum}/${baslikId}/${Date.now()}_${safeBase}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const { error: uploadErr } = await supabase.storage
+    .from(DENETIM_BELGE_BUCKET)
+    .upload(storagePath, buffer, { contentType: mime, upsert: false })
+  if (uploadErr) return { hata: uploadErr.message }
+
+  const belgePayload = {
+    sorumlu_birim,
+    dosya_adi: file.name,
+    storage_path: storagePath,
+    mime_type: mime,
+    boyut_byte: file.size,
+    updated_at: new Date().toISOString(),
+    created_by: user.id,
+    created_by_email: user.email ?? null,
+  }
+
+  if (mevcut) {
+    const { error } = await supabase.from('denetim_bolum_belge').update(belgePayload).eq('id', mevcut.id)
+    if (error) {
+      await supabase.storage.from(DENETIM_BELGE_BUCKET).remove([storagePath])
+      return { hata: error.message }
+    }
+    if (mevcut.storage_path !== storagePath) {
+      await supabase.storage.from(DENETIM_BELGE_BUCKET).remove([mevcut.storage_path])
+    }
+    await writeDenetimBolumBelgeAudit(supabase, {
+      belgeId: mevcut.id,
+      islem: 'Değiştir',
+      ozet: `${baslik.baslik} belgesi güncellendi.`,
+      onceki: denetimBolumBelgeAuditSnapshot({
+        ...mevcut,
+        baslik: baslik.baslik,
+        bolum: baslik.bolum,
+      }),
+      sonraki: denetimBolumBelgeAuditSnapshot({
+        ...belgePayload,
+        baslik: baslik.baslik,
+        bolum: baslik.bolum,
+      }),
+    })
+    revalidateDonem(baslik.donem_id)
+    return { ok: true, id: mevcut.id }
+  }
+
+  const { data: inserted, error } = await supabase
+    .from('denetim_bolum_belge')
+    .insert({ baslik_id: baslikId, ...belgePayload })
+    .select('id')
+    .single()
+  if (error) {
+    await supabase.storage.from(DENETIM_BELGE_BUCKET).remove([storagePath])
+    return { hata: error.message }
+  }
+  await writeDenetimBolumBelgeAudit(supabase, {
+    belgeId: inserted.id,
+    islem: 'Yükle',
+    ozet: `${baslik.baslik} belgesi yüklendi.`,
+    sonraki: denetimBolumBelgeAuditSnapshot({
+      ...belgePayload,
+      baslik: baslik.baslik,
+      bolum: baslik.bolum,
+    }),
+  })
+  revalidateDonem(baslik.donem_id)
   return { ok: true, id: inserted.id }
 }

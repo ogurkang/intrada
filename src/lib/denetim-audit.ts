@@ -18,6 +18,15 @@ const KARAR_ETIKETLER: Record<string, string> = {
   boyut_byte: 'Boyut',
 }
 
+const BOLUM_BELGE_ETIKETLER: Record<string, string> = {
+  baslik: 'Başlık',
+  bolum: 'Bölüm',
+  sorumlu_birim: 'Sorumlu Birim',
+  dosya_adi: 'Dosya',
+  mime_type: 'Tür',
+  boyut_byte: 'Boyut',
+}
+
 export function denetimDonemAuditSnapshot(row: Record<string, unknown>) {
   return {
     sira_no: row.sira_no ?? null,
@@ -87,6 +96,29 @@ export function denetimKararAuditDegerGoster(alan: string, deger: unknown): stri
   return String(deger)
 }
 
+export function denetimBolumBelgeAuditSnapshot(row: Record<string, unknown>) {
+  return {
+    baslik: row.baslik ?? null,
+    bolum: row.bolum ?? null,
+    sorumlu_birim: row.sorumlu_birim ?? null,
+    dosya_adi: row.dosya_adi ?? null,
+    mime_type: row.mime_type ?? null,
+    boyut_byte: row.boyut_byte ?? null,
+  }
+}
+
+export function denetimBolumBelgeAuditDiffSatirlari(onceki: unknown, sonraki: unknown) {
+  return alanDegisiklikleriHesapla(
+    (onceki as Record<string, unknown>) ?? null,
+    (sonraki as Record<string, unknown>) ?? {},
+    BOLUM_BELGE_ETIKETLER,
+  )
+}
+
+export function denetimBolumBelgeAuditDegerGoster(alan: string, deger: unknown): string {
+  return denetimKararAuditDegerGoster(alan, deger)
+}
+
 export async function writeDenetimDonemAudit(
   supabase: SupabaseClient,
   opts: {
@@ -123,6 +155,41 @@ export async function writeDenetimKararAudit(
     islem: opts.islem,
     ozet: opts.ozet,
     ref_table: 'denetim_karar_belge',
+    ref_id: String(opts.belgeId),
+    onceki: opts.onceki ?? null,
+    sonraki: opts.sonraki ?? null,
+  })
+}
+
+export async function writeDenetimBolumBaslikAudit(
+  supabase: SupabaseClient,
+  opts: { baslikId: number; islem: string; ozet: string; sonraki?: Record<string, unknown> | null },
+) {
+  await writePersonelAuditLogSafe(supabase, {
+    modul: 'DENETIM',
+    islem: opts.islem,
+    ozet: opts.ozet,
+    ref_table: 'denetim_bolum_baslik',
+    ref_id: String(opts.baslikId),
+    sonraki: opts.sonraki ?? null,
+  })
+}
+
+export async function writeDenetimBolumBelgeAudit(
+  supabase: SupabaseClient,
+  opts: {
+    belgeId: number
+    islem: string
+    ozet: string
+    onceki?: Record<string, unknown> | null
+    sonraki?: Record<string, unknown> | null
+  },
+) {
+  await writePersonelAuditLogSafe(supabase, {
+    modul: 'DENETIM',
+    islem: opts.islem,
+    ozet: opts.ozet,
+    ref_table: 'denetim_bolum_belge',
     ref_id: String(opts.belgeId),
     onceki: opts.onceki ?? null,
     sonraki: opts.sonraki ?? null,
