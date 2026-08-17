@@ -12,13 +12,38 @@ export async function getAppAccess(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<AppAccess> {
-  const { data, error } = await supabase
+  let data:
+    | {
+        sicil_no: string | null
+        rol: string
+        menu_izinleri: unknown
+        hesap_aktif: boolean
+        profil_turu?: string | null
+        kullanici_adi?: string | null
+        ad_soyad?: string | null
+        kurum_adi?: string | null
+      }
+    | null = null
+
+  const tam = await supabase
     .from('app_profiles')
     .select('sicil_no, rol, menu_izinleri, hesap_aktif, profil_turu, kullanici_adi, ad_soyad, kurum_adi')
     .eq('id', userId)
     .maybeSingle()
 
-  if (error || !data) return { mode: 'full' }
+  if (!tam.error && tam.data) {
+    data = tam.data
+  } else if (tam.error) {
+    // Migration henüz yoksa eski kolon setiyle devam et.
+    const eski = await supabase
+      .from('app_profiles')
+      .select('sicil_no, rol, menu_izinleri, hesap_aktif')
+      .eq('id', userId)
+      .maybeSingle()
+    if (!eski.error && eski.data) data = eski.data
+  }
+
+  if (!data) return { mode: 'full' }
 
   const menuIzinleri =
     data.menu_izinleri && typeof data.menu_izinleri === 'object'
