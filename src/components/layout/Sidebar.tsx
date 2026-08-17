@@ -19,6 +19,7 @@ type MenuItem = {
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
 function childPathActive(pathname: string, href: string) {
+  if (href === '/yetkilendirme') return pathname === href
   return pathname === href || pathname.startsWith(href + '/')
 }
 
@@ -449,7 +450,10 @@ function buildMenuGroups(
     grup: 'Yetkilendirme Yönetimi',
     icon: '🔐',
     accordion: true,
-    items: [{ href: '/yetkilendirme', label: 'Genel Bakış' }],
+    items: [
+      { href: '/yetkilendirme', label: 'Çalışan Yetkilendirme' },
+      { href: '/yetkilendirme/dis-denetciler', label: 'Dış Denetçiler' },
+    ],
   },
   ]
 }

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { revalidateTerfiRoutes } from '@/lib/terfi-app-path'
+import { personelPasifMi } from '@/lib/personel-ayrilis'
 import {
   TERFI_ALAN_ETIKETLERI,
   TERFI_AUDIT_SELECT,
@@ -133,6 +134,18 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
 
 export async function terfiSil(id: number, sicil_no: string): Promise<{ hata?: string }> {
   const supabase = await createClient()
+  const { data: sonHareket } = await supabase
+    .from('personel_hareketleri')
+    .select('ayrilis_tarihi, ayrilis_nedeni')
+    .eq('sicil_no', sicil_no)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const bugun = new Date().toISOString().slice(0, 10)
+  if (!personelPasifMi(sonHareket, bugun)) {
+    return { hata: 'Personel kurumda aktif olduğu sürece terfi bilgileri silinemez.' }
+  }
+
   const { data: mevcut } = await supabase
     .from('terfi_hareketleri')
     .select(TERFI_AUDIT_SELECT_FULL)

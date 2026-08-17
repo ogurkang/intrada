@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import TerfiClient from '@/components/personel/TerfiClient'
 import { terfiEkle, terfiGuncelle, terfiSil, terfiTopluKaydet, terfiKadroyaBagla, terfiKapsamDisiYap } from '../actions'
 import { terfiKayitlariIndeksle, terfiKaydiEsle } from '@/lib/terfi-kadro-esleme'
+import { personelAktifMi } from '@/lib/personel-ayrilis'
 import type { Tables } from '@/types/database'
 
 export default async function TerfiBilgilerPage() {
@@ -20,7 +21,7 @@ export default async function TerfiBilgilerPage() {
       .from('personel_kadro_ozet')
       .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
       .order('sicil_no'),
-    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
+    supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ayrilis_nedeni').order('kayit_zamani', { ascending: false }),
     supabase
       .from('personel_audit_log')
       .select('*')
@@ -36,25 +37,41 @@ export default async function TerfiBilgilerPage() {
     auditLoglarByTerfiId[refId].push(log as Tables<'personel_audit_log'>)
   }
 
-  const sonAyrilisPerSicil = new Map<string, string | null>()
+  const sonAyrilisPerSicil = new Map<string, { ayrilis_tarihi: string | null; ayrilis_nedeni: string | null }>()
   for (const r of phRaw ?? []) {
-    if (!sonAyrilisPerSicil.has(r.sicil_no)) sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
+    if (!sonAyrilisPerSicil.has(r.sicil_no)) {
+      sonAyrilisPerSicil.set(r.sicil_no, {
+        ayrilis_tarihi: r.ayrilis_tarihi,
+        ayrilis_nedeni: r.ayrilis_nedeni,
+      })
+    }
   }
   const aktifSiciller = new Set<string>()
   ;(calisanlar ?? []).forEach((c) => {
     const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis) aktifSiciller.add(c.sicil_no)
+    if (personelAktifMi(sonAyrilis, D)) aktifSiciller.add(c.sicil_no)
   })
 
   const calisanMap = new Map((calisanlar ?? []).map((c) => [c.sicil_no, c]))
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
 
-  const terfiIndeks = terfiKayitlariIndeksle((kayitlar ?? []) as Tables<'terfi_hareketleri'>[])
+  const terfiKayitlari = (kayitlar ?? []) as Tables<'terfi_hareketleri'>[]
+  const terfiIndeks = terfiKayitlariIndeksle(terfiKayitlari)
+  const sonTerfiBySicil = new Map<string, Tables<'terfi_hareketleri'>>()
+  for (const t of [...terfiKayitlari].sort((a, b) => b.kayit_zamani.localeCompare(a.kayit_zamani))) {
+    if (!sonTerfiBySicil.has(t.sicil_no)) sonTerfiBySicil.set(t.sicil_no, t)
+  }
 
-  const memurSiciller = [...aktifSiciller].filter((sicil) => {
+  const mevcutMemurSiciller = [...aktifSiciller].filter((sicil) => {
     const k = kadroMap.get(sicil) as { statu?: string } | undefined
     return k?.statu === 'Memur'
   })
+  // Kadro değişimi sırasında asil/vekil alanı geçici olarak boşalabilir. Kurumdan
+  // ayrılmamış ve terfi kaydı bulunan personel bu nedenle listeden düşmemeli.
+  const aktifTerfiSiciller = terfiKayitlari
+    .filter(t => aktifSiciller.has(t.sicil_no) && !t.kapsam_disi)
+    .map(t => t.sicil_no)
+  const memurSiciller = [...new Set([...mevcutMemurSiciller, ...aktifTerfiSiciller])]
 
   const ogrenimTuruBySicil = new Map<string, string>()
   const khRows: { id: number; asil: string | null; vekil: string | null; kadro_derecesi: string | null; kadro_sira_no: string | null; ayrilis_tarihi: string | null }[] = []
@@ -93,6 +110,20 @@ export default async function TerfiBilgilerPage() {
         ayrilis_tarihi: r.ayrilis_tarihi ?? null,
       })
     }
+  }
+
+  const terfiKadroIdler = [...new Set(terfiKayitlari.map(t => t.kadro_id).filter((id): id is number => id != null && id > 0))]
+  const terfiKadroById = new Map<number, {
+    id: number
+    kadro_derecesi: string | null
+    kadro_sira_no: string | null
+  }>()
+  if (terfiKadroIdler.length > 0) {
+    const { data: terfiKadrolar } = await supabase
+      .from('kadro_hareketleri')
+      .select('id, kadro_derecesi, kadro_sira_no')
+      .in('id', terfiKadroIdler)
+    for (const k of terfiKadrolar ?? []) terfiKadroById.set(k.id, k)
   }
 
   type KadroRol = 'Asil' | 'Vekil'
@@ -210,7 +241,25 @@ export default async function TerfiBilgilerPage() {
     }
 
     if (hits.length === 0) {
-      // Aktif eşleşme yoksa (geçmiş/format farkı vb.), son kadro kaydından role/dereceyi dene.
+      // Aktif kadro eşleşmesi yoksa terfi kaydı kurumda kaldığı sürece görünür.
+      // Terfi üzerindeki kadro bağı tarihsel bağlam olarak korunur.
+      const sonTerfi = sonTerfiBySicil.get(sicil_no) ?? null
+      const terfiKadro = sonTerfi?.kadro_id ? terfiKadroById.get(sonTerfi.kadro_id) : undefined
+      if (sonTerfi) {
+        const rol = sonTerfi.rol === 'Vekil' ? 'Vekil' : sonTerfi.rol === 'Asil' ? 'Asil' : null
+        memurlar.push({
+          ...base,
+          liste_satir_id: `${sicil_no}-terfi${sonTerfi.id}`,
+          terfi: sonTerfi,
+          kadro_rolu: rol,
+          kadro_derecesi: terfiKadro?.kadro_derecesi ?? null,
+          kadro_sira_no: sonTerfi.kadro_sira_no ?? terfiKadro?.kadro_sira_no ?? null,
+          kadro_id: sonTerfi.kadro_id ?? null,
+        })
+        continue
+      }
+
+      // Terfi kaydı da yoksa son kadro kaydından role/dereceyi dene.
       const fallback = [...khRows]
         .filter(r => r.asil === sicil_no || r.vekil === sicil_no)
         .sort((a, b) => b.id - a.id)[0]
@@ -238,10 +287,13 @@ export default async function TerfiBilgilerPage() {
       }
     } else {
       for (const h of hits) {
+        const eslesenTerfi = terfiKaydiEsle(terfiIndeks, sicil_no, h.rol, h.kadro_sira_no, h.khId)
         memurlar.push({
           ...base,
           liste_satir_id: `${sicil_no}-kh${h.khId}-${h.rol}`,
-          terfi: terfiKaydiEsle(terfiIndeks, sicil_no, h.rol, h.kadro_sira_no, h.khId),
+          // Tek aktif kadro varsa eski kadroya bağlı kalmış son terfi kaydını da
+          // göster; sonraki hareket kaydında bağ güncel kadroya taşınır.
+          terfi: eslesenTerfi ?? (hits.length === 1 ? sonTerfiBySicil.get(sicil_no) ?? null : null),
           kadro_rolu: h.rol,
           kadro_derecesi: h.kadro_derecesi,
           kadro_sira_no: h.kadro_sira_no,

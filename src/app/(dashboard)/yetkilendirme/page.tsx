@@ -4,7 +4,6 @@ import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail, godmodeSicilSet 
 import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import YetkilendirmeClient from './YetkilendirmeClient'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,21 +132,16 @@ export default async function YetkilendirmePage() {
   return (
     <div>
       <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <span className="text-slate-800 font-medium">Yetkilendirme</span>
+        <span className="text-slate-800 font-medium">Çalışan Yetkilendirme</span>
       </nav>
 
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-        <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-slate-800">Çalışan Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Aktif belediye personeli (tüm statüler) + <strong>ADABEL Personeli</strong> çalışanlar sekmesindeki aktif kayıtlar,
           sicil sırasıyla · Toplam{' '}
           <span className="font-semibold">{satirlar.length}</span> satır
         </p>
-        </div>
-        <Link href="/yetkilendirme/dis-denetciler" className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600">
-          Dış Denetçiler
-        </Link>
       </div>
 
       <YetkilendirmeClient satirlar={satirlar} auditLoglarByRefId={auditLoglarByRefId} />

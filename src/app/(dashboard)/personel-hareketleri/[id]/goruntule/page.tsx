@@ -67,9 +67,9 @@ export default async function PersonelHareketiGoruntulePage({
     if (byId) phById = byId as PH
   }
 
-  // 2) Kadro satırı: URL'deki id sicil_no; PH id ile çakışırsa sicil+kadro yolu tercih edilir
-  const sicilOlarakAc =
-    kadroModu && (!phById || phById.sicil_no.trim() !== idText)
+  // PH kaydı bulunduysa URL her zaman hareket id'sidir. Kadro sorgu parametresi
+  // hareket id'sini sicil gibi yorumlatmamalı (örn. PH#51 / sicil 481).
+  const sicilOlarakAc = kadroModu && !phById
 
   if (sicilOlarakAc) {
     sicil_no = idText

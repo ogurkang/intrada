@@ -323,7 +323,9 @@ export default function PersonelHareketiDegistirClient({
     setYeniSinifState('')
     setYeniKadroDerecesiState('')
     setYeniGorevYeriState('')
-    setYeniGirisVarsayilan(BOS_DURUM)
+    // Kadro değişikliği personelin kurumdan ayrıldığı anlamına gelmez.
+    // Kadro alanlarını temizlerken kazanılmış terfi bilgilerini koru.
+    setYeniGirisVarsayilan({ ...BOS_DURUM, ...durumTerfiAlanlari(terfiSonState) })
     setYeniBolumKey(k => k + 1)
     setKadroSecModalAcik(false)
   }
@@ -818,8 +820,18 @@ export default function PersonelHareketiDegistirClient({
         <input type="hidden" name="eski_igz" value={eski.igz} />
         <input type="hidden" name="eski_ek_odeme" value={eski.ek_odeme} />
         <input type="hidden" name="eski_ek_gosterge" value={eski.ek_gosterge} />
-        <input type="hidden" name="onceki_kadro_id" value={seciliKadro?.id ?? ''} />
-        <input type="hidden" name="onceki_kadro_rol" value={seciliKadroRol} />
+        <input type="hidden" name="onceki_kadro_id" value={seciliKadro?.id ?? terfiSonState?.kadro_id ?? ''} />
+        <input
+          type="hidden"
+          name="onceki_kadro_rol"
+          value={
+            seciliKadro
+              ? seciliKadroRol
+              : String(terfiSonState?.rol ?? '').toLocaleLowerCase('tr-TR') === 'vekil'
+                ? 'vekil'
+                : 'asil'
+          }
+        />
         <input type="hidden" name="yeni_kadro_id" value={yeniKadroIdState ?? ''} />
 
         {/* Dayanak ve Açıklama */}

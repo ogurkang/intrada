@@ -2,8 +2,74 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-08-13T13:21:38.728Z",
+  "generatedAt": "2026-08-17T07:49:11.929Z",
   "commits": [
+    {
+      "hash": "ed4a2a0",
+      "fullHash": "ed4a2a0d5bdb3012368a7e307ee3fe0db594e284",
+      "date": "2026-08-17",
+      "subject": "fix(auth): profil sorgusunu dis denetci migration oncesi eski semaya dus"
+    },
+    {
+      "hash": "b9db809",
+      "fullHash": "b9db809c7c0cdcb18412d4ae27b0b5a5ab773cdd",
+      "date": "2026-08-17",
+      "subject": "feat(yetkilendirme): dis denetci profili, salt okunur denetim ve goruntuleme logu"
+    },
+    {
+      "hash": "493213b",
+      "fullHash": "493213bc3d81fc71064afff064092f2671fea296",
+      "date": "2026-08-17",
+      "subject": "fix(denetim): belgeleri tarayicidan dogrudan Storage'a yukle (Vercel gövde sinirini asmak icin)"
+    },
+    {
+      "hash": "e968bb5",
+      "fullHash": "e968bb5df2c23ecaa0a3bbd0182c6552bbe986b5",
+      "date": "2026-08-17",
+      "subject": "fix(denetim): alt bolum basliklarini menu_id ve bolum eslesmesiyle birlikte listele"
+    },
+    {
+      "hash": "7503099",
+      "fullHash": "75030995b563d70ea44a39652231b8c9f4bc1d84",
+      "date": "2026-08-17",
+      "subject": "feat(denetim): baslik duzenleme icin kalem ikonu ve sorumlu birim"
+    },
+    {
+      "hash": "522b6e2",
+      "fullHash": "522b6e24c3e293e638e4b4b6005f59caa3213fab",
+      "date": "2026-08-14",
+      "subject": "feat(denetim): donemleri genel bakis altinda dinamik menu agaci olarak yonet"
+    },
+    {
+      "hash": "94529b6",
+      "fullHash": "94529b62048b8e0796173f5e7e80f9223a7cd584",
+      "date": "2026-08-14",
+      "subject": "feat(denetim): baslik satirinda satir ici islem ikonlari ve onizleme duzeltmesi"
+    },
+    {
+      "hash": "107e8f3",
+      "fullHash": "107e8f31f2d787e817bc3f71725847ba84b05a76",
+      "date": "2026-08-14",
+      "subject": "fix(denetim,kadro): belge yukleme boyut limiti ve isci db hucre hizasi"
+    },
+    {
+      "hash": "e9117e0",
+      "fullHash": "e9117e0f219e46bad2090d288660d64d30cb48d8",
+      "date": "2026-08-14",
+      "subject": "feat(kadro): memur ve isci dolu-bos cetvelleri"
+    },
+    {
+      "hash": "f7d7c0e",
+      "fullHash": "f7d7c0e8ffe3ead6e066ccf6dc2e8537bf823410",
+      "date": "2026-08-14",
+      "subject": "feat(denetim): alt menu belge yonetimi ve insan kaynaklari bilgileri"
+    },
+    {
+      "hash": "5348082",
+      "fullHash": "5348082b20577ccd452834f57c1ae72b5dab6ac0",
+      "date": "2026-08-14",
+      "subject": "feat(denetim): donem yonetimi, karar aylari ve baglamli sol menu"
+    },
     {
       "hash": "9310b28",
       "fullHash": "9310b2800375725e753053f0ddc6eddb7826eac6",
@@ -177,72 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "af7f853151710da48680bdfa4b3680d8c0b61e83",
       "date": "2026-07-24",
       "subject": "fix(performans,sms): bildirim logu, gecmis sayfa ve BBY mesaj metni"
-    },
-    {
-      "hash": "33d3c6e",
-      "fullHash": "33d3c6e74ea39106568059189f1fc234782d9d8b",
-      "date": "2026-07-24",
-      "subject": "feat(performans): 2. amir SMS metnini mudurluk ve amir rolune gore ozellestir"
-    },
-    {
-      "hash": "41e4fb4",
-      "fullHash": "41e4fb41a2c5b06c8e1b35032032fa0a11ef6fdf",
-      "date": "2026-07-24",
-      "subject": "feat(performans): 1. amir tamamlaninca 2. amire SMS bildirim popup"
-    },
-    {
-      "hash": "7e32f5c",
-      "fullHash": "7e32f5c48d08ed09fc1f23495508debb57ef26c1",
-      "date": "2026-07-23",
-      "subject": "feat(performans): vekil mudur eslemesi, hayalet profil ve degerlendirme iyilestirmeleri"
-    },
-    {
-      "hash": "c623505",
-      "fullHash": "c6235059d295fd63bac73f44fa88178447366708",
-      "date": "2026-07-21",
-      "subject": "revert(ui): intrada standart dugme renklerini geri al"
-    },
-    {
-      "hash": "15cb33e",
-      "fullHash": "15cb33efdef711267d5619b3f558a10f649123df",
-      "date": "2026-07-21",
-      "subject": "fix(personel-hareketleri): sicil-PH id cakismasi ve terfi on doldurma"
-    },
-    {
-      "hash": "ad27145",
-      "fullHash": "ad27145695369332edd40b6cb364a86373514bdf",
-      "date": "2026-07-21",
-      "subject": "fix(terfi): ogrenim dropdown kisa etiketler ve listeden iptal"
-    },
-    {
-      "hash": "94f3465",
-      "fullHash": "94f346500050e28c6acdeaefac6d98eb5002b0e8",
-      "date": "2026-07-21",
-      "subject": "feat(terfi,rapor,ui): ogrenim terfi, yonetici iletisim snapshot ve dugme standardi"
-    },
-    {
-      "hash": "6055826",
-      "fullHash": "60558265de1b5d443650d8e526f19505d7b7361b",
-      "date": "2026-07-20",
-      "subject": "feat(bildirim,iletisim): mehil/harcirah, SMS planlama ve log takibi"
-    },
-    {
-      "hash": "cb16994",
-      "fullHash": "cb16994b3b572bc2669c15e16007da17267c2394",
-      "date": "2026-07-16",
-      "subject": "fix(performans): Ek-5 yazdirma sigrasi ve amir tarihleri"
-    },
-    {
-      "hash": "3f10254",
-      "fullHash": "3f1025414980c30a0ce062d2bb264d60440e2a11",
-      "date": "2026-07-16",
-      "subject": "feat(performans): Ek-5 onizleme, A4 yazdirma ve org bazli amir eslemesi"
-    },
-    {
-      "hash": "6f94299",
-      "fullHash": "6f942992b8347818b7f3412b581b44df29a9a2ef",
-      "date": "2026-07-16",
-      "subject": "feat(performans): degerlendirme modulu, dashboard ve sifirlama"
     }
   ]
 }

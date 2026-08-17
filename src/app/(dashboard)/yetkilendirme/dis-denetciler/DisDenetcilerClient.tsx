@@ -41,7 +41,7 @@ export default function DisDenetcilerClient({ denetciler }: { denetciler: Denetc
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/yetkilendirme" className="text-sm text-slate-500 hover:text-slate-700">← Yetkilendirme</Link>
+          <Link href="/yetkilendirme" className="text-sm text-slate-500 hover:text-slate-700">← Çalışan Yetkilendirme</Link>
           <h1 className="mt-2 text-2xl font-bold text-slate-800">Dış Denetçiler</h1>
           <p className="mt-1 text-sm text-slate-500">Yalnızca Denetim Yönetimi’ni görüntüleyen kurum dışı hesaplar.</p>
         </div>

@@ -124,9 +124,11 @@ async function terfiSenkronPersonelHareketinden(
 
   const oncekiSnap = terfiAuditSnapshot(sonTerfi, TERFI_KATSAYI_ALAN_ETIKETLERI)
   const metaGuncelleme: Record<string, string | number | null> = {}
-  if (rolEtiket && !sonTerfi.rol) metaGuncelleme.rol = rolEtiket
-  if (ctx.kadro_sira_no && !sonTerfi.kadro_sira_no) metaGuncelleme.kadro_sira_no = ctx.kadro_sira_no
-  if (ctx.kadro_id && !sonTerfi.kadro_id) metaGuncelleme.kadro_id = ctx.kadro_id
+  if (rolEtiket && sonTerfi.rol !== rolEtiket) metaGuncelleme.rol = rolEtiket
+  if (ctx.kadro_sira_no && sonTerfi.kadro_sira_no !== ctx.kadro_sira_no) {
+    metaGuncelleme.kadro_sira_no = ctx.kadro_sira_no
+  }
+  if (ctx.kadro_id && sonTerfi.kadro_id !== ctx.kadro_id) metaGuncelleme.kadro_id = ctx.kadro_id
 
   const { error: terfiErr } = await supabase
     .from('terfi_hareketleri')
