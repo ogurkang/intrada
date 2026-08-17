@@ -20,11 +20,18 @@ const KARAR_ETIKETLER: Record<string, string> = {
 
 const BOLUM_BELGE_ETIKETLER: Record<string, string> = {
   baslik: 'Başlık',
+  aciklama: 'Açıklama',
   bolum: 'Bölüm',
   sorumlu_birim: 'Sorumlu Birim',
   dosya_adi: 'Dosya',
   mime_type: 'Tür',
   boyut_byte: 'Boyut',
+}
+
+const BOLUM_BASLIK_ETIKETLER: Record<string, string> = {
+  baslik: 'Başlık',
+  aciklama: 'Açıklama',
+  sorumlu_birim: 'Sorumlu Birim',
 }
 
 export function denetimDonemAuditSnapshot(row: Record<string, unknown>) {
@@ -119,6 +126,14 @@ export function denetimBolumBelgeAuditDegerGoster(alan: string, deger: unknown):
   return denetimKararAuditDegerGoster(alan, deger)
 }
 
+export function denetimBolumBaslikAuditDiffSatirlari(onceki: unknown, sonraki: unknown) {
+  return alanDegisiklikleriHesapla(
+    (onceki as Record<string, unknown>) ?? null,
+    (sonraki as Record<string, unknown>) ?? {},
+    BOLUM_BASLIK_ETIKETLER,
+  )
+}
+
 export async function writeDenetimDonemAudit(
   supabase: SupabaseClient,
   opts: {
@@ -163,7 +178,13 @@ export async function writeDenetimKararAudit(
 
 export async function writeDenetimBolumBaslikAudit(
   supabase: SupabaseClient,
-  opts: { baslikId: number; islem: string; ozet: string; sonraki?: Record<string, unknown> | null },
+  opts: {
+    baslikId: number
+    islem: string
+    ozet: string
+    onceki?: Record<string, unknown> | null
+    sonraki?: Record<string, unknown> | null
+  },
 ) {
   await writePersonelAuditLogSafe(supabase, {
     modul: 'DENETIM',
@@ -171,6 +192,7 @@ export async function writeDenetimBolumBaslikAudit(
     ozet: opts.ozet,
     ref_table: 'denetim_bolum_baslik',
     ref_id: String(opts.baslikId),
+    onceki: opts.onceki ?? null,
     sonraki: opts.sonraki ?? null,
   })
 }

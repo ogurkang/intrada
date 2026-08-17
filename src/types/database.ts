@@ -2050,6 +2050,7 @@ export interface Database {
           alt_bolum: string | null
           baslik: string
           aciklama: string | null
+          sorumlu_birim: string | null
           sira_no: number
           created_at: string
           updated_at: string
@@ -2064,6 +2065,7 @@ export interface Database {
           alt_bolum?: string | null
           baslik: string
           aciklama?: string | null
+          sorumlu_birim?: string | null
           sira_no?: number
           created_at?: string
           updated_at?: string
@@ -2078,6 +2080,7 @@ export interface Database {
           alt_bolum?: string | null
           baslik?: string
           aciklama?: string | null
+          sorumlu_birim?: string | null
           sira_no?: number
           created_at?: string
           updated_at?: string

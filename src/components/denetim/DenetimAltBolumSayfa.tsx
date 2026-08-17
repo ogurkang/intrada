@@ -47,7 +47,7 @@ export default async function DenetimAltBolumSayfa({
 
   let baslikQuery = supabase
     .from('denetim_bolum_baslik')
-    .select('id, baslik, aciklama, sira_no, denetim_bolum_belge(id, sorumlu_birim, dosya_adi, created_by_email, updated_at)')
+    .select('id, baslik, aciklama, sorumlu_birim, sira_no, denetim_bolum_belge(id, sorumlu_birim, dosya_adi, created_by_email, updated_at)')
     .eq('donem_id', donemId)
     .order('sira_no')
   if (menu) baslikQuery = baslikQuery.eq('menu_id', menu.id)
@@ -66,17 +66,28 @@ export default async function DenetimAltBolumSayfa({
       aciklama: item.aciklama,
       sira_no: item.sira_no,
       belge_id: belge?.id ?? null,
-      sorumlu_birim: belge?.sorumlu_birim ?? null,
+      sorumlu_birim: belge?.sorumlu_birim ?? item.sorumlu_birim ?? null,
       dosya_adi: belge?.dosya_adi ?? null,
       yukleyen: belge?.created_by_email ?? null,
     }
   })
 
   const belgeIdler = basliklar.map(b => b.belge_id).filter((id): id is number => id != null)
-  const [auditLoglarByRefId, goruntulemelerByRefId] = await Promise.all([
+  const [belgeAuditMap, baslikAuditMap, goruntulemelerByRefId] = await Promise.all([
     loadAuditLoglarGroupedByRefId(supabase, 'denetim_bolum_belge', belgeIdler.map(String)),
+    loadAuditLoglarGroupedByRefId(supabase, 'denetim_bolum_baslik', basliklar.map(b => String(b.id))),
     loadDenetimGoruntulemelerGrouped(supabase, 'bolum', belgeIdler),
   ])
+  const auditLoglarByBaslikId = Object.fromEntries(
+    basliklar.map(b => {
+      const belgeId = b.belge_id != null ? String(b.belge_id) : ''
+      const loglar = [
+        ...(baslikAuditMap[String(b.id)] ?? []),
+        ...(belgeId ? belgeAuditMap[belgeId] ?? [] : []),
+      ].sort((a, z) => z.created_at.localeCompare(a.created_at))
+      return [String(b.id), loglar]
+    }),
+  )
 
   const parent = menu?.parent_id
     ? (
@@ -109,7 +120,7 @@ export default async function DenetimAltBolumSayfa({
       donemKapali={donem.durum === 'Kapalı'}
       basliklar={basliklar}
       mudurlukler={mudurlukler ?? []}
-      auditLoglarByRefId={auditLoglarByRefId}
+      auditLoglarByRefId={auditLoglarByBaslikId}
       goruntulemelerByRefId={goruntulemelerByRefId}
     />
   )

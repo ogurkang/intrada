@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
-import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import {
   denetimBolumBaslikEkle,
+  denetimBolumBaslikGuncelle,
   denetimBolumBelgeYukle,
 } from '@/app/(dashboard)/denetim/actions'
 import {
@@ -73,9 +74,13 @@ export default function DenetimBolumBaslikListeClient({
   const [baslik, setBaslik] = useState('')
   const [baslikAciklama, setBaslikAciklama] = useState('')
   const [hata, setHata] = useState<string | null>(null)
+  const [duzenleSatir, setDuzenleSatir] = useState<DenetimBolumBaslikSatir | null>(null)
+  const [duzenleBaslik, setDuzenleBaslik] = useState('')
+  const [duzenleAciklama, setDuzenleAciklama] = useState('')
+  const [duzenleBirim, setDuzenleBirim] = useState('')
   const [yukleSatir, setYukleSatir] = useState<DenetimBolumBaslikSatir | null>(null)
   const [sorumluBirim, setSorumluBirim] = useState('')
-  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [gecmisSatir, setGecmisSatir] = useState<DenetimBolumBaslikSatir | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function kaydet() {
@@ -105,6 +110,33 @@ export default function DenetimBolumBaslikListeClient({
     setSorumluBirim(satir.sorumlu_birim ?? '')
     setHata(null)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function duzenleAc(satir: DenetimBolumBaslikSatir) {
+    setDuzenleSatir(satir)
+    setDuzenleBaslik(satir.baslik)
+    setDuzenleAciklama(satir.aciklama ?? '')
+    setDuzenleBirim(satir.sorumlu_birim ?? '')
+    setHata(null)
+  }
+
+  function duzenleKaydet() {
+    if (!duzenleSatir) return
+    const fd = new FormData()
+    fd.set('id', String(duzenleSatir.id))
+    fd.set('baslik', duzenleBaslik)
+    fd.set('aciklama', duzenleAciklama)
+    fd.set('sorumlu_birim', duzenleBirim)
+    setHata(null)
+    startTransition(async () => {
+      const res = await denetimBolumBaslikGuncelle(fd)
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      setDuzenleSatir(null)
+      router.refresh()
+    })
   }
 
   function yukleKaydet() {
@@ -171,7 +203,7 @@ export default function DenetimBolumBaslikListeClient({
         </p>
       ) : null}
 
-      {hata && !modalAcik && !yukleSatir ? (
+      {hata && !modalAcik && !duzenleSatir && !yukleSatir ? (
         <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{hata}</p>
       ) : null}
 
@@ -196,9 +228,10 @@ export default function DenetimBolumBaslikListeClient({
                 </tr>
               ) : (
                 basliklar.map((item, i) => {
-                  const logKey = item.belge_id != null ? String(item.belge_id) : ''
-                  const loglar = logKey ? auditLoglarByRefId[logKey] ?? [] : []
-                  const goruntulemeler = logKey ? goruntulemelerByRefId[logKey] ?? [] : []
+                  const baslikLogKey = String(item.id)
+                  const belgeLogKey = item.belge_id != null ? String(item.belge_id) : ''
+                  const loglar = auditLoglarByRefId[baslikLogKey] ?? []
+                  const goruntulemeler = belgeLogKey ? goruntulemelerByRefId[belgeLogKey] ?? [] : []
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80">
                       <td className="px-3 py-3 text-center tabular-nums text-slate-600">{i + 1}</td>
@@ -230,10 +263,13 @@ export default function DenetimBolumBaslikListeClient({
                         <div className="flex items-center justify-center gap-1">
                           <SaatGecmisDugmesi
                             sayi={loglar.length + goruntulemeler.reduce((n, g) => n + g.tarihler.length, 0)}
-                            onClick={() => {
-                              if (logKey) setGecmisRefId(logKey)
-                            }}
-                            title={logKey ? 'İşlem ve görüntüleme geçmişi' : 'Henüz belge yok'}
+                            onClick={() => setGecmisSatir(item)}
+                            title="Başlık, belge ve görüntüleme geçmişi"
+                          />
+                          <KalemDuzenleDugmesi
+                            disabled={donemKapali || isPending}
+                            onClick={() => duzenleAc(item)}
+                            title={donemKapali ? 'Kapalı dönem' : 'Başlık ve sorumlu birimi düzenle'}
                           />
                           {item.belge_id != null ? (
                             <a
@@ -316,6 +352,59 @@ export default function DenetimBolumBaslikListeClient({
       </Modal>
 
       <Modal
+        open={duzenleSatir != null}
+        onClose={() => setDuzenleSatir(null)}
+        title="Başlığı Düzenle"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
+            <input
+              value={duzenleBaslik}
+              onChange={e => setDuzenleBaslik(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim</label>
+            <select
+              value={duzenleBirim}
+              onChange={e => setDuzenleBirim(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Seçiniz</option>
+              {mudurlukler.map(m => (
+                <option key={m.id} value={m.mudurluk_adi}>{m.mudurluk_adi}</option>
+              ))}
+              {duzenleBirim && !mudurlukler.some(m => m.mudurluk_adi === duzenleBirim) ? (
+                <option value={duzenleBirim}>{duzenleBirim} (pasif / eski)</option>
+              ) : null}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
+            <textarea
+              value={duzenleAciklama}
+              onChange={e => setDuzenleAciklama(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setDuzenleSatir(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+              İptal
+            </button>
+            <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         open={yukleSatir != null}
         onClose={() => setYukleSatir(null)}
         title={yukleSatir ? `${yukleSatir.baslik} — Belge Yükle` : 'Belge Yükle'}
@@ -371,10 +460,14 @@ export default function DenetimBolumBaslikListeClient({
       </Modal>
 
       <DenetimBelgeGecmisPanel
-        acik={gecmisRefId != null}
-        onKapat={() => setGecmisRefId(null)}
-        auditLoglar={gecmisRefId ? auditLoglarByRefId[gecmisRefId] ?? [] : []}
-        goruntulemeler={gecmisRefId ? goruntulemelerByRefId[gecmisRefId] ?? [] : []}
+        acik={gecmisSatir != null}
+        onKapat={() => setGecmisSatir(null)}
+        auditLoglar={gecmisSatir ? auditLoglarByRefId[String(gecmisSatir.id)] ?? [] : []}
+        goruntulemeler={
+          gecmisSatir?.belge_id != null
+            ? goruntulemelerByRefId[String(gecmisSatir.belge_id)] ?? []
+            : []
+        }
         baslik={`${altBolumLabel} — Belge Geçmişi`}
         diffSatirlari={denetimBolumBelgeAuditDiffSatirlari}
         degerGoster={denetimBolumBelgeAuditDegerGoster}

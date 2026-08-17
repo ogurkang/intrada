@@ -549,6 +549,72 @@ export async function denetimBolumBaslikEkle(formData: FormData): Promise<Deneti
   return { ok: true, id: inserted.id }
 }
 
+export async function denetimBolumBaslikGuncelle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Başlık bulunamadı.' }
+  if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_bolum_baslik')
+    .select('id, donem_id, baslik, aciklama, sorumlu_birim, denetim_donem!inner(durum)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Başlık bulunamadı.' }
+  const donemDurumu = Array.isArray(onceki.denetim_donem)
+    ? onceki.denetim_donem[0]?.durum
+    : onceki.denetim_donem?.durum
+  if (donemDurumu === 'Kapalı') return { hata: 'Kapalı dönemde başlık düzenlenemez.' }
+
+  if (sorumlu_birim) {
+    const { data: mudurluk } = await supabase
+      .from('tanim_mudurluk')
+      .select('id')
+      .eq('mudurluk_adi', sorumlu_birim)
+      .eq('aktif', true)
+      .maybeSingle()
+    if (!mudurluk) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
+  }
+
+  const updated_at = new Date().toISOString()
+  const { error } = await supabase
+    .from('denetim_bolum_baslik')
+    .update({ baslik, aciklama, sorumlu_birim, updated_at })
+    .eq('id', id)
+  if (error) {
+    if (error.code === '23505') return { hata: 'Bu menüde aynı adlı başlık zaten var.' }
+    return { hata: error.message }
+  }
+
+  // Belge varsa satırdaki müdürlük ile belge kaydını da aynı tut.
+  const { error: belgeError } = await supabase
+    .from('denetim_bolum_belge')
+    .update({ sorumlu_birim, updated_at })
+    .eq('baslik_id', id)
+  if (belgeError) return { hata: belgeError.message }
+
+  await writeDenetimBolumBaslikAudit(supabase, {
+    baslikId: id,
+    islem: 'Güncelle',
+    ozet: `${onceki.baslik} başlığı güncellendi.`,
+    onceki: {
+      baslik: onceki.baslik,
+      aciklama: onceki.aciklama,
+      sorumlu_birim: onceki.sorumlu_birim,
+    },
+    sonraki: { baslik, aciklama, sorumlu_birim },
+  })
+  revalidateDonem(onceki.donem_id)
+  return { ok: true, id }
+}
+
 export async function denetimBolumBelgeYukle(formData: FormData): Promise<DenetimActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
@@ -635,6 +701,10 @@ export async function denetimBolumBelgeYukle(formData: FormData): Promise<Deneti
         bolum: baslik.bolum,
       }),
     })
+    await supabase
+      .from('denetim_bolum_baslik')
+      .update({ sorumlu_birim, updated_at: new Date().toISOString() })
+      .eq('id', baslikId)
     revalidateDonem(baslik.donem_id)
     return { ok: true, id: mevcut.id }
   }
@@ -658,6 +728,10 @@ export async function denetimBolumBelgeYukle(formData: FormData): Promise<Deneti
       bolum: baslik.bolum,
     }),
   })
+  await supabase
+    .from('denetim_bolum_baslik')
+    .update({ sorumlu_birim, updated_at: new Date().toISOString() })
+    .eq('id', baslikId)
   revalidateDonem(baslik.donem_id)
   return { ok: true, id: inserted.id }
 }
