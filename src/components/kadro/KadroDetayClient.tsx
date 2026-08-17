@@ -115,6 +115,7 @@ export default function KadroDetayClient({
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Kadro & Görev</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="Statü" deger={row.statu} />
+              {row.statu === 'Memur' && <Alan etiket="Ayrım" deger={row.ayrim ?? 'Memur'} />}
               <Alan etiket="Kadro Derecesi" deger={row.kadro_derecesi} />
               <Alan etiket="Kadro Ünvanı" deger={row.kadro_unvani} />
               <Alan etiket="Kadro Müdürlüğü" deger={row.kadro_mudurlugu} />

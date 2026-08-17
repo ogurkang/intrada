@@ -160,15 +160,10 @@ export default function KadroDuzenleClient({
   const d = row
   const [asilSicil, setAsilSicil] = useState(d.asil ?? '')
   const [vekilSicil, setVekilSicil] = useState(d.vekil ?? '')
+  const [statu, setStatu] = useState(d.statu ?? '')
+  const [ayrim, setAyrim] = useState(d.statu === 'Memur' ? (d.ayrim ?? 'Memur') : 'Memur')
   const [iptalKararTarihi, setIptalKararTarihi] = useState(d.iptal_karar_tarihi ?? '')
   const [iptalKararNo, setIptalKararNo] = useState(d.iptal_karar_no ?? '')
-
-  useEffect(() => {
-    setAsilSicil(d.asil ?? '')
-    setVekilSicil(d.vekil ?? '')
-    setIptalKararTarihi(d.iptal_karar_tarihi ?? '')
-    setIptalKararNo(d.iptal_karar_no ?? '')
-  }, [d.id, d.asil, d.vekil, d.iptal_karar_tarihi, d.iptal_karar_no])
 
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const hesaplananDurum = iptalMi ? 'İptal' : kadroDurumuHesapla(asilSicil, vekilSicil)
@@ -217,11 +212,40 @@ export default function KadroDuzenleClient({
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kadro & Görev Bilgileri</p>
             {(kadroUnvanAktifListedeYok || gorevUnvanAktifListedeYok) && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mb-3">
-                Mevcut kayıttaki bazı unvanlar aktif unvan listesinde görünmüyor. Kayıt korunur; gerekirse Tanımlar &gt; Ünvanlar'dan tekrar aktifleştirin.
+                Mevcut kayıttaki bazı unvanlar aktif unvan listesinde görünmüyor. Kayıt korunur; gerekirse Tanımlar &gt; Ünvanlar&apos;dan tekrar aktifleştirin.
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
-              {sel(d, 'statu', 'Statü', statuler)}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Statü</label>
+                <select
+                  name="statu"
+                  value={statu}
+                  onChange={e => {
+                    const yeni = e.target.value
+                    setStatu(yeni)
+                    if (yeni === 'Memur' && !ayrim) setAyrim('Memur')
+                  }}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="">—</option>
+                  {statuler.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              {statu === 'Memur' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Ayrım</label>
+                  <select
+                    name="ayrim"
+                    value={ayrim}
+                    onChange={e => setAyrim(e.target.value as 'Memur' | 'Sözleşmeli')}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="Memur">Memur</option>
+                    <option value="Sözleşmeli">Sözleşmeli</option>
+                  </select>
+                </div>
+              )}
               {input(d, 'kadro_derecesi', 'Kadro Derecesi', { placeholder: '1, 2 ...' })}
               {selUnvanId(d, 'Kadro Ünvanı', unvanlar, 'kadro')}
               {sel(d, 'kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}

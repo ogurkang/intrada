@@ -1056,7 +1056,7 @@ export interface Database {
         Row: {
           id: number; public_id: string; meclis_karar_tarihi: string | null; meclis_karar_no: string | null
           iptal_karar_tarihi: string | null; iptal_karar_no: string | null
-          kadro_sira_no: string | null; kadro_derecesi: string | null; statu: string | null
+          kadro_sira_no: string | null; kadro_derecesi: string | null; statu: string | null; ayrim: 'Memur' | 'Sözleşmeli' | null
           kadro_unvan_id: number | null; kadro_unvani: string | null; asil: string | null; kadro_mudurlugu: string | null
           gorev_unvan_id: number | null; gorev_unvani: string | null; vekil: string | null; gorev_mudurlugu: string | null
           meslegi: string | null; memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
@@ -1067,7 +1067,7 @@ export interface Database {
         Insert: {
           id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
           iptal_karar_tarihi?: string | null; iptal_karar_no?: string | null
-          kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null
+          kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null; ayrim?: 'Memur' | 'Sözleşmeli' | null
           kadro_unvan_id?: number | null; kadro_unvani?: string | null; asil?: string | null; kadro_mudurlugu?: string | null
           gorev_unvan_id?: number | null; gorev_unvani?: string | null; vekil?: string | null; gorev_mudurlugu?: string | null
           meslegi?: string | null; memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
@@ -1078,7 +1078,7 @@ export interface Database {
         Update: {
           id?: number; public_id?: string; meclis_karar_tarihi?: string | null; meclis_karar_no?: string | null
           iptal_karar_tarihi?: string | null; iptal_karar_no?: string | null
-          kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null
+          kadro_sira_no?: string | null; kadro_derecesi?: string | null; statu?: string | null; ayrim?: 'Memur' | 'Sözleşmeli' | null
           kadro_unvan_id?: number | null; kadro_unvani?: string | null; asil?: string | null; kadro_mudurlugu?: string | null
           gorev_unvan_id?: number | null; gorev_unvani?: string | null; vekil?: string | null; gorev_mudurlugu?: string | null
           meslegi?: string | null; memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
