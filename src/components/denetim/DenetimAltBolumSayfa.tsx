@@ -45,18 +45,50 @@ export default async function DenetimAltBolumSayfa({
   if (!menu && !alt) notFound()
   if (menu && menu.sayfa_turu !== 'belge') notFound()
 
-  let baslikQuery = supabase
-    .from('denetim_bolum_baslik')
-    .select('id, baslik, aciklama, sorumlu_birim, sira_no, denetim_bolum_belge(id, sorumlu_birim, dosya_adi, created_by_email, updated_at)')
-    .eq('donem_id', donemId)
-    .order('sira_no')
-  if (menu) baslikQuery = baslikQuery.eq('menu_id', menu.id)
-  else if (resolvedBolum && altBolum) {
-    baslikQuery = baslikQuery.eq('bolum', resolvedBolum).eq('alt_bolum', altBolum)
-  }
-  const { data: baslikRaw } = await baslikQuery
+  const sistemAnahtar = menu?.sistem_anahtari ?? altBolum ?? null
+  const BELGE_ALANLARI = 'denetim_bolum_belge(id, sorumlu_birim, dosya_adi, created_by_email, updated_at)'
 
-  const basliklar: DenetimBolumBaslikSatir[] = (baslikRaw ?? []).map(item => {
+  async function basliklariGetir(sorumluBirimKolonu: boolean) {
+    let q = supabase
+      .from('denetim_bolum_baslik')
+      .select(
+        `id, baslik, aciklama, sira_no${sorumluBirimKolonu ? ', sorumlu_birim' : ''}, ${BELGE_ALANLARI}`,
+      )
+      .eq('donem_id', donemId)
+      .order('sira_no')
+    // Menü kaydı varsa bile eski başlıkların menu_id'si boş olabilir; ikisini de kapsa.
+    if (menu && resolvedBolum && sistemAnahtar) {
+      q = q.or(`menu_id.eq.${menu.id},and(bolum.eq.${resolvedBolum},alt_bolum.eq.${sistemAnahtar})`)
+    } else if (menu) {
+      q = q.eq('menu_id', menu.id)
+    } else if (resolvedBolum && altBolum) {
+      q = q.eq('bolum', resolvedBolum).eq('alt_bolum', altBolum)
+    }
+    return q
+  }
+
+  let { data: baslikRaw, error: baslikError } = await basliklariGetir(true)
+  if (baslikError) {
+    // sorumlu_birim kolonu için migration henüz uygulanmamış olabilir.
+    ;({ data: baslikRaw, error: baslikError } = await basliklariGetir(false))
+  }
+  if (baslikError) {
+    console.error('DENETIM_BASLIK_LOAD_FAILED', baslikError.message)
+  }
+
+  type BaslikRow = {
+    id: number
+    baslik: string
+    aciklama: string | null
+    sira_no: number
+    sorumlu_birim?: string | null
+    denetim_bolum_belge?:
+      | { id: number; sorumlu_birim: string | null; dosya_adi: string; created_by_email: string | null }
+      | { id: number; sorumlu_birim: string | null; dosya_adi: string; created_by_email: string | null }[]
+      | null
+  }
+
+  const basliklar: DenetimBolumBaslikSatir[] = ((baslikRaw ?? []) as unknown as BaslikRow[]).map(item => {
     const belge = Array.isArray(item.denetim_bolum_belge)
       ? item.denetim_bolum_belge[0] ?? null
       : item.denetim_bolum_belge

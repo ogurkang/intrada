@@ -2,8 +2,38 @@
 import type { GelistirmelerData } from '@/lib/gelistirmeler-shared'
 
 export const gelistirmelerData: GelistirmelerData = {
-  "generatedAt": "2026-08-11T05:59:04.392Z",
+  "generatedAt": "2026-08-13T13:21:38.728Z",
   "commits": [
+    {
+      "hash": "9310b28",
+      "fullHash": "9310b2800375725e753053f0ddc6eddb7826eac6",
+      "date": "2026-08-13",
+      "subject": "feat(rapor): belediye geneli listede ogrenim, sticky baslik ve ust kaydirma"
+    },
+    {
+      "hash": "ecc524c",
+      "fullHash": "ecc524cd9e55b3cdfe07536cd8cfcbbccd544835",
+      "date": "2026-08-11",
+      "subject": "fix(kesintiler): AYY ozet state icin statuBazliPersonel eksikligi"
+    },
+    {
+      "hash": "24386da",
+      "fullHash": "24386dac88844e3d025b2e913b1032f9e95520f8",
+      "date": "2026-08-11",
+      "subject": "feat(kesintiler): AYY ozet gruplama excel ve ekranda birlestirildi"
+    },
+    {
+      "hash": "72157ca",
+      "fullHash": "72157ca35500434696c79d62a350246c1d9732d2",
+      "date": "2026-08-11",
+      "subject": "feat(bildirim,kesintiler): yzc program kurallari ve ayy ozet excel duzeltmesi"
+    },
+    {
+      "hash": "06c498f",
+      "fullHash": "06c498f8b6a473fbdcd8a303ce7210b8352d28ba",
+      "date": "2026-08-11",
+      "subject": "fix(bildirim): yari zamanli PDF turkce karakter ve tek sayfa duzeni"
+    },
     {
       "hash": "e782bd8",
       "fullHash": "e782bd80957bc6950f66668b8c06c8a9d474a53c",
@@ -213,36 +243,6 @@ export const gelistirmelerData: GelistirmelerData = {
       "fullHash": "6f942992b8347818b7f3412b581b44df29a9a2ef",
       "date": "2026-07-16",
       "subject": "feat(performans): degerlendirme modulu, dashboard ve sifirlama"
-    },
-    {
-      "hash": "42e63b4",
-      "fullHash": "42e63b44705f9f30fddd208cab19f591482e2eb7",
-      "date": "2026-07-16",
-      "subject": "feat(kadro): detay iptal alani ve personel gecmisi; personel hareket kadro secimi"
-    },
-    {
-      "hash": "4f97522",
-      "fullHash": "4f9752287f87e096bffe92951cac4299990c1f09",
-      "date": "2026-07-16",
-      "subject": "fix(personel): yerleske adresi gorunurlugu ve tehlike raporu konumu"
-    },
-    {
-      "hash": "57db8d6",
-      "fullHash": "57db8d6519c774956fbbc4ce95ecce452e3169bd",
-      "date": "2026-07-16",
-      "subject": "feat(rapor): tehlikeli sinif listelerine mudurluk konum sutunu"
-    },
-    {
-      "hash": "bd24d29",
-      "fullHash": "bd24d2967ab08792caa582be472d684784947a5e",
-      "date": "2026-07-13",
-      "subject": "chore(sidebar): RMY/IVY/IZY alt menulerini gizle"
-    },
-    {
-      "hash": "c94292e",
-      "fullHash": "c94292e522230411f77dda32c64303825ed1a5a1",
-      "date": "2026-07-13",
-      "subject": "fix: hizmet birleştirme makam metni ve SH K override zincir taşıması"
     }
   ]
 }
