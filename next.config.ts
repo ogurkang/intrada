@@ -3,7 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfkit"],
   experimental: {
-    /** Denetim belgeleri 15 MB'a kadar server action ile yükleniyor; varsayılan 1 MB yetersiz. */
+    /**
+     * Denetim belgeleri artık tarayıcıdan doğrudan Storage'a gidiyor; bu sınır diğer
+     * modüllerin (imza vb.) server action ile yüklediği küçük dosyalar için geçerli.
+     * Vercel'de fonksiyon istek gövdesi zaten 4.5 MB ile sınırlıdır.
+     */
     serverActions: { bodySizeLimit: "20mb" },
   },
   async redirects() {

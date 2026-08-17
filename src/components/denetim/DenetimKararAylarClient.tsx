@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
-import { denetimKararBelgeYukle } from '@/app/(dashboard)/denetim/actions'
+import { denetimKararBelgeKaydet, denetimKararBelgeYuklemeHazirla } from '@/app/(dashboard)/denetim/actions'
+import { denetimBelgeStorageYukle } from '@/lib/denetim-belge-yukle'
 import { DENETIM_AYLAR_TR, DENETIM_BELGE_MAX_BOYUT, type DenetimKararTuru } from '@/lib/denetim'
 import {
   denetimKararAuditDegerGoster,
@@ -79,15 +80,36 @@ export default function DenetimKararAylarClient({
       return
     }
     setHata(null)
-    const fd = new FormData()
-    fd.set('donem_id', String(donemId))
-    fd.set('ay', String(yukleAy))
-    fd.set('karar_turu', kararTuru)
-    fd.set('sorumlu_birim', sorumluBirim)
-    fd.set('file', file)
+    const ay = yukleAy
     startTransition(async () => {
       try {
-        const res = await denetimKararBelgeYukle(fd)
+        const hazirlikFd = new FormData()
+        hazirlikFd.set('donem_id', String(donemId))
+        hazirlikFd.set('ay', String(ay))
+        hazirlikFd.set('karar_turu', kararTuru)
+        hazirlikFd.set('dosya_adi', file.name)
+        hazirlikFd.set('boyut', String(file.size))
+        const hazirlik = await denetimKararBelgeYuklemeHazirla(hazirlikFd)
+        if (hazirlik.hata || !hazirlik.path || !hazirlik.token) {
+          setHata(hazirlik.hata ?? 'Yükleme başlatılamadı.')
+          return
+        }
+
+        const yuklemeHatasi = await denetimBelgeStorageYukle(hazirlik.path, hazirlik.token, file)
+        if (yuklemeHatasi) {
+          setHata(`Dosya yüklenemedi: ${yuklemeHatasi}`)
+          return
+        }
+
+        const kayitFd = new FormData()
+        kayitFd.set('donem_id', String(donemId))
+        kayitFd.set('ay', String(ay))
+        kayitFd.set('karar_turu', kararTuru)
+        kayitFd.set('sorumlu_birim', sorumluBirim)
+        kayitFd.set('storage_path', hazirlik.path)
+        kayitFd.set('dosya_adi', file.name)
+        kayitFd.set('boyut', String(file.size))
+        const res = await denetimKararBelgeKaydet(kayitFd)
         if (res.hata) {
           setHata(res.hata)
           return
@@ -95,7 +117,7 @@ export default function DenetimKararAylarClient({
         setYukleAy(null)
         router.refresh()
       } catch {
-        setHata('Belge yüklenemedi. Dosya boyutunu kontrol edip tekrar deneyin.')
+        setHata('Belge yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.')
       }
     })
   }

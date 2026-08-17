@@ -28,6 +28,12 @@ import {
 
 export type DenetimActionSonuc = { ok?: boolean; hata?: string; id?: number }
 
+/**
+ * Dosya, sunucu aksiyonu gövdesi yerine tarayıcıdan doğrudan Storage'a yüklenir;
+ * platformun istek gövdesi sınırı (Vercel'de 4.5 MB) böylece devre dışı kalır.
+ */
+export type DenetimYuklemeHazirlik = { ok?: boolean; hata?: string; path?: string; token?: string }
+
 async function oturum() {
   const supabase = await createClient()
   const {
@@ -39,6 +45,10 @@ async function oturum() {
 
 function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? '').trim()
+}
+
+function guvenliDosyaAdi(dosyaAdi: string, ext: string): string {
+  return dosyaAdi.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `belge.${ext}`
 }
 
 function revalidateDonem(donemId?: number) {
@@ -219,7 +229,38 @@ export async function denetimDonemAc(id: number): Promise<DenetimActionSonuc> {
   return { ok: true, id }
 }
 
-export async function denetimKararBelgeYukle(formData: FormData): Promise<DenetimActionSonuc> {
+export async function denetimKararBelgeYuklemeHazirla(formData: FormData): Promise<DenetimYuklemeHazirlik> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const donemId = Number.parseInt(str(formData, 'donem_id'), 10)
+  const ay = Number.parseInt(str(formData, 'ay'), 10)
+  const karar_turu = str(formData, 'karar_turu') as DenetimKararTuru
+  const dosya_adi = str(formData, 'dosya_adi')
+  const boyut = Number.parseInt(str(formData, 'boyut'), 10)
+
+  if (!Number.isFinite(donemId) || donemId <= 0) return { hata: 'Dönem gerekli.' }
+  if (!Number.isFinite(ay) || ay < 1 || ay > 12) return { hata: 'Geçerli bir ay seçin.' }
+  if (karar_turu !== 'encumen' && karar_turu !== 'meclis') return { hata: 'Karar türü geçersiz.' }
+  if (!dosya_adi) return { hata: 'Dosya seçin.' }
+  if (!Number.isFinite(boyut) || boyut <= 0) return { hata: 'Dosya seçin.' }
+  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (!denetimBelgeMimeCoz(dosya_adi, '')) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
+
+  const { data: donem } = await supabase.from('denetim_donem').select('id, durum').eq('id', donemId).maybeSingle()
+  if (!donem) return { hata: 'Dönem bulunamadı.' }
+  if (donem.durum === 'Kapalı') return { hata: 'Kapalı döneme belge yüklenemez.' }
+
+  const ext = denetimBelgeUzanti(dosya_adi) || 'bin'
+  const storagePath = `karar/${donemId}/${karar_turu}/${ay}/${Date.now()}_${guvenliDosyaAdi(dosya_adi, ext)}`
+  const { data, error } = await supabase.storage.from(DENETIM_BELGE_BUCKET).createSignedUploadUrl(storagePath)
+  if (error || !data) return { hata: error?.message ?? 'Yükleme adresi oluşturulamadı.' }
+
+  return { ok: true, path: data.path, token: data.token }
+}
+
+export async function denetimKararBelgeKaydet(formData: FormData): Promise<DenetimActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
   const { supabase, user } = gate
@@ -228,18 +269,20 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
   const ay = Number.parseInt(str(formData, 'ay'), 10)
   const karar_turu = str(formData, 'karar_turu') as DenetimKararTuru
   const sorumlu_birim = str(formData, 'sorumlu_birim') || null
-  const file = formData.get('file')
+  const storagePath = str(formData, 'storage_path')
+  const dosya_adi = str(formData, 'dosya_adi')
+  const boyut = Number.parseInt(str(formData, 'boyut'), 10)
 
   if (!Number.isFinite(donemId) || donemId <= 0) return { hata: 'Dönem gerekli.' }
   if (!Number.isFinite(ay) || ay < 1 || ay > 12) return { hata: 'Geçerli bir ay seçin.' }
   if (karar_turu !== 'encumen' && karar_turu !== 'meclis') return { hata: 'Karar türü geçersiz.' }
-  if (!(file instanceof File) || file.size === 0) return { hata: 'Dosya seçin.' }
-  if (file.size > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (!dosya_adi) return { hata: 'Dosya seçin.' }
+  if (!storagePath.startsWith(`karar/${donemId}/${karar_turu}/${ay}/`)) return { hata: 'Yükleme doğrulanamadı.' }
 
-  const mime = denetimBelgeMimeCoz(file.name, file.type)
+  const mime = denetimBelgeMimeCoz(dosya_adi, '')
   if (!mime) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
 
-  const { data: donem } = await supabase.from('denetim_donem').select('id, durum, donem_adi').eq('id', donemId).maybeSingle()
+  const { data: donem } = await supabase.from('denetim_donem').select('id, durum').eq('id', donemId).maybeSingle()
   if (!donem) return { hata: 'Dönem bulunamadı.' }
   if (donem.durum === 'Kapalı') return { hata: 'Kapalı döneme belge yüklenemez.' }
 
@@ -251,25 +294,15 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
     .eq('ay', ay)
     .maybeSingle()
 
-  const ext = denetimBelgeUzanti(file.name) || 'bin'
-  const safeBase = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `karar.${ext}`
-  const storagePath = `karar/${donemId}/${karar_turu}/${ay}/${Date.now()}_${safeBase}`
-  const buffer = Buffer.from(await file.arrayBuffer())
-
-  const { error: uploadErr } = await supabase.storage
-    .from(DENETIM_BELGE_BUCKET)
-    .upload(storagePath, buffer, { contentType: mime, upsert: false })
-  if (uploadErr) return { hata: uploadErr.message }
-
   if (mevcut) {
     const { error } = await supabase
       .from('denetim_karar_belge')
       .update({
         sorumlu_birim,
-        dosya_adi: file.name,
+        dosya_adi,
         storage_path: storagePath,
         mime_type: mime,
-        boyut_byte: file.size,
+        boyut_byte: boyut,
         updated_at: new Date().toISOString(),
         created_by: user.id,
         created_by_email: user.email ?? null,
@@ -294,9 +327,9 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
         karar_turu,
         ay,
         sorumlu_birim,
-        dosya_adi: file.name,
+        dosya_adi,
         mime_type: mime,
-        boyut_byte: file.size,
+        boyut_byte: boyut,
       }),
     })
 
@@ -311,10 +344,10 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
       karar_turu,
       ay,
       sorumlu_birim,
-      dosya_adi: file.name,
+      dosya_adi,
       storage_path: storagePath,
       mime_type: mime,
-      boyut_byte: file.size,
+      boyut_byte: boyut,
       created_by: user.id,
       created_by_email: user.email ?? null,
     })
@@ -334,9 +367,9 @@ export async function denetimKararBelgeYukle(formData: FormData): Promise<Deneti
       karar_turu,
       ay,
       sorumlu_birim,
-      dosya_adi: file.name,
+      dosya_adi,
       mime_type: mime,
-      boyut_byte: file.size,
+      boyut_byte: boyut,
     }),
   })
 
@@ -615,19 +648,51 @@ export async function denetimBolumBaslikGuncelle(formData: FormData): Promise<De
   return { ok: true, id }
 }
 
-export async function denetimBolumBelgeYukle(formData: FormData): Promise<DenetimActionSonuc> {
+export async function denetimBolumBelgeYuklemeHazirla(formData: FormData): Promise<DenetimYuklemeHazirlik> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const baslikId = Number.parseInt(str(formData, 'baslik_id'), 10)
+  const dosya_adi = str(formData, 'dosya_adi')
+  const boyut = Number.parseInt(str(formData, 'boyut'), 10)
+  if (!Number.isFinite(baslikId) || baslikId <= 0) return { hata: 'Başlık gerekli.' }
+  if (!dosya_adi) return { hata: 'Dosya seçin.' }
+  if (!Number.isFinite(boyut) || boyut <= 0) return { hata: 'Dosya seçin.' }
+  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (!denetimBelgeMimeCoz(dosya_adi, '')) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
+
+  const { data: baslik } = await supabase
+    .from('denetim_bolum_baslik')
+    .select('id, donem_id, bolum, denetim_donem!inner(durum)')
+    .eq('id', baslikId)
+    .maybeSingle()
+  if (!baslik) return { hata: 'Başlık bulunamadı.' }
+  const durum = Array.isArray(baslik.denetim_donem) ? baslik.denetim_donem[0]?.durum : baslik.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı döneme belge yüklenemez.' }
+
+  const ext = denetimBelgeUzanti(dosya_adi) || 'bin'
+  const storagePath = `bolum/${baslik.donem_id}/${baslik.bolum ?? 'menu'}/${baslikId}/${Date.now()}_${guvenliDosyaAdi(dosya_adi, ext)}`
+  const { data, error } = await supabase.storage.from(DENETIM_BELGE_BUCKET).createSignedUploadUrl(storagePath)
+  if (error || !data) return { hata: error?.message ?? 'Yükleme adresi oluşturulamadı.' }
+
+  return { ok: true, path: data.path, token: data.token }
+}
+
+export async function denetimBolumBelgeKaydet(formData: FormData): Promise<DenetimActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
   const { supabase, user } = gate
 
   const baslikId = Number.parseInt(str(formData, 'baslik_id'), 10)
   const sorumlu_birim = str(formData, 'sorumlu_birim') || null
-  const file = formData.get('file')
+  const storagePath = str(formData, 'storage_path')
+  const dosya_adi = str(formData, 'dosya_adi')
+  const boyut = Number.parseInt(str(formData, 'boyut'), 10)
   if (!Number.isFinite(baslikId) || baslikId <= 0) return { hata: 'Başlık gerekli.' }
-  if (!(file instanceof File) || file.size === 0) return { hata: 'Dosya seçin.' }
-  if (file.size > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (!dosya_adi) return { hata: 'Dosya seçin.' }
 
-  const mime = denetimBelgeMimeCoz(file.name, file.type)
+  const mime = denetimBelgeMimeCoz(dosya_adi, '')
   if (!mime) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
 
   const { data: baslik } = await supabase
@@ -640,6 +705,9 @@ export async function denetimBolumBelgeYukle(formData: FormData): Promise<Deneti
     ? baslik.denetim_donem[0]?.durum
     : baslik.denetim_donem?.durum
   if (donemDurumu === 'Kapalı') return { hata: 'Kapalı döneme belge yüklenemez.' }
+  if (!storagePath.startsWith(`bolum/${baslik.donem_id}/${baslik.bolum ?? 'menu'}/${baslikId}/`)) {
+    return { hata: 'Yükleme doğrulanamadı.' }
+  }
 
   if (sorumlu_birim) {
     const { data: mudurluk } = await supabase
@@ -657,21 +725,12 @@ export async function denetimBolumBelgeYukle(formData: FormData): Promise<Deneti
     .eq('baslik_id', baslikId)
     .maybeSingle()
 
-  const ext = denetimBelgeUzanti(file.name) || 'bin'
-  const safeBase = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `belge.${ext}`
-  const storagePath = `bolum/${baslik.donem_id}/${baslik.bolum ?? 'menu'}/${baslikId}/${Date.now()}_${safeBase}`
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const { error: uploadErr } = await supabase.storage
-    .from(DENETIM_BELGE_BUCKET)
-    .upload(storagePath, buffer, { contentType: mime, upsert: false })
-  if (uploadErr) return { hata: uploadErr.message }
-
   const belgePayload = {
     sorumlu_birim,
-    dosya_adi: file.name,
+    dosya_adi,
     storage_path: storagePath,
     mime_type: mime,
-    boyut_byte: file.size,
+    boyut_byte: boyut,
     updated_at: new Date().toISOString(),
     created_by: user.id,
     created_by_email: user.email ?? null,

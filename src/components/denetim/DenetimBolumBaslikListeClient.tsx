@@ -9,8 +9,10 @@ import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPane
 import {
   denetimBolumBaslikEkle,
   denetimBolumBaslikGuncelle,
-  denetimBolumBelgeYukle,
+  denetimBolumBelgeKaydet,
+  denetimBolumBelgeYuklemeHazirla,
 } from '@/app/(dashboard)/denetim/actions'
+import { denetimBelgeStorageYukle } from '@/lib/denetim-belge-yukle'
 import {
   denetimBolumBelgeAuditDegerGoster,
   denetimBolumBelgeAuditDiffSatirlari,
@@ -150,14 +152,33 @@ export default function DenetimBolumBaslikListeClient({
       setHata('Dosya en fazla 15 MB olabilir.')
       return
     }
-    const fd = new FormData()
-    fd.set('baslik_id', String(yukleSatir.id))
-    fd.set('sorumlu_birim', sorumluBirim)
-    fd.set('file', file)
     setHata(null)
+    const baslikId = yukleSatir.id
     startTransition(async () => {
       try {
-        const res = await denetimBolumBelgeYukle(fd)
+        const hazirlikFd = new FormData()
+        hazirlikFd.set('baslik_id', String(baslikId))
+        hazirlikFd.set('dosya_adi', file.name)
+        hazirlikFd.set('boyut', String(file.size))
+        const hazirlik = await denetimBolumBelgeYuklemeHazirla(hazirlikFd)
+        if (hazirlik.hata || !hazirlik.path || !hazirlik.token) {
+          setHata(hazirlik.hata ?? 'Yükleme başlatılamadı.')
+          return
+        }
+
+        const yuklemeHatasi = await denetimBelgeStorageYukle(hazirlik.path, hazirlik.token, file)
+        if (yuklemeHatasi) {
+          setHata(`Dosya yüklenemedi: ${yuklemeHatasi}`)
+          return
+        }
+
+        const kayitFd = new FormData()
+        kayitFd.set('baslik_id', String(baslikId))
+        kayitFd.set('sorumlu_birim', sorumluBirim)
+        kayitFd.set('storage_path', hazirlik.path)
+        kayitFd.set('dosya_adi', file.name)
+        kayitFd.set('boyut', String(file.size))
+        const res = await denetimBolumBelgeKaydet(kayitFd)
         if (res.hata) {
           setHata(res.hata)
           return
@@ -165,7 +186,7 @@ export default function DenetimBolumBaslikListeClient({
         setYukleSatir(null)
         router.refresh()
       } catch {
-        setHata('Belge yüklenemedi. Dosya boyutunu kontrol edip tekrar deneyin.')
+        setHata('Belge yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.')
       }
     })
   }
