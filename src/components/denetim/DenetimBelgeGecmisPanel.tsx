@@ -72,6 +72,9 @@ export default function DenetimBelgeGecmisPanel({
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-slate-700">{g.email}</span>
+                            {g.profilTuru === 'dis_denetci' && (
+                              <span className="text-xs font-medium text-blue-700">Dış Denetçi</span>
+                            )}
                             <span className="text-xs text-slate-500">
                               Son görüntüleme: {new Date(g.sonGoruntuleme).toLocaleString('tr-TR')}
                             </span>

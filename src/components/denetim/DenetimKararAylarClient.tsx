@@ -33,6 +33,7 @@ interface Props {
   kararTuru: DenetimKararTuru
   baslik: string
   donemKapali: boolean
+  saltOkunur?: boolean
   satirlar: DenetimKararAySatir[]
   mudurlukler: DenetimMudurlukSecenek[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
@@ -48,6 +49,7 @@ export default function DenetimKararAylarClient({
   kararTuru,
   baslik,
   donemKapali,
+  saltOkunur = false,
   satirlar,
   mudurlukler,
   auditLoglarByRefId,
@@ -60,6 +62,8 @@ export default function DenetimKararAylarClient({
   const [yukleAy, setYukleAy] = useState<number | null>(null)
   const [sorumluBirim, setSorumluBirim] = useState('')
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+
+  const yazmaKapali = donemKapali || saltOkunur
 
   function yukleAc(ay: number, mevcutBirim: string | null) {
     setYukleAy(ay)
@@ -134,7 +138,7 @@ export default function DenetimKararAylarClient({
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
         <p className="text-sm text-slate-600 mt-1">
           Dönem: <strong className="text-slate-800">{donemAdi}</strong>
-          {donemKapali ? (
+          {yazmaKapali ? (
             <span className="ml-2 text-xs text-slate-500">(Kapalı — yükleme yapılamaz)</span>
           ) : null}
         </p>
@@ -201,12 +205,13 @@ export default function DenetimKararAylarClient({
                             </svg>
                           </span>
                         )}
+                        {!saltOkunur && (
                         <button
                           type="button"
-                          disabled={isPending || donemKapali}
+                          disabled={isPending || yazmaKapali}
                           onClick={() => yukleAc(s.ay, s.sorumlu_birim)}
                           className={`${IKON} text-emerald-700 hover:bg-emerald-50`}
-                          title={donemKapali ? 'Kapalı dönem' : s.belge_id ? 'Belgeyi değiştir' : 'Belge ekle'}
+                          title={yazmaKapali ? 'Yalnızca görüntüleme' : s.belge_id ? 'Belgeyi değiştir' : 'Belge ekle'}
                           aria-label="Yükle"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -214,6 +219,7 @@ export default function DenetimKararAylarClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4" />
                           </svg>
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>

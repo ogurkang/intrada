@@ -463,8 +463,9 @@ interface SidebarProps {
   denetimAgac?: DenetimSidebarDonem[]
 }
 
-function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' {
+function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' | 'dis_denetci' {
   if (access.mode === 'full' || access.mode === 'admin') return access.mode
+  if (access.mode === 'dis_denetci') return 'dis_denetci'
   if (access.mode === 'blocked') return 'kullanici'
   return 'kullanici'
 }

@@ -5,7 +5,8 @@ export type AppAccess =
   | { mode: 'full' }
   | { mode: 'admin' }
   | { mode: 'kullanici'; sicilNo: string; menuIzinleri: Record<string, boolean> }
-  | { mode: 'blocked'; sicilNo: string }
+  | { mode: 'dis_denetci'; kullaniciAdi: string; adSoyad: string; kurumAdi: string }
+  | { mode: 'blocked'; sicilNo: string | null }
 
 export async function getAppAccess(
   supabase: SupabaseClient,
@@ -13,7 +14,7 @@ export async function getAppAccess(
 ): Promise<AppAccess> {
   const { data, error } = await supabase
     .from('app_profiles')
-    .select('sicil_no, rol, menu_izinleri, hesap_aktif')
+    .select('sicil_no, rol, menu_izinleri, hesap_aktif, profil_turu, kullanici_adi, ad_soyad, kurum_adi')
     .eq('id', userId)
     .maybeSingle()
 
@@ -37,16 +38,31 @@ export async function getAppAccess(
   if (rolNorm === 'admin' || rolNorm === 'yönetici' || rolNorm === 'yonetici' || rolNorm === 'ik_admin') {
     return { mode: 'admin' }
   }
+  if (rolNorm === 'dis_denetci' || data.profil_turu === 'dis_denetci') {
+    return {
+      mode: 'dis_denetci',
+      kullaniciAdi: data.kullanici_adi ?? '',
+      adSoyad: data.ad_soyad ?? '',
+      kurumAdi: data.kurum_adi ?? '',
+    }
+  }
 
   return {
     mode: 'kullanici',
-    sicilNo: data.sicil_no,
+    sicilNo: data.sicil_no ?? '',
     menuIzinleri,
   }
 }
 
 export function isAdminLike(a: AppAccess): boolean {
   return a.mode === 'admin' || a.mode === 'full'
+}
+
+export async function isCurrentDisDenetci(supabase: SupabaseClient): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  const access = await getAppAccess(supabase, user.id)
+  return access.mode === 'dis_denetci'
 }
 
 /** @deprecated PermissionGate artık «Sorumluluk Sınırı» metnini kullanır; eski metin referansı için */

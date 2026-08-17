@@ -46,6 +46,7 @@ interface Props {
   acikDonemVar: boolean
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
   anaMenuler: DenetimAnaMenuSecenek[]
+  saltOkunur?: boolean
 }
 
 export default function DenetimDonemListeClient({
@@ -53,6 +54,7 @@ export default function DenetimDonemListeClient({
   acikDonemVar,
   auditLoglarByRefId,
   anaMenuler,
+  saltOkunur = false,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -211,6 +213,7 @@ export default function DenetimDonemListeClient({
             altına, alt menü (Gelir Tarifesi gibi) ise ana alt menünün altına eklenir.
           </p>
         </div>
+        {!saltOkunur && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -238,6 +241,7 @@ export default function DenetimDonemListeClient({
             + Alt Menü Ekle
           </button>
         </div>
+        )}
       </div>
 
       {hata && (
@@ -280,6 +284,13 @@ export default function DenetimDonemListeClient({
                       <td className="px-3 py-2.5 text-center text-slate-600">{denetimTarihGoster(d.baslangic_tarihi)}</td>
                       <td className="px-3 py-2.5 text-center text-slate-600">{denetimTarihGoster(d.bitis_tarihi)}</td>
                       <td className="px-3 py-2.5 text-center">
+                        {saltOkunur ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            d.durum === 'Açık' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {d.durum === 'Açık' ? 'Aktif' : 'Pasif'}
+                          </span>
+                        ) : (
                         <button
                           type="button"
                           disabled={isPending}
@@ -293,6 +304,7 @@ export default function DenetimDonemListeClient({
                         >
                           {d.durum === 'Açık' ? 'Aktif' : 'Pasif'}
                         </button>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-center gap-1">
@@ -301,10 +313,12 @@ export default function DenetimDonemListeClient({
                             onClick={() => setGecmisRefId(refId)}
                             title="Dönem geçmişi"
                           />
+                          {!saltOkunur && (
                           <KalemDuzenleDugmesi
                             title="Düzenle"
                             onClick={() => duzenleAc(d)}
                           />
+                          )}
                           <GozDetayLink href={`/denetim/donemler/${d.id}`} title="Detay" />
                         </div>
                       </td>

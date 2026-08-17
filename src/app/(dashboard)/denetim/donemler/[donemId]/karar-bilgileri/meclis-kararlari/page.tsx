@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { loadDenetimGoruntulemelerGrouped } from '@/lib/denetim-goruntuleme'
 import DenetimKararAylarClient, {
@@ -17,6 +18,7 @@ export default async function MeclisKararlariPage({
   if (!Number.isFinite(donemId)) notFound()
 
   const supabase = await createClient()
+  const saltOkunur = await isCurrentDisDenetci(supabase)
   const [{ data: donem }, { data: belgeler }, { data: mudRaw }] = await Promise.all([
     supabase.from('denetim_donem').select('id, donem_adi, durum').eq('id', donemId).maybeSingle(),
     supabase
@@ -68,6 +70,7 @@ export default async function MeclisKararlariPage({
       kararTuru="meclis"
       baslik="Meclis Kararları"
       donemKapali={donem.durum === 'Kapalı'}
+      saltOkunur={saltOkunur}
       satirlar={satirlar}
       mudurlukler={mudurlukler}
       auditLoglarByRefId={auditLoglarByRefId}

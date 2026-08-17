@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import DenetimDonemListeClient, {
   type DenetimAnaMenuSecenek,
@@ -7,6 +8,7 @@ import DenetimDonemListeClient, {
 
 export default async function DenetimYonetimiPage() {
   const supabase = await createClient()
+  const saltOkunur = await isCurrentDisDenetci(supabase)
   const [{ data }, menuRes] = await Promise.all([
     supabase
       .from('denetim_donem')
@@ -51,6 +53,7 @@ export default async function DenetimYonetimiPage() {
       acikDonemVar={acikDonemVar}
       auditLoglarByRefId={auditLoglarByRefId}
       anaMenuler={anaMenuler}
+      saltOkunur={saltOkunur}
     />
   )
 }

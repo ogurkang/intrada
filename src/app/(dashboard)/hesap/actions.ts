@@ -8,6 +8,7 @@ import {
   kullaniciAdiHataMetni,
 } from '@/lib/kullanici-adi'
 import { yeniSifreGecerliMi, yeniSifreHataMetni, yeniSifreNormalize } from '@/lib/sifre-politikasi'
+import { disDenetciSifreGecerliMi, disDenetciSifreHataMetni } from '@/lib/dis-denetci-sifre'
 
 export async function tamamlaIlkKurulum(formData: FormData): Promise<{ hata?: string }> {
   const supabase = await createClient()
@@ -54,7 +55,11 @@ export async function sifreDegistir(formData: FormData): Promise<{ hata?: string
   const sifre = yeniSifreNormalize(String(formData.get('sifre') ?? ''))
   const sifreTekrar = yeniSifreNormalize(String(formData.get('sifre_tekrar') ?? ''))
 
-  if (!yeniSifreGecerliMi(sifre)) return { hata: yeniSifreHataMetni() }
+  const { data: profil } = await supabase.from('app_profiles').select('profil_turu').eq('id', user.id).maybeSingle()
+  const disDenetci = profil?.profil_turu === 'dis_denetci'
+  if (disDenetci ? !disDenetciSifreGecerliMi(sifre) : !yeniSifreGecerliMi(sifre)) {
+    return { hata: disDenetci ? disDenetciSifreHataMetni() : yeniSifreHataMetni() }
+  }
   if (sifre !== sifreTekrar) return { hata: 'Yeni şifre ile tekrarı eşleşmiyor.' }
 
   const { error: authErr } = await supabase.auth.updateUser({ password: sifre })

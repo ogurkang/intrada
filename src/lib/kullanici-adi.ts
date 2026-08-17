@@ -41,3 +41,8 @@ export function kullaniciAdiHataMetni(): string {
   const { min, max } = KULLANICI_ADI_BOYUT
   return `Kullanıcı adı ${min}–${max} karakter olmalı; yalnızca harf (A–Z). Rakam veya özel karakter yok; yazdığınız küçük harf otomatik büyük kaydedilir.`
 }
+
+/** Supabase Auth e-posta/şifre altyapısında kullanıcı adıyla giriş için iç kimlik. */
+export function disDenetciAuthEmail(kullaniciAdi: string): string {
+  return `${normalizeKullaniciAdi(kullaniciAdi).toLowerCase()}@auditor.invalid`
+}

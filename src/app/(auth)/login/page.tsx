@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { LoginDuyuruModal } from '@/components/auth/LoginDuyuruModal'
 import { LoginKurumsalLogo } from '@/components/branding/IntradaLogos'
+import { disDenetciAuthEmail, normalizeKullaniciAdi } from '@/lib/kullanici-adi'
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('')
+  const [kimlik, setKimlik]     = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState<string | null>(null)
   const [loading, setLoading]   = useState(false)
@@ -24,13 +25,19 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const girisKimligi = kimlik.includes('@')
+      ? kimlik.trim().toLowerCase()
+      : disDenetciAuthEmail(normalizeKullaniciAdi(kimlik))
+    const { data, error } = await supabase.auth.signInWithPassword({ email: girisKimligi, password })
 
     if (error) {
-      setError('E-posta veya şifre hatalı.')
+      setError('E-posta/kullanıcı adı veya şifre hatalı.')
       setLoading(false)
     } else {
-      router.push('/')
+      const { data: profil } = data.user
+        ? await supabase.from('app_profiles').select('profil_turu').eq('id', data.user.id).maybeSingle()
+        : { data: null }
+      router.push(profil?.profil_turu === 'dis_denetci' ? '/denetim' : '/')
       router.refresh()
       // Başarıda loading kalsın, sayfa yönlenecek
     }
@@ -49,14 +56,14 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            E-posta
+            E-posta veya kullanıcı adı
           </label>
           <input
-            type="email"
+            type="text"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="kullanici@kurum.gov.tr"
+            value={kimlik}
+            onChange={(e) => setKimlik(e.target.value)}
+            placeholder="kullanici@kurum.gov.tr veya DENETCI"
             className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800
                        focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />

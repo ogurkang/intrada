@@ -4,11 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { sifreDegistir } from '../actions'
 import { SIFRE_MAX_UZUNLUK, SIFRE_MIN_UZUNLUK, yeniSifreHataMetni } from '@/lib/sifre-politikasi'
+import { DIS_DENETCI_SIFRE_MAX, DIS_DENETCI_SIFRE_MIN, disDenetciSifreHataMetni } from '@/lib/dis-denetci-sifre'
 
-export default function SifreDegistirForm() {
+export default function SifreDegistirForm({ disDenetci = false }: { disDenetci?: boolean }) {
   const [err, setErr] = useState<string | null>(null)
   const [ok, setOk] = useState(false)
   const [pending, setPending] = useState(false)
+  const min = disDenetci ? DIS_DENETCI_SIFRE_MIN : SIFRE_MIN_UZUNLUK
+  const max = disDenetci ? DIS_DENETCI_SIFRE_MAX : SIFRE_MAX_UZUNLUK
+  const hataMetni = disDenetci ? disDenetciSifreHataMetni() : yeniSifreHataMetni()
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -25,8 +29,8 @@ export default function SifreDegistirForm() {
     return (
       <div className="max-w-md rounded-xl border border-green-200 bg-green-50 px-6 py-8 text-center">
         <p className="font-medium text-green-900">Şifreniz güncellendi.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-green-800 underline">
-          Ana sayfaya dön
+        <Link href={disDenetci ? '/denetim' : '/'} className="mt-4 inline-block text-sm text-green-800 underline">
+          {disDenetci ? 'Denetim Yönetimi’ne dön' : 'Ana sayfaya dön'}
         </Link>
       </div>
     )
@@ -44,13 +48,13 @@ export default function SifreDegistirForm() {
           type="password"
           required
           autoComplete="new-password"
-          minLength={SIFRE_MIN_UZUNLUK}
-          maxLength={SIFRE_MAX_UZUNLUK}
-          pattern="[A-Za-z0-9]*"
-          title={yeniSifreHataMetni()}
+          minLength={min}
+          maxLength={max}
+          pattern={disDenetci ? undefined : '[A-Za-z0-9]*'}
+          title={hataMetni}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        <p className="mt-1 text-xs text-slate-500">{yeniSifreHataMetni()}</p>
+        <p className="mt-1 text-xs text-slate-500">{hataMetni}</p>
       </div>
 
       <div>
@@ -60,10 +64,10 @@ export default function SifreDegistirForm() {
           type="password"
           required
           autoComplete="new-password"
-          minLength={SIFRE_MIN_UZUNLUK}
-          maxLength={SIFRE_MAX_UZUNLUK}
-          pattern="[A-Za-z0-9]*"
-          title={yeniSifreHataMetni()}
+          minLength={min}
+          maxLength={max}
+          pattern={disDenetci ? undefined : '[A-Za-z0-9]*'}
+          title={hataMetni}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
       </div>
@@ -78,7 +82,7 @@ export default function SifreDegistirForm() {
         >
           {pending ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
-        <Link href="/" className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        <Link href={disDenetci ? '/denetim' : '/'} className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
           Vazgeç
         </Link>
       </div>

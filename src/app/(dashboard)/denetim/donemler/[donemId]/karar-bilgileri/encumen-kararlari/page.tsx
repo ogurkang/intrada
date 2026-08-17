@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { loadDenetimGoruntulemelerGrouped } from '@/lib/denetim-goruntuleme'
 import DenetimKararAylarClient, {
@@ -10,6 +11,7 @@ import { DENETIM_AYLAR_TR, type DenetimKararTuru } from '@/lib/denetim'
 
 async function kararAylarSayfa(donemId: number, kararTuru: DenetimKararTuru, baslik: string) {
   const supabase = await createClient()
+  const saltOkunur = await isCurrentDisDenetci(supabase)
   const [{ data: donem }, { data: belgeler }, { data: mudRaw }] = await Promise.all([
     supabase.from('denetim_donem').select('id, donem_adi, durum').eq('id', donemId).maybeSingle(),
     supabase
@@ -61,6 +63,7 @@ async function kararAylarSayfa(donemId: number, kararTuru: DenetimKararTuru, bas
       kararTuru={kararTuru}
       baslik={baslik}
       donemKapali={donem.durum === 'Kapalı'}
+      saltOkunur={saltOkunur}
       satirlar={satirlar}
       mudurlukler={mudurlukler}
       auditLoglarByRefId={auditLoglarByRefId}

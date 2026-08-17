@@ -84,7 +84,7 @@ export default function DashboardShell({
           build: {buildMarker ?? 'unknown'}
         </div>
       </div>
-      {!hayaletDurum?.aktif ? <IntradaAsistanWidget access={access} /> : null}
+      {!hayaletDurum?.aktif && access.mode !== 'dis_denetci' ? <IntradaAsistanWidget access={access} /> : null}
     </div>
   )
 }

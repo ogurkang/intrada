@@ -5,8 +5,22 @@ import type { DenetimBelgeTuru } from '@/lib/denetim'
 export type DenetimGoruntulemeGrubu = {
   kullaniciId: string | null
   email: string
+  kullaniciAdi: string | null
+  adSoyad: string | null
+  kurum: string | null
+  profilTuru: string | null
   sonGoruntuleme: string
   tarihler: string[]
+}
+
+function goruntulemeEtiketi(row: Tables<'denetim_belge_goruntuleme'>): string {
+  if (row.viewed_by_name) {
+    const kurum = row.viewed_by_institution ? ` · ${row.viewed_by_institution}` : ''
+    const kullanici = row.viewed_by_username ? ` (${row.viewed_by_username})` : ''
+    return `${row.viewed_by_name}${kullanici}${kurum}`
+  }
+  if (row.viewed_by_username) return row.viewed_by_username
+  return row.viewed_by_email ?? 'Bilinmeyen kullanıcı'
 }
 
 export async function loadDenetimGoruntulemelerGrouped(
@@ -40,7 +54,11 @@ export async function loadDenetimGoruntulemelerGrouped(
     } else {
       map.set(kullaniciKey, {
         kullaniciId: row.viewed_by,
-        email: row.viewed_by_email ?? 'Bilinmeyen kullanıcı',
+        email: goruntulemeEtiketi(row),
+        kullaniciAdi: row.viewed_by_username,
+        adSoyad: row.viewed_by_name,
+        kurum: row.viewed_by_institution,
+        profilTuru: row.viewed_by_profile_kind,
         sonGoruntuleme: row.viewed_at,
         tarihler: [row.viewed_at],
       })

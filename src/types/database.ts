@@ -1624,36 +1624,48 @@ export interface Database {
       app_profiles: {
         Row: {
           id: string
-          sicil_no: string
-          rol: 'admin' | 'kullanici'
+          sicil_no: string | null
+          rol: 'admin' | 'kullanici' | 'dis_denetci'
           hesap_aktif: boolean
           menu_izinleri: Json
           updated_at: string
           kullanici_adi: string | null
           ilk_giris_tamam: boolean
           kurtarma_hash: Json
+          profil_turu: 'personel' | 'dis_denetci'
+          ad_soyad: string | null
+          kurum_adi: string | null
+          e_posta: string | null
         }
         Insert: {
           id: string
-          sicil_no: string
-          rol?: 'admin' | 'kullanici'
+          sicil_no?: string | null
+          rol?: 'admin' | 'kullanici' | 'dis_denetci'
           hesap_aktif?: boolean
           menu_izinleri?: Json
           updated_at?: string
           kullanici_adi?: string | null
           ilk_giris_tamam?: boolean
           kurtarma_hash?: Json
+          profil_turu?: 'personel' | 'dis_denetci'
+          ad_soyad?: string | null
+          kurum_adi?: string | null
+          e_posta?: string | null
         }
         Update: {
           id?: string
-          sicil_no?: string
-          rol?: 'admin' | 'kullanici'
+          sicil_no?: string | null
+          rol?: 'admin' | 'kullanici' | 'dis_denetci'
           hesap_aktif?: boolean
           menu_izinleri?: Json
           updated_at?: string
           kullanici_adi?: string | null
           ilk_giris_tamam?: boolean
           kurtarma_hash?: Json
+          profil_turu?: 'personel' | 'dis_denetci'
+          ad_soyad?: string | null
+          kurum_adi?: string | null
+          e_posta?: string | null
         }
         Relationships: []
       }
@@ -2143,6 +2155,10 @@ export interface Database {
           belge_id: number
           viewed_by: string | null
           viewed_by_email: string | null
+          viewed_by_username: string | null
+          viewed_by_name: string | null
+          viewed_by_institution: string | null
+          viewed_by_profile_kind: string | null
           viewed_at: string
         }
         Insert: {
@@ -2151,6 +2167,10 @@ export interface Database {
           belge_id: number
           viewed_by?: string | null
           viewed_by_email?: string | null
+          viewed_by_username?: string | null
+          viewed_by_name?: string | null
+          viewed_by_institution?: string | null
+          viewed_by_profile_kind?: string | null
           viewed_at?: string
         }
         Update: {
@@ -2159,6 +2179,10 @@ export interface Database {
           belge_id?: number
           viewed_by?: string | null
           viewed_by_email?: string | null
+          viewed_by_username?: string | null
+          viewed_by_name?: string | null
+          viewed_by_institution?: string | null
+          viewed_by_profile_kind?: string | null
           viewed_at?: string
         }
         Relationships: []

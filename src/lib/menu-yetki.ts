@@ -205,12 +205,24 @@ export function kullaniciPathAllowed(
   return false
 }
 
+/** Dış denetçi yalnızca Denetim ve kendi şifre ekranını kullanabilir. */
+export function disDenetciPathAllowed(pathname: string): boolean {
+  const path = (pathname.split('?')[0] || pathname).replace(/\/$/, '') || '/'
+  return (
+    path === '/denetim' ||
+    path.startsWith('/denetim/') ||
+    path === '/hesap/sifre' ||
+    path.startsWith('/hesap/sifre/')
+  )
+}
+
 export function sidebarGrupGoster(
   grupEtiket: string,
-  accessMode: 'full' | 'admin' | 'kullanici',
+  accessMode: 'full' | 'admin' | 'kullanici' | 'dis_denetci',
   menuIzinleri: Record<string, boolean | undefined>,
 ): boolean {
   if (accessMode === 'full' || accessMode === 'admin') return true
+  if (accessMode === 'dis_denetci') return grupEtiket === 'Denetim Yönetimi'
   /** Kullanıcıda «Personel Kartım» her zaman menüde (tek link veya tam grup). */
   if (accessMode === 'kullanici' && grupEtiket === 'Personel Yönetimi') return true
   /** Kullanıcı: eğitim / tanımlar sol menüde yok; yetkilendirme yalnızca hayalet profil yetkisi varsa */
@@ -246,9 +258,10 @@ export function sidebarGrupGoster(
 }
 
 export function sidebarTerfiGoster(
-  accessMode: 'full' | 'admin' | 'kullanici',
+  accessMode: 'full' | 'admin' | 'kullanici' | 'dis_denetci',
   menuIzinleri: Record<string, boolean | undefined>,
 ): boolean {
+  if (accessMode === 'dis_denetci') return false
   if (accessMode === 'full' || accessMode === 'admin') return true
   /** Kullanıcı rolü: Terfi menüde gösterilmez */
   if (accessMode === 'kullanici') return false

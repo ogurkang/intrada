@@ -45,6 +45,7 @@ interface Props {
   altBolumLabel: string
   aciklama: string
   donemKapali: boolean
+  saltOkunur?: boolean
   basliklar: DenetimBolumBaslikSatir[]
   mudurlukler: DenetimMudurlukSecenek[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
@@ -65,6 +66,7 @@ export default function DenetimBolumBaslikListeClient({
   altBolumLabel,
   aciklama,
   donemKapali,
+  saltOkunur = false,
   basliklar,
   mudurlukler,
   auditLoglarByRefId,
@@ -84,6 +86,7 @@ export default function DenetimBolumBaslikListeClient({
   const [sorumluBirim, setSorumluBirim] = useState('')
   const [gecmisSatir, setGecmisSatir] = useState<DenetimBolumBaslikSatir | null>(null)
   const [isPending, startTransition] = useTransition()
+  const yazmaKapali = donemKapali || saltOkunur
 
   function kaydet() {
     const fd = new FormData()
@@ -203,22 +206,28 @@ export default function DenetimBolumBaslikListeClient({
             {donemAdi} · {aciklama}
           </p>
         </div>
+        {!saltOkunur && (
         <button
           type="button"
-          disabled={donemKapali || isPending}
+          disabled={yazmaKapali || isPending}
           onClick={() => {
             setHata(null)
             setModalAcik(true)
           }}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
-          title={donemKapali ? 'Kapalı döneme başlık eklenemez' : 'Yeni başlık ekle'}
+          title={yazmaKapali ? 'Kapalı döneme başlık eklenemez' : 'Yeni başlık ekle'}
         >
           <span className="text-lg leading-none">+</span>
           Başlık Ekle
         </button>
+        )}
       </div>
 
-      {donemKapali ? (
+      {saltOkunur ? (
+        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          Dış denetçi profili: belgeleri yalnızca görüntüleyebilirsiniz.
+        </p>
+      ) : donemKapali ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Dönem kapalıdır; belgeler görüntülenebilir ancak başlık veya belge eklenemez.
         </p>
@@ -287,11 +296,13 @@ export default function DenetimBolumBaslikListeClient({
                             onClick={() => setGecmisSatir(item)}
                             title="Başlık, belge ve görüntüleme geçmişi"
                           />
+                          {!saltOkunur && (
                           <KalemDuzenleDugmesi
-                            disabled={donemKapali || isPending}
+                            disabled={yazmaKapali || isPending}
                             onClick={() => duzenleAc(item)}
-                            title={donemKapali ? 'Kapalı dönem' : 'Başlık ve sorumlu birimi düzenle'}
+                            title={yazmaKapali ? 'Yalnızca görüntüleme' : 'Başlık ve sorumlu birimi düzenle'}
                           />
+                          )}
                           {item.belge_id != null ? (
                             <a
                               href={`/denetim/onizle?tur=bolum&id=${item.belge_id}`}
@@ -314,13 +325,14 @@ export default function DenetimBolumBaslikListeClient({
                               </svg>
                             </span>
                           )}
+                          {!saltOkunur && (
                           <button
                             type="button"
-                            disabled={donemKapali || isPending}
+                            disabled={yazmaKapali || isPending}
                             onClick={() => yukleAc(item)}
                             className={`${IKON} text-emerald-700 hover:bg-emerald-50`}
                             title={
-                              donemKapali ? 'Kapalı dönem' : item.belge_id != null ? 'Belgeyi değiştir' : 'Belge ekle'
+                              yazmaKapali ? 'Yalnızca görüntüleme' : item.belge_id != null ? 'Belgeyi değiştir' : 'Belge ekle'
                             }
                             aria-label="Yükle"
                           >
@@ -329,6 +341,7 @@ export default function DenetimBolumBaslikListeClient({
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4" />
                             </svg>
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

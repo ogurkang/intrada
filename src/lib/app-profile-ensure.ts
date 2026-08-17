@@ -7,10 +7,10 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 export async function ensureAppProfileForAuthUser(
   supabase: SupabaseClient,
   user: User,
-): Promise<{ id: string; sicil_no: string; ilk_giris_tamam: boolean } | null> {
+): Promise<{ id: string; sicil_no: string | null; ilk_giris_tamam: boolean; profil_turu: string; ad_soyad: string | null } | null> {
   const { data: mevcut } = await supabase
     .from('app_profiles')
-    .select('id, sicil_no, ilk_giris_tamam')
+    .select('id, sicil_no, ilk_giris_tamam, profil_turu, ad_soyad')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -39,14 +39,15 @@ export async function ensureAppProfileForAuthUser(
       menu_izinleri: {},
       ilk_giris_tamam: false,
       kurtarma_hash: {},
+      profil_turu: 'personel',
     })
-    .select('id, sicil_no, ilk_giris_tamam')
+    .select('id, sicil_no, ilk_giris_tamam, profil_turu, ad_soyad')
     .single()
 
   if (error?.code === '23505') {
     const { data: again } = await supabase
       .from('app_profiles')
-      .select('id, sicil_no, ilk_giris_tamam')
+      .select('id, sicil_no, ilk_giris_tamam, profil_turu, ad_soyad')
       .eq('id', user.id)
       .maybeSingle()
     return again ?? null

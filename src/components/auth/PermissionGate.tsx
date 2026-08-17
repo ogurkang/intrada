@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { AppAccess } from '@/lib/app-access'
 import { isAdminLike } from '@/lib/app-access'
-import { kullaniciPathAllowed } from '@/lib/menu-yetki'
+import { disDenetciPathAllowed, kullaniciPathAllowed } from '@/lib/menu-yetki'
 import { hayaletPathAllowed, type HayaletProfilDurum } from '@/lib/hayalet-profil'
 
 interface Props {
@@ -53,6 +53,23 @@ export default function PermissionGate({ access, children, terfiMenuHref = '/ter
       <div className="max-w-lg mx-auto mt-16 rounded-xl border border-red-300 bg-red-50 px-6 py-8 text-center">
         <p className="text-lg font-bold text-red-900">Erişim kapatıldı</p>
         <p className="mt-2 text-sm text-red-800/90">Bu kullanıcı için sistem erişimi yönetici tarafından geçici olarak kapatılmıştır.</p>
+      </div>
+    )
+  }
+
+  if (access.mode === 'dis_denetci') {
+    if (disDenetciPathAllowed(pathname)) return <>{children}</>
+    return (
+      <div className="max-w-lg mx-auto mt-16 rounded-xl border border-blue-300 bg-blue-50 px-6 py-8 text-center">
+        <p className="text-lg font-bold text-blue-950">Dış denetçi erişimi</p>
+        <p className="mt-2 text-sm text-blue-900/90">
+          Bu profil yalnızca Denetim Yönetimi belgelerini görüntüleyebilir.
+        </p>
+        <p className="mt-5">
+          <Link href="/denetim" className="text-sm font-semibold text-blue-950 underline underline-offset-2">
+            Denetim Yönetimi
+          </Link>
+        </p>
       </div>
     )
   }

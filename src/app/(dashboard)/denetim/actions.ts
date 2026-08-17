@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getAppAccess } from '@/lib/app-access'
 import {
   DENETIM_AYLAR_TR,
   DENETIM_BELGE_BUCKET,
@@ -40,6 +41,10 @@ async function oturum() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { hata: 'Oturum gerekli.' as const, supabase, user: null }
+  const access = await getAppAccess(supabase, user.id)
+  if (access.mode === 'dis_denetci') {
+    return { hata: 'Dış denetçi profili yalnızca görüntüleme yapabilir.' as const, supabase, user: null }
+  }
   return { supabase, user, hata: undefined }
 }
 

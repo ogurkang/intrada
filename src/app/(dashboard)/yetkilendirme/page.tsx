@@ -4,6 +4,7 @@ import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail, godmodeSicilSet 
 import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import YetkilendirmeClient from './YetkilendirmeClient'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +39,7 @@ export default async function YetkilendirmePage() {
         .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
         .order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
-      supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri, hesap_aktif'),
+      supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri, hesap_aktif').eq('profil_turu', 'personel'),
       supabase
         .from('firma_calisanlar')
         .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi, e_posta')
@@ -99,7 +100,9 @@ export default async function YetkilendirmePage() {
       }
     })
 
-  const profilMap = new Map((profiller ?? []).map(p => [p.sicil_no, p]))
+  const profilMap = new Map(
+    (profiller ?? []).filter(p => p.rol !== 'dis_denetci' && p.sicil_no).map(p => [p.sicil_no!, p]),
+  )
 
   // ADABEL sicilleri "A" önekli; kadro sicillerinden sonra sayısal sıraya yerleşsinler.
   const sicilSiraDeger = (s: string) => {
@@ -111,10 +114,15 @@ export default async function YetkilendirmePage() {
     (a, b) => sicilSiraDeger(a.sicil_no) - sicilSiraDeger(b.sicil_no),
   )
 
-  const satirlar = birlesik.map(m => ({
-    ...m,
-    profil: profilMap.get(m.sicil_no) ?? null,
-  }))
+  const satirlar = birlesik.map(m => {
+    const p = profilMap.get(m.sicil_no)
+    return {
+      ...m,
+      profil: p && (p.rol === 'admin' || p.rol === 'kullanici')
+        ? { id: p.id, rol: p.rol, menu_izinleri: p.menu_izinleri, hesap_aktif: p.hesap_aktif }
+        : null,
+    }
+  })
 
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
@@ -128,13 +136,18 @@ export default async function YetkilendirmePage() {
         <span className="text-slate-800 font-medium">Yetkilendirme</span>
       </nav>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
         <h1 className="text-2xl font-bold text-slate-800">Yetkilendirme</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Aktif belediye personeli (tüm statüler) + <strong>ADABEL Personeli</strong> çalışanlar sekmesindeki aktif kayıtlar,
           sicil sırasıyla · Toplam{' '}
           <span className="font-semibold">{satirlar.length}</span> satır
         </p>
+        </div>
+        <Link href="/yetkilendirme/dis-denetciler" className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600">
+          Dış Denetçiler
+        </Link>
       </div>
 
       <YetkilendirmeClient satirlar={satirlar} auditLoglarByRefId={auditLoglarByRefId} />

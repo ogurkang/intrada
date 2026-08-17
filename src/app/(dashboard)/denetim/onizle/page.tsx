@@ -26,11 +26,20 @@ export default async function DenetimOnizlePage({
   // Görüntüleme kaydı burada tutulur; belge akışı yalnızca PDF'te istendiğinden
   // Word/Excel belgelerinde de kaydın oluşması gerekir.
   if (user) {
+    const { data: profil } = await supabase
+      .from('app_profiles')
+      .select('profil_turu, kullanici_adi, ad_soyad, kurum_adi, e_posta')
+      .eq('id', user.id)
+      .maybeSingle()
     await supabase.from('denetim_belge_goruntuleme').insert({
       belge_turu: tur,
       belge_id: id,
       viewed_by: user.id,
-      viewed_by_email: user.email ?? null,
+      viewed_by_email: profil?.e_posta ?? user.email ?? null,
+      viewed_by_username: profil?.kullanici_adi ?? null,
+      viewed_by_name: profil?.ad_soyad ?? null,
+      viewed_by_institution: profil?.kurum_adi ?? null,
+      viewed_by_profile_kind: profil?.profil_turu ?? 'personel',
     })
   }
 

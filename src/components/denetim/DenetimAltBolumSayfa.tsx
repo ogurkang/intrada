@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { loadDenetimGoruntulemelerGrouped } from '@/lib/denetim-goruntuleme'
 import DenetimBolumBaslikListeClient, {
@@ -27,6 +28,7 @@ export default async function DenetimAltBolumSayfa({
   if (!Number.isFinite(donemId) || donemId <= 0) notFound()
 
   const supabase = await createClient()
+  const saltOkunur = await isCurrentDisDenetci(supabase)
   const menuQuery = menuId
     ? supabase.from('denetim_donem_menu').select('*').eq('id', menuId).eq('donem_id', donemId).maybeSingle()
     : altBolum
@@ -154,6 +156,7 @@ export default async function DenetimAltBolumSayfa({
       mudurlukler={mudurlukler ?? []}
       auditLoglarByRefId={auditLoglarByBaslikId}
       goruntulemelerByRefId={goruntulemelerByRefId}
+      saltOkunur={saltOkunur}
     />
   )
 }

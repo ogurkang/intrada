@@ -82,9 +82,9 @@ export async function appProfilGuncelle(
 
   const sonrakiSnap = yetkiAuditSnapshot({ rol, hesap_aktif, menu_izinleri })
   await writeYetkilendirmeAuditLogSafe(r.supabase, {
-    sicil_no: mevcutProfil.sicil_no,
+    sicil_no: mevcutProfil.sicil_no ?? '',
     islem: 'Profil Güncelle',
-    ozet: `${mevcutProfil.sicil_no} yetkilendirme kaydı güncellendi`,
+    ozet: `${mevcutProfil.sicil_no ?? '—'} yetkilendirme kaydı güncellendi`,
     onceki: oncekiSnap,
     sonraki: sonrakiSnap,
   })
@@ -120,9 +120,9 @@ export async function appProfilTopluAdmin(profileIds: string[]): Promise<{ hata?
     const oncekiSnap = yetkiAuditSnapshot(p)
     const sonrakiSnap = yetkiAuditSnapshot({ rol: 'admin', hesap_aktif: p.hesap_aktif, menu_izinleri: {} })
     await writeYetkilendirmeAuditLogSafe(r.supabase, {
-      sicil_no: p.sicil_no,
+      sicil_no: p.sicil_no ?? '',
       islem: 'Toplu Yönetici',
-      ozet: `${p.sicil_no} yönetici yapıldı (toplu işlem)`,
+      ozet: `${p.sicil_no ?? '—'} yönetici yapıldı (toplu işlem)`,
       onceki: oncekiSnap,
       sonraki: sonrakiSnap,
     })

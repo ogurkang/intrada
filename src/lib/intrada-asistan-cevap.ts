@@ -109,7 +109,7 @@ export async function intradaAsistanCevapla(input: {
     if (input.access.mode === 'kullanici') {
       yalnizcaSicil = input.access.sicilNo
     } else if (kendiSorusu && input.access.mode === 'blocked') {
-      yalnizcaSicil = input.access.sicilNo
+      yalnizcaSicil = input.access.sicilNo ?? undefined
     }
 
     const sonuc = await personelIzinSorgula(input.supabase, mesaj, yil, {
