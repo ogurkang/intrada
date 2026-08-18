@@ -232,19 +232,15 @@ export default function KysBaslikListeClient({
           {aciklama ? <p className="mt-1 max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
         </div>
         {!saltOkunur && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => {
-              setHata(null)
-              setYeniSatirlar([bosSatir()])
-              setModalAcik(true)
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+          <Link
+            href={`/kys/m/${menuId}/baslik-ekle`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
           >
             <span className="text-lg leading-none">+</span>
             Başlık Ekle
-          </button>
+          </Link>
         )}
       </div>
 

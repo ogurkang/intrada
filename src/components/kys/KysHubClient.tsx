@@ -241,15 +241,15 @@ export default function KysHubClient({
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-700">Başlıklar</h2>
           {!saltOkunur && (
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => { setHata(null); setYeniSatirlar([bosSatir()]); setModalAcik(true) }}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 disabled:opacity-50"
+            <Link
+              href={`/kys/m/${menuId}/baslik-ekle`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
             >
               <span className="text-lg leading-none">+</span>
               Başlık Ekle
-            </button>
+            </Link>
           )}
         </div>
 
