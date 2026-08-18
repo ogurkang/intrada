@@ -9,12 +9,12 @@ export async function GET(req: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Oturum gerekli.' }, { status: 401 })
+  if (!user) return NextResponse.json({ hata: 'Oturum gerekli.' }, { status: 401 })
 
   const url = new URL(req.url)
   const id = Number.parseInt(url.searchParams.get('id') ?? '', 10)
   if (!Number.isFinite(id) || id <= 0) {
-    return NextResponse.json({ error: 'Geçersiz belge.' }, { status: 400 })
+    return NextResponse.json({ hata: 'Geçersiz belge.' }, { status: 400 })
   }
 
   const { data: belge } = await supabase
@@ -23,25 +23,21 @@ export async function GET(req: Request) {
     .eq('id', id)
     .maybeSingle()
   if (!belge?.storage_path) {
-    return NextResponse.json({ error: 'Belge bulunamadı.' }, { status: 404 })
+    return NextResponse.json({ hata: 'Belge bulunamadı.' }, { status: 404 })
   }
 
-  const { data: file, error } = await supabase.storage
+  const { data, error } = await supabase.storage
     .from(KYS_BELGE_BUCKET)
-    .download(belge.storage_path)
-  if (error || !file) {
-    return NextResponse.json({ error: 'Belge görüntülenemedi.' }, { status: 500 })
+    .createSignedUrl(belge.storage_path, 120)
+  if (error || !data?.signedUrl) {
+    return NextResponse.json({ hata: 'Belge görüntülenemedi.' }, { status: 500 })
   }
 
-  const safeName = belge.dosya_adi.replace(/["\r\n]/g, '_')
-  return new NextResponse(file, {
-    headers: {
-      'Content-Type': belge.mime_type || file.type || 'application/octet-stream',
-      'Content-Disposition': `inline; filename="${safeName}"`,
-      'Cache-Control': 'private, no-store, max-age=0',
-      Pragma: 'no-cache',
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'SAMEORIGIN',
-    },
+  return NextResponse.json({
+    url: data.signedUrl,
+    bucket: KYS_BELGE_BUCKET,
+    path: belge.storage_path,
+    dosyaAdi: belge.dosya_adi,
+    mimeType: belge.mime_type,
   })
 }
