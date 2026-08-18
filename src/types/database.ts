@@ -2320,6 +2320,7 @@ export interface Database {
           menu_id: number
           baslik: string
           aciklama: string | null
+          kod: string | null
           sorumlu_birim: string | null
           sira_no: number
           created_at: string
@@ -2332,6 +2333,7 @@ export interface Database {
           menu_id: number
           baslik: string
           aciklama?: string | null
+          kod?: string | null
           sorumlu_birim?: string | null
           sira_no?: number
           created_at?: string
@@ -2344,6 +2346,7 @@ export interface Database {
           menu_id?: number
           baslik?: string
           aciklama?: string | null
+          kod?: string | null
           sorumlu_birim?: string | null
           sira_no?: number
           created_at?: string

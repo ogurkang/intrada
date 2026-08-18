@@ -19,7 +19,7 @@ export default async function KysAltMenuSayfa({ menuId }: { menuId: number }) {
 
   const { data: baslikRaw, error: baslikError } = await supabase
     .from('kys_baslik')
-    .select('id, baslik, aciklama, sira_no, sorumlu_birim, kys_belge(id, sorumlu_birim, dosya_adi, created_by_email)')
+    .select('id, baslik, aciklama, kod, sira_no, sorumlu_birim, kys_belge(id, sorumlu_birim, dosya_adi, created_by_email)')
     .eq('menu_id', menuId)
     .order('sira_no')
   if (baslikError) console.error('KYS_BASLIK_LOAD_FAILED', baslikError.message)
@@ -28,6 +28,7 @@ export default async function KysAltMenuSayfa({ menuId }: { menuId: number }) {
     id: number
     baslik: string
     aciklama: string | null
+    kod: string | null
     sira_no: number
     sorumlu_birim: string | null
     kys_belge?:
@@ -42,6 +43,7 @@ export default async function KysAltMenuSayfa({ menuId }: { menuId: number }) {
       id: item.id,
       baslik: item.baslik,
       aciklama: item.aciklama,
+      kod: item.kod ?? null,
       sira_no: item.sira_no,
       belge_id: belge?.id ?? null,
       sorumlu_birim: belge?.sorumlu_birim ?? item.sorumlu_birim ?? null,

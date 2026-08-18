@@ -17,6 +17,7 @@ export type KysBaslikSatir = {
   id: number
   baslik: string
   aciklama: string | null
+  kod: string | null
   sira_no: number
   belge_id: number | null
   sorumlu_birim: string | null
@@ -58,10 +59,13 @@ export default function KysBaslikListeClient({
   const fileRef = useRef<HTMLInputElement>(null)
   const [modalAcik, setModalAcik] = useState(false)
   const [baslik, setBaslik] = useState('')
+  const [baslikKod, setBaslikKod] = useState('')
   const [baslikAciklama, setBaslikAciklama] = useState('')
+  const [baslikBirim, setBaslikBirim] = useState('')
   const [hata, setHata] = useState<string | null>(null)
   const [duzenleSatir, setDuzenleSatir] = useState<KysBaslikSatir | null>(null)
   const [duzenleBaslik, setDuzenleBaslik] = useState('')
+  const [duzenleKod, setDuzenleKod] = useState('')
   const [duzenleAciklama, setDuzenleAciklama] = useState('')
   const [duzenleBirim, setDuzenleBirim] = useState('')
   const [yukleSatir, setYukleSatir] = useState<KysBaslikSatir | null>(null)
@@ -73,7 +77,9 @@ export default function KysBaslikListeClient({
     const fd = new FormData()
     fd.set('menu_id', String(menuId))
     fd.set('baslik', baslik)
+    fd.set('kod', baslikKod)
     fd.set('aciklama', baslikAciklama)
+    fd.set('sorumlu_birim', baslikBirim)
     setHata(null)
     startTransition(async () => {
       const res = await kysBaslikEkle(fd)
@@ -83,7 +89,9 @@ export default function KysBaslikListeClient({
       }
       setModalAcik(false)
       setBaslik('')
+      setBaslikKod('')
       setBaslikAciklama('')
+      setBaslikBirim('')
       router.refresh()
     })
   }
@@ -98,6 +106,7 @@ export default function KysBaslikListeClient({
   function duzenleAc(satir: KysBaslikSatir) {
     setDuzenleSatir(satir)
     setDuzenleBaslik(satir.baslik)
+    setDuzenleKod(satir.kod ?? '')
     setDuzenleAciklama(satir.aciklama ?? '')
     setDuzenleBirim(satir.sorumlu_birim ?? '')
     setHata(null)
@@ -108,6 +117,7 @@ export default function KysBaslikListeClient({
     const fd = new FormData()
     fd.set('id', String(duzenleSatir.id))
     fd.set('baslik', duzenleBaslik)
+    fd.set('kod', duzenleKod)
     fd.set('aciklama', duzenleAciklama)
     fd.set('sorumlu_birim', duzenleBirim)
     setHata(null)
@@ -214,6 +224,7 @@ export default function KysBaslikListeClient({
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="w-20 px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
+                <th className="w-28 px-3 py-3 text-left font-semibold text-slate-700">Kod</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Başlık</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Sorumlu Birim</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Belge Durumu</th>
@@ -223,7 +234,7 @@ export default function KysBaslikListeClient({
             <tbody className="divide-y divide-slate-100">
               {basliklar.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                     Bu menüde henüz başlık yok. “Başlık Ekle” ile oluşturabilirsiniz.
                   </td>
                 </tr>
@@ -235,6 +246,9 @@ export default function KysBaslikListeClient({
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80">
                       <td className="px-3 py-3 text-center tabular-nums text-slate-600">{i + 1}</td>
+                      <td className="px-3 py-3 tabular-nums text-slate-500">
+                        {item.kod ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{item.kod}</span> : <span className="text-slate-300">—</span>}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="font-medium text-slate-800">{item.baslik}</span>
                         {item.aciklama ? (
@@ -321,29 +335,44 @@ export default function KysBaslikListeClient({
         </div>
       </div>
 
-      <Modal open={modalAcik} onClose={() => setModalAcik(false)} title={`${menuLabel} — Başlık Ekle`} size="md">
+      <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="md">
         <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Kod <span className="font-normal text-slate-400">(isteğe bağlı)</span></label>
+            <input
+              value={baslikKod}
+              onChange={e => setBaslikKod(e.target.value)}
+              maxLength={40}
+              placeholder="Örn. KYS-01"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
             <input
               value={baslik}
               onChange={e => setBaslik(e.target.value)}
               maxLength={120}
+              placeholder="Örn. Prosedür Adı"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
-            <textarea
-              value={baslikAciklama}
-              onChange={e => setBaslikAciklama(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
+            <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim <span className="font-normal text-slate-400">(isteğe bağlı)</span></label>
+            <select
+              value={baslikBirim}
+              onChange={e => setBaslikBirim(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="">Seçiniz</option>
+              {mudurlukler.map(m => (
+                <option key={m.id} value={m.mudurluk_adi}>{m.mudurluk_adi}</option>
+              ))}
+            </select>
           </div>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setModalAcik(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700">
+            <button type="button" onClick={() => { setModalAcik(false); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700">
               İptal
             </button>
             <button type="button" disabled={isPending} onClick={kaydet} className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
@@ -353,8 +382,18 @@ export default function KysBaslikListeClient({
         </div>
       </Modal>
 
-      <Modal open={duzenleSatir != null} onClose={() => setDuzenleSatir(null)} title="Başlığı Düzenle" size="md">
+      <Modal open={duzenleSatir != null} onClose={() => { setDuzenleSatir(null); setHata(null) }} title="Başlığı Düzenle" size="md">
         <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Kod <span className="font-normal text-slate-400">(isteğe bağlı)</span></label>
+            <input
+              value={duzenleKod}
+              onChange={e => setDuzenleKod(e.target.value)}
+              maxLength={40}
+              placeholder="Örn. KYS-01"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
             <input

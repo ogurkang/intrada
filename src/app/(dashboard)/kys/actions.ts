@@ -156,6 +156,133 @@ export async function kysAltMenuEkle(formData: FormData): Promise<KysActionSonuc
   return { ok: true, id: inserted.id }
 }
 
+export type KysBulkMenuSatir = { baslik: string; aciklama?: string }
+export type KysBulkMenuSonuc = { ok?: boolean; hata?: string; hatalar?: string[] }
+
+export async function kysAnaAltMenuTopluEkle(satirlar: KysBulkMenuSatir[]): Promise<KysBulkMenuSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const gecerli = satirlar.filter(s => s.baslik.trim().length >= 2)
+  if (gecerli.length === 0) return { hata: 'En az bir geçerli menü adı gerekli.' }
+
+  const { data: maxRow } = await supabase
+    .from('kys_menu')
+    .select('sira_no')
+    .is('parent_id', null)
+    .order('sira_no', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let baseSira = (maxRow?.sira_no ?? 0) + 1
+  const hatalar: string[] = []
+
+  for (const satir of gecerli) {
+    const baslik = satir.baslik.trim()
+    const aciklama = satir.aciklama?.trim() || null
+    const slug = `${kysMenuSlugUret(baslik)}-${Date.now().toString(36)}`
+    const { data: inserted, error } = await supabase
+      .from('kys_menu')
+      .insert({
+        parent_id: null,
+        baslik,
+        aciklama,
+        slug,
+        sayfa_turu: 'hub' as const,
+        ikon: null,
+        sira_no: baseSira++,
+        created_by: user.id,
+        created_by_email: user.email ?? null,
+      })
+      .select('id')
+      .single()
+    if (error) {
+      hatalar.push(error.code === '23505' ? `"${baslik}" zaten var.` : error.message)
+      continue
+    }
+    await writeKysMenuAudit(supabase, {
+      menuId: inserted.id,
+      islem: 'Ekle',
+      ozet: `${baslik} ana alt menüsü eklendi.`,
+      sonraki: { baslik, aciklama, sayfa_turu: 'hub' },
+    })
+    revalidateKys(inserted.id)
+  }
+
+  revalidateKys()
+  if (hatalar.length > 0 && hatalar.length === gecerli.length) return { hata: hatalar.join('; ') }
+  return { ok: true, hatalar: hatalar.length > 0 ? hatalar : undefined }
+}
+
+export async function kysAltMenuTopluEkle(
+  parentId: number,
+  satirlar: KysBulkMenuSatir[],
+): Promise<KysBulkMenuSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase, user } = gate
+
+  const { data: parent } = await supabase
+    .from('kys_menu')
+    .select('id, parent_id, baslik')
+    .eq('id', parentId)
+    .maybeSingle()
+  if (!parent) return { hata: 'Ana alt menü bulunamadı.' }
+  if (parent.parent_id != null) return { hata: 'Alt menü yalnızca ana alt menü altına eklenebilir.' }
+
+  const gecerli = satirlar.filter(s => s.baslik.trim().length >= 2)
+  if (gecerli.length === 0) return { hata: 'En az bir geçerli menü adı gerekli.' }
+
+  const { data: maxRow } = await supabase
+    .from('kys_menu')
+    .select('sira_no')
+    .eq('parent_id', parentId)
+    .order('sira_no', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let baseSira = (maxRow?.sira_no ?? 0) + 1
+  const hatalar: string[] = []
+
+  for (const satir of gecerli) {
+    const baslik = satir.baslik.trim()
+    const aciklama = satir.aciklama?.trim() || null
+    const slug = `${kysMenuSlugUret(baslik)}-${Date.now().toString(36)}`
+    const { data: inserted, error } = await supabase
+      .from('kys_menu')
+      .insert({
+        parent_id: parentId,
+        baslik,
+        aciklama,
+        slug,
+        sayfa_turu: 'belge' as const,
+        ikon: null,
+        sira_no: baseSira++,
+        created_by: user.id,
+        created_by_email: user.email ?? null,
+      })
+      .select('id')
+      .single()
+    if (error) {
+      hatalar.push(error.code === '23505' ? `"${baslik}" zaten var.` : error.message)
+      continue
+    }
+    await writeKysMenuAudit(supabase, {
+      menuId: inserted.id,
+      islem: 'Ekle',
+      ozet: `${parent.baslik} altına ${baslik} alt menüsü eklendi.`,
+      sonraki: { baslik, aciklama, sayfa_turu: 'belge' },
+    })
+    revalidateKys(parentId)
+    revalidateKys(inserted.id)
+  }
+
+  revalidateKys()
+  if (hatalar.length > 0 && hatalar.length === gecerli.length) return { hata: hatalar.join('; ') }
+  return { ok: true, hatalar: hatalar.length > 0 ? hatalar : undefined }
+}
+
 export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
@@ -164,6 +291,8 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
   const menuId = Number.parseInt(str(formData, 'menu_id'), 10)
   const baslik = str(formData, 'baslik')
   const aciklama = str(formData, 'aciklama') || null
+  const kod = str(formData, 'kod') || null
+  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
   if (!Number.isFinite(menuId) || menuId <= 0) return { hata: 'Alt menü gerekli.' }
   if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
   if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
@@ -178,6 +307,16 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
     return { hata: 'Başlık yalnızca alt menülere eklenebilir.' }
   }
 
+  if (sorumlu_birim) {
+    const { data: mud } = await supabase
+      .from('tanim_mudurluk')
+      .select('id')
+      .eq('mudurluk_adi', sorumlu_birim)
+      .eq('aktif', true)
+      .maybeSingle()
+    if (!mud) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
+  }
+
   const { data: maxRow } = await supabase
     .from('kys_baslik')
     .select('sira_no')
@@ -190,6 +329,8 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
     menu_id: menuId,
     baslik,
     aciklama,
+    kod,
+    sorumlu_birim,
     sira_no: (maxRow?.sira_no ?? 0) + 1,
     created_by: user.id,
     created_by_email: user.email ?? null,
@@ -208,7 +349,7 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
     baslikId: inserted.id,
     islem: 'Ekle',
     ozet: `${menu.baslik}: ${baslik} başlığı eklendi.`,
-    sonraki: { baslik, aciklama, sira_no: payload.sira_no },
+    sonraki: { baslik, aciklama, kod, sorumlu_birim, sira_no: payload.sira_no },
   })
   revalidateKys(menuId)
   return { ok: true, id: inserted.id }
@@ -222,6 +363,7 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
   const id = Number.parseInt(str(formData, 'id'), 10)
   const baslik = str(formData, 'baslik')
   const aciklama = str(formData, 'aciklama') || null
+  const kod = str(formData, 'kod') || null
   const sorumlu_birim = str(formData, 'sorumlu_birim') || null
   if (!Number.isFinite(id) || id <= 0) return { hata: 'Başlık bulunamadı.' }
   if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
@@ -229,7 +371,7 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
 
   const { data: onceki } = await supabase
     .from('kys_baslik')
-    .select('id, menu_id, baslik, aciklama, sorumlu_birim')
+    .select('id, menu_id, baslik, aciklama, kod, sorumlu_birim')
     .eq('id', id)
     .maybeSingle()
   if (!onceki) return { hata: 'Başlık bulunamadı.' }
@@ -247,7 +389,7 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
   const updated_at = new Date().toISOString()
   const { error } = await supabase
     .from('kys_baslik')
-    .update({ baslik, aciklama, sorumlu_birim, updated_at })
+    .update({ baslik, aciklama, kod, sorumlu_birim, updated_at })
     .eq('id', id)
   if (error) {
     if (error.code === '23505') return { hata: 'Bu menüde aynı adlı başlık zaten var.' }
@@ -267,9 +409,10 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
     onceki: {
       baslik: onceki.baslik,
       aciklama: onceki.aciklama,
+      kod: onceki.kod,
       sorumlu_birim: onceki.sorumlu_birim,
     },
-    sonraki: { baslik, aciklama, sorumlu_birim },
+    sonraki: { baslik, aciklama, kod, sorumlu_birim },
   })
   revalidateKys(onceki.menu_id)
   return { ok: true, id }
