@@ -43,7 +43,9 @@ export default async function KysHubSayfa({ menuId }: { menuId: number }) {
   }
 
   const basliklar: KysBaslikSatir[] = ((baslikRaw ?? []) as unknown as BaslikRow[]).map(item => {
-    const belge = Array.isArray(item.kys_belge) ? item.kys_belge[0] ?? null : item.kys_belge
+    const belge = Array.isArray(item.kys_belge)
+      ? [...item.kys_belge].sort((a, b) => b.id - a.id)[0] ?? null
+      : item.kys_belge
     return {
       id: item.id,
       baslik: item.baslik,

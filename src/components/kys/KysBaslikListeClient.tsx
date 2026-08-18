@@ -10,6 +10,7 @@ import { kysBaslikEkle, kysBaslikGuncelle, kysBelgeKaydet, kysBelgeYuklemeHazirl
 import { kysBelgeStorageYukle } from '@/lib/kys-belge-yukle'
 import { kysBelgeAuditDegerGoster, kysBelgeAuditDiffSatirlari } from '@/lib/kys-audit'
 import { KYS_BELGE_MAX_BOYUT } from '@/lib/kys'
+import SorumluBirimCokluSecim, { birimListToString, birimStringToList } from '@/components/kys/SorumluBirimCokluSecim'
 import type { KysGoruntulemeGrubu } from '@/lib/kys-goruntuleme'
 import type { Tables } from '@/types/database'
 
@@ -43,6 +44,18 @@ interface Props {
 const IKON =
   'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40'
 
+type YeniBaslikSatiri = {
+  kod: string
+  baslik: string
+  aciklama: string
+  birimler: string[]
+  dosyalar: File[]
+}
+
+function bosSatir(): YeniBaslikSatiri {
+  return { kod: '', baslik: '', aciklama: '', birimler: [], dosyalar: [] }
+}
+
 export default function KysBaslikListeClient({
   menuId,
   menuLabel,
@@ -58,47 +71,71 @@ export default function KysBaslikListeClient({
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [modalAcik, setModalAcik] = useState(false)
-  const [baslik, setBaslik] = useState('')
-  const [baslikKod, setBaslikKod] = useState('')
-  const [baslikAciklama, setBaslikAciklama] = useState('')
-  const [baslikBirim, setBaslikBirim] = useState('')
+  const [yeniSatirlar, setYeniSatirlar] = useState<YeniBaslikSatiri[]>([bosSatir()])
   const [hata, setHata] = useState<string | null>(null)
   const [duzenleSatir, setDuzenleSatir] = useState<KysBaslikSatir | null>(null)
   const [duzenleBaslik, setDuzenleBaslik] = useState('')
   const [duzenleKod, setDuzenleKod] = useState('')
   const [duzenleAciklama, setDuzenleAciklama] = useState('')
-  const [duzenleBirim, setDuzenleBirim] = useState('')
+  const [duzenleBirimler, setDuzenleBirimler] = useState<string[]>([])
   const [yukleSatir, setYukleSatir] = useState<KysBaslikSatir | null>(null)
-  const [sorumluBirim, setSorumluBirim] = useState('')
+  const [sorumluBirimler, setSorumluBirimler] = useState<string[]>([])
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function kaydet() {
-    const fd = new FormData()
-    fd.set('menu_id', String(menuId))
-    fd.set('baslik', baslik)
-    fd.set('kod', baslikKod)
-    fd.set('aciklama', baslikAciklama)
-    fd.set('sorumlu_birim', baslikBirim)
     setHata(null)
     startTransition(async () => {
-      const res = await kysBaslikEkle(fd)
-      if (res.hata) {
-        setHata(res.hata)
-        return
+      for (const satir of yeniSatirlar) {
+        if (satir.baslik.trim().length < 2) continue
+        const fd = new FormData()
+        fd.set('menu_id', String(menuId))
+        fd.set('baslik', satir.baslik)
+        fd.set('kod', satir.kod)
+        fd.set('aciklama', satir.aciklama)
+        fd.set('sorumlu_birim', birimListToString(satir.birimler))
+        const res = await kysBaslikEkle(fd)
+        if (res.hata || !res.id) {
+          setHata(res.hata ?? 'Başlık eklenemedi.')
+          return
+        }
+        for (const file of satir.dosyalar) {
+          const hazirlikFd = new FormData()
+          hazirlikFd.set('baslik_id', String(res.id))
+          hazirlikFd.set('dosya_adi', file.name)
+          hazirlikFd.set('boyut', String(file.size))
+          const hazirlik = await kysBelgeYuklemeHazirla(hazirlikFd)
+          if (hazirlik.hata || !hazirlik.path || !hazirlik.token) {
+            setHata(hazirlik.hata ?? 'Yükleme başlatılamadı.')
+            return
+          }
+          const yuklemeHatasi = await kysBelgeStorageYukle(hazirlik.path, hazirlik.token, file)
+          if (yuklemeHatasi) {
+            setHata(`Dosya yüklenemedi: ${yuklemeHatasi}`)
+            return
+          }
+          const kayitFd = new FormData()
+          kayitFd.set('baslik_id', String(res.id))
+          kayitFd.set('sorumlu_birim', birimListToString(satir.birimler))
+          kayitFd.set('storage_path', hazirlik.path)
+          kayitFd.set('dosya_adi', file.name)
+          kayitFd.set('boyut', String(file.size))
+          const kayit = await kysBelgeKaydet(kayitFd)
+          if (kayit.hata) {
+            setHata(kayit.hata)
+            return
+          }
+        }
       }
       setModalAcik(false)
-      setBaslik('')
-      setBaslikKod('')
-      setBaslikAciklama('')
-      setBaslikBirim('')
+      setYeniSatirlar([bosSatir()])
       router.refresh()
     })
   }
 
   function yukleAc(satir: KysBaslikSatir) {
     setYukleSatir(satir)
-    setSorumluBirim(satir.sorumlu_birim ?? '')
+    setSorumluBirimler(birimStringToList(satir.sorumlu_birim))
     setHata(null)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -108,7 +145,7 @@ export default function KysBaslikListeClient({
     setDuzenleBaslik(satir.baslik)
     setDuzenleKod(satir.kod ?? '')
     setDuzenleAciklama(satir.aciklama ?? '')
-    setDuzenleBirim(satir.sorumlu_birim ?? '')
+    setDuzenleBirimler(birimStringToList(satir.sorumlu_birim))
     setHata(null)
   }
 
@@ -119,7 +156,7 @@ export default function KysBaslikListeClient({
     fd.set('baslik', duzenleBaslik)
     fd.set('kod', duzenleKod)
     fd.set('aciklama', duzenleAciklama)
-    fd.set('sorumlu_birim', duzenleBirim)
+    fd.set('sorumlu_birim', birimListToString(duzenleBirimler))
     setHata(null)
     startTransition(async () => {
       const res = await kysBaslikGuncelle(fd)
@@ -134,12 +171,12 @@ export default function KysBaslikListeClient({
 
   function yukleKaydet() {
     if (!yukleSatir) return
-    const file = fileRef.current?.files?.[0]
-    if (!file) {
+    const files = Array.from(fileRef.current?.files ?? [])
+    if (files.length === 0) {
       setHata('Dosya seçin.')
       return
     }
-    if (file.size > KYS_BELGE_MAX_BOYUT) {
+    if (files.some(file => file.size > KYS_BELGE_MAX_BOYUT)) {
       setHata('Dosya en fazla 15 MB olabilir.')
       return
     }
@@ -147,32 +184,34 @@ export default function KysBaslikListeClient({
     const baslikId = yukleSatir.id
     startTransition(async () => {
       try {
-        const hazirlikFd = new FormData()
-        hazirlikFd.set('baslik_id', String(baslikId))
-        hazirlikFd.set('dosya_adi', file.name)
-        hazirlikFd.set('boyut', String(file.size))
-        const hazirlik = await kysBelgeYuklemeHazirla(hazirlikFd)
-        if (hazirlik.hata || !hazirlik.path || !hazirlik.token) {
-          setHata(hazirlik.hata ?? 'Yükleme başlatılamadı.')
-          return
-        }
+        for (const file of files) {
+          const hazirlikFd = new FormData()
+          hazirlikFd.set('baslik_id', String(baslikId))
+          hazirlikFd.set('dosya_adi', file.name)
+          hazirlikFd.set('boyut', String(file.size))
+          const hazirlik = await kysBelgeYuklemeHazirla(hazirlikFd)
+          if (hazirlik.hata || !hazirlik.path || !hazirlik.token) {
+            setHata(hazirlik.hata ?? 'Yükleme başlatılamadı.')
+            return
+          }
 
-        const yuklemeHatasi = await kysBelgeStorageYukle(hazirlik.path, hazirlik.token, file)
-        if (yuklemeHatasi) {
-          setHata(`Dosya yüklenemedi: ${yuklemeHatasi}`)
-          return
-        }
+          const yuklemeHatasi = await kysBelgeStorageYukle(hazirlik.path, hazirlik.token, file)
+          if (yuklemeHatasi) {
+            setHata(`Dosya yüklenemedi: ${yuklemeHatasi}`)
+            return
+          }
 
-        const kayitFd = new FormData()
-        kayitFd.set('baslik_id', String(baslikId))
-        kayitFd.set('sorumlu_birim', sorumluBirim)
-        kayitFd.set('storage_path', hazirlik.path)
-        kayitFd.set('dosya_adi', file.name)
-        kayitFd.set('boyut', String(file.size))
-        const res = await kysBelgeKaydet(kayitFd)
-        if (res.hata) {
-          setHata(res.hata)
-          return
+          const kayitFd = new FormData()
+          kayitFd.set('baslik_id', String(baslikId))
+          kayitFd.set('sorumlu_birim', birimListToString(sorumluBirimler))
+          kayitFd.set('storage_path', hazirlik.path)
+          kayitFd.set('dosya_adi', file.name)
+          kayitFd.set('boyut', String(file.size))
+          const res = await kysBelgeKaydet(kayitFd)
+          if (res.hata) {
+            setHata(res.hata)
+            return
+          }
         }
         setYukleSatir(null)
         router.refresh()
@@ -198,6 +237,7 @@ export default function KysBaslikListeClient({
             disabled={isPending}
             onClick={() => {
               setHata(null)
+              setYeniSatirlar([bosSatir()])
               setModalAcik(true)
             }}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -337,39 +377,73 @@ export default function KysBaslikListeClient({
 
       <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="md">
         <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Kod <span className="font-normal text-slate-400">(isteğe bağlı)</span></label>
-            <input
-              value={baslikKod}
-              onChange={e => setBaslikKod(e.target.value)}
-              maxLength={40}
-              placeholder="Örn. KYS-01"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
-            <input
-              value={baslik}
-              onChange={e => setBaslik(e.target.value)}
-              maxLength={120}
-              placeholder="Örn. Prosedür Adı"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim <span className="font-normal text-slate-400">(isteğe bağlı)</span></label>
-            <select
-              value={baslikBirim}
-              onChange={e => setBaslikBirim(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="">Seçiniz</option>
-              {mudurlukler.map(m => (
-                <option key={m.id} value={m.mudurluk_adi}>{m.mudurluk_adi}</option>
-              ))}
-            </select>
-          </div>
+          {yeniSatirlar.map((satir, idx) => (
+            <div key={idx} className="space-y-3 rounded-lg border border-slate-200 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Başlık Satırı #{idx + 1}</span>
+                {yeniSatirlar.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setYeniSatirlar(yeniSatirlar.filter((_, i) => i !== idx))}
+                    className="text-xs text-red-600"
+                  >
+                    Satırı Sil
+                  </button>
+                ) : null}
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Kod</label>
+                <input
+                  value={satir.kod}
+                  onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, kod: e.target.value } : s)))}
+                  maxLength={40}
+                  placeholder="Örn. KYS-01"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
+                <input
+                  value={satir.baslik}
+                  onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, baslik: e.target.value } : s)))}
+                  maxLength={120}
+                  placeholder="Örn. Prosedür Adı"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim (çoklu)</label>
+                <SorumluBirimCokluSecim
+                  value={satir.birimler}
+                  onChange={next => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, birimler: next } : s)))}
+                  mudurlukler={mudurlukler}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Dosyalar (isteğe bağlı)</label>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,application/pdf"
+                  onChange={e =>
+                    setYeniSatirlar(
+                      yeniSatirlar.map((s, i) =>
+                        i === idx ? { ...s, dosyalar: Array.from(e.target.files ?? []) } : s,
+                      ),
+                    )
+                  }
+                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium"
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setYeniSatirlar([...yeniSatirlar, bosSatir()])}
+            className="rounded-lg border border-dashed border-slate-400 px-3 py-2 text-xs font-medium text-slate-700"
+          >
+            + Satır Ekle
+          </button>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => { setModalAcik(false); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700">
@@ -405,19 +479,11 @@ export default function KysBaslikListeClient({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim</label>
-            <select
-              value={duzenleBirim}
-              onChange={e => setDuzenleBirim(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Seçiniz</option>
-              {mudurlukler.map(m => (
-                <option key={m.id} value={m.mudurluk_adi}>{m.mudurluk_adi}</option>
-              ))}
-              {duzenleBirim && !mudurlukler.some(m => m.mudurluk_adi === duzenleBirim) ? (
-                <option value={duzenleBirim}>{duzenleBirim} (pasif / eski)</option>
-              ) : null}
-            </select>
+            <SorumluBirimCokluSecim
+              value={duzenleBirimler}
+              onChange={setDuzenleBirimler}
+              mudurlukler={mudurlukler}
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
@@ -449,25 +515,18 @@ export default function KysBaslikListeClient({
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim</label>
-            <select
-              value={sorumluBirim}
-              onChange={e => setSorumluBirim(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-            >
-              <option value="">Seçiniz</option>
-              {mudurlukler.map(m => (
-                <option key={m.id} value={m.mudurluk_adi}>{m.mudurluk_adi}</option>
-              ))}
-              {sorumluBirim && !mudurlukler.some(m => m.mudurluk_adi === sorumluBirim) ? (
-                <option value={sorumluBirim}>{sorumluBirim} (pasif / eski)</option>
-              ) : null}
-            </select>
+            <SorumluBirimCokluSecim
+              value={sorumluBirimler}
+              onChange={setSorumluBirimler}
+              mudurlukler={mudurlukler}
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Dosya (PDF / Word / Excel)</label>
             <input
               ref={fileRef}
               type="file"
+              multiple
               accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,application/pdf"
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium"
             />

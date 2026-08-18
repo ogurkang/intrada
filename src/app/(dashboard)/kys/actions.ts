@@ -41,6 +41,41 @@ function guvenliDosyaAdi(dosyaAdi: string, ext: string): string {
   return dosyaAdi.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || `belge.${ext}`
 }
 
+const TUM_BELEDIYE = 'Tüm Belediye'
+
+function sorumluBirimleriAyr(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  return Array.from(
+    new Set(
+      raw
+        .split('|')
+        .map(v => v.trim())
+        .filter(Boolean),
+    ),
+  )
+}
+
+async function sorumluBirimDogrulaVeNormalize(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  raw: string | null | undefined,
+): Promise<{ normalized: string | null; hata?: string }> {
+  const birimler = sorumluBirimleriAyr(raw)
+  if (birimler.length === 0) return { normalized: null }
+  if (birimler.includes(TUM_BELEDIYE)) return { normalized: TUM_BELEDIYE }
+
+  const { data: aktif } = await supabase
+    .from('tanim_mudurluk')
+    .select('mudurluk_adi')
+    .eq('aktif', true)
+    .in('mudurluk_adi', birimler)
+
+  const aktifSet = new Set((aktif ?? []).map(a => a.mudurluk_adi))
+  const gecersiz = birimler.find(b => !aktifSet.has(b))
+  if (gecersiz) return { normalized: null, hata: 'Aktif sorumlu birimleri seçin.' }
+
+  return { normalized: birimler.join(' | ') }
+}
+
 function revalidateKys(menuId?: number) {
   revalidatePath('/', 'layout')
   revalidatePath('/kys')
@@ -292,7 +327,7 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
   const baslik = str(formData, 'baslik')
   const aciklama = str(formData, 'aciklama') || null
   const kod = str(formData, 'kod') || null
-  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
+  const sorumlu_birim_raw = str(formData, 'sorumlu_birim') || null
   if (!Number.isFinite(menuId) || menuId <= 0) return { hata: 'Alt menü gerekli.' }
   if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
   if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
@@ -308,15 +343,9 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
     return { hata: 'Geçersiz menü türü.' }
   }
 
-  if (sorumlu_birim) {
-    const { data: mud } = await supabase
-      .from('tanim_mudurluk')
-      .select('id')
-      .eq('mudurluk_adi', sorumlu_birim)
-      .eq('aktif', true)
-      .maybeSingle()
-    if (!mud) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
-  }
+  const birimKontrol = await sorumluBirimDogrulaVeNormalize(supabase, sorumlu_birim_raw)
+  if (birimKontrol.hata) return { hata: birimKontrol.hata }
+  const sorumlu_birim = birimKontrol.normalized
 
   const { data: maxRow } = await supabase
     .from('kys_baslik')
@@ -365,7 +394,7 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
   const baslik = str(formData, 'baslik')
   const aciklama = str(formData, 'aciklama') || null
   const kod = str(formData, 'kod') || null
-  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
+  const sorumlu_birim_raw = str(formData, 'sorumlu_birim') || null
   if (!Number.isFinite(id) || id <= 0) return { hata: 'Başlık bulunamadı.' }
   if (baslik.length < 2) return { hata: 'Başlık en az 2 karakter olmalıdır.' }
   if (baslik.length > 120) return { hata: 'Başlık en fazla 120 karakter olabilir.' }
@@ -377,15 +406,9 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
     .maybeSingle()
   if (!onceki) return { hata: 'Başlık bulunamadı.' }
 
-  if (sorumlu_birim) {
-    const { data: mudurluk } = await supabase
-      .from('tanim_mudurluk')
-      .select('id')
-      .eq('mudurluk_adi', sorumlu_birim)
-      .eq('aktif', true)
-      .maybeSingle()
-    if (!mudurluk) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
-  }
+  const birimKontrol = await sorumluBirimDogrulaVeNormalize(supabase, sorumlu_birim_raw)
+  if (birimKontrol.hata) return { hata: birimKontrol.hata }
+  const sorumlu_birim = birimKontrol.normalized
 
   const updated_at = new Date().toISOString()
   const { error } = await supabase
@@ -454,7 +477,7 @@ export async function kysBelgeKaydet(formData: FormData): Promise<KysActionSonuc
   const { supabase, user } = gate
 
   const baslikId = Number.parseInt(str(formData, 'baslik_id'), 10)
-  const sorumlu_birim = str(formData, 'sorumlu_birim') || null
+  const sorumlu_birim_raw = str(formData, 'sorumlu_birim') || null
   const storagePath = str(formData, 'storage_path')
   const dosya_adi = str(formData, 'dosya_adi')
   const boyut = Number.parseInt(str(formData, 'boyut'), 10)
@@ -474,21 +497,9 @@ export async function kysBelgeKaydet(formData: FormData): Promise<KysActionSonuc
     return { hata: 'Yükleme doğrulanamadı.' }
   }
 
-  if (sorumlu_birim) {
-    const { data: mudurluk } = await supabase
-      .from('tanim_mudurluk')
-      .select('id')
-      .eq('mudurluk_adi', sorumlu_birim)
-      .eq('aktif', true)
-      .maybeSingle()
-    if (!mudurluk) return { hata: 'Aktif bir sorumlu müdürlük seçin.' }
-  }
-
-  const { data: mevcut } = await supabase
-    .from('kys_belge')
-    .select('*')
-    .eq('baslik_id', baslikId)
-    .maybeSingle()
+  const birimKontrol = await sorumluBirimDogrulaVeNormalize(supabase, sorumlu_birim_raw)
+  if (birimKontrol.hata) return { hata: birimKontrol.hata }
+  const sorumlu_birim = birimKontrol.normalized
 
   const belgePayload = {
     sorumlu_birim,
@@ -499,30 +510,6 @@ export async function kysBelgeKaydet(formData: FormData): Promise<KysActionSonuc
     updated_at: new Date().toISOString(),
     created_by: user.id,
     created_by_email: user.email ?? null,
-  }
-
-  if (mevcut) {
-    const { error } = await supabase.from('kys_belge').update(belgePayload).eq('id', mevcut.id)
-    if (error) {
-      await supabase.storage.from(KYS_BELGE_BUCKET).remove([storagePath])
-      return { hata: error.message }
-    }
-    if (mevcut.storage_path !== storagePath) {
-      await supabase.storage.from(KYS_BELGE_BUCKET).remove([mevcut.storage_path])
-    }
-    await writeKysBelgeAudit(supabase, {
-      belgeId: mevcut.id,
-      islem: 'Değiştir',
-      ozet: `${baslik.baslik} belgesi güncellendi.`,
-      onceki: kysBelgeAuditSnapshot({ ...mevcut, baslik: baslik.baslik }),
-      sonraki: kysBelgeAuditSnapshot({ ...belgePayload, baslik: baslik.baslik }),
-    })
-    await supabase
-      .from('kys_baslik')
-      .update({ sorumlu_birim, updated_at: new Date().toISOString() })
-      .eq('id', baslikId)
-    revalidateKys(baslik.menu_id)
-    return { ok: true, id: mevcut.id }
   }
 
   const { data: inserted, error } = await supabase
