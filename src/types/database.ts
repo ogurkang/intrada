@@ -2266,6 +2266,175 @@ export interface Database {
           { foreignKeyName: 'denetim_belge_menu_id_fkey'; columns: ['menu_id']; isOneToOne: false; referencedRelation: 'denetim_menu'; referencedColumns: ['id'] },
         ]
       }
+      // ─────────────────── KYS YÖNETİMİ ───────────────────
+      kys_menu: {
+        Row: {
+          id: number
+          parent_id: number | null
+          baslik: string
+          aciklama: string | null
+          slug: string
+          sayfa_turu: 'hub' | 'belge'
+          ikon: string | null
+          sira_no: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          parent_id?: number | null
+          baslik: string
+          aciklama?: string | null
+          slug: string
+          sayfa_turu: 'hub' | 'belge'
+          ikon?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          parent_id?: number | null
+          baslik?: string
+          aciklama?: string | null
+          slug?: string
+          sayfa_turu?: 'hub' | 'belge'
+          ikon?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'kys_menu_parent_id_fkey'; columns: ['parent_id']; isOneToOne: false; referencedRelation: 'kys_menu'; referencedColumns: ['id'] },
+        ]
+      }
+      kys_baslik: {
+        Row: {
+          id: number
+          menu_id: number
+          baslik: string
+          aciklama: string | null
+          sorumlu_birim: string | null
+          sira_no: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          menu_id: number
+          baslik: string
+          aciklama?: string | null
+          sorumlu_birim?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          menu_id?: number
+          baslik?: string
+          aciklama?: string | null
+          sorumlu_birim?: string | null
+          sira_no?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'kys_baslik_menu_id_fkey'; columns: ['menu_id']; isOneToOne: false; referencedRelation: 'kys_menu'; referencedColumns: ['id'] },
+        ]
+      }
+      kys_belge: {
+        Row: {
+          id: number
+          baslik_id: number
+          sorumlu_birim: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type: string | null
+          boyut_byte: number | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          created_by_email: string | null
+        }
+        Insert: {
+          id?: number
+          baslik_id: number
+          sorumlu_birim?: string | null
+          dosya_adi: string
+          storage_path: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Update: {
+          id?: number
+          baslik_id?: number
+          sorumlu_birim?: string | null
+          dosya_adi?: string
+          storage_path?: string
+          mime_type?: string | null
+          boyut_byte?: number | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'kys_belge_baslik_id_fkey'; columns: ['baslik_id']; isOneToOne: true; referencedRelation: 'kys_baslik'; referencedColumns: ['id'] },
+        ]
+      }
+      kys_belge_goruntuleme: {
+        Row: {
+          id: number
+          belge_id: number
+          viewed_by: string | null
+          viewed_by_email: string | null
+          viewed_by_username: string | null
+          viewed_by_name: string | null
+          viewed_by_institution: string | null
+          viewed_by_profile_kind: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: number
+          belge_id: number
+          viewed_by?: string | null
+          viewed_by_email?: string | null
+          viewed_by_username?: string | null
+          viewed_by_name?: string | null
+          viewed_by_institution?: string | null
+          viewed_by_profile_kind?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: number
+          belge_id?: number
+          viewed_by?: string | null
+          viewed_by_email?: string | null
+          viewed_by_username?: string | null
+          viewed_by_name?: string | null
+          viewed_by_institution?: string | null
+          viewed_by_profile_kind?: string | null
+          viewed_at?: string
+        }
+        Relationships: []
+      }
     }
 
     Views: {

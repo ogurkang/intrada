@@ -20,6 +20,7 @@ export type MenuModulKey =
   | 'yerelBilgi'
   | 'isgYonetimi'
   | 'denetimYonetimi'
+  | 'kysYonetimi'
   | 'yetkilendirme'
   | 'hayaletProfil'
   | 'tanimlar'
@@ -46,6 +47,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'yerelBilgi', labelKisa: 'Yerel Bilgi', label: 'Yerel Bilgi Yönetimi', pathPrefixes: ['/yerel-bilgi'] },
   { key: 'isgYonetimi', labelKisa: 'İSG', label: 'İSG Yönetimi', pathPrefixes: ['/isg'] },
   { key: 'denetimYonetimi', labelKisa: 'Denetim', label: 'Denetim Yönetimi', pathPrefixes: ['/denetim'] },
+  { key: 'kysYonetimi', labelKisa: 'KYS', label: 'KYS Yönetimi', pathPrefixes: ['/kys'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'hayaletProfil', labelKisa: 'Hayalet', label: 'Hayalet Profil', pathPrefixes: ['/yetkilendirme/hayalet-profil'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
@@ -202,6 +204,10 @@ export function kullaniciPathAllowed(
     return menuModulAcik('denetimYonetimi', menuIzinleri)
   }
 
+  if (path.startsWith('/kys')) {
+    return menuModulAcik('kysYonetimi', menuIzinleri)
+  }
+
   return false
 }
 
@@ -249,6 +255,7 @@ export function sidebarGrupGoster(
     'Yerel Bilgi Yönetimi': 'yerelBilgi',
     'İSG Yönetimi': 'isgYonetimi',
     'Denetim Yönetimi': 'denetimYonetimi',
+    'KYS Yönetimi': 'kysYonetimi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }

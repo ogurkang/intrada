@@ -8,6 +8,7 @@ import { hayaletProfilYetkisiVar, type HayaletProfilDurum } from '@/lib/hayalet-
 import { SidebarAmblem } from '@/components/branding/IntradaLogos'
 import { menuModulAcik, sidebarGrupGoster, sidebarTerfiGoster } from '@/lib/menu-yetki'
 import type { DenetimSidebarDonem, DenetimSidebarMenu } from '@/lib/denetim-menu'
+import type { KysSidebarMenu } from '@/lib/kys-menu'
 import { trNormalize } from '@/lib/turkce-search'
 
 type MenuItem = {
@@ -19,7 +20,7 @@ type MenuItem = {
 type MenuGroup = { grup: string; icon: string; items: MenuItem[]; accordion?: boolean }
 
 function childPathActive(pathname: string, href: string) {
-  if (href === '/yetkilendirme') return pathname === href
+  if (href === '/yetkilendirme' || href === '/kys') return pathname === href
   return pathname === href || pathname.startsWith(href + '/')
 }
 
@@ -29,7 +30,7 @@ function itemPathActive(pathname: string, item: MenuItem): boolean {
     if (item.children.some(c => itemOrSubtreeActive(pathname, c))) return false
   }
   // Denetim: Genel Bakış derin rotalarda yanlış vurgulanmasın
-  if (item.href === '/denetim' || item.href === '/denetim/donemler') {
+  if (item.href === '/denetim' || item.href === '/denetim/donemler' || item.href === '/kys') {
     return pathname === item.href
   }
   // Dönem özeti: yalnızca tam dönem kökü (alt menüler ayrı vurgulanır)
@@ -97,6 +98,14 @@ function toDenetimMenuItem(menu: DenetimSidebarMenu): MenuItem {
     href: menu.href,
     label: menu.label,
     children: menu.children?.map(toDenetimMenuItem),
+  }
+}
+
+function toKysMenuItem(menu: KysSidebarMenu): MenuItem {
+  return {
+    href: menu.href,
+    label: menu.label,
+    children: menu.children?.map(toKysMenuItem),
   }
 }
 
@@ -193,14 +202,23 @@ function buildDenetimItems(agac: DenetimSidebarDonem[]): MenuItem[] {
   ]
 }
 
+function buildKysItems(agac: KysSidebarMenu[]): MenuItem[] {
+  return [
+    { href: '/kys', label: 'Genel Bakış' },
+    ...agac.map(toKysMenuItem),
+  ]
+}
+
 function buildMenuGroups(
   terfiMenuHref: string,
   calisanlarHref: string,
   denetimAgac: DenetimSidebarDonem[],
+  kysAgac: KysSidebarMenu[],
 ): MenuGroup[] {
   const calisanlarItem: MenuItem = { href: calisanlarHref, label: calisanlarHref === '/personel' ? 'Çalışanlar' : 'Personel Kartım' }
 
   const denetimItems = buildDenetimItems(denetimAgac)
+  const kysItems = buildKysItems(kysAgac)
 
   return [
   {
@@ -389,6 +407,12 @@ function buildMenuGroups(
     items: denetimItems,
   },
   {
+    grup: 'KYS Yönetimi',
+    icon: '📘',
+    accordion: true,
+    items: kysItems,
+  },
+  {
     grup: 'Stratejik Yönetim',
     icon: '🎯',
     accordion: true,
@@ -465,6 +489,7 @@ interface SidebarProps {
   access: AppAccess
   hayaletDurum?: HayaletProfilDurum | null
   denetimAgac?: DenetimSidebarDonem[]
+  kysAgac?: KysSidebarMenu[]
 }
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' | 'dis_denetci' {
@@ -480,6 +505,7 @@ export default function Sidebar({
   access,
   hayaletDurum,
   denetimAgac = [],
+  kysAgac = [],
 }: SidebarProps) {
   const pathname = usePathname()
 
@@ -493,8 +519,8 @@ export default function Sidebar({
   }, [access, hayaletDurum])
 
   const menuGroups = useMemo(
-    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac),
-    [terfiMenuHref, calisanlarHref, denetimAgac],
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac),
+    [terfiMenuHref, calisanlarHref, denetimAgac, kysAgac],
   )
 
   const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}
@@ -578,6 +604,9 @@ export default function Sidebar({
   useEffect(() => {
     if (pathname === '/denetim' || pathname.startsWith('/denetim/')) {
       setAciklar(prev => (prev['Denetim Yönetimi'] ? prev : { ...prev, 'Denetim Yönetimi': true }))
+    }
+    if (pathname === '/kys' || pathname.startsWith('/kys/')) {
+      setAciklar(prev => (prev['KYS Yönetimi'] ? prev : { ...prev, 'KYS Yönetimi': true }))
     }
   }, [pathname])
 
