@@ -302,9 +302,10 @@ export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc>
     .select('id, parent_id, baslik, sayfa_turu')
     .eq('id', menuId)
     .maybeSingle()
-  if (!menu) return { hata: 'Alt menü bulunamadı.' }
-  if (menu.sayfa_turu !== 'belge' || menu.parent_id == null) {
-    return { hata: 'Başlık yalnızca alt menülere eklenebilir.' }
+  if (!menu) return { hata: 'Menü bulunamadı.' }
+  // Başlık: hem alt menülere (belge/parent_id dolu) hem de ana alt menülere (hub) eklenebilir
+  if (menu.sayfa_turu !== 'belge' && menu.sayfa_turu !== 'hub') {
+    return { hata: 'Geçersiz menü türü.' }
   }
 
   if (sorumlu_birim) {
