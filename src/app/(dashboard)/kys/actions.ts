@@ -546,7 +546,7 @@ export async function kysBelgeYuklemeHazirla(formData: FormData): Promise<KysYuk
   if (!Number.isFinite(baslikId) || baslikId <= 0) return { hata: 'Başlık gerekli.' }
   if (!dosya_adi) return { hata: 'Dosya seçin.' }
   if (!Number.isFinite(boyut) || boyut <= 0) return { hata: 'Dosya seçin.' }
-  if (boyut > KYS_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (boyut > KYS_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 50 MB olabilir.' }
   if (!kysBelgeMimeCoz(dosya_adi, '')) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
 
   const { data: baslik } = await supabase

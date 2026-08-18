@@ -177,7 +177,7 @@ export default function KysBaslikListeClient({
       return
     }
     if (files.some(file => file.size > KYS_BELGE_MAX_BOYUT)) {
-      setHata('Dosya en fazla 15 MB olabilir.')
+      setHata('Dosya en fazla 50 MB olabilir.')
       return
     }
     setHata(null)

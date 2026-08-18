@@ -7,7 +7,6 @@ import DenetimBolumBaslikListeClient, {
   type DenetimBolumBaslikSatir,
 } from '@/components/denetim/DenetimBolumBaslikListeClient'
 import {
-  DENETIM_BOLUM_META,
   denetimAltBolumBul,
   denetimBolumFromSistem,
   denetimMenuYolu,
@@ -45,7 +44,7 @@ export default async function DenetimAltBolumSayfa({
   const resolvedBolum = bolum ?? denetimBolumFromSistem(menu?.sistem_anahtari ?? altBolum ?? null)
   const alt = resolvedBolum && altBolum ? denetimAltBolumBul(resolvedBolum, altBolum) : null
   if (!menu && !alt) notFound()
-  if (menu && menu.sayfa_turu !== 'belge') notFound()
+  if (menu && menu.sayfa_turu !== 'belge' && menu.sistem_anahtari !== 'yonetmelikler') notFound()
 
   const sistemAnahtar = menu?.sistem_anahtari ?? altBolum ?? null
   const BELGE_ALANLARI = 'denetim_bolum_belge(id, sorumlu_birim, dosya_adi, created_by_email, updated_at)'
@@ -133,12 +132,10 @@ export default async function DenetimAltBolumSayfa({
       ).data
     : null
 
-  const bolumLabel = parent?.baslik ?? (resolvedBolum ? DENETIM_BOLUM_META[resolvedBolum].label : 'Dönem')
+  const bolumLabel = parent?.baslik ?? 'Dönem'
   const bolumHref = parent
     ? denetimMenuYolu(donemId, parent)
-    : resolvedBolum
-      ? `/denetim/donemler/${donemId}/${DENETIM_BOLUM_META[resolvedBolum].path}`
-      : `/denetim/donemler/${donemId}`
+    : `/denetim/donemler/${donemId}`
 
   return (
     <DenetimBolumBaslikListeClient

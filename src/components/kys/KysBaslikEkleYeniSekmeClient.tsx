@@ -52,7 +52,7 @@ export default function KysBaslikEkleYeniSekmeClient({ menuId, menuLabel, mudurl
       for (const satir of yeniSatirlar) {
         if (satir.baslik.trim().length < 2) continue
         if (satir.dosyalar.some(file => file.size > KYS_BELGE_MAX_BOYUT)) {
-          setHata('Dosya en fazla 15 MB olabilir.')
+          setHata('Dosya en fazla 50 MB olabilir.')
           return
         }
         const fd = new FormData()

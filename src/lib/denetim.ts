@@ -1,5 +1,5 @@
 export const DENETIM_BELGE_BUCKET = 'denetim-belgeler'
-export const DENETIM_BELGE_MAX_BOYUT = 15 * 1024 * 1024
+export const DENETIM_BELGE_MAX_BOYUT = 50 * 1024 * 1024
 
 export const DENETIM_BELGE_MIME = [
   'application/pdf',
@@ -55,7 +55,7 @@ export const DENETIM_BOLUM_META: Record<
   ic_kontrol: {
     label: 'İç Kontrol Bilgileri',
     path: 'ic-kontrol-bilgileri',
-    aciklama: 'Yönetmelikler, İKEP ve ek iç kontrol belge başlıkları.',
+    aciklama: 'İKEP ve ek iç kontrol belge başlıkları.',
   },
   insan_kaynaklari: {
     label: 'İnsan Kaynakları Bilgileri',
@@ -93,7 +93,6 @@ export const DENETIM_ALT_BOLUMLER: Record<DenetimBelgeBolumu, DenetimAltBolum[]>
     { anahtar: 'faaliyet-raporu', label: 'Faaliyet Raporu', aciklama: 'Faaliyet raporu belgeleri.', ikon: 'rapor' },
   ],
   ic_kontrol: [
-    { anahtar: 'yonetmelikler', label: 'Yönetmelikler', aciklama: 'Yönetmelik belgeleri.', ikon: 'yonetmelik' },
     { anahtar: 'ikep', label: 'İKEP', aciklama: 'İç Kontrol Eylem Planı belgeleri.', ikon: 'ikep' },
   ],
   insan_kaynaklari: [
@@ -107,6 +106,9 @@ export function denetimAltBolumBul(
   bolum: DenetimBelgeBolumu,
   anahtar: string,
 ): DenetimAltBolum | null {
+  if (anahtar === 'yonetmelikler') {
+    return { anahtar: 'yonetmelikler', label: 'Yönetmelikler', aciklama: 'Yönetmelik belgeleri.', ikon: 'yonetmelik' }
+  }
   return DENETIM_ALT_BOLUMLER[bolum].find(a => a.anahtar === anahtar) ?? null
 }
 
@@ -215,12 +217,17 @@ export function denetimDonemBolumler(donemId: number): DenetimMenuBolum[] {
       ],
     },
     {
+      href: `${base}/yonetmelikler`,
+      label: 'Yönetmelikler',
+      aciklama: 'Yönetmelik belgeleri.',
+      ikon: 'yonetmelik',
+    },
+    {
       href: `${base}/ic-kontrol-bilgileri`,
       label: 'İç Kontrol Bilgileri',
-      aciklama: 'Yönetmelikler ve İKEP.',
+      aciklama: 'İKEP.',
       ikon: 'ickontrol',
       children: [
-        { href: `${base}/ic-kontrol-bilgileri/yonetmelikler`, label: 'Yönetmelikler', ikon: 'yonetmelik' },
         { href: `${base}/ic-kontrol-bilgileri/ikep`, label: 'İKEP', ikon: 'ikep' },
       ],
     },
@@ -254,6 +261,7 @@ export const DENETIM_SISTEM_YOL: Record<string, string> = {
   'stratejik-plan': 'performans-bilgileri/stratejik-plan',
   'performans-programi': 'performans-bilgileri/performans-programi',
   'faaliyet-raporu': 'performans-bilgileri/faaliyet-raporu',
+  yonetmelikler: 'yonetmelikler',
   'ic-kontrol-bilgileri': 'ic-kontrol-bilgileri',
   ikep: 'ic-kontrol-bilgileri/ikep',
   'insan-kaynaklari-bilgileri': 'insan-kaynaklari-bilgileri',

@@ -161,7 +161,7 @@ export default function KysHubClient({
     if (!yukleSatir) return
     const files = Array.from(fileRef.current?.files ?? [])
     if (files.length === 0) { setHata('Dosya seçin.'); return }
-    if (files.some(file => file.size > KYS_BELGE_MAX_BOYUT)) { setHata('Dosya en fazla 15 MB olabilir.'); return }
+    if (files.some(file => file.size > KYS_BELGE_MAX_BOYUT)) { setHata('Dosya en fazla 50 MB olabilir.'); return }
     setHata(null)
     const baslikId = yukleSatir.id
     startTransition(async () => {

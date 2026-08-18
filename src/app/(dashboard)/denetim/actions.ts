@@ -250,7 +250,7 @@ export async function denetimKararBelgeYuklemeHazirla(formData: FormData): Promi
   if (karar_turu !== 'encumen' && karar_turu !== 'meclis') return { hata: 'Karar türü geçersiz.' }
   if (!dosya_adi) return { hata: 'Dosya seçin.' }
   if (!Number.isFinite(boyut) || boyut <= 0) return { hata: 'Dosya seçin.' }
-  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 50 MB olabilir.' }
   if (!denetimBelgeMimeCoz(dosya_adi, '')) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
 
   const { data: donem } = await supabase.from('denetim_donem').select('id, durum').eq('id', donemId).maybeSingle()
@@ -518,7 +518,8 @@ export async function denetimBolumBaslikEkle(formData: FormData): Promise<Deneti
       .eq('donem_id', donemId)
       .maybeSingle()
     if (!menu) return { hata: 'Alt menü bulunamadı.' }
-    if (menu.sayfa_turu !== 'belge' || menu.parent_id == null) {
+    const yonetmelikHub = menu.sistem_anahtari === 'yonetmelikler' && menu.sayfa_turu === 'hub'
+    if (menu.sayfa_turu !== 'belge' && !yonetmelikHub) {
       return { hata: 'Başlık yalnızca alt menülere eklenebilir.' }
     }
     altEtiket = menu.baslik
@@ -664,7 +665,7 @@ export async function denetimBolumBelgeYuklemeHazirla(formData: FormData): Promi
   if (!Number.isFinite(baslikId) || baslikId <= 0) return { hata: 'Başlık gerekli.' }
   if (!dosya_adi) return { hata: 'Dosya seçin.' }
   if (!Number.isFinite(boyut) || boyut <= 0) return { hata: 'Dosya seçin.' }
-  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 15 MB olabilir.' }
+  if (boyut > DENETIM_BELGE_MAX_BOYUT) return { hata: 'Dosya en fazla 50 MB olabilir.' }
   if (!denetimBelgeMimeCoz(dosya_adi, '')) return { hata: 'Yalnızca PDF, Word veya Excel yüklenebilir.' }
 
   const { data: baslik } = await supabase
