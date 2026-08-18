@@ -375,7 +375,7 @@ export default function KysBaslikListeClient({
         </div>
       </div>
 
-      <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="md">
+      <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="xl">
         <div className="space-y-4">
           {yeniSatirlar.map((satir, idx) => (
             <div key={idx} className="space-y-3 rounded-lg border border-slate-200 p-3">
@@ -391,49 +391,51 @@ export default function KysBaslikListeClient({
                   </button>
                 ) : null}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Kod</label>
-                <input
-                  value={satir.kod}
-                  onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, kod: e.target.value } : s)))}
-                  maxLength={40}
-                  placeholder="Örn. KYS-01"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
-                <input
-                  value={satir.baslik}
-                  onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, baslik: e.target.value } : s)))}
-                  maxLength={120}
-                  placeholder="Örn. Prosedür Adı"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim (çoklu)</label>
-                <SorumluBirimCokluSecim
-                  value={satir.birimler}
-                  onChange={next => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, birimler: next } : s)))}
-                  mudurlukler={mudurlukler}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Dosyalar (isteğe bağlı)</label>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,application/pdf"
-                  onChange={e =>
-                    setYeniSatirlar(
-                      yeniSatirlar.map((s, i) =>
-                        i === idx ? { ...s, dosyalar: Array.from(e.target.files ?? []) } : s,
-                      ),
-                    )
-                  }
-                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium"
-                />
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+                <div className="lg:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Kod</label>
+                  <input
+                    value={satir.kod}
+                    onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, kod: e.target.value } : s)))}
+                    maxLength={40}
+                    placeholder="KYS-01"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
+                  <input
+                    value={satir.baslik}
+                    onChange={e => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, baslik: e.target.value } : s)))}
+                    maxLength={120}
+                    placeholder="Prosedür Adı"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="lg:col-span-4">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim (çoklu)</label>
+                  <SorumluBirimCokluSecim
+                    value={satir.birimler}
+                    onChange={next => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, birimler: next } : s)))}
+                    mudurlukler={mudurlukler}
+                  />
+                </div>
+                <div className="lg:col-span-3">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Dosyalar</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,application/pdf"
+                    onChange={e =>
+                      setYeniSatirlar(
+                        yeniSatirlar.map((s, i) =>
+                          i === idx ? { ...s, dosyalar: Array.from(e.target.files ?? []) } : s,
+                        ),
+                      )
+                    }
+                    className="block w-full text-sm text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-100 file:px-2 file:py-1.5 file:text-xs file:font-medium"
+                  />
+                </div>
               </div>
             </div>
           ))}
