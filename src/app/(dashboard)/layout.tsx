@@ -56,12 +56,19 @@ export default async function DashboardLayout({
   const ilkTamam = profil.ilk_giris_tamam
 
   let kullaniciKarsilamaAd: string | null = null
-  if (access.mode === 'dis_denetci') kullaniciKarsilamaAd = access.adSoyad
+  if (access.mode === 'dis_denetci') {
+    kullaniciKarsilamaAd = (access.adSoyad || profil.ad_soyad || '').trim() || null
+  }
   const sn = access.mode === 'kullanici' ? access.sicilNo.trim() : ''
   if (sn) {
     const { data: cal } = await supabase.from('calisan').select('ad_soyad').eq('sicil_no', sn).maybeSingle()
     kullaniciKarsilamaAd = (cal?.ad_soyad ?? '').trim() || null
   }
+
+  const headerKimlik =
+    access.mode === 'dis_denetci'
+      ? kullaniciKarsilamaAd || access.kullaniciAdi || undefined
+      : user.email
 
   const buildSha =
     process.env.NEXT_PUBLIC_BUILD_MARKER ??
@@ -77,7 +84,7 @@ export default async function DashboardLayout({
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
       <DashboardShell
-        userEmail={user.email}
+        userEmail={headerKimlik}
         kullaniciKarsilamaAd={kullaniciKarsilamaAd}
         access={access}
         hayaletDurum={hayaletDurum}

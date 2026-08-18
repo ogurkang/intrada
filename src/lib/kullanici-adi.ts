@@ -46,3 +46,7 @@ export function kullaniciAdiHataMetni(): string {
 export function disDenetciAuthEmail(kullaniciAdi: string): string {
   return `${normalizeKullaniciAdi(kullaniciAdi).toLowerCase()}@auditor.invalid`
 }
+
+export function disDenetciSentetikEmailMi(email: string | null | undefined): boolean {
+  return (email ?? '').toLowerCase().endsWith('@auditor.invalid')
+}

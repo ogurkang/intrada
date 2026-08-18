@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { disDenetciSentetikEmailMi } from '@/lib/kullanici-adi'
 
 interface HeaderProps {
   userEmail?: string
@@ -14,6 +15,9 @@ interface HeaderProps {
 export default function Header({ userEmail, onMenuClick, kullaniciKarsilamaAd }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
+  const sagKimlik = disDenetciSentetikEmailMi(userEmail)
+    ? kullaniciKarsilamaAd?.trim() || null
+    : userEmail
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -57,13 +61,13 @@ export default function Header({ userEmail, onMenuClick, kullaniciKarsilamaAd }:
           </Link>
         </div>
 
-        {/* Sağ: e-posta + çıkış */}
+        {/* Sağ: kimlik + çıkış */}
         <div className="flex flex-wrap items-center justify-end gap-3 justify-self-end">
-          {userEmail && (
-            <span className="max-w-[min(100%,220px)] truncate text-sm text-slate-500" title={userEmail}>
-              {userEmail}
+          {sagKimlik ? (
+            <span className="max-w-[min(100%,220px)] truncate text-sm text-slate-500" title={sagKimlik}>
+              {sagKimlik}
             </span>
-          )}
+          ) : null}
           <button
             type="button"
             onClick={handleSignOut}
