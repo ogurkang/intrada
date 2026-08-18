@@ -1,5 +1,7 @@
 export const KYS_BELGE_BUCKET = 'kys-belgeler'
 export const KYS_BELGE_MAX_BOYUT = 15 * 1024 * 1024
+export const KYS_MENU_SILME_ENGEL =
+  'Menü İçeriğinde Belge Bulunduğundan Silme İşlemi Gerçekleşmemiştir.'
 
 export const KYS_BELGE_MIME = [
   'application/pdf',

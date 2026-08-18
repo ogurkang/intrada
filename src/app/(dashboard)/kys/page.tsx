@@ -25,7 +25,7 @@ export default async function KysYonetimiPage() {
       altMenuler: rows
         .filter(c => c.parent_id === m.id)
         .sort((a, b) => a.sira_no - b.sira_no || a.id - b.id)
-        .map(c => ({ id: c.id, baslik: c.baslik })),
+        .map(c => ({ id: c.id, baslik: c.baslik, aciklama: c.aciklama })),
     }))
 
   const auditIds = [

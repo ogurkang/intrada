@@ -6,6 +6,7 @@ import { getAppAccess } from '@/lib/app-access'
 import {
   KYS_BELGE_BUCKET,
   KYS_BELGE_MAX_BOYUT,
+  KYS_MENU_SILME_ENGEL,
   kysBelgeMimeCoz,
   kysBelgeUzanti,
   kysMenuSlugUret,
@@ -316,6 +317,98 @@ export async function kysAltMenuTopluEkle(
   revalidateKys()
   if (hatalar.length > 0 && hatalar.length === gecerli.length) return { hata: hatalar.join('; ') }
   return { ok: true, hatalar: hatalar.length > 0 ? hatalar : undefined }
+}
+
+async function kysMenuAltindaBelgeVar(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  menuId: number,
+): Promise<boolean> {
+  const ids = [menuId]
+  const { data: kids } = await supabase.from('kys_menu').select('id').eq('parent_id', menuId)
+  for (const k of kids ?? []) ids.push(k.id)
+
+  const { data: basliklar } = await supabase.from('kys_baslik').select('id').in('menu_id', ids)
+  const baslikIds = (basliklar ?? []).map(b => b.id)
+  if (baslikIds.length === 0) return false
+
+  const { count } = await supabase
+    .from('kys_belge')
+    .select('id', { count: 'exact', head: true })
+    .in('baslik_id', baslikIds)
+  return (count ?? 0) > 0
+}
+
+export async function kysMenuGuncelle(formData: FormData): Promise<KysActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Menü bulunamadı.' }
+  if (baslik.length < 2) return { hata: 'Menü adı en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Menü adı en fazla 120 karakter olabilir.' }
+
+  const { data: onceki } = await supabase
+    .from('kys_menu')
+    .select('id, parent_id, baslik, aciklama, sayfa_turu')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Menü bulunamadı.' }
+
+  const { error } = await supabase
+    .from('kys_menu')
+    .update({ baslik, aciklama, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) {
+    if (error.code === '23505') return { hata: 'Aynı adlı menü zaten var.' }
+    return { hata: error.message }
+  }
+
+  await writeKysMenuAudit(supabase, {
+    menuId: id,
+    islem: 'Güncelle',
+    ozet: `${onceki.baslik} menüsü güncellendi.`,
+    onceki: { baslik: onceki.baslik, aciklama: onceki.aciklama, sayfa_turu: onceki.sayfa_turu },
+    sonraki: { baslik, aciklama, sayfa_turu: onceki.sayfa_turu },
+  })
+  revalidateKys(id)
+  if (onceki.parent_id) revalidateKys(onceki.parent_id)
+  return { ok: true, id }
+}
+
+export async function kysMenuSil(formData: FormData): Promise<KysActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Menü bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('kys_menu')
+    .select('id, parent_id, baslik, aciklama, sayfa_turu')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Menü bulunamadı.' }
+
+  if (await kysMenuAltindaBelgeVar(supabase, id)) {
+    return { hata: KYS_MENU_SILME_ENGEL }
+  }
+
+  const { error } = await supabase.from('kys_menu').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeKysMenuAudit(supabase, {
+    menuId: id,
+    islem: 'Sil',
+    ozet: `${onceki.baslik} menüsü silindi.`,
+    onceki: { baslik: onceki.baslik, aciklama: onceki.aciklama, sayfa_turu: onceki.sayfa_turu },
+  })
+  revalidateKys()
+  if (onceki.parent_id) revalidateKys(onceki.parent_id)
+  return { ok: true, id }
 }
 
 export async function kysBaslikEkle(formData: FormData): Promise<KysActionSonuc> {

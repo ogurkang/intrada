@@ -255,7 +255,6 @@ export const DENETIM_SISTEM_YOL: Record<string, string> = {
   'performans-programi': 'performans-bilgileri/performans-programi',
   'faaliyet-raporu': 'performans-bilgileri/faaliyet-raporu',
   'ic-kontrol-bilgileri': 'ic-kontrol-bilgileri',
-  yonetmelikler: 'ic-kontrol-bilgileri/yonetmelikler',
   ikep: 'ic-kontrol-bilgileri/ikep',
   'insan-kaynaklari-bilgileri': 'insan-kaynaklari-bilgileri',
   'sosyal-denge': 'insan-kaynaklari-bilgileri/sosyal-denge',
