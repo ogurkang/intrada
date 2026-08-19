@@ -1,4 +1,9 @@
 import { trNormalize } from '@/lib/turkce-search'
+import {
+  performansBaskanYardimcisiUnvaniMi,
+  performansBelediyeBaskaniUnvaniMi,
+  performansMudurUnvaniMi,
+} from '@/lib/performans-unvan'
 
 export type BirimTuru = 'mudurluk' | 'baskan' | 'baskan_yardimcisi'
 
@@ -44,18 +49,35 @@ export function mudurlukBazEslesir(a: string, b: string): boolean {
   return na === nb || na.includes(nb) || nb.includes(na)
 }
 
-/** Unvan metninden "müdürü/müdürlüğü" öncesi taban. */
-function unvanMudurBaz(unvanNorm: string): string {
-  let idx = unvanNorm.indexOf('muduru')
-  if (idx < 0) idx = unvanNorm.indexOf('mudurlugu')
-  if (idx < 0) return ''
-  return eslesmeBazNorm(unvanNorm.slice(0, idx))
-}
-
 function mudurBazEkle(map: Map<string, Set<string>>, baz: string, deger: string) {
   if (!baz || !deger) return
   if (!map.has(baz)) map.set(baz, new Set())
   map.get(baz)!.add(deger)
+}
+
+/** Organizasyonda müdürlük müdürü: kadro ünvanı müdür, şube müdürü değil. */
+export function organizasyonMudurUnvaniMi(unvan: string): boolean {
+  if (!performansMudurUnvaniMi(unvan)) return false
+  return !trNormalize(unvan).includes('sube')
+}
+
+export function afetRiskMudurluguMu(ad: string): boolean {
+  const n = trNormalize(ad)
+  return n.includes('afet') && n.includes('risk')
+}
+
+function kadroSatiriUnvani(r: KadroUnvanSatir): string {
+  return String(r.kadro_unvani ?? '').trim() || String(r.gorev_unvani ?? '').trim()
+}
+
+function maptenEslesen(map: Map<string, string[]>, mudurlukAdi: string | null | undefined): string[] {
+  const baz = mudurlukEslesmeBaz(mudurlukAdi)
+  if (!baz) return []
+  const out = new Set<string>()
+  for (const [k, vals] of map) {
+    if (k === baz || mudurlukBazEslesir(baz, k)) vals.forEach(v => out.add(v))
+  }
+  return [...out].sort((a, b) => a.localeCompare(b, 'tr'))
 }
 
 export interface KadroUnvanSatir {
@@ -106,8 +128,7 @@ function satirKisi(r: KadroUnvanSatir): { sicil: string; ad: string } | null {
 }
 
 /**
- * Kadro hareketlerinden (asil ya da vekil farkı gözetmeksizin) unvanlara göre
- * Belediye Başkanı / Başkan Yardımcısı / Müdür isim dizinini kurar.
+ * Makam (başkan / BY) kadro ünvanına göre; müdür, kadro ünvanı + kadro müdürlüğüne göre.
  */
 export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): OrganizasyonPersonelIndeks {
   const baskanlar = new Set<string>()
@@ -124,30 +145,24 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
     const { sicil, ad } = kisi
     sicilAd.set(sicil, ad)
 
-    for (const uvRaw of [r.gorev_unvani, r.kadro_unvani]) {
-      const u = String(uvRaw ?? '').trim()
-      if (!u) continue
-      const n = trNormalize(u)
-      if (n.includes('yardimci') && n.includes('baskan')) {
-        baskanYrd.add(ad)
-        baskanYrdAday.set(sicil, ad)
-        continue
-      }
-      if (n.includes('belediye') && n.includes('baskan')) {
-        baskanlar.add(ad)
-        baskanSicil.add(sicil)
-        continue
-      }
-      if (n.includes('muduru') || n.includes('mudurlugu')) {
-        const baz = unvanMudurBaz(n)
-        mudurBazEkle(mudurByBaz, baz, ad)
-        mudurBazEkle(mudurSicilByBaz, baz, sicil)
-        for (const mudRaw of [r.gorev_mudurlugu, r.kadro_mudurlugu]) {
-          const mudBaz = mudurlukEslesmeBaz(mudRaw)
-          mudurBazEkle(mudurByBaz, mudBaz, ad)
-          mudurBazEkle(mudurSicilByBaz, mudBaz, sicil)
-        }
-      }
+    const unvan = kadroSatiriUnvani(r)
+    if (!unvan) continue
+
+    if (performansBaskanYardimcisiUnvaniMi(unvan)) {
+      baskanYrd.add(ad)
+      baskanYrdAday.set(sicil, ad)
+      continue
+    }
+    if (performansBelediyeBaskaniUnvaniMi(unvan)) {
+      baskanlar.add(ad)
+      baskanSicil.add(sicil)
+      continue
+    }
+    if (organizasyonMudurUnvaniMi(unvan)) {
+      const mudBaz =
+        mudurlukEslesmeBaz(r.kadro_mudurlugu) || mudurlukEslesmeBaz(r.gorev_mudurlugu)
+      mudurBazEkle(mudurByBaz, mudBaz, ad)
+      mudurBazEkle(mudurSicilByBaz, mudBaz, sicil)
     }
   }
 
@@ -188,9 +203,7 @@ export function birimPersonelMetni(
     if (sicil) return indeks.sicilAdHaritasi.get(sicil) ?? ''
     return indeks.baskanYardimcilari.join(', ')
   }
-  const baz = mudurlukEslesmeBaz(mudurlukAdi)
-  if (!baz) return ''
-  return (indeks.mudurByBaz.get(baz) ?? []).join(', ')
+  return maptenEslesen(indeks.mudurByBaz, mudurlukAdi).join(', ')
 }
 
 export function birimPersonelTelefonMetni(
@@ -210,9 +223,7 @@ export function birimPersonelTelefonMetni(
     const sicil = String(personelSicil ?? '').trim()
     return sicil ? tel(sicil) : ''
   }
-  const baz = mudurlukEslesmeBaz(mudurlukAdi)
-  if (!baz) return ''
-  return birlestir(indeks.mudurSicilByBaz.get(baz) ?? [])
+  return birlestir(maptenEslesen(indeks.mudurSicilByBaz, mudurlukAdi))
 }
 
 export type OrganizasyonBirimSatir = {
@@ -246,6 +257,8 @@ export function organizasyonAgacKur(birimler: OrganizasyonBirimSatir[]): Organiz
     liste.sort((a, b) => {
       const t = (turSira[a.birim_turu] ?? 9) - (turSira[b.birim_turu] ?? 9)
       if (t !== 0) return t
+      const afet = Number(afetRiskMudurluguMu(a.ad)) - Number(afetRiskMudurluguMu(b.ad))
+      if (afet !== 0) return afet
       const s = (a.sira_no ?? 0) - (b.sira_no ?? 0)
       if (s !== 0) return s
       return a.ad.localeCompare(b.ad, 'tr')
