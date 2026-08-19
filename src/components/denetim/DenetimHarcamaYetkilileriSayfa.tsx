@@ -1,5 +1,6 @@
-import HarcamaYetkilileriListeClient from '@/components/denetim/HarcamaYetkilileriListeClient'
-import { harcamaYetkilileriSatirlariYukle } from '@/lib/harcama-yetkilileri-liste'
+import { createClient } from '@/lib/supabase/server'
+import DenetimOrganizasyonSemasiClient from '@/components/denetim/DenetimOrganizasyonSemasiClient'
+import { aktifOrganizasyonSemasiYukle } from '@/lib/organizasyon-aktif-yukle'
 
 export default async function DenetimHarcamaYetkilileriSayfa({
   menuLabel,
@@ -10,12 +11,15 @@ export default async function DenetimHarcamaYetkilileriSayfa({
   donemId: number
   donemAdi: string
 }) {
-  const satirlar = await harcamaYetkilileriSatirlariYukle()
+  const supabase = await createClient()
+  const sema = await aktifOrganizasyonSemasiYukle(supabase)
+
   return (
-    <HarcamaYetkilileriListeClient
-      menuLabel={menuLabel}
-      donemAdi={donemAdi}
-      satirlar={satirlar}
+    <DenetimOrganizasyonSemasiClient
+      baslik={`${menuLabel} — ${donemAdi}`}
+      aciklama="Aktif organizasyon yapısı ve müdür iletişim bilgileri."
+      organizasyonAdi={sema?.organizasyonAdi ?? null}
+      birimler={sema?.birimler ?? []}
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
     />

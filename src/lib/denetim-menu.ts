@@ -50,7 +50,9 @@ export function denetimMenuAgaciKur(
   }
 
   function childrenOf(parentId: number | null): DenetimSidebarMenu[] {
-    return (byParent.get(parentId) ?? []).map(row => {
+    return (byParent.get(parentId) ?? [])
+      .filter(row => row.sistem_anahtari !== 'organizasyon-semasi')
+      .map(row => {
       const kids = childrenOf(row.id)
       return {
         id: row.id,

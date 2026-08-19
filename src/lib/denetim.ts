@@ -243,12 +243,6 @@ export function denetimDonemBolumler(donemId: number): DenetimMenuBolum[] {
         { href: `${base}/insan-kaynaklari-bilgileri/norm-kadro`, label: 'Norm Kadro', ikon: 'normkadro' },
       ],
     },
-    {
-      href: `${base}/organizasyon-semasi`,
-      label: 'Organizasyon Şeması',
-      aciklama: 'Aktif organizasyon yapısı ve müdür iletişim bilgileri.',
-      ikon: 'organizasyon',
-    },
   ]
 }
 
@@ -275,7 +269,6 @@ export const DENETIM_SISTEM_YOL: Record<string, string> = {
   'sosyal-denge': 'insan-kaynaklari-bilgileri/sosyal-denge',
   'toplu-is-sozlesmesi': 'insan-kaynaklari-bilgileri/toplu-is-sozlesmesi',
   'norm-kadro': 'insan-kaynaklari-bilgileri/norm-kadro',
-  'organizasyon-semasi': 'organizasyon-semasi',
 }
 
 export function denetimMenuYolu(

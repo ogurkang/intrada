@@ -1,9 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import DenetimOrganizasyonSemasiClient from '@/components/denetim/DenetimOrganizasyonSemasiClient'
-import { aktifOrganizasyonSemasiYukle } from '@/lib/organizasyon-aktif-yukle'
-
-export const dynamic = 'force-dynamic'
+import { denetimHarcamaYetkilileriMenuMu } from '@/lib/harcama-yetkilileri-liste'
 
 export default async function DonemOrganizasyonSemasiPage({
   params,
@@ -14,26 +11,12 @@ export default async function DonemOrganizasyonSemasiPage({
   if (!Number.isFinite(donemId) || donemId <= 0) notFound()
 
   const supabase = await createClient()
-  const [{ data: donem }, { data: menu }, sema] = await Promise.all([
-    supabase.from('denetim_donem').select('id, donem_adi').eq('id', donemId).maybeSingle(),
-    supabase
-      .from('denetim_donem_menu')
-      .select('baslik, aciklama')
-      .eq('donem_id', donemId)
-      .eq('sistem_anahtari', 'organizasyon-semasi')
-      .maybeSingle(),
-    aktifOrganizasyonSemasiYukle(supabase),
-  ])
-  if (!donem) notFound()
+  const { data: menuler } = await supabase
+    .from('denetim_donem_menu')
+    .select('id, slug, baslik')
+    .eq('donem_id', donemId)
 
-  return (
-    <DenetimOrganizasyonSemasiClient
-      baslik={`${menu?.baslik ?? 'Organizasyon Şeması'} — ${donem.donem_adi}`}
-      aciklama={menu?.aciklama}
-      organizasyonAdi={sema?.organizasyonAdi ?? null}
-      birimler={sema?.birimler ?? []}
-      geriHref={`/denetim/donemler/${donemId}`}
-      geriLabel="← Dönem"
-    />
-  )
+  const harcama = (menuler ?? []).find(m => denetimHarcamaYetkilileriMenuMu(m))
+  if (harcama) redirect(`/denetim/donemler/${donemId}/m/${harcama.id}`)
+  redirect(`/denetim/donemler/${donemId}`)
 }
