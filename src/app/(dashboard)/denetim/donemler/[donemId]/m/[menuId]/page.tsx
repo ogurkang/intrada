@@ -2,8 +2,9 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DenetimAltBolumSayfa from '@/components/denetim/DenetimAltBolumSayfa'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
-import DenetimYakindaSayfa from '@/components/denetim/DenetimYakindaSayfa'
+import DenetimHarcamaYetkilileriSayfa from '@/components/denetim/DenetimHarcamaYetkilileriSayfa'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
+import { denetimHarcamaYetkilileriMenuMu } from '@/lib/harcama-yetkilileri-liste'
 
 export default async function DenetimDinamikMenuPage({
   params,
@@ -25,22 +26,22 @@ export default async function DenetimDinamikMenuPage({
   const canonical = denetimMenuYolu(donemId, menu)
   if (!canonical.endsWith(`/m/${menu.id}`)) redirect(canonical)
 
-  if (menu.sayfa_turu === 'belge') {
-    return <DenetimAltBolumSayfa donemId={donemId} menuId={menu.id} />
-  }
+  const parent = menu.parent_id
+    ? (await supabase.from('denetim_donem_menu').select('baslik, slug').eq('id', menu.parent_id).maybeSingle()).data
+    : null
 
-  if (menu.sayfa_turu === 'tasinmaz') {
+  if (denetimHarcamaYetkilileriMenuMu(menu) || (parent && denetimHarcamaYetkilileriMenuMu(parent))) {
     return (
-      <DenetimYakindaSayfa
-        bolum={{
-          href: canonical,
-          label: menu.baslik,
-          aciklama: menu.aciklama ?? 'Bu ekran sonraki adımda eklenecek.',
-        }}
-        geriHref={`/denetim/donemler/${donemId}`}
-        geriLabel="← Dönem"
+      <DenetimHarcamaYetkilileriSayfa
+        menuLabel={menu.baslik}
+        donemId={donemId}
+        donemAdi={donem.donem_adi}
       />
     )
+  }
+
+  if (menu.sayfa_turu === 'belge') {
+    return <DenetimAltBolumSayfa donemId={donemId} menuId={menu.id} />
   }
 
   const { data: children } = await supabase

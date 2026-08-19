@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { trNormalize } from '@/lib/turkce-search'
-import KysHarcamaYetkilileriClient from './KysHarcamaYetkilileriClient'
 
 export interface HarcamaYetkilisiSatir {
   kadro_unvani: string
@@ -10,14 +9,18 @@ export interface HarcamaYetkilisiSatir {
   e_posta: string
 }
 
-function mudurMu(unvan: string): boolean {
-  const n = trNormalize(unvan)
-  return n.includes('muduru') || n.includes('mudurlugu')
+export function denetimHarcamaYetkilileriMenuMu(menu: { baslik?: string | null; slug?: string | null }): boolean {
+  const slug = String(menu.slug ?? '').toLowerCase()
+  if (slug === 'harcama-yetkilileri' || slug.startsWith('harcama-yetkilileri-')) return true
+  return trNormalize(menu.baslik) === 'harcama yetkilileri'
 }
 
-export default async function KysHarcamaYetkilileriSayfa({ menuLabel }: { menuLabel: string }) {
-  const supabase = await createClient()
+function mudurUnvaniMi(unvan: string): boolean {
+  return trNormalize(unvan).includes('muduru')
+}
 
+export async function harcamaYetkilileriSatirlariYukle(): Promise<HarcamaYetkilisiSatir[]> {
+  const supabase = await createClient()
   const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
     supabase
       .from('kadro_hareketleri')
@@ -42,7 +45,7 @@ export default async function KysHarcamaYetkilileriSayfa({ menuLabel }: { menuLa
 
   for (const k of kadroRaw ?? []) {
     const unvan = String(k.kadro_unvani ?? '').trim()
-    if (!mudurMu(unvan)) continue
+    if (!mudurUnvaniMi(unvan)) continue
     if (k.iptal_karar_tarihi || k.iptal_karar_no) continue
     if (k.durumu === 'İptal') continue
 
@@ -61,6 +64,5 @@ export default async function KysHarcamaYetkilileriSayfa({ menuLabel }: { menuLa
   }
 
   satirlar.sort((a, b) => a.kadro_unvani.localeCompare(b.kadro_unvani, 'tr'))
-
-  return <KysHarcamaYetkilileriClient menuLabel={menuLabel} satirlar={satirlar} />
+  return satirlar
 }

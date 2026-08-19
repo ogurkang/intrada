@@ -1,14 +1,24 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
-import type { HarcamaYetkilisiSatir } from './KysHarcamaYetkilileriSayfa'
+import type { HarcamaYetkilisiSatir } from '@/lib/harcama-yetkilileri-liste'
 
 interface Props {
   menuLabel: string
+  donemAdi?: string
   satirlar: HarcamaYetkilisiSatir[]
+  geriHref?: string
+  geriLabel?: string
 }
 
-export default function KysHarcamaYetkilileriClient({ menuLabel, satirlar }: Props) {
+export default function HarcamaYetkilileriListeClient({
+  menuLabel,
+  donemAdi,
+  satirlar,
+  geriHref,
+  geriLabel,
+}: Props) {
   const [filtre, setFiltre] = useState('')
 
   const gorunen = filtre.trim()
@@ -26,8 +36,15 @@ export default function KysHarcamaYetkilileriClient({ menuLabel, satirlar }: Pro
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">{menuLabel}</h1>
-          <p className="mt-1 text-sm text-slate-500">Müdür unvanlı harcama yetkilisi personel listesi</p>
+          {geriHref && geriLabel ? (
+            <Link href={geriHref} className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+              {geriLabel}
+            </Link>
+          ) : null}
+          <h1 className="text-2xl font-bold text-slate-800">
+            {donemAdi ? `${menuLabel} — ${donemAdi}` : menuLabel}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">Kadro ünvanında “müdürü” geçen harcama yetkilileri</p>
         </div>
         <span className="shrink-0 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
           {satirlar.length} kayıt
@@ -74,7 +91,7 @@ export default function KysHarcamaYetkilileriClient({ menuLabel, satirlar }: Pro
               </tr>
             ) : (
               gorunen.map((r, i) => (
-                <tr key={r.sicil_no + r.kadro_unvani} className="hover:bg-slate-50/60">
+                <tr key={`${r.sicil_no}-${r.kadro_unvani}`} className="hover:bg-slate-50/60">
                   <td className="py-3 pl-4 pr-2 text-right text-xs text-slate-400">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{r.kadro_unvani}</td>
                   <td className="px-4 py-3 text-slate-700">{r.ad_soyad}</td>
