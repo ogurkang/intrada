@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import type { DenetimMenuChild, DenetimMenuIkonAnahtar } from '@/lib/denetim'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   geriHref?: string
   geriLabel?: string
   kartlar: DenetimMenuChild[]
+  children?: ReactNode
 }
 
 function MenuIkon({ ikon, className = 'w-6 h-6' }: { ikon?: DenetimMenuIkonAnahtar; className?: string }) {
@@ -177,9 +179,10 @@ export default function DenetimBolumHubClient({
   geriHref = '/denetim',
   geriLabel = '← Denetim Yönetimi',
   kartlar,
+  children,
 }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         {geriLabel ? (
           <Link href={geriHref} className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2">
@@ -189,6 +192,7 @@ export default function DenetimBolumHubClient({
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">{aciklama}</p>
       </div>
+      {kartlar.length > 0 ? (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {kartlar.map(k => {
           const ton = IKON_TON[k.ikon ?? ''] ?? 'bg-slate-100 text-slate-700'
@@ -214,6 +218,8 @@ export default function DenetimBolumHubClient({
           )
         })}
       </div>
+      ) : null}
+      {children}
     </div>
   )
 }

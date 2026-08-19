@@ -50,6 +50,8 @@ interface Props {
   mudurlukler: DenetimMudurlukSecenek[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
   goruntulemelerByRefId: Record<string, DenetimGoruntulemeGrubu[]>
+  /** Hub sayfasında true: üst başlık/geri link gizlenir, kartların altında bölüm olarak durur. */
+  gomulu?: boolean
 }
 
 const IKON =
@@ -71,6 +73,7 @@ export default function DenetimBolumBaslikListeClient({
   mudurlukler,
   auditLoglarByRefId,
   goruntulemelerByRefId,
+  gomulu = false,
 }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -194,8 +197,30 @@ export default function DenetimBolumBaslikListeClient({
     })
   }
 
+  const baslikEkleDugmesi = !saltOkunur ? (
+    <button
+      type="button"
+      disabled={yazmaKapali || isPending}
+      onClick={() => {
+        setHata(null)
+        setModalAcik(true)
+      }}
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+      title={yazmaKapali ? 'Kapalı döneme başlık eklenemez' : 'Yeni başlık ekle'}
+    >
+      <span className="text-lg leading-none">+</span>
+      Başlık Ekle
+    </button>
+  ) : null
+
   return (
     <div className="space-y-6">
+      {gomulu ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-semibold text-slate-700">Başlıklar</h2>
+          {baslikEkleDugmesi}
+        </div>
+      ) : (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link href={bolumHref} className="mb-2 inline-flex text-sm text-slate-500 hover:text-slate-700">
@@ -206,22 +231,9 @@ export default function DenetimBolumBaslikListeClient({
             {donemAdi} · {aciklama}
           </p>
         </div>
-        {!saltOkunur && (
-        <button
-          type="button"
-          disabled={yazmaKapali || isPending}
-          onClick={() => {
-            setHata(null)
-            setModalAcik(true)
-          }}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
-          title={yazmaKapali ? 'Kapalı döneme başlık eklenemez' : 'Yeni başlık ekle'}
-        >
-          <span className="text-lg leading-none">+</span>
-          Başlık Ekle
-        </button>
-        )}
+        {baslikEkleDugmesi}
       </div>
+      )}
 
       {saltOkunur ? (
         <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">

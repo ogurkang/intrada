@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
+import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import {
   DENETIM_ALT_BOLUMLER,
   DENETIM_BOLUM_META,
@@ -22,7 +23,7 @@ export default async function DenetimBolumSayfa({
   const supabase = await createClient()
   const meta = DENETIM_BOLUM_META[bolum]
   const [{ data: donem }, { data: parent }] = await Promise.all([
-    supabase.from('denetim_donem').select('id, donem_adi').eq('id', donemId).maybeSingle(),
+    supabase.from('denetim_donem').select('id, donem_adi, durum').eq('id', donemId).maybeSingle(),
     supabase
       .from('denetim_donem_menu')
       .select('id, baslik, aciklama, sistem_anahtari')
@@ -62,6 +63,16 @@ export default async function DenetimBolumSayfa({
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
       kartlar={kartlar}
-    />
+    >
+      {parent ? (
+        <DenetimHubBaslikBolumu
+          donemId={donemId}
+          donemAdi={donem.donem_adi}
+          donemKapali={donem.durum === 'Kapalı'}
+          menuId={parent.id}
+          menuBaslik={parent.baslik}
+        />
+      ) : null}
+    </DenetimBolumHubClient>
   )
 }

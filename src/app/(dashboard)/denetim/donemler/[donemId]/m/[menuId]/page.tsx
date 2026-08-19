@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import DenetimAltBolumSayfa from '@/components/denetim/DenetimAltBolumSayfa'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
 import DenetimHarcamaYetkilileriSayfa from '@/components/denetim/DenetimHarcamaYetkilileriSayfa'
+import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
 import { denetimHarcamaYetkilileriMenuMu } from '@/lib/harcama-yetkilileri-liste'
 
@@ -18,7 +19,7 @@ export default async function DenetimDinamikMenuPage({
 
   const supabase = await createClient()
   const [{ data: donem }, { data: menu }] = await Promise.all([
-    supabase.from('denetim_donem').select('id, donem_adi').eq('id', donemId).maybeSingle(),
+    supabase.from('denetim_donem').select('id, donem_adi, durum').eq('id', donemId).maybeSingle(),
     supabase.from('denetim_donem_menu').select('*').eq('id', menuId).eq('donem_id', donemId).maybeSingle(),
   ])
   if (!donem || !menu) notFound()
@@ -62,6 +63,14 @@ export default async function DenetimDinamikMenuPage({
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
       }))}
-    />
+    >
+      <DenetimHubBaslikBolumu
+        donemId={donemId}
+        donemAdi={donem.donem_adi}
+        donemKapali={donem.durum === 'Kapalı'}
+        menuId={menu.id}
+        menuBaslik={menu.baslik}
+      />
+    </DenetimBolumHubClient>
   )
 }

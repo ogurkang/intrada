@@ -517,10 +517,9 @@ export async function denetimBolumBaslikEkle(formData: FormData): Promise<Deneti
       .eq('id', menuId)
       .eq('donem_id', donemId)
       .maybeSingle()
-    if (!menu) return { hata: 'Alt menü bulunamadı.' }
-    const yonetmelikHub = menu.sistem_anahtari === 'yonetmelikler' && menu.sayfa_turu === 'hub'
-    if (menu.sayfa_turu !== 'belge' && !yonetmelikHub) {
-      return { hata: 'Başlık yalnızca alt menülere eklenebilir.' }
+    if (!menu) return { hata: 'Menü bulunamadı.' }
+    if (menu.sayfa_turu !== 'belge' && menu.sayfa_turu !== 'hub') {
+      return { hata: 'Başlık yalnızca ana alt menü veya alt menüye eklenebilir.' }
     }
     altEtiket = menu.baslik
     bolum = denetimBolumFromSistem(menu.sistem_anahtari)

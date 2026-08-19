@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
+import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
 
 export default async function DonemTasinmazBilgileriPage({
@@ -13,7 +14,7 @@ export default async function DonemTasinmazBilgileriPage({
 
   const supabase = await createClient()
   const [{ data: donem }, { data: menu }] = await Promise.all([
-    supabase.from('denetim_donem').select('id, donem_adi').eq('id', donemId).maybeSingle(),
+    supabase.from('denetim_donem').select('id, donem_adi, durum').eq('id', donemId).maybeSingle(),
     supabase
       .from('denetim_donem_menu')
       .select('*')
@@ -39,6 +40,16 @@ export default async function DonemTasinmazBilgileriPage({
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? 'tasinmaz',
       }))}
-    />
+    >
+      {menu ? (
+        <DenetimHubBaslikBolumu
+          donemId={donemId}
+          donemAdi={donem.donem_adi}
+          donemKapali={donem.durum === 'Kapalı'}
+          menuId={menu.id}
+          menuBaslik={menu.baslik}
+        />
+      ) : null}
+    </DenetimBolumHubClient>
   )
 }
