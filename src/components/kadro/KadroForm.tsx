@@ -119,7 +119,6 @@ export default function KadroFormModal({
   const [asilSicil, setAsilSicil] = useState(d?.asil ?? '')
   const [vekilSicil, setVekilSicil] = useState(d?.vekil ?? '')
   const [statu, setStatu] = useState(d?.statu ?? '')
-  const [ayrim, setAyrim] = useState(d?.statu === 'Memur' ? (d.ayrim ?? 'Memur') : 'Memur')
   const [iptalKararTarihi, setIptalKararTarihi] = useState(d?.iptal_karar_tarihi ?? '')
   const [iptalKararNo, setIptalKararNo] = useState(d?.iptal_karar_no ?? '')
 
@@ -128,10 +127,9 @@ export default function KadroFormModal({
     setAsilSicil(d?.asil ?? '')
     setVekilSicil(d?.vekil ?? '')
     setStatu(d?.statu ?? '')
-    setAyrim(d?.statu === 'Memur' ? (d.ayrim ?? 'Memur') : 'Memur')
     setIptalKararTarihi(d?.iptal_karar_tarihi ?? '')
     setIptalKararNo(d?.iptal_karar_no ?? '')
-  }, [open, d?.id, d?.asil, d?.vekil, d?.statu, d?.ayrim, d?.iptal_karar_tarihi, d?.iptal_karar_no])
+  }, [open, d?.id, d?.asil, d?.vekil, d?.statu, d?.iptal_karar_tarihi, d?.iptal_karar_no])
 
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const hesaplananDurum = iptalMi ? 'İptal' : kadroDurumuHesapla(asilSicil, vekilSicil)
@@ -212,31 +210,13 @@ export default function KadroFormModal({
               <select
                 name="statu"
                 value={statu}
-                onChange={e => {
-                  const yeni = e.target.value
-                  setStatu(yeni)
-                  if (yeni === 'Memur' && !ayrim) setAyrim('Memur')
-                }}
+                onChange={e => setStatu(e.target.value)}
                 className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
               >
                 <option value="">—</option>
                 {statuler.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
-            {statu === 'Memur' && (
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Ayrım</label>
-                <select
-                  name="ayrim"
-                  value={ayrim}
-                  onChange={e => setAyrim(e.target.value as 'Memur' | 'Sözleşmeli')}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="Memur">Memur</option>
-                  <option value="Sözleşmeli">Sözleşmeli</option>
-                </select>
-              </div>
-            )}
             {input('kadro_derecesi', 'Kadro Derecesi', { placeholder: '1, 2 ...' })}
             {selUnvanId('Kadro Ünvanı', unvanlar, 'kadro')}
             {sel('kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}

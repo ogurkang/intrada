@@ -46,9 +46,6 @@ async function unvanFormdan(
 export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> {
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const statu         = str(formData, 'statu')
-  const ayrimGirdi    = str(formData, 'ayrim')
-  const ayrim: 'Memur' | 'Sözleşmeli' | null =
-    statu === 'Memur' ? (ayrimGirdi === 'Sözleşmeli' ? 'Sözleşmeli' : 'Memur') : null
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
   const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
@@ -56,9 +53,6 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
 
-  if (statu === 'Memur' && ayrimGirdi && ayrimGirdi !== 'Memur' && ayrimGirdi !== 'Sözleşmeli') {
-    return { hata: 'Ayrım alanı Memur veya Sözleşmeli olmalıdır.' }
-  }
   if (iptalMi && (asil || vekil)) {
     return { hata: 'İptal alanları dolu iken bu kayda Asil/Vekil personel atanamaz.' }
   }
@@ -80,7 +74,6 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    ayrim,
     kadro_unvan_id:       kadroUn.id,
     kadro_unvani:         kadroUn.unvan_adi,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
@@ -108,7 +101,6 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    ayrim,
     kadro_unvani:         kadroUn.unvan_adi,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
     gorev_unvani:         gorevUn.unvan_adi,
@@ -148,9 +140,6 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
 export async function kadroGuncelle(id: number, formData: FormData): Promise<{ hata?: string }> {
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const statu         = str(formData, 'statu')
-  const ayrimGirdi    = str(formData, 'ayrim')
-  const ayrim: 'Memur' | 'Sözleşmeli' | null =
-    statu === 'Memur' ? (ayrimGirdi === 'Sözleşmeli' ? 'Sözleşmeli' : 'Memur') : null
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
   const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
@@ -158,9 +147,6 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
 
-  if (statu === 'Memur' && ayrimGirdi && ayrimGirdi !== 'Memur' && ayrimGirdi !== 'Sözleşmeli') {
-    return { hata: 'Ayrım alanı Memur veya Sözleşmeli olmalıdır.' }
-  }
   if (iptalMi && (asil || vekil)) {
     return { hata: 'İptal alanları dolu iken bu kayda Asil/Vekil personel atanamaz.' }
   }
@@ -186,7 +172,6 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    ayrim,
     kadro_unvan_id:       kadroUn.id ?? mevcut?.kadro_unvan_id ?? null,
     kadro_unvani:         kadroUn.unvan_adi ?? mevcut?.kadro_unvani ?? null,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
@@ -215,7 +200,6 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
     kadro_sira_no,
     kadro_derecesi:       str(formData, 'kadro_derecesi'),
     statu,
-    ayrim,
     kadro_unvani:         kadroUn.unvan_adi ?? mevcut?.kadro_unvani ?? null,
     kadro_mudurlugu:      str(formData, 'kadro_mudurlugu'),
     gorev_unvani:         gorevUn.unvan_adi ?? mevcut?.gorev_unvani ?? null,

@@ -9,7 +9,6 @@ export const KADRO_ALAN_ETIKETLERI: Record<string, string> = {
   kadro_sira_no: 'Kadro Sıra No',
   kadro_derecesi: 'Kadro Derecesi',
   statu: 'Statü',
-  ayrim: 'Ayrım',
   kadro_unvani: 'Kadro Ünvanı',
   kadro_mudurlugu: 'Kadro Müdürlüğü',
   gorev_unvani: 'Görev Ünvanı',
@@ -26,7 +25,7 @@ export const KADRO_ALAN_ETIKETLERI: Record<string, string> = {
 }
 
 export const KADRO_AUDIT_SELECT =
-  'meclis_karar_tarihi, meclis_karar_no, iptal_karar_tarihi, iptal_karar_no, kadro_sira_no, kadro_derecesi, statu, ayrim, kadro_unvani, kadro_mudurlugu, gorev_unvani, gorev_mudurlugu, asil, vekil, durumu, gelis_nedeni, geldigi_yer, ayrilis_tarihi, ayrilis_nedeni, gittigi_yer, aciklama'
+  'meclis_karar_tarihi, meclis_karar_no, iptal_karar_tarihi, iptal_karar_no, kadro_sira_no, kadro_derecesi, statu, kadro_unvani, kadro_mudurlugu, gorev_unvani, gorev_mudurlugu, asil, vekil, durumu, gelis_nedeni, geldigi_yer, ayrilis_tarihi, ayrilis_nedeni, gittigi_yer, aciklama'
 
 export function kadroAuditSnapshot(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}

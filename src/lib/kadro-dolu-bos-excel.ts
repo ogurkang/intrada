@@ -38,8 +38,13 @@ function doluKadro(k: Kadro): boolean {
   return Boolean(temiz(k.asil)) || k.durumu === 'Dolu'
 }
 
-function statuEsit(k: Kadro, statu: 'Memur' | 'İşçi'): boolean {
-  return temiz(k.statu).toLocaleLowerCase('tr-TR') === statu.toLocaleLowerCase('tr-TR')
+function memurKadroStatuMu(k: Kadro): boolean {
+  const s = temiz(k.statu).toLocaleLowerCase('tr-TR')
+  return s === 'memur' || s === 'sözleşmeli'
+}
+
+function isciKadroStatuMu(k: Kadro): boolean {
+  return temiz(k.statu).toLocaleLowerCase('tr-TR') === 'işçi'
 }
 
 function ozetle(kadrolar: Kadro[], unvanlar: KadroDbUnvan[], statu: 'Memur' | 'İşçi'): Ozet[] {
@@ -50,7 +55,8 @@ function ozetle(kadrolar: Kadro[], unvanlar: KadroDbUnvan[], statu: 'Memur' | '�
   const map = new Map<string, Ozet>()
 
   for (const k of kadrolar) {
-    if (!aktifKadro(k) || !statuEsit(k, statu)) continue
+    const statuUygun = statu === 'Memur' ? memurKadroStatuMu(k) : isciKadroStatuMu(k)
+    if (!aktifKadro(k) || !statuUygun) continue
     const unvan =
       (k.kadro_unvan_id != null ? byId.get(k.kadro_unvan_id) : undefined) ??
       byAd.get(temiz(k.kadro_unvani).toLocaleLowerCase('tr-TR'))
