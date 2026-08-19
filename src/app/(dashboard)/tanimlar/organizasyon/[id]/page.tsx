@@ -8,20 +8,13 @@ import {
   organizasyonPersonelIndeksKur,
   type BirimTuru,
   type KadroUnvanSatir,
+  type OrganizasyonBirimSatir,
 } from '@/lib/organizasyon-birim'
 import { birimEkle, birimSil } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
-export type OrganizasyonBirim = {
-  id: number
-  birim_turu: BirimTuru
-  mudurluk_id: number | null
-  personel_sicil_no: string | null
-  ad: string
-  personel_adi: string
-  ust_birim_id: number | null
-}
+export type OrganizasyonBirim = OrganizasyonBirimSatir
 
 type BirimRow = {
   id: number
@@ -29,6 +22,7 @@ type BirimRow = {
   birim_turu: string
   personel_sicil_no: string | null
   ust_birim_id: number | null
+  sira_no: number | null
   tanim_mudurluk: { mudurluk_adi: string } | null
 }
 
@@ -54,7 +48,7 @@ export default async function OrganizasyonDetayPage({
   const [{ data: birimRaw, error: birimErr }, { data: mudurlukRaw }, { data: kadroRaw }] = await Promise.all([
     supabase
       .from('tanim_organizasyon_birim')
-      .select('id, mudurluk_id, birim_turu, personel_sicil_no, ust_birim_id, tanim_mudurluk ( mudurluk_adi )')
+      .select('id, mudurluk_id, birim_turu, personel_sicil_no, ust_birim_id, sira_no, tanim_mudurluk ( mudurluk_adi )')
       .eq('organizasyon_id', id),
     supabase
       .from('tanim_mudurluk')
@@ -83,7 +77,9 @@ export default async function OrganizasyonDetayPage({
       personel_sicil_no: b.personel_sicil_no,
       ad,
       personel_adi: birimPersonelMetni(indeks, birim_turu, mudurlukAdi, b.personel_sicil_no),
+      personel_telefon: '',
       ust_birim_id: b.ust_birim_id,
+      sira_no: b.sira_no ?? 0,
     }
   })
 

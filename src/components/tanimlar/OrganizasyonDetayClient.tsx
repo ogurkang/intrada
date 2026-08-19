@@ -7,8 +7,7 @@ import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import { organizasyonAuditDegerGoster, organizasyonAuditDiffSatirlari } from '@/lib/organizasyon-audit'
-import type { PersonelAday } from '@/lib/organizasyon-birim'
-import type { OrganizasyonBirim } from '@/app/(dashboard)/tanimlar/organizasyon/[id]/page'
+import { organizasyonAgacKur, type OrganizasyonBirimSatir, type PersonelAday } from '@/lib/organizasyon-birim'
 import type { Tables } from '@/types/database'
 
 interface Secenek {
@@ -20,7 +19,7 @@ interface Props {
   organizasyonId: number
   organizasyonAdi: string
   aktif: boolean
-  birimler: OrganizasyonBirim[]
+  birimler: OrganizasyonBirimSatir[]
   mudurlukSecenekleri: Secenek[]
   baskanEklenmis: boolean
   baskanYardimcisiAdaylari: PersonelAday[]
@@ -30,31 +29,7 @@ interface Props {
   onBirimSil: (birimId: number, organizasyonId: number) => Promise<{ hata?: string }>
 }
 
-type AgacDugum = OrganizasyonBirim & { cocuklar: AgacDugum[] }
-
-function agacKur(birimler: OrganizasyonBirim[]): AgacDugum[] {
-  const map = new Map<number, AgacDugum>()
-  birimler.forEach(b => map.set(b.id, { ...b, cocuklar: [] }))
-  const kokler: AgacDugum[] = []
-  map.forEach(dugum => {
-    if (dugum.ust_birim_id != null && map.has(dugum.ust_birim_id)) {
-      map.get(dugum.ust_birim_id)!.cocuklar.push(dugum)
-    } else {
-      kokler.push(dugum)
-    }
-  })
-  const turSira: Record<string, number> = { baskan: 0, baskan_yardimcisi: 1, mudurluk: 2 }
-  const sirala = (liste: AgacDugum[]) => {
-    liste.sort((a, b) => {
-      const t = (turSira[a.birim_turu] ?? 9) - (turSira[b.birim_turu] ?? 9)
-      if (t !== 0) return t
-      return a.ad.localeCompare(b.ad, 'tr')
-    })
-    liste.forEach(d => sirala(d.cocuklar))
-  }
-  sirala(kokler)
-  return kokler
-}
+type AgacDugum = ReturnType<typeof organizasyonAgacKur>[number]
 
 export default function OrganizasyonDetayClient({
   organizasyonId,
@@ -77,7 +52,7 @@ export default function OrganizasyonDetayClient({
   const [gecmisAcik, setGecmisAcik] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const agac = useMemo(() => agacKur(birimler), [birimler])
+  const agac = useMemo(() => organizasyonAgacKur(birimler), [birimler])
 
   // Zaten eklenmiş müdürlükler tekrar seçilemesin.
   const eklenmisMudurlukIds = useMemo(
@@ -110,7 +85,7 @@ export default function OrganizasyonDetayClient({
     [birimler],
   )
 
-  function ustBirimEtiket(b: OrganizasyonBirim): string {
+  function ustBirimEtiket(b: OrganizasyonBirimSatir): string {
     return b.personel_adi ? `${b.ad} - ${b.personel_adi}` : b.ad
   }
 

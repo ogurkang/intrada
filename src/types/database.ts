@@ -489,6 +489,7 @@ export interface Database {
           birim_turu: string
           personel_sicil_no: string | null
           ust_birim_id: number | null
+          sira_no: number
           created_at: string
         }
         Insert: {
@@ -498,6 +499,7 @@ export interface Database {
           birim_turu?: string
           personel_sicil_no?: string | null
           ust_birim_id?: number | null
+          sira_no?: number
           created_at?: string
         }
         Update: {
@@ -507,6 +509,7 @@ export interface Database {
           birim_turu?: string
           personel_sicil_no?: string | null
           ust_birim_id?: number | null
+          sira_no?: number
           created_at?: string
         }
         Relationships: [

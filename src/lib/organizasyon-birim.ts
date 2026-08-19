@@ -52,10 +52,10 @@ function unvanMudurBaz(unvanNorm: string): string {
   return eslesmeBazNorm(unvanNorm.slice(0, idx))
 }
 
-function mudurBazEkle(map: Map<string, Set<string>>, baz: string, ad: string) {
-  if (!baz) return
+function mudurBazEkle(map: Map<string, Set<string>>, baz: string, deger: string) {
+  if (!baz || !deger) return
   if (!map.has(baz)) map.set(baz, new Set())
-  map.get(baz)!.add(ad)
+  map.get(baz)!.add(deger)
 }
 
 export interface KadroUnvanSatir {
@@ -84,6 +84,10 @@ export interface OrganizasyonPersonelIndeks {
   sicilAdHaritasi: Map<string, string>
   /** müdürlük eşleşme tabanı → müdür ad-soyad listesi */
   mudurByBaz: Map<string, string[]>
+  /** müdürlük eşleşme tabanı → müdür sicil listesi */
+  mudurSicilByBaz: Map<string, string[]>
+  /** Belediye başkanı sicilleri */
+  baskanSicilleri: string[]
 }
 
 /** Satırda görevi yürüten kişiyi (asil öncelikli, yoksa vekil) sicil+ad olarak çöz. */
@@ -107,10 +111,12 @@ function satirKisi(r: KadroUnvanSatir): { sicil: string; ad: string } | null {
  */
 export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): OrganizasyonPersonelIndeks {
   const baskanlar = new Set<string>()
+  const baskanSicil = new Set<string>()
   const baskanYrd = new Set<string>()
   const baskanYrdAday = new Map<string, string>() // sicil → ad
   const sicilAd = new Map<string, string>()
   const mudurByBaz = new Map<string, Set<string>>()
+  const mudurSicilByBaz = new Map<string, Set<string>>()
 
   for (const r of rows) {
     const kisi = satirKisi(r)
@@ -129,13 +135,17 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
       }
       if (n.includes('belediye') && n.includes('baskan')) {
         baskanlar.add(ad)
+        baskanSicil.add(sicil)
         continue
       }
       if (n.includes('muduru') || n.includes('mudurlugu')) {
         const baz = unvanMudurBaz(n)
         mudurBazEkle(mudurByBaz, baz, ad)
+        mudurBazEkle(mudurSicilByBaz, baz, sicil)
         for (const mudRaw of [r.gorev_mudurlugu, r.kadro_mudurlugu]) {
-          mudurBazEkle(mudurByBaz, mudurlukEslesmeBaz(mudRaw), ad)
+          const mudBaz = mudurlukEslesmeBaz(mudRaw)
+          mudurBazEkle(mudurByBaz, mudBaz, ad)
+          mudurBazEkle(mudurSicilByBaz, mudBaz, sicil)
         }
       }
     }
@@ -143,7 +153,9 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
 
   const sirala = (s: Set<string>) => [...s].sort((a, b) => a.localeCompare(b, 'tr'))
   const mudurMap = new Map<string, string[]>()
+  const mudurSicilMap = new Map<string, string[]>()
   for (const [baz, set] of mudurByBaz) mudurMap.set(baz, sirala(set))
+  for (const [baz, set] of mudurSicilByBaz) mudurSicilMap.set(baz, sirala(set))
 
   const adaylar: PersonelAday[] = [...baskanYrdAday.entries()]
     .map(([sicil_no, ad_soyad]) => ({ sicil_no, ad_soyad }))
@@ -155,6 +167,8 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
     baskanYardimcisiAdaylari: adaylar,
     sicilAdHaritasi: sicilAd,
     mudurByBaz: mudurMap,
+    mudurSicilByBaz: mudurSicilMap,
+    baskanSicilleri: sirala(baskanSicil),
   }
 }
 
@@ -177,4 +191,67 @@ export function birimPersonelMetni(
   const baz = mudurlukEslesmeBaz(mudurlukAdi)
   if (!baz) return ''
   return (indeks.mudurByBaz.get(baz) ?? []).join(', ')
+}
+
+export function birimPersonelTelefonMetni(
+  indeks: OrganizasyonPersonelIndeks,
+  sicilTelefon: Map<string, string>,
+  birimTuru: BirimTuru,
+  mudurlukAdi: string | null | undefined,
+  personelSicil?: string | null,
+): string {
+  const tel = (sicil: string) => String(sicilTelefon.get(sicil) ?? '').trim()
+  const birlestir = (siciller: string[]) => {
+    const phones = [...new Set(siciller.map(tel).filter(Boolean))]
+    return phones.join(', ')
+  }
+  if (birimTuru === 'baskan') return birlestir(indeks.baskanSicilleri)
+  if (birimTuru === 'baskan_yardimcisi') {
+    const sicil = String(personelSicil ?? '').trim()
+    return sicil ? tel(sicil) : ''
+  }
+  const baz = mudurlukEslesmeBaz(mudurlukAdi)
+  if (!baz) return ''
+  return birlestir(indeks.mudurSicilByBaz.get(baz) ?? [])
+}
+
+export type OrganizasyonBirimSatir = {
+  id: number
+  birim_turu: BirimTuru
+  mudurluk_id: number | null
+  personel_sicil_no: string | null
+  ad: string
+  personel_adi: string
+  personel_telefon: string
+  ust_birim_id: number | null
+  sira_no: number
+}
+
+export type OrganizasyonAgacDugum = OrganizasyonBirimSatir & { cocuklar: OrganizasyonAgacDugum[] }
+
+/** Tür, ardından sira_no, ardından ada göre ağaç. */
+export function organizasyonAgacKur(birimler: OrganizasyonBirimSatir[]): OrganizasyonAgacDugum[] {
+  const map = new Map<number, OrganizasyonAgacDugum>()
+  birimler.forEach(b => map.set(b.id, { ...b, cocuklar: [] }))
+  const kokler: OrganizasyonAgacDugum[] = []
+  map.forEach(dugum => {
+    if (dugum.ust_birim_id != null && map.has(dugum.ust_birim_id)) {
+      map.get(dugum.ust_birim_id)!.cocuklar.push(dugum)
+    } else {
+      kokler.push(dugum)
+    }
+  })
+  const turSira: Record<string, number> = { baskan: 0, baskan_yardimcisi: 1, mudurluk: 2 }
+  const sirala = (liste: OrganizasyonAgacDugum[]) => {
+    liste.sort((a, b) => {
+      const t = (turSira[a.birim_turu] ?? 9) - (turSira[b.birim_turu] ?? 9)
+      if (t !== 0) return t
+      const s = (a.sira_no ?? 0) - (b.sira_no ?? 0)
+      if (s !== 0) return s
+      return a.ad.localeCompare(b.ad, 'tr')
+    })
+    liste.forEach(d => sirala(d.cocuklar))
+  }
+  sirala(kokler)
+  return kokler
 }

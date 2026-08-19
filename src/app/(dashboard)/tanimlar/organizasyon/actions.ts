@@ -237,13 +237,31 @@ export async function birimEkle(organizasyonId: number, formData: FormData): Pro
   }
 
   // Eklenecek satırlar: Başkan her zaman en üst (üst birim almaz), diğerleri seçilen üst birime bağlanır.
-  const satirlar = girdiler.map(gr => ({
-    organizasyon_id: organizasyonId,
-    mudurluk_id: gr.mudurluk_id,
-    birim_turu: gr.birim_turu,
-    personel_sicil_no: gr.personel_sicil_no,
-    ust_birim_id: gr.birim_turu === 'baskan' ? null : ust_birim_id,
-  }))
+  const { data: mevcutSira } = await supabase
+    .from('tanim_organizasyon_birim')
+    .select('sira_no, ust_birim_id')
+    .eq('organizasyon_id', organizasyonId)
+
+  const maxByUst = new Map<string, number>()
+  for (const row of mevcutSira ?? []) {
+    const key = row.ust_birim_id == null ? 'null' : String(row.ust_birim_id)
+    maxByUst.set(key, Math.max(maxByUst.get(key) ?? 0, row.sira_no ?? 0))
+  }
+
+  const satirlar = girdiler.map(gr => {
+    const ust = gr.birim_turu === 'baskan' ? null : ust_birim_id
+    const key = ust == null ? 'null' : String(ust)
+    const next = (maxByUst.get(key) ?? 0) + 1
+    maxByUst.set(key, next)
+    return {
+      organizasyon_id: organizasyonId,
+      mudurluk_id: gr.mudurluk_id,
+      birim_turu: gr.birim_turu,
+      personel_sicil_no: gr.personel_sicil_no,
+      ust_birim_id: ust,
+      sira_no: next,
+    }
+  })
 
   const { error } = await supabase.from('tanim_organizasyon_birim').insert(satirlar)
   if (error) {

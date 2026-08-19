@@ -143,6 +143,12 @@ function MenuIkon({ ikon, className = 'w-6 h-6' }: { ikon?: DenetimMenuIkonAnaht
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16v14H4V5zm4 4h8M8 13h3m2 0h3M8 17h3m2 0h3" />
         </svg>
       )
+    case 'organizasyon':
+      return (
+        <svg {...common} aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v4m0 4v8M8 8h8M6 16h4m4 0h4M8 12a2 2 0 11-4 0 2 2 0 014 0zm6-8a2 2 0 11-4 0 2 2 0 014 0zm6 8a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
     default:
       return (
         <svg {...common} aria-hidden>
@@ -172,6 +178,7 @@ const IKON_TON: Record<string, string> = {
   sosyaldenge: 'bg-purple-100 text-purple-700',
   sozlesme: 'bg-violet-100 text-violet-700',
   normkadro: 'bg-pink-100 text-pink-700',
+  organizasyon: 'bg-sky-100 text-sky-800',
 }
 
 export default function DenetimBolumHubClient({
