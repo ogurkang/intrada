@@ -128,7 +128,7 @@ export default function OrganizasyonDetayClient({
     })
   }
 
-  function handleSil(birim: OrganizasyonBirim) {
+  function handleSil(birim: OrganizasyonBirimSatir) {
     if (!confirm(`"${birim.ad}" birimini organizasyondan çıkarmak istediğinize emin misiniz? Alt birimleri de silinir.`)) return
     startTransition(async () => {
       const res = await onBirimSil(birim.id, organizasyonId)
