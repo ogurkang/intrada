@@ -293,7 +293,6 @@ export function denetimBolumFromSistem(anahtar: string | null | undefined): Dene
     case 'faaliyet-raporu':
       return 'performans'
     case 'ic-kontrol-bilgileri':
-    case 'yonetmelikler':
     case 'ikep':
       return 'ic_kontrol'
     case 'insan-kaynaklari-bilgileri':
