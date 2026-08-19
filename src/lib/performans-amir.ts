@@ -15,6 +15,7 @@ import {
   mudurlukBazEslesir,
   mudurlukEslesmeBaz,
   organizasyonPersonelIndeksKur,
+  unvanMudurEslesmeBaz,
   type BirimTuru,
   type KadroUnvanSatir,
 } from '@/lib/organizasyon-birim'
@@ -64,8 +65,9 @@ export function mudurSicilForBaz(
   for (const r of kadroRows) {
     const u = String(r.kadro_unvani ?? '').trim() || String(r.gorev_unvani ?? '').trim()
     if (!u || !performansMudurUnvaniMi(u)) continue
+    const unvanBaz = unvanMudurEslesmeBaz(u)
     const mudBaz = mudurlukEslesmeBaz(r.kadro_mudurlugu) || mudurlukEslesmeBaz(r.gorev_mudurlugu)
-    if (!mudurlukBazEslesir(hedef, mudBaz)) continue
+    if (!mudurlukBazEslesir(hedef, unvanBaz) && !mudurlukBazEslesir(hedef, mudBaz)) continue
     const vekil = String(r.vekil ?? '').trim()
     const asil = String(r.asil ?? '').trim()
     const sicil = vekil || asil

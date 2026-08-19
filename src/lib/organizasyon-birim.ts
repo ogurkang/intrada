@@ -158,7 +158,17 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
       baskanSicil.add(sicil)
       continue
     }
-    if (organizasyonMudurUnvaniMi(unvan)) {
+    const kadroUnvan = String(r.kadro_unvani ?? '').trim()
+    const mudurUnvan = organizasyonMudurUnvaniMi(kadroUnvan)
+      ? kadroUnvan
+      : organizasyonMudurUnvaniMi(unvan)
+        ? unvan
+        : ''
+    if (mudurUnvan) {
+      // 1) Kadro ünvanı: "İşletme ve İştirakler Müdürü" → İşletme ve İştirakler Müdürlüğü
+      mudurBazEkle(mudurByBaz, unvanMudurEslesmeBaz(mudurUnvan), ad)
+      mudurBazEkle(mudurSicilByBaz, unvanMudurEslesmeBaz(mudurUnvan), sicil)
+      // 2) Kadro müdürlüğü alanı (boşsa görev müdürlüğü)
       const mudBaz =
         mudurlukEslesmeBaz(r.kadro_mudurlugu) || mudurlukEslesmeBaz(r.gorev_mudurlugu)
       mudurBazEkle(mudurByBaz, mudBaz, ad)
