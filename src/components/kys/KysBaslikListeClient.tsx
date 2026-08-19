@@ -254,6 +254,7 @@ export default function KysBaslikListeClient({
         <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{hata}</p>
       ) : null}
 
+      {basliklar.length > 0 ? (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
@@ -370,6 +371,7 @@ export default function KysBaslikListeClient({
           </table>
         </div>
       </div>
+      ) : null}
 
       <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="xl">
         <div className="space-y-4">

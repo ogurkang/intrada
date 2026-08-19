@@ -10,6 +10,7 @@ interface Props {
   geriHref?: string
   geriLabel?: string
   kartlar: DenetimMenuChild[]
+  ustAlan?: ReactNode
   children?: ReactNode
 }
 
@@ -179,6 +180,7 @@ export default function DenetimBolumHubClient({
   geriHref = '/denetim',
   geriLabel = '← Denetim Yönetimi',
   kartlar,
+  ustAlan,
   children,
 }: Props) {
   return (
@@ -192,6 +194,7 @@ export default function DenetimBolumHubClient({
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">{aciklama}</p>
       </div>
+      {ustAlan}
       {kartlar.length > 0 ? (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {kartlar.map(k => {

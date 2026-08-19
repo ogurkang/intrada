@@ -12,6 +12,7 @@ import {
 import {
   denetimAnaAltMenuEkle,
   denetimAltMenuEkle,
+  denetimBolumBaslikEkle,
   denetimDonemAc,
   denetimDonemEkle,
   denetimDonemGuncelle,
@@ -39,6 +40,7 @@ export type DenetimAnaMenuSecenek = {
   donem_adi: string
   baslik: string
   donemKapali: boolean
+  altMenuler: { id: number; baslik: string }[]
 }
 
 interface Props {
@@ -62,6 +64,7 @@ export default function DenetimDonemListeClient({
   const [ekleAcik, setEkleAcik] = useState(false)
   const [anaMenuAcik, setAnaMenuAcik] = useState(false)
   const [altMenuAcik, setAltMenuAcik] = useState(false)
+  const [baslikAcik, setBaslikAcik] = useState(false)
   const [duzenle, setDuzenle] = useState<DenetimDonemSatir | null>(null)
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
 
@@ -72,6 +75,9 @@ export default function DenetimDonemListeClient({
   const [menuParentId, setMenuParentId] = useState('')
   const [menuAdi, setMenuAdi] = useState('')
   const [menuAciklama, setMenuAciklama] = useState('')
+  const [baslikAltId, setBaslikAltId] = useState('')
+  const [baslikAd, setBaslikAd] = useState('')
+  const [baslikNot, setBaslikNot] = useState('')
 
   function formSifirla() {
     setDonemAdi('')
@@ -103,6 +109,21 @@ export default function DenetimDonemListeClient({
     setMenuParentId(ilk ? String(ilk.id) : '')
     setAltMenuAcik(true)
   }
+
+  function baslikEkleAc() {
+    setHata(null)
+    const varsayilanDonem = acikDonem ?? donemler[0]
+    setMenuDonemId(varsayilanDonem ? String(varsayilanDonem.id) : '')
+    const ilk = anaMenuler.find(m => m.donem_id === varsayilanDonem?.id)
+    setMenuParentId(ilk ? String(ilk.id) : '')
+    setBaslikAltId('')
+    setBaslikAd('')
+    setBaslikNot('')
+    setBaslikAcik(true)
+  }
+
+  const seciliAnaMenu = anaMenuler.find(m => String(m.id) === menuParentId)
+  const seciliAltMenuler = seciliAnaMenu?.altMenuler ?? []
 
   function ekleAc() {
     formSifirla()
@@ -168,6 +189,25 @@ export default function DenetimDonemListeClient({
       }
       setAltMenuAcik(false)
       menuFormSifirla()
+      router.refresh()
+    })
+  }
+
+  function kaydetBaslik() {
+    setHata(null)
+    const menuId = baslikAltId || menuParentId
+    const fd = new FormData()
+    fd.set('donem_id', menuDonemId)
+    fd.set('menu_id', menuId)
+    fd.set('baslik', baslikAd)
+    fd.set('aciklama', baslikNot)
+    startTransition(async () => {
+      const res = await denetimBolumBaslikEkle(fd)
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      setBaslikAcik(false)
       router.refresh()
     })
   }
@@ -239,6 +279,14 @@ export default function DenetimDonemListeClient({
             className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             + Alt Menü Ekle
+          </button>
+          <button
+            type="button"
+            onClick={baslikEkleAc}
+            disabled={isPending || anaMenuler.length === 0}
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-50"
+          >
+            + Başlık Ekle
           </button>
         </div>
         )}
@@ -491,6 +539,88 @@ export default function DenetimDonemListeClient({
               İptal
             </button>
             <button type="button" disabled={isPending} onClick={kaydetAltMenu} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={baslikAcik} onClose={() => setBaslikAcik(false)} title="Başlık Ekle" size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Dönem</label>
+            <select
+              value={menuDonemId}
+              onChange={e => {
+                setMenuDonemId(e.target.value)
+                const ilk = anaMenuler.find(m => String(m.donem_id) === e.target.value)
+                setMenuParentId(ilk ? String(ilk.id) : '')
+                setBaslikAltId('')
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              {donemler.map(d => (
+                <option key={d.id} value={d.id} disabled={d.durum === 'Kapalı'}>
+                  {d.donem_adi} {d.durum === 'Kapalı' ? '(kapalı)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Ana Alt Menü</label>
+            <select
+              value={menuParentId}
+              onChange={e => {
+                setMenuParentId(e.target.value)
+                setBaslikAltId('')
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Seçiniz</option>
+              {acikAnaMenuler.map(m => (
+                <option key={m.id} value={m.id} disabled={m.donemKapali}>
+                  {m.baslik}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Alt Menü</label>
+            <select
+              value={baslikAltId}
+              onChange={e => setBaslikAltId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Ana alt menüye ekle</option>
+              {seciliAltMenuler.map(a => (
+                <option key={a.id} value={a.id}>{a.baslik}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
+            <input
+              value={baslikAd}
+              onChange={e => setBaslikAd(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
+            <textarea
+              value={baslikNot}
+              onChange={e => setBaslikNot(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setBaslikAcik(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+              İptal
+            </button>
+            <button type="button" disabled={isPending} onClick={kaydetBaslik} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>

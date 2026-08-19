@@ -50,8 +50,10 @@ interface Props {
   mudurlukler: DenetimMudurlukSecenek[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
   goruntulemelerByRefId: Record<string, DenetimGoruntulemeGrubu[]>
-  /** Hub sayfasında true: üst başlık/geri link gizlenir, kartların altında bölüm olarak durur. */
+  /** Hub sayfasında true: üst başlık/geri link gizlenir. */
   gomulu?: boolean
+  /** dugme: klasörlerin üstündeki Başlık Ekle. liste: yalnızca dolu başlık tablosu. */
+  gomuluMod?: 'dugme' | 'liste'
 }
 
 const IKON =
@@ -74,6 +76,7 @@ export default function DenetimBolumBaslikListeClient({
   auditLoglarByRefId,
   goruntulemelerByRefId,
   gomulu = false,
+  gomuluMod = 'liste',
 }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -213,14 +216,14 @@ export default function DenetimBolumBaslikListeClient({
     </button>
   ) : null
 
+  const dugmeGoster = !gomulu || gomuluMod === 'dugme'
+  const listeGoster = (!gomulu || gomuluMod === 'liste') && basliklar.length > 0
+
+  if (gomulu && gomuluMod === 'liste' && !listeGoster) return null
+
   return (
     <div className="space-y-6">
-      {gomulu ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-semibold text-slate-700">Başlıklar</h2>
-          {baslikEkleDugmesi}
-        </div>
-      ) : (
+      {!gomulu ? (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link href={bolumHref} className="mb-2 inline-flex text-sm text-slate-500 hover:text-slate-700">
@@ -233,13 +236,17 @@ export default function DenetimBolumBaslikListeClient({
         </div>
         {baslikEkleDugmesi}
       </div>
-      )}
+      ) : dugmeGoster ? (
+        <div className="flex justify-end">{baslikEkleDugmesi}</div>
+      ) : listeGoster ? (
+        <h2 className="text-base font-semibold text-slate-700">Başlıklar</h2>
+      ) : null}
 
-      {saltOkunur ? (
+      {dugmeGoster && saltOkunur ? (
         <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
           Dış denetçi profili: belgeleri yalnızca görüntüleyebilirsiniz.
         </p>
-      ) : donemKapali ? (
+      ) : dugmeGoster && donemKapali ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Dönem kapalıdır; belgeler görüntülenebilir ancak başlık veya belge eklenemez.
         </p>
@@ -249,6 +256,7 @@ export default function DenetimBolumBaslikListeClient({
         <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{hata}</p>
       ) : null}
 
+      {listeGoster ? (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
@@ -262,14 +270,7 @@ export default function DenetimBolumBaslikListeClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {basliklar.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
-                    Bu menüde henüz başlık yok. “Başlık Ekle” ile oluşturabilirsiniz.
-                  </td>
-                </tr>
-              ) : (
-                basliklar.map((item, i) => {
+              {basliklar.map((item, i) => {
                   const baslikLogKey = String(item.id)
                   const belgeLogKey = item.belge_id != null ? String(item.belge_id) : ''
                   const loglar = auditLoglarByRefId[baslikLogKey] ?? []
@@ -359,11 +360,12 @@ export default function DenetimBolumBaslikListeClient({
                     </tr>
                   )
                 })
-              )}
+              }
             </tbody>
           </table>
         </div>
       </div>
+      ) : null}
 
       <Modal open={modalAcik} onClose={() => setModalAcik(false)} title={`${altBolumLabel} — Başlık Ekle`} size="md">
         <div className="space-y-4">

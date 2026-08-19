@@ -40,6 +40,18 @@ export default async function DonemTasinmazBilgileriPage({
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? 'tasinmaz',
       }))}
+      ustAlan={
+        menu ? (
+          <DenetimHubBaslikBolumu
+            donemId={donemId}
+            donemAdi={donem.donem_adi}
+            donemKapali={donem.durum === 'Kapalı'}
+            menuId={menu.id}
+            menuBaslik={menu.baslik}
+            gomuluMod="dugme"
+          />
+        ) : null
+      }
     >
       {menu ? (
         <DenetimHubBaslikBolumu
@@ -48,6 +60,7 @@ export default async function DonemTasinmazBilgileriPage({
           donemKapali={donem.durum === 'Kapalı'}
           menuId={menu.id}
           menuBaslik={menu.baslik}
+          gomuluMod="liste"
         />
       ) : null}
     </DenetimBolumHubClient>

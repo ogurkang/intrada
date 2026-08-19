@@ -13,6 +13,7 @@ import {
 import {
   kysAnaAltMenuTopluEkle,
   kysAltMenuTopluEkle,
+  kysBaslikEkle,
   kysMenuGuncelle,
   kysMenuSil,
   type KysBulkMenuSatir,
@@ -52,8 +53,14 @@ export default function KysGenelBakisClient({
   const [uyarilar, setUyarilar] = useState<string[]>([])
   const [anaMenuAcik, setAnaMenuAcik] = useState(false)
   const [altMenuAcik, setAltMenuAcik] = useState(false)
+  const [baslikAcik, setBaslikAcik] = useState(false)
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [menuParentId, setMenuParentId] = useState('')
+  const [baslikAnaId, setBaslikAnaId] = useState('')
+  const [baslikAltId, setBaslikAltId] = useState('')
+  const [baslikAd, setBaslikAd] = useState('')
+  const [baslikNot, setBaslikNot] = useState('')
+  const [baslikKod, setBaslikKod] = useState('')
   const [anaSatirlar, setAnaSatirlar] = useState<MenuSatirForm[]>([boshSatir()])
   const [altSatirlar, setAltSatirlar] = useState<MenuSatirForm[]>([boshSatir()])
   const [duzenleMenu, setDuzenleMenu] = useState<{ id: number; baslik: string; aciklama: string | null; tur: 'ana' | 'alt' } | null>(null)
@@ -75,6 +82,39 @@ export default function KysGenelBakisClient({
     setHata(null)
     setUyarilar([])
     setAltMenuAcik(true)
+  }
+
+  function baslikEkleAc() {
+    const ilk = anaMenuler[0]
+    setBaslikAnaId(ilk ? String(ilk.id) : '')
+    setBaslikAltId('')
+    setBaslikAd('')
+    setBaslikNot('')
+    setBaslikKod('')
+    setHata(null)
+    setBaslikAcik(true)
+  }
+
+  const baslikAna = anaMenuler.find(m => String(m.id) === baslikAnaId)
+  const baslikAltMenuler = baslikAna?.altMenuler ?? []
+
+  function kaydetBaslik() {
+    setHata(null)
+    const menuId = baslikAltId || baslikAnaId
+    const fd = new FormData()
+    fd.set('menu_id', menuId)
+    fd.set('baslik', baslikAd)
+    fd.set('aciklama', baslikNot)
+    fd.set('kod', baslikKod)
+    startTransition(async () => {
+      const res = await kysBaslikEkle(fd)
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      setBaslikAcik(false)
+      router.refresh()
+    })
   }
 
   function satirGuncelle(
@@ -223,6 +263,14 @@ export default function KysGenelBakisClient({
               className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
             >
               + Alt Menü Ekle
+            </button>
+            <button
+              type="button"
+              onClick={baslikEkleAc}
+              disabled={isPending || anaMenuler.length === 0}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-50"
+            >
+              + Başlık Ekle
             </button>
           </div>
         )}
@@ -457,6 +505,74 @@ export default function KysGenelBakisClient({
               İptal
             </button>
             <button type="button" disabled={isPending} onClick={kaydetAltMenu} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={baslikAcik} onClose={() => setBaslikAcik(false)} title="Başlık Ekle" size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Ana Alt Menü</label>
+            <select
+              value={baslikAnaId}
+              onChange={e => {
+                setBaslikAnaId(e.target.value)
+                setBaslikAltId('')
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              {anaMenuler.map(m => (
+                <option key={m.id} value={m.id}>{m.baslik}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Alt Menü</label>
+            <select
+              value={baslikAltId}
+              onChange={e => setBaslikAltId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Ana alt menüye ekle</option>
+              {baslikAltMenuler.map(a => (
+                <option key={a.id} value={a.id}>{a.baslik}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Kod (isteğe bağlı)</label>
+            <input
+              value={baslikKod}
+              onChange={e => setBaslikKod(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Başlık</label>
+            <input
+              value={baslikAd}
+              onChange={e => setBaslikAd(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
+            <textarea
+              value={baslikNot}
+              onChange={e => setBaslikNot(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setBaslikAcik(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+              İptal
+            </button>
+            <button type="button" disabled={isPending} onClick={kaydetBaslik} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>

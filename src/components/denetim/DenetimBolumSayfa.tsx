@@ -63,6 +63,18 @@ export default async function DenetimBolumSayfa({
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
       kartlar={kartlar}
+      ustAlan={
+        parent ? (
+          <DenetimHubBaslikBolumu
+            donemId={donemId}
+            donemAdi={donem.donem_adi}
+            donemKapali={donem.durum === 'Kapalı'}
+            menuId={parent.id}
+            menuBaslik={parent.baslik}
+            gomuluMod="dugme"
+          />
+        ) : null
+      }
     >
       {parent ? (
         <DenetimHubBaslikBolumu
@@ -71,6 +83,7 @@ export default async function DenetimBolumSayfa({
           donemKapali={donem.durum === 'Kapalı'}
           menuId={parent.id}
           menuBaslik={parent.baslik}
+          gomuluMod="liste"
         />
       ) : null}
     </DenetimBolumHubClient>

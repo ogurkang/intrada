@@ -91,7 +91,7 @@ export default function HarcamaYetkilileriListeClient({
               </tr>
             ) : (
               gorunen.map((r, i) => (
-                <tr key={`${r.sicil_no}-${r.kadro_unvani}`} className="hover:bg-slate-50/60">
+                <tr key={`${r.sicil_no}-${r.kadro_unvani}-${i}`} className="hover:bg-slate-50/60">
                   <td className="py-3 pl-4 pr-2 text-right text-xs text-slate-400">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{r.kadro_unvani}</td>
                   <td className="px-4 py-3 text-slate-700">{r.ad_soyad}</td>

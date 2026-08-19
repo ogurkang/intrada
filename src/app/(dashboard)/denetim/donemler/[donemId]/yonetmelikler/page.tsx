@@ -44,6 +44,16 @@ export default async function DonemYonetmeliklerPage({
             aciklama: c.aciklama ?? undefined,
             ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
           }))}
+          ustAlan={
+            <DenetimHubBaslikBolumu
+              donemId={donemId}
+              donemAdi={donem.donem_adi}
+              donemKapali={donem.durum === 'Kapalı'}
+              menuId={menu.id}
+              menuBaslik={menu.baslik}
+              gomuluMod="dugme"
+            />
+          }
         >
           <DenetimHubBaslikBolumu
             donemId={donemId}
@@ -51,6 +61,7 @@ export default async function DonemYonetmeliklerPage({
             donemKapali={donem.durum === 'Kapalı'}
             menuId={menu.id}
             menuBaslik={menu.baslik}
+            gomuluMod="liste"
           />
         </DenetimBolumHubClient>
       )

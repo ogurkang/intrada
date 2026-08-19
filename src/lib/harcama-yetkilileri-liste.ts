@@ -41,7 +41,6 @@ export async function harcamaYetkilileriSatirlariYukle(): Promise<HarcamaYetkili
   }
 
   const satirlar: HarcamaYetkilisiSatir[] = []
-  const gorulmusSicil = new Set<string>()
 
   for (const k of kadroRaw ?? []) {
     const unvan = String(k.kadro_unvani ?? '').trim()
@@ -49,18 +48,18 @@ export async function harcamaYetkilileriSatirlariYukle(): Promise<HarcamaYetkili
     if (k.iptal_karar_tarihi || k.iptal_karar_no) continue
     if (k.durumu === 'İptal') continue
 
-    const sicil = String(k.asil ?? '').trim() || String(k.vekil ?? '').trim()
-    if (!sicil || gorulmusSicil.has(sicil)) continue
-    gorulmusSicil.add(sicil)
-
-    const c = calisanBySicil.get(sicil)
-    satirlar.push({
-      kadro_unvani: unvan,
-      ad_soyad: c?.ad_soyad ?? '—',
-      sicil_no: sicil,
-      telefon: c?.telefon ?? '—',
-      e_posta: c?.e_posta ?? '—',
-    })
+    for (const sicilHam of [k.asil, k.vekil]) {
+      const sicil = String(sicilHam ?? '').trim()
+      if (!sicil) continue
+      const c = calisanBySicil.get(sicil)
+      satirlar.push({
+        kadro_unvani: unvan,
+        ad_soyad: c?.ad_soyad ?? '—',
+        sicil_no: sicil,
+        telefon: c?.telefon ?? '—',
+        e_posta: c?.e_posta ?? '—',
+      })
+    }
   }
 
   satirlar.sort((a, b) => a.kadro_unvani.localeCompare(b.kadro_unvani, 'tr'))

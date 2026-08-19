@@ -207,6 +207,20 @@ export default function KysHubClient({
         {aciklama ? <p className="mt-1 max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
       </div>
 
+      {!saltOkunur && (
+        <div className="flex justify-end">
+          <Link
+            href={`/kys/m/${menuId}/baslik-ekle`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+          >
+            <span className="text-lg leading-none">+</span>
+            Başlık Ekle
+          </Link>
+        </div>
+      )}
+
       {/* Alt Menü Kartları */}
       {altMenuler.length > 0 && (
         <section>
@@ -237,21 +251,9 @@ export default function KysHubClient({
       )}
 
       {/* Başlık Listesi */}
+      {basliklar.length > 0 ? (
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-700">Başlıklar</h2>
-          {!saltOkunur && (
-            <Link
-              href={`/kys/m/${menuId}/baslik-ekle`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
-            >
-              <span className="text-lg leading-none">+</span>
-              Başlık Ekle
-            </Link>
-          )}
-        </div>
+        <h2 className="mb-3 text-base font-semibold text-slate-700">Başlıklar</h2>
 
         {saltOkunur ? (
           <p className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
@@ -375,6 +377,7 @@ export default function KysHubClient({
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Başlık Ekle Modal */}
       <Modal open={modalAcik} onClose={() => { setModalAcik(false); setHata(null) }} title={`${menuLabel} — Başlık Ekle`} size="xl">

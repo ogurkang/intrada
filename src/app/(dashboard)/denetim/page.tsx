@@ -17,7 +17,6 @@ export default async function DenetimYonetimiPage() {
     supabase
       .from('denetim_donem_menu')
       .select('id, donem_id, baslik, parent_id')
-      .is('parent_id', null)
       .order('sira_no'),
   ])
   const menuler = menuRes.error ? [] : menuRes.data
@@ -32,13 +31,18 @@ export default async function DenetimYonetimiPage() {
   }))
   const donemAd = new Map(donemler.map(d => [d.id, d]))
 
-  const anaMenuler: DenetimAnaMenuSecenek[] = (menuler ?? []).map(m => ({
-    id: m.id,
-    donem_id: m.donem_id,
-    donem_adi: donemAd.get(m.donem_id)?.donem_adi ?? '',
-    baslik: m.baslik,
-    donemKapali: donemAd.get(m.donem_id)?.durum === 'Kapalı',
-  }))
+  const anaMenuler: DenetimAnaMenuSecenek[] = (menuler ?? [])
+    .filter(m => m.parent_id == null)
+    .map(m => ({
+      id: m.id,
+      donem_id: m.donem_id,
+      donem_adi: donemAd.get(m.donem_id)?.donem_adi ?? '',
+      baslik: m.baslik,
+      donemKapali: donemAd.get(m.donem_id)?.durum === 'Kapalı',
+      altMenuler: (menuler ?? [])
+        .filter(c => c.parent_id === m.id)
+        .map(c => ({ id: c.id, baslik: c.baslik })),
+    }))
 
   const acikDonemVar = donemler.some(d => d.durum === 'Açık')
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(

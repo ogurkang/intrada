@@ -15,12 +15,14 @@ export default async function DenetimHubBaslikBolumu({
   donemKapali,
   menuId,
   menuBaslik,
+  gomuluMod = 'liste',
 }: {
   donemId: number
   donemAdi: string
   donemKapali: boolean
   menuId: number
   menuBaslik: string
+  gomuluMod?: 'dugme' | 'liste'
 }) {
   const supabase = await createClient()
   const saltOkunur = await isCurrentDisDenetci(supabase)
@@ -114,6 +116,7 @@ export default async function DenetimHubBaslikBolumu({
       goruntulemelerByRefId={goruntulemelerByRefId}
       saltOkunur={saltOkunur}
       gomulu
+      gomuluMod={gomuluMod}
     />
   )
 }
