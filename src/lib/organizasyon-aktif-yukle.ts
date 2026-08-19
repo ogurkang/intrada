@@ -16,7 +16,13 @@ type BirimRow = {
   personel_sicil_no: string | null
   ust_birim_id: number | null
   sira_no: number | null
-  tanim_mudurluk: { mudurluk_adi: string } | null
+  tanim_mudurluk: { mudurluk_adi: string } | { mudurluk_adi: string }[] | null
+}
+
+function mudurlukAdiCoz(raw: BirimRow['tanim_mudurluk']): string | null {
+  if (!raw) return null
+  if (Array.isArray(raw)) return raw[0]?.mudurluk_adi ?? null
+  return raw.mudurluk_adi ?? null
 }
 
 export async function aktifOrganizasyonSemasiYukle(supabase: SupabaseClient): Promise<{
@@ -55,9 +61,9 @@ export async function aktifOrganizasyonSemasiYukle(supabase: SupabaseClient): Pr
     sicilTelefon.set(sicil, String(c.telefon ?? '').trim())
   }
 
-  const birimler: OrganizasyonBirimSatir[] = ((birimRaw ?? []) as BirimRow[]).map(b => {
+  const birimler: OrganizasyonBirimSatir[] = ((birimRaw ?? []) as unknown as BirimRow[]).map(b => {
     const birim_turu = (b.birim_turu as BirimTuru) ?? 'mudurluk'
-    const mudurlukAdi = b.tanim_mudurluk?.mudurluk_adi ?? null
+    const mudurlukAdi = mudurlukAdiCoz(b.tanim_mudurluk)
     const ad =
       birim_turu === 'mudurluk' ? (mudurlukAdi ?? '(silinmiş müdürlük)') : BIRIM_TURU_ETIKET[birim_turu]
     return {

@@ -65,7 +65,7 @@ export default async function OrganizasyonDetayPage({
 
   const indeks = organizasyonPersonelIndeksKur((kadroRaw ?? []) as unknown as KadroUnvanSatir[])
 
-  const birimler: OrganizasyonBirim[] = ((birimRaw ?? []) as BirimRow[]).map(b => {
+  const birimler: OrganizasyonBirim[] = ((birimRaw ?? []) as unknown as BirimRow[]).map(b => {
     const birim_turu = (b.birim_turu as BirimTuru) ?? 'mudurluk'
     const mudurlukAdi = b.tanim_mudurluk?.mudurluk_adi ?? null
     const ad =
