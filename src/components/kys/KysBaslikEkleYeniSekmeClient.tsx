@@ -146,7 +146,7 @@ export default function KysBaslikEkleYeniSekmeClient({ menuId, menuLabel, mudurl
               />
             </div>
             <div className="lg:col-span-4">
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim (çoklu)</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Sorumlu Birim</label>
               <SorumluBirimCokluSecim
                 value={satir.birimler}
                 onChange={next => setYeniSatirlar(yeniSatirlar.map((s, i) => (i === idx ? { ...s, birimler: next } : s)))}

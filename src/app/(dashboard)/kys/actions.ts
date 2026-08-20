@@ -44,37 +44,28 @@ function guvenliDosyaAdi(dosyaAdi: string, ext: string): string {
 
 const TUM_BELEDIYE = 'Tüm Belediye'
 
-function sorumluBirimleriAyr(raw: string | null | undefined): string[] {
-  if (!raw) return []
-  return Array.from(
-    new Set(
-      raw
-        .split('|')
-        .map(v => v.trim())
-        .filter(Boolean),
-    ),
-  )
-}
-
 async function sorumluBirimDogrulaVeNormalize(
   supabase: Awaited<ReturnType<typeof createClient>>,
   raw: string | null | undefined,
 ): Promise<{ normalized: string | null; hata?: string }> {
-  const birimler = sorumluBirimleriAyr(raw)
-  if (birimler.length === 0) return { normalized: null }
-  if (birimler.includes(TUM_BELEDIYE)) return { normalized: TUM_BELEDIYE }
+  // Tek seçim: eski "A | B" kayıtlarından yalnızca ilk birim alınır.
+  const birim =
+    String(raw ?? '')
+      .split('|')
+      .map(v => v.trim())
+      .find(Boolean) ?? ''
+  if (!birim) return { normalized: null }
+  if (birim === TUM_BELEDIYE) return { normalized: TUM_BELEDIYE }
 
   const { data: aktif } = await supabase
     .from('tanim_mudurluk')
     .select('mudurluk_adi')
     .eq('aktif', true)
-    .in('mudurluk_adi', birimler)
+    .eq('mudurluk_adi', birim)
+    .maybeSingle()
 
-  const aktifSet = new Set((aktif ?? []).map(a => a.mudurluk_adi))
-  const gecersiz = birimler.find(b => !aktifSet.has(b))
-  if (gecersiz) return { normalized: null, hata: 'Aktif sorumlu birimleri seçin.' }
-
-  return { normalized: birimler.join(' | ') }
+  if (!aktif) return { normalized: null, hata: 'Aktif bir sorumlu birim seçin.' }
+  return { normalized: birim }
 }
 
 function revalidateKys(menuId?: number) {
