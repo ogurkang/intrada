@@ -27,6 +27,16 @@ CREATE TABLE IF NOT EXISTS public.uygulama_ayar (
 
 COMMENT ON TABLE public.uygulama_ayar IS 'Uygulama geneli anahtar/değer ayarları (geçici menü vb.)';
 
+ALTER TABLE public.uygulama_ayar ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated_full_access" ON public.uygulama_ayar;
+CREATE POLICY "authenticated_full_access" ON public.uygulama_ayar
+  FOR ALL
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.uygulama_ayar TO authenticated;
+
 INSERT INTO public.uygulama_ayar (anahtar, deger)
 VALUES ('tasinir_gorevlendirme_menu', 'aktif')
 ON CONFLICT (anahtar) DO NOTHING;
