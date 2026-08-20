@@ -23,6 +23,17 @@ import IzinHareketDetayView from '@/components/izin/IzinHareketDetayView'
 import { loadIzinHareketAuditLoglar } from '@/lib/izin-hareket-detay-load'
 import type { Tables } from '@/types/database'
 import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
+import { anaKadroSec } from '@/lib/kadro-ana-sicil'
+import {
+  buildPersonelKonumCtx,
+  fetchSirketYerleskeTanimSatirlari,
+  personelKonumMetni,
+} from '@/lib/personel-gorev-konum'
+import {
+  fetchMudurlukYerleskeTanimSatirlari,
+  etkinYerleskeId,
+  yerleskeSecenekleri,
+} from '@/lib/yerleske-adresi'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -45,6 +56,28 @@ export default async function Page({ params }: Props) {
     const data = await fetchPersonelDetayPageData(supabase, linked.sicil_no, '')
     if (!data) notFound()
     const { calisan, kaynak, ...rest } = data
+
+    const [mudSatirlar, sirketSatirlar] = await Promise.all([
+      fetchMudurlukYerleskeTanimSatirlari(supabase),
+      fetchSirketYerleskeTanimSatirlari(supabase),
+    ])
+    const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
+    const anaKadro = anaKadroSec(rest.kadrolar, calisan.sicil_no ?? '')
+    const gorevMud = String(anaKadro?.gorev_mudurlugu ?? anaKadro?.kadro_mudurlugu ?? '').trim()
+    const kayitliYerleskeId =
+      (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+    const yerleskeOpts = yerleskeSecenekleri(konumCtx.yerleskeHarita, gorevMud)
+    const yId = etkinYerleskeId(konumCtx.yerleskeHarita, gorevMud, kayitliYerleskeId)
+    const yerleskeAdi =
+      (yId != null ? yerleskeOpts.find(y => y.id === yId)?.ad : null)
+      ?? (yId != null ? konumCtx.yerleskeAdById.get(yId) ?? null : null)
+      ?? (kayitliYerleskeId != null ? konumCtx.yerleskeAdById.get(kayitliYerleskeId) ?? null : null)
+    let konumMetni = personelKonumMetni(konumCtx, {
+      gorevYeri: calisan.gorev_yeri,
+      gorevMudurlugu: gorevMud,
+      yerleskeId: yId,
+    })
+    if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
 
     let performansKayitlari: { yil: number; ortalama: number | null }[] = []
     if (performansGoster) {
@@ -102,6 +135,8 @@ export default async function Page({ params }: Props) {
           gecmisGoster={gecmisGoster}
           performansGoster={performansGoster}
           performansKayitlari={performansKayitlari}
+          yerleskeAdi={yerleskeAdi}
+          konumMetni={konumMetni}
         />
       </div>
     )
