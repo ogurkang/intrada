@@ -107,7 +107,7 @@ export function gorevYerineGoreListeKategorisi(satir: GorevYerineGoreListeSatir)
   if (satir.kaynak === 'firma' || satir.statu === FIRMA_STATU_ETIKET) return 'adabel'
   if (gorevYerineGoreUnvanVurgu(satir.unvan, satir.fiili_gorev) === 'mudur') return 'mudur'
   const st = trNormalize(satir.statu)
-  if (st === trNormalize('Memur')) return 'memur'
+  if (st === 'memur' || st.startsWith('memur ')) return 'memur'
   if (st.includes('sozlesmeli')) return 'sozlesmeli'
   if (st.includes('isci')) return 'isci'
   return 'diger'
@@ -223,8 +223,17 @@ export function gorevYerineGoreListeSiraOlustur(
   return result
 }
 
-/** Mevcut sırayı korur; yalnızca müdürlük değişen ve yeni kayıtları ilgili bloğun sonuna ekler. */
-function blokaSonunaEkle(
+function kategoriIndeksi(kat: GorevYerineGoreListeKategori): number {
+  const i = GOREV_YERI_KATEGORI_SIRASI.indexOf(kat)
+  return i >= 0 ? i : GOREV_YERI_KATEGORI_SIRASI.length
+}
+
+/**
+ * Yeni / müdürlük değişen kaydı, hedef blokta kendi istihdam kategorisinin en sonuna ekler.
+ * Örn. Memur → o müdürlükteki Memur grubunun sonuna; Sözleşmeli → Sözleşmeli grubunun sonuna.
+ * Bloğun mutlak sonuna (işçi/ADABEL altına) düşmez.
+ */
+function blokaKategoriSonunaEkle(
   keys: string[],
   satirByKey: Map<string, GorevYerineGoreListeSatir>,
   eklenecekKey: string,
@@ -237,27 +246,44 @@ function blokaSonunaEkle(
 
   const { blokOrder, keyToBlok } = blokHaritasiOlustur(mevcut, satirByKey)
   const hedefBlok = yeniKayitBlokId(s, blokOrder)
+  const hedefKat = gorevYerineGoreListeKategorisi(s)
+  const hedefKatIdx = kategoriIndeksi(hedefKat)
 
-  let insertAt = -1
+  let lastSameKat = -1
+  let lastEarlierKat = -1
+  let firstLaterKat = -1
+  let lastInBlok = -1
+  let firstInBlok = -1
+
   for (let i = 0; i < mevcut.length; i++) {
-    if (keyToBlok.get(mevcut[i]) === hedefBlok) insertAt = i
-  }
-  if (insertAt >= 0) {
-    const next = [...mevcut]
-    next.splice(insertAt + 1, 0, eklenecekKey)
-    return next
+    if (keyToBlok.get(mevcut[i]) !== hedefBlok) continue
+    if (firstInBlok < 0) firstInBlok = i
+    lastInBlok = i
+    const other = satirByKey.get(mevcut[i])
+    if (!other) continue
+    const otherIdx = kategoriIndeksi(gorevYerineGoreListeKategorisi(other))
+    if (otherIdx === hedefKatIdx) lastSameKat = i
+    else if (otherIdx < hedefKatIdx) lastEarlierKat = i
+    else if (firstLaterKat < 0) firstLaterKat = i
   }
 
-  const fullBlokOrder = blokOrder.includes(hedefBlok) ? blokOrder : [...blokOrder, hedefBlok]
-  const hedefIdx = fullBlokOrder.indexOf(hedefBlok)
-  insertAt = mevcut.length
-  for (let i = 0; i < mevcut.length; i++) {
-    const b = keyToBlok.get(mevcut[i])
-    if (!b) continue
-    const bIdx = fullBlokOrder.indexOf(b)
-    if (bIdx > hedefIdx) {
-      insertAt = i
-      break
+  let insertAt: number
+  if (lastSameKat >= 0) insertAt = lastSameKat + 1
+  else if (firstLaterKat >= 0) insertAt = firstLaterKat
+  else if (lastEarlierKat >= 0) insertAt = lastEarlierKat + 1
+  else if (lastInBlok >= 0) insertAt = lastInBlok + 1
+  else {
+    const fullBlokOrder = blokOrder.includes(hedefBlok) ? blokOrder : [...blokOrder, hedefBlok]
+    const hedefIdx = fullBlokOrder.indexOf(hedefBlok)
+    insertAt = mevcut.length
+    for (let i = 0; i < mevcut.length; i++) {
+      const b = keyToBlok.get(mevcut[i])
+      if (!b) continue
+      const bIdx = fullBlokOrder.indexOf(b)
+      if (bIdx > hedefIdx) {
+        insertAt = i
+        break
+      }
     }
   }
 
@@ -267,8 +293,50 @@ function blokaSonunaEkle(
 }
 
 /**
+ * Her blokta istihdam türü sırasını zorunlu kılar: müdür → memur → sözleşmeli → işçi → ADABEL → diğer.
+ * Aynı kategori içindeki mevcut sıra korunur.
+ */
+function blokIciKategoriDuzeniZorla(
+  keys: string[],
+  satirByKey: Map<string, GorevYerineGoreListeSatir>,
+): string[] {
+  if (keys.length <= 1) return keys
+
+  const { blokOrder, keyToBlok } = blokHaritasiOlustur(keys, satirByKey)
+  const byBlok = new Map<string, string[]>()
+  for (const key of keys) {
+    const blok = keyToBlok.get(key) ?? mudurlukBlokId(satirByKey.get(key)!)
+    const list = byBlok.get(blok) ?? []
+    list.push(key)
+    byBlok.set(blok, list)
+  }
+
+  const result: string[] = []
+  const seenBlok = new Set<string>()
+  for (const blokId of [...blokOrder, ...byBlok.keys()]) {
+    if (seenBlok.has(blokId)) continue
+    seenBlok.add(blokId)
+    const group = byBlok.get(blokId) ?? []
+    if (!group.length) continue
+
+    for (const kat of GOREV_YERI_KATEGORI_SIRASI) {
+      for (const key of group) {
+        const s = satirByKey.get(key)
+        if (s && gorevYerineGoreListeKategorisi(s) === kat) result.push(key)
+      }
+    }
+    for (const key of group) {
+      if (!result.includes(key)) result.push(key)
+    }
+  }
+
+  return result
+}
+
+/**
  * Referans / kayıtlı sırayı bozmadan senkronize eder.
- * Yalnızca ayrılanları çıkarır, müdürlük değişen ve yeni kayıtları bloğun sonuna ekler.
+ * Ayrılanları çıkarır; müdürlük değişen ve yeni kayıtları kendi istihdam grubunun sonuna ekler.
+ * Ardından her blokta Memur → Sözleşmeli → İşçi sırasını zorunlu kılar.
  */
 export function gorevYerineGoreListeArtimliSenkron(
   satirlar: GorevYerineGoreListeSatir[],
@@ -303,8 +371,8 @@ export function gorevYerineGoreListeArtimliSenkron(
   keys = keys.filter(k => !eklenecekSet.has(k))
 
   for (const key of eklenecek) {
-    keys = blokaSonunaEkle(keys, satirByKey, key)
+    keys = blokaKategoriSonunaEkle(keys, satirByKey, key)
   }
 
-  return keys
+  return blokIciKategoriDuzeniZorla(keys, satirByKey)
 }

@@ -69,7 +69,9 @@ export type GorevYeriListeSenkronOpts = {
 
 /**
  * Kayıt listesini güncel verilere göre artımlı senkronize eder.
- * Mevcut sıra korunur; yalnızca ayrılanlar çıkarılır, müdürlük değişen ve yeni kayıtlar bloğun sonuna eklenir.
+ * Mevcut sıra korunur; ayrılanlar çıkarılır.
+ * Müdürlük değişen / yeni kayıtlar kendi istihdam grubunun (Memur → Sözleşmeli → İşçi) sonuna alınır.
+ * Her müdürlük bloğunda istihdam türü sırası zorunlu uygulanır.
  */
 export async function gorevYeriListeSenkronizeEt(
   supabase: SupabaseClient,
