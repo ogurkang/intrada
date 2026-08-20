@@ -214,8 +214,21 @@ function buildMenuGroups(
   calisanlarHref: string,
   denetimAgac: DenetimSidebarDonem[],
   kysAgac: KysSidebarMenu[],
+  tasinirGorevlendirmeMenuAcik = false,
 ): MenuGroup[] {
-  const calisanlarItem: MenuItem = { href: calisanlarHref, label: calisanlarHref === '/personel' ? 'Çalışanlar' : 'Personel Kartım' }
+  const calisanlarItem: MenuItem =
+    calisanlarHref === '/personel'
+      ? tasinirGorevlendirmeMenuAcik
+        ? {
+            href: '/personel',
+            label: 'Çalışanlar',
+            children: [
+              { href: '/personel', label: 'Personel Listesi' },
+              { href: '/personel/tasinir-gorevlendirme', label: 'Taşınır Görevlendirme' },
+            ],
+          }
+        : { href: '/personel', label: 'Çalışanlar' }
+      : { href: calisanlarHref, label: 'Personel Kartım' }
 
   const denetimItems = buildDenetimItems(denetimAgac)
   const kysItems = buildKysItems(kysAgac)
@@ -255,6 +268,7 @@ function buildMenuGroups(
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },
       { href: '/rapor/gorev-yerine-gore-liste', label: 'Görev Yerine Göre Personel Listesi' },
+      { href: '/rapor/gorev-yerine-gore-iletisim-bilgileri', label: 'Görev Yerine Göre İletişim Bilgileri' },
       { href: '/rapor/mudurluge-gore-personel-liste', label: 'Müdürlüğe Göre Personel Listesi' },
       { href: '/rapor/tehlike-siniflarina-gore-mudurluk', label: 'Tehlike Sınıflarına Göre Müdürlük Raporu' },
       { href: '/rapor/tehlikeli-sinif-mudurluk-listesi', label: 'Tehlike Sınıfına Göre Müdürlük Listesi' },
@@ -490,6 +504,8 @@ interface SidebarProps {
   hayaletDurum?: HayaletProfilDurum | null
   denetimAgac?: DenetimSidebarDonem[]
   kysAgac?: KysSidebarMenu[]
+  /** Geçici: Taşınır Görevlendirme alt menüsü */
+  tasinirGorevlendirmeMenuAcik?: boolean
 }
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' | 'dis_denetci' {
@@ -506,6 +522,7 @@ export default function Sidebar({
   hayaletDurum,
   denetimAgac = [],
   kysAgac = [],
+  tasinirGorevlendirmeMenuAcik = false,
 }: SidebarProps) {
   const pathname = usePathname()
 
@@ -519,8 +536,8 @@ export default function Sidebar({
   }, [access, hayaletDurum])
 
   const menuGroups = useMemo(
-    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac),
-    [terfiMenuHref, calisanlarHref, denetimAgac, kysAgac],
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik),
+    [terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik],
   )
 
   const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}

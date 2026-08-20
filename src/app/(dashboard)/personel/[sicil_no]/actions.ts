@@ -16,6 +16,7 @@ import {
   gecerliYerleskeId,
   mudurlukYerleskeHaritasi,
 } from '@/lib/yerleske-adresi'
+import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
@@ -58,6 +59,7 @@ const CALISAN_ALAN_ETIKETLERI: Record<string, string> = {
   gorev_turu_yemek_hakki:  'Yemek Hakkı',
   gorev_durumu:            'Görev Durumu',
   yerleske_adresi_id:      'Yerleşke Adresi',
+  tasinir_gorevi:          'Taşınır Görevi',
   hizmet_suresi_yil:       'Hizmet Süresi (Yıl)',
   hizmet_suresi_ay:        'Hizmet Süresi (Ay)',
   hizmet_suresi_gun:       'Hizmet Süresi (Gün)',
@@ -147,6 +149,7 @@ export async function calisanGuncelle(
     gorev_turu_yemek_hakki,
     gorev_durumu:           str(formData, 'gorev_durumu') ?? 'Diğer',
     yerleske_adresi_id,
+    tasinir_gorevi:         tasinirGoreviNormalize(str(formData, 'tasinir_gorevi')),
   }
   if (!hizmetDondur) {
     temel.hizmet_suresi_yil = hs.yil

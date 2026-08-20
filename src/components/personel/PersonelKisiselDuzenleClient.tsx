@@ -15,11 +15,13 @@ import {
   gorevTuruTarihZorunlu,
   gorevTuruYemekHakkiGoster,
 } from '@/lib/gorev-bilgileri'
+import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
 
 type Calisan = Tables<'calisan'>
 type CalisanGenisletilmis = Calisan & {
   gorev_turu_bitis_tarihi?: string | null
   gorev_turu_yemek_hakki?: boolean | null
+  tasinir_gorevi?: string | null
 }
 
 interface Props {
@@ -382,6 +384,28 @@ export default function PersonelKisiselDuzenleClient({
                   disabled={hizmetKilitli}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-5 mt-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Taşınır Görevi</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Taşınır Mal Yönetmeliği kapsamındaki görevlendirme. Boş bırakılabilir.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Taşınır görevi</label>
+                <select
+                  name="tasinir_gorevi"
+                  defaultValue={calisan.tasinir_gorevi ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="">Seçiniz</option>
+                  {TASINIR_GOREVI_OPTIONS.map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

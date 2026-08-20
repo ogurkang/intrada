@@ -23,6 +23,7 @@ interface DashboardShellProps {
   buildMarker?: string
   denetimAgac?: import('@/lib/denetim-menu').DenetimSidebarDonem[]
   kysAgac?: import('@/lib/kys-menu').KysSidebarMenu[]
+  tasinirGorevlendirmeMenuAcik?: boolean
 }
 
 export default function DashboardShell({
@@ -35,6 +36,7 @@ export default function DashboardShell({
   buildMarker,
   denetimAgac,
   kysAgac,
+  tasinirGorevlendirmeMenuAcik = false,
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -66,6 +68,7 @@ export default function DashboardShell({
           hayaletDurum={hayaletDurum}
           denetimAgac={denetimAgac}
           kysAgac={kysAgac}
+          tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
         />
       </aside>
 

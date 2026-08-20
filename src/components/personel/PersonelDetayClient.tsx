@@ -8,6 +8,7 @@ import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
+import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
@@ -43,6 +44,7 @@ const SEKMELER = [
   'Mal Bildirimleri',
   'Kadro Bilgileri',
   'Katsayı Bilgileri',
+  'Görevlendirme Bilgileri',
   'İzin Bilgileri',
   'Eğitim Bilgileri',
   'Performans Bilgileri',
@@ -115,47 +117,8 @@ const DURUM_RENK: Record<string, string> = {
 
 // ─── Kişisel Bilgiler ─────────────────────────────────────────────────────────
 
-function KisiselTab({
-  calisan,
-  kadrolar,
-  yerleskeAdi,
-  konumMetni,
-}: {
-  calisan: Calisan
-  kadrolar: KH[]
-  yerleskeAdi?: string | null
-  konumMetni?: string | null
-}) {
-  const sicil = (calisan.sicil_no ?? '').trim()
-  const anaK = anaKadroSec(kadrolar, sicil)
-  const memuriyetGoster = anaK?.memuriyet_tarihi ?? calisan.memuriyet_tarihi
-  const kurumaGoster = anaK?.kuruma_giris_tarihi ?? calisan.kuruma_giris_tarihi
-  const hy = calisan.hizmet_suresi_yil ?? 0
-  const ha = calisan.hizmet_suresi_ay ?? 0
-  const hg = calisan.hizmet_suresi_gun ?? 0
-
-  const [donuModalAcik, setDonuModalAcik] = useState(false)
-  const [iseDonus, setIseDonus] = useState('')
-  const [donuKayit, setDonuKayit] = useState(false)
-  const [donuHata, setDonuHata] = useState<string | null>(null)
-
-  async function iseDon() {
-    if (!iseDonus) { setDonuHata('İşe dönüş tarihi zorunludur.'); return }
-    setDonuKayit(true); setDonuHata(null)
-    const sonuc = await ayliksizIzindenDon(sicil, iseDonus)
-    setDonuKayit(false)
-    if (sonuc.hata) { setDonuHata(sonuc.hata); return }
-    setDonuModalAcik(false)
-    setIseDonus('')
-  }
-
-  // Bitiş tarihi önizlemesi: işe dönüş - 1 gün
-  const onizleBitis = iseDonus
-    ? (() => { const d = new Date(iseDonus); d.setDate(d.getDate() - 1); return d.toLocaleDateString('tr-TR') })()
-    : null
-
+function KisiselTab({ calisan }: { calisan: Calisan }) {
   return (
-    <>
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Temel Bilgiler</p>
@@ -183,6 +146,52 @@ function KisiselTab({
           <Alan etiket="Yakın Telefon"   deger={calisan.yakini_telefonu} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function GorevlendirmeTab({
+  calisan,
+  kadrolar,
+  yerleskeAdi,
+  konumMetni,
+}: {
+  calisan: Calisan
+  kadrolar: KH[]
+  yerleskeAdi?: string | null
+  konumMetni?: string | null
+}) {
+  const sicil = (calisan.sicil_no ?? '').trim()
+  const anaK = anaKadroSec(kadrolar, sicil)
+  const memuriyetGoster = anaK?.memuriyet_tarihi ?? calisan.memuriyet_tarihi
+  const kurumaGoster = anaK?.kuruma_giris_tarihi ?? calisan.kuruma_giris_tarihi
+  const hy = calisan.hizmet_suresi_yil ?? 0
+  const ha = calisan.hizmet_suresi_ay ?? 0
+  const hg = calisan.hizmet_suresi_gun ?? 0
+  const tasinirGorevi = (calisan as Calisan & { tasinir_gorevi?: string | null }).tasinir_gorevi ?? null
+
+  const [donuModalAcik, setDonuModalAcik] = useState(false)
+  const [iseDonus, setIseDonus] = useState('')
+  const [donuKayit, setDonuKayit] = useState(false)
+  const [donuHata, setDonuHata] = useState<string | null>(null)
+
+  async function iseDon() {
+    if (!iseDonus) { setDonuHata('İşe dönüş tarihi zorunludur.'); return }
+    setDonuKayit(true); setDonuHata(null)
+    const sonuc = await ayliksizIzindenDon(sicil, iseDonus)
+    setDonuKayit(false)
+    if (sonuc.hata) { setDonuHata(sonuc.hata); return }
+    setDonuModalAcik(false)
+    setIseDonus('')
+  }
+
+  const onizleBitis = iseDonus
+    ? (() => { const d = new Date(iseDonus); d.setDate(d.getDate() - 1); return d.toLocaleDateString('tr-TR') })()
+    : null
+
+  return (
+    <>
+    <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Görev Bilgileri</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -245,10 +254,21 @@ function KisiselTab({
           <Alan etiket="Hizmet süresi (360 gün esası)" deger={hizmetSuresiEtiket360(hy, ha, hg)} />
         </div>
       </div>
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Taşınır Görevi</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <Alan
+            etiket="Taşınır görevi"
+            deger={
+              tasinirGorevi && (TASINIR_GOREVI_OPTIONS as readonly string[]).includes(tasinirGorevi)
+                ? tasinirGorevi
+                : null
+            }
+          />
+        </div>
+      </div>
     </div>
 
-    {/* ── İşe Döndü Modal ─────────────────────────────────────────────────── */}
-    
     {donuModalAcik && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
@@ -1482,6 +1502,10 @@ export default function PersonelDetayClient({
     }
     if (sekmeParam === 'izin') {
       setAktif('İzin Bilgileri')
+      return
+    }
+    if (sekmeParam === 'gorevlendirme' || sekmeParam === 'gorev') {
+      setAktif('Görevlendirme Bilgileri')
     }
   }, [searchParams, gecmisGoster])
 
@@ -1522,9 +1546,9 @@ export default function PersonelDetayClient({
           <p className="text-sm text-slate-600 font-medium">{calisan.ad_soyad}</p>
         </div>
         <div className="flex items-center gap-2">
-          {((aktif === 'Kişisel Bilgiler' || kaynak === 'ayrilanlar') && onKisiselGuncelle && !saltOkunur) && (
+          {((aktif === 'Kişisel Bilgiler' || aktif === 'Görevlendirme Bilgileri' || kaynak === 'ayrilanlar') && onKisiselGuncelle && !saltOkunur) && (
             <Link
-              href={`/personel/${duzenleSegment}/duzenle${kaynak ? `?kaynak=${kaynak}` : ''}`}
+              href={`/personel/${duzenleSegment}/duzenle${kaynak ? `?kaynak=${kaynak}` : ''}${aktif === 'Görevlendirme Bilgileri' ? `${kaynak ? '&' : '?'}sekme=gorevlendirme` : ''}`}
               className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">
               Değiştir
             </Link>
@@ -1561,7 +1585,7 @@ export default function PersonelDetayClient({
 
         {/* Sekme İçeriği */}
         <div className="p-6">
-          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} kadrolar={kadrolar} yerleskeAdi={yerleskeAdi} konumMetni={konumMetni} />}
+          {aktif === 'Kişisel Bilgiler'     && <KisiselTab calisan={calisan} />}
           {aktif === 'Öğrenim Bilgileri'    && <OgrenimTab ogrenimler={ogrenimler} />}
           {aktif === 'Sendika Bilgisi'      && <SendikaTab sendikalar={sendikalar} />}
           {aktif === 'Aile Bilgileri'       && <AileTab aileBildirimi={aileBildirimi} />}
@@ -1576,6 +1600,14 @@ export default function PersonelDetayClient({
               yevmiyeFazlaMesaiAylik={yevmiyeFazlaMesaiAylik}
               tanimGostergeKha={tanimGostergeKha}
               terfiOncesiTarihce={terfiOncesiTarihce}
+            />
+          )}
+          {aktif === 'Görevlendirme Bilgileri' && (
+            <GorevlendirmeTab
+              calisan={calisan}
+              kadrolar={kadrolar}
+              yerleskeAdi={yerleskeAdi}
+              konumMetni={konumMetni}
             />
           )}
           {aktif === 'İzin Bilgileri'       && (

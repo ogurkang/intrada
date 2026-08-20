@@ -1027,6 +1027,7 @@ export interface Database {
           hizmet_suresi_yil: number; hizmet_suresi_ay: number; hizmet_suresi_gun: number
           gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_turu_aciklama: string | null; gorev_durumu: string | null
           yerleske_adresi_id: number | null
+          tasinir_gorevi: string | null
           created_at: string; updated_at: string
         }
         Insert: {
@@ -1039,6 +1040,7 @@ export interface Database {
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
+          tasinir_gorevi?: string | null
           created_at?: string; updated_at?: string
         }
         Update: {
@@ -1051,6 +1053,7 @@ export interface Database {
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
+          tasinir_gorevi?: string | null
           created_at?: string; updated_at?: string
         }
         Relationships: []

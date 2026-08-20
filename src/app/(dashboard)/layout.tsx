@@ -10,6 +10,7 @@ import { ensureAppProfileForAuthUser } from '@/lib/app-profile-ensure'
 import IlkKurulumGuard from '@/components/auth/IlkKurulumGuard'
 import { loadDenetimSidebarAgac } from '@/lib/denetim-menu'
 import { loadKysSidebarAgac } from '@/lib/kys-menu'
+import { tasinirGorevlendirmeMenuAcikMi } from '@/lib/uygulama-ayar'
 
 export default async function DashboardLayout({
   children,
@@ -76,9 +77,10 @@ export default async function DashboardLayout({
     process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
     'local-dev'
 
-  const [denetimAgac, kysAgac] = await Promise.all([
+  const [denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik] = await Promise.all([
     loadDenetimSidebarAgac(supabase),
     loadKysSidebarAgac(supabase),
+    tasinirGorevlendirmeMenuAcikMi(supabase),
   ])
 
   return (
@@ -91,6 +93,7 @@ export default async function DashboardLayout({
         buildMarker={buildSha}
         denetimAgac={denetimAgac}
         kysAgac={kysAgac}
+        tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
       >
         {children}
       </DashboardShell>

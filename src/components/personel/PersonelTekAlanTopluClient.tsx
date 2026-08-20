@@ -19,6 +19,8 @@ interface Props {
   data: Satir[]
   inputType: 'text' | 'select'
   secenekler?: string[]
+  /** Select boş seçenek metni (varsayılan: —) */
+  bosSecenekEtiketi?: string
   sortBy?: 'ad_soyad' | 'sicil_no' | 'sicil_no_desc'
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: { sicil_no: string; deger: string | null }[]) => Promise<{ hata?: string; kaydedilen?: number }>
@@ -30,6 +32,7 @@ export default function PersonelTekAlanTopluClient({
   data,
   inputType,
   secenekler = [],
+  bosSecenekEtiketi = '—',
   sortBy = 'ad_soyad',
   onSatirKaydet,
   onTopluKaydet,
@@ -122,7 +125,7 @@ export default function PersonelTekAlanTopluClient({
         onChange={e => props.onChange(e.target.value)}
         className="w-44 px-2 py-1 border border-slate-300 rounded text-sm bg-white"
       >
-        <option value="">—</option>
+        <option value="">{bosSecenekEtiketi}</option>
         {secenekler.map(o => (
           <option key={o} value={o}>
             {o}

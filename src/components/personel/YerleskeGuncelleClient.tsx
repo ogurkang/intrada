@@ -196,7 +196,7 @@ export default function YerleskeGuncelleClient({
             Aktif kadro ve ADABEL personelinin çalıştığı yerleşke adresini toplu veya satır bazında güncelleyin.
           </p>
           <p className="text-xs text-amber-700 mt-2">
-            Kadro personelinde kayıt personel kartı → Görev Bilgileri bölümünde görünür. ADABEL personeli
+            Kadro personelinde kayıt personel kartı → Görevlendirme Bilgileri bölümünde görünür. ADABEL personeli
             firma kartında yerleşke alanı ile raporlara yansır.
           </p>
         </div>
