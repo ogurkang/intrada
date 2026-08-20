@@ -223,25 +223,31 @@ export default function KysBaslikListeClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link href={parentHref} className="mb-2 inline-flex text-sm text-slate-500 hover:text-slate-700">
-            ← {parentLabel}
-          </Link>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-slate-800">{menuLabel}</h1>
-          {aciklama ? <p className="mt-1 max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
+          <div className="flex items-center gap-2">
+            <Link
+              href={parentHref}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              <span className="text-base leading-none">{'<'}</span>
+              {parentLabel}
+            </Link>
+            {!saltOkunur && (
+              <Link
+                href={`/kys/m/${menuId}/baslik-ekle`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+              >
+                <span className="text-lg leading-none">+</span>
+                Başlık Ekle
+              </Link>
+            )}
+          </div>
         </div>
-        {!saltOkunur && (
-          <Link
-            href={`/kys/m/${menuId}/baslik-ekle`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
-          >
-            <span className="text-lg leading-none">+</span>
-            Başlık Ekle
-          </Link>
-        )}
+        {aciklama ? <p className="max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
       </div>
 
       {saltOkunur ? (
