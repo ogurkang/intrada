@@ -18,7 +18,7 @@ import type { Tables } from '@/types/database'
 
 interface Props {
   params: Promise<{ sicil_no: string }>
-  searchParams?: Promise<{ kaynak?: string }>
+  searchParams?: Promise<{ kaynak?: string; sekme?: string }>
 }
 
 export default async function PersonelDuzenlePage({ params, searchParams }: Props) {
@@ -43,11 +43,16 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
 
   if (error || !calisan) notFound()
 
-  const sp = await searchParams?.catch(() => ({} as { kaynak?: string }))
+  const sp = await searchParams?.catch(() => ({} as { kaynak?: string; sekme?: string }))
   const kaynak = sp?.kaynak ?? ''
+  const sekmeRaw = String(sp?.sekme ?? '').trim().toLocaleLowerCase('tr-TR')
+  const modu = sekmeRaw === 'gorevlendirme' || sekmeRaw === 'gorev' ? 'gorevlendirme' as const : 'kisisel' as const
 
   const c = calisan as Tables<'calisan'>
-  const detayHref = personelDetayHref(c, kaynak ? { kaynak } : undefined)
+  const detayHref = personelDetayHref(c, {
+    ...(kaynak ? { kaynak } : {}),
+    ...(modu === 'gorevlendirme' ? { sekme: 'gorevlendirme' } : {}),
+  })
 
   const { data: kadroRows } = await supabase
     .from('kadro_hareketleri')
@@ -84,12 +89,15 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
           {calisan.ad_soyad}
         </Link>
         <span className="text-slate-300">/</span>
-        <span className="text-slate-800 font-medium">Düzenle</span>
+        <span className="text-slate-800 font-medium">
+          {modu === 'gorevlendirme' ? 'Görevlendirme Düzenle' : 'Düzenle'}
+        </span>
       </nav>
 
       <PersonelKisiselDuzenleClient
         calisan={calisan as Tables<'calisan'> & { gorev_turu_bitis_tarihi?: string | null }}
         kaynak={kaynak || undefined}
+        modu={modu}
         hizmetKaynagi={hizmetKaynagi}
         onGuncelle={calisanGuncelle}
         yerleskeSecenekleri={yerleskeOpts}

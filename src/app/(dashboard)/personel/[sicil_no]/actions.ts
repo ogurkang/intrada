@@ -69,43 +69,10 @@ export async function calisanGuncelle(
   sicil_no: string,
   formData: FormData
 ): Promise<{ hata?: string }> {
-  const ad_soyad = String(formData.get('ad_soyad') ?? '').trim()
-  if (!ad_soyad) return { hata: 'Ad Soyad zorunludur.' }
-
-  const gorev_turu = str(formData, 'gorev_turu') ?? 'Çalışan'
-  const gorev_turu_tarihi =
-    gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_tarihi')
-  const gorev_turu_bitis_tarihi =
-    gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_bitis_tarihi')
-  const gorev_turu_aciklama =
-    (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
-      ? str(formData, 'gorev_turu_aciklama')
-      : null
-  const yemekHakkiRaw = str(formData, 'gorev_turu_yemek_hakki')
-  const gorev_turu_yemek_hakki =
-    (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
-      ? (yemekHakkiRaw === 'evet' ? true : yemekHakkiRaw === 'hayir' ? false : null)
-      : null
-  if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
-    return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
-  }
+  const modu = String(formData.get('duzenle_modu') ?? 'kisisel').trim()
+  const gorevlendirmeModu = modu === 'gorevlendirme'
 
   const supabase = await createClient()
-  const hs = formdanHizmetSureBilesenleri(formData)
-  const hizmetDondur = gorev_turu === 'Aylıksız İzin'
-
-  const yerleskeRaw = str(formData, 'yerleske_adresi_id')
-  let yerleske_adresi_id: number | null = null
-  if (yerleskeRaw) {
-    const yerleskeId = Number(yerleskeRaw)
-    if (!Number.isInteger(yerleskeId) || yerleskeId <= 0) {
-      return { hata: 'Geçersiz yerleşke seçimi.' }
-    }
-    yerleske_adresi_id = yerleskeId
-  }
-
-  const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
-  const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
   const D = new Date().toISOString().slice(0, 10)
   const { data: kadroRaw } = await supabase
     .from('kadro_hareketleri')
@@ -114,47 +81,97 @@ export async function calisanGuncelle(
   const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
   const sec = secilenKadroSatirAsil((kadroRaw ?? []) as Parameters<typeof secilenKadroSatirAsil>[0], D)
   const mudurluk = String(sec?.gorev_mudurlugu ?? sec?.kadro_mudurlugu ?? '').trim()
-  if (yerleske_adresi_id != null && !gecerliYerleskeId(yerleskeHarita, mudurluk, yerleske_adresi_id)) {
-    return { hata: 'Seçilen yerleşke, görev müdürlüğü ile eşleşmiyor.' }
-  }
 
-  const adresSonuc = await personelAdresFormdan(supabase, formData)
-  if ('hata' in adresSonuc) return { hata: adresSonuc.hata }
+  let temel: Record<string, unknown>
+  let auditModul: string
+  let auditOzet: string
 
-  const temel: Record<string, unknown> = {
-    ad_soyad,
-    tckn:             str(formData, 'tckn'),
-    sgk_ssk_sicil_no: str(formData, 'sgk_ssk_sicil_no'),
-    dogum_tarihi:     str(formData, 'dogum_tarihi'),
-    cinsiyet:         str(formData, 'cinsiyet'),
-    kan_grubu:        str(formData, 'kan_grubu'),
-    dogum_yeri:       str(formData, 'dogum_yeri'),
-    anne_adi:         str(formData, 'anne_adi'),
-    baba_adi:         str(formData, 'baba_adi'),
-    askerlik_durumu:  str(formData, 'askerlik_durumu'),
-    telefon:          str(formData, 'telefon'),
-    e_posta:          str(formData, 'e_posta'),
-    mahalle_id:       adresSonuc.mahalle_id,
-    adres_detay:      adresSonuc.adres_detay,
-    adresi:           adresSonuc.adresi,
-    yakini:           str(formData, 'yakini'),
-    yakini_telefonu:  str(formData, 'yakini_telefonu'),
-    memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
-    kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
-    gorev_yeri:             str(formData, 'gorev_yeri'),
-    gorev_turu,
-    gorev_turu_tarihi,
-    gorev_turu_bitis_tarihi,
-    gorev_turu_aciklama,
-    gorev_turu_yemek_hakki,
-    gorev_durumu:           str(formData, 'gorev_durumu') ?? 'Diğer',
-    yerleske_adresi_id,
-    tasinir_gorevi:         tasinirGoreviNormalize(str(formData, 'tasinir_gorevi')),
-  }
-  if (!hizmetDondur) {
-    temel.hizmet_suresi_yil = hs.yil
-    temel.hizmet_suresi_ay = hs.ay
-    temel.hizmet_suresi_gun = hs.gun
+  if (gorevlendirmeModu) {
+    const gorev_turu = str(formData, 'gorev_turu') ?? 'Çalışan'
+    const gorev_turu_tarihi =
+      gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_tarihi')
+    const gorev_turu_bitis_tarihi =
+      gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_bitis_tarihi')
+    const gorev_turu_aciklama =
+      (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
+        ? str(formData, 'gorev_turu_aciklama')
+        : null
+    const yemekHakkiRaw = str(formData, 'gorev_turu_yemek_hakki')
+    const gorev_turu_yemek_hakki =
+      (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
+        ? (yemekHakkiRaw === 'evet' ? true : yemekHakkiRaw === 'hayir' ? false : null)
+        : null
+    if (gorevTuruTarihZorunlu(gorev_turu) && !gorev_turu_tarihi) {
+      return { hata: 'Aylıksız izin, geçici görevlendirme veya yarı zamanlı için tarih seçilmelidir.' }
+    }
+
+    const hs = formdanHizmetSureBilesenleri(formData)
+    const hizmetDondur = gorev_turu === 'Aylıksız İzin'
+
+    const yerleskeRaw = str(formData, 'yerleske_adresi_id')
+    let yerleske_adresi_id: number | null = null
+    if (yerleskeRaw) {
+      const yerleskeId = Number(yerleskeRaw)
+      if (!Number.isInteger(yerleskeId) || yerleskeId <= 0) {
+        return { hata: 'Geçersiz yerleşke seçimi.' }
+      }
+      yerleske_adresi_id = yerleskeId
+    }
+
+    const tanimSatirlar = await fetchMudurlukYerleskeTanimSatirlari(supabase)
+    const yerleskeHarita = mudurlukYerleskeHaritasi(tanimSatirlar)
+    if (yerleske_adresi_id != null && !gecerliYerleskeId(yerleskeHarita, mudurluk, yerleske_adresi_id)) {
+      return { hata: 'Seçilen yerleşke, görev müdürlüğü ile eşleşmiyor.' }
+    }
+
+    temel = {
+      memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
+      kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
+      gorev_yeri: str(formData, 'gorev_yeri'),
+      gorev_turu,
+      gorev_turu_tarihi,
+      gorev_turu_bitis_tarihi,
+      gorev_turu_aciklama,
+      gorev_turu_yemek_hakki,
+      gorev_durumu: str(formData, 'gorev_durumu') ?? 'Diğer',
+      yerleske_adresi_id,
+      tasinir_gorevi: tasinirGoreviNormalize(str(formData, 'tasinir_gorevi')),
+    }
+    if (!hizmetDondur) {
+      temel.hizmet_suresi_yil = hs.yil
+      temel.hizmet_suresi_ay = hs.ay
+      temel.hizmet_suresi_gun = hs.gun
+    }
+    auditModul = 'görevlendirme bilgileri'
+    auditOzet = 'Görevlendirme bilgileri güncellendi'
+  } else {
+    const ad_soyad = String(formData.get('ad_soyad') ?? '').trim()
+    if (!ad_soyad) return { hata: 'Ad Soyad zorunludur.' }
+
+    const adresSonuc = await personelAdresFormdan(supabase, formData)
+    if ('hata' in adresSonuc) return { hata: adresSonuc.hata }
+
+    temel = {
+      ad_soyad,
+      tckn:             str(formData, 'tckn'),
+      sgk_ssk_sicil_no: str(formData, 'sgk_ssk_sicil_no'),
+      dogum_tarihi:     str(formData, 'dogum_tarihi'),
+      cinsiyet:         str(formData, 'cinsiyet'),
+      kan_grubu:        str(formData, 'kan_grubu'),
+      dogum_yeri:       str(formData, 'dogum_yeri'),
+      anne_adi:         str(formData, 'anne_adi'),
+      baba_adi:         str(formData, 'baba_adi'),
+      askerlik_durumu:  str(formData, 'askerlik_durumu'),
+      telefon:          str(formData, 'telefon'),
+      e_posta:          str(formData, 'e_posta'),
+      mahalle_id:       adresSonuc.mahalle_id,
+      adres_detay:      adresSonuc.adres_detay,
+      adresi:           adresSonuc.adresi,
+      yakini:           str(formData, 'yakini'),
+      yakini_telefonu:  str(formData, 'yakini_telefonu'),
+    }
+    auditModul = 'kişisel bilgiler'
+    auditOzet = 'Kişisel bilgiler güncellendi'
   }
 
   const { data: oncekiCalisan } = await supabase
@@ -176,9 +193,9 @@ export async function calisanGuncelle(
     const payload = degisiklikPayload(degisiklikler)
     await writePersonelAuditLogSafe(supabase, {
       sicil_no,
-      modul: 'kişisel bilgiler',
+      modul: auditModul,
       islem: 'Güncelle',
-      ozet: degisiklikOzeti(degisiklikler, 'Kişisel bilgiler güncellendi'),
+      ozet: degisiklikOzeti(degisiklikler, auditOzet),
       ref_table: 'calisan',
       ref_id: sicil_no,
       onceki: payload.onceki,
@@ -186,23 +203,25 @@ export async function calisanGuncelle(
     })
   }
 
-  const { data: khRows, error: khErr } = await supabase
-    .from('kadro_hareketleri')
-    .select('*')
-    .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`)
-  if (khErr) return { hata: khErr.message }
-  const ana = anaKadroSec(khRows ?? [], sicil_no)
-  if (ana?.id != null) {
-    const { error: ktErr } = await supabase
+  if (gorevlendirmeModu) {
+    const { data: khRows, error: khErr } = await supabase
       .from('kadro_hareketleri')
-      .update({
-        memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
-        kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
-      })
-      .eq('id', ana.id)
-    if (ktErr) return { hata: ktErr.message }
-    revalidatePath(`/kadro/${ana.id}`)
-    revalidatePath('/kadro')
+      .select('*')
+      .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`)
+    if (khErr) return { hata: khErr.message }
+    const ana = anaKadroSec(khRows ?? [], sicil_no)
+    if (ana?.id != null) {
+      const { error: ktErr } = await supabase
+        .from('kadro_hareketleri')
+        .update({
+          memuriyet_tarihi: str(formData, 'memuriyet_tarihi'),
+          kuruma_giris_tarihi: str(formData, 'kuruma_giris_tarihi'),
+        })
+        .eq('id', ana.id)
+      if (ktErr) return { hata: ktErr.message }
+      revalidatePath(`/kadro/${ana.id}`)
+      revalidatePath('/kadro')
+    }
   }
 
   await revalidatePersonelDetayPaths(sicil_no)

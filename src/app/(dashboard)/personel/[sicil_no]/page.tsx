@@ -10,11 +10,14 @@ import { loadFirmaCalisanDetayPageData } from '@/lib/firma-calisan-load'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import {
   buildPersonelKonumCtx,
-  etkinYerleskeAdiGoster,
   fetchSirketYerleskeTanimSatirlari,
   personelKonumMetni,
 } from '@/lib/personel-gorev-konum'
-import { fetchMudurlukYerleskeTanimSatirlari, etkinYerleskeId } from '@/lib/yerleske-adresi'
+import {
+  fetchMudurlukYerleskeTanimSatirlari,
+  etkinYerleskeId,
+  yerleskeSecenekleri,
+} from '@/lib/yerleske-adresi'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -83,11 +86,13 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   const gorevMud = String(anaKadro?.gorev_mudurlugu ?? anaKadro?.kadro_mudurlugu ?? '').trim()
   const kayitliYerleskeId =
     (calisan as Tables<'calisan'> & { yerleske_adresi_id?: number | null }).yerleske_adresi_id ?? null
+  const yerleskeOpts = yerleskeSecenekleri(konumCtx.yerleskeHarita, gorevMud)
   const yId = etkinYerleskeId(konumCtx.yerleskeHarita, gorevMud, kayitliYerleskeId)
-  const yerleskeAdi = etkinYerleskeAdiGoster(konumCtx, {
-    gorevMudurlugu: gorevMud,
-    kayitliYerleskeId,
-  })
+  // Düzenleme ekranındaki dropdown ile aynı kaynak: seçenek listesinden ad
+  const yerleskeAdi =
+    (yId != null ? yerleskeOpts.find(y => y.id === yId)?.ad : null)
+    ?? (yId != null ? konumCtx.yerleskeAdById.get(yId) ?? null : null)
+    ?? (kayitliYerleskeId != null ? konumCtx.yerleskeAdById.get(kayitliYerleskeId) ?? null : null)
   let konumMetni = personelKonumMetni(konumCtx, {
     gorevYeri: calisan.gorev_yeri,
     gorevMudurlugu: gorevMud,

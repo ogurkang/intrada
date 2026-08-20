@@ -24,10 +24,13 @@ type CalisanGenisletilmis = Calisan & {
   tasinir_gorevi?: string | null
 }
 
+export type PersonelDuzenleModu = 'kisisel' | 'gorevlendirme'
+
 interface Props {
   calisan: CalisanGenisletilmis
   kaynak?: string
-  /** Görüntülenen / düzenlenen değerler: tarihler önce ana kadro, yoksa calisan. */
+  /** kisisel: yalnızca temel+iletişim; gorevlendirme: görev/hizmet/taşınır */
+  modu?: PersonelDuzenleModu
   hizmetKaynagi: {
     memuriyet_tarihi: string | null
     kuruma_giris_tarihi: string | null
@@ -44,6 +47,7 @@ interface Props {
 export default function PersonelKisiselDuzenleClient({
   calisan,
   kaynak,
+  modu = 'kisisel',
   hizmetKaynagi,
   onGuncelle,
   yerleskeSecenekleri = [],
@@ -55,11 +59,13 @@ export default function PersonelKisiselDuzenleClient({
   const [isPending, startTransition] = useTransition()
   const [gorevTuru, setGorevTuru] = useState(() => (calisan.gorev_turu?.trim() || 'Çalışan'))
 
-  const detayLink = personelDetayHref(calisan, kaynak ? { kaynak } : undefined)
+  const gorevlendirmeModu = modu === 'gorevlendirme'
+  const detayLink = personelDetayHref(calisan, {
+    ...(kaynak ? { kaynak } : {}),
+    ...(gorevlendirmeModu ? { sekme: 'gorevlendirme' } : {}),
+  })
   const hizmetKilitli = gorevTuru === 'Aylıksız İzin'
-  // Gösterme: tüm görevlendirme türlerinde (Kurum dahil) tarih alanları görünür
   const gorevTarihGoster = gorevTuruBitisGoster(gorevTuru)
-  // Zorunluluk: yalnızca Aylıksız İzin, Geçici Görevlendirme, Yarı Zamanlı
   const gorevTarihZorunlu = gorevTuruTarihZorunlu(gorevTuru)
   const gorevBitisGoster = gorevTuruBitisGoster(gorevTuru)
   const gorevAciklamaGoster = gorevTuruAciklamaGoster(gorevTuru)
@@ -77,6 +83,9 @@ export default function PersonelKisiselDuzenleClient({
   }
 
   const hk = hizmetKaynagi
+  const baslik = gorevlendirmeModu
+    ? `Görevlendirme Bilgilerini Düzenle — ${calisan.ad_soyad}`
+    : `Kişisel Bilgileri Düzenle — ${calisan.ad_soyad}`
 
   return (
     <div>
@@ -85,11 +94,14 @@ export default function PersonelKisiselDuzenleClient({
           className="text-sm font-medium text-slate-600 border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50">
           ← İptal
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Kişisel Bilgileri Düzenle — {calisan.ad_soyad}</h1>
+        <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="hidden" name="duzenle_modu" value={modu} />
+
+          {!gorevlendirmeModu && (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Adı Soyadı *</label>
@@ -183,8 +195,11 @@ export default function PersonelKisiselDuzenleClient({
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
             </div>
           </div>
+          )}
 
-          <div className="border-t border-slate-100 pt-5 mt-2">
+          {gorevlendirmeModu && (
+          <>
+          <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Görev Bilgileri</p>
             <p className="text-xs text-slate-500 mb-3">
               Norm kadro kaydından bağımsızdır; personel sicili ile taşınır. Kadro değişse de buradan güncellenir.
@@ -409,6 +424,8 @@ export default function PersonelKisiselDuzenleClient({
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
           <div className="flex justify-end gap-3 pt-2">
