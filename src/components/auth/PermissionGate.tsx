@@ -13,9 +13,16 @@ interface Props {
   /** Terfi menü href’i (PermissionGate ile Sidebar aynı olmalı) */
   terfiMenuHref?: string
   hayaletDurum?: HayaletProfilDurum | null
+  performansDegerlendirmeHref?: string
 }
 
-export default function PermissionGate({ access, children, terfiMenuHref = '/terfi', hayaletDurum }: Props) {
+export default function PermissionGate({
+  access,
+  children,
+  terfiMenuHref = '/terfi',
+  hayaletDurum,
+  performansDegerlendirmeHref = '/performans/degerlendirme',
+}: Props) {
   const pathname = usePathname() ?? '/'
 
   if (hayaletDurum?.aktif) {
@@ -28,7 +35,7 @@ export default function PermissionGate({ access, children, terfiMenuHref = '/ter
         </p>
         <p className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link
-            href="/performans/degerlendirme"
+            href={performansDegerlendirmeHref}
             className="text-sm font-semibold text-violet-950 underline underline-offset-2 hover:text-violet-800"
           >
             Performans değerlendirme

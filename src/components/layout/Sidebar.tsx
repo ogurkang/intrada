@@ -506,6 +506,8 @@ interface SidebarProps {
   kysAgac?: KysSidebarMenu[]
   /** Geçici: Taşınır Görevlendirme alt menüsü */
   tasinirGorevlendirmeMenuAcik?: boolean
+  /** Amir/hayalet: güncel dönem; admin: dönem listesi */
+  performansDegerlendirmeHref?: string
 }
 
 function accessSidebarMode(access: AppAccess): 'full' | 'admin' | 'kullanici' | 'dis_denetci' {
@@ -523,17 +525,18 @@ export default function Sidebar({
   denetimAgac = [],
   kysAgac = [],
   tasinirGorevlendirmeMenuAcik = false,
+  performansDegerlendirmeHref = '/performans/degerlendirme',
 }: SidebarProps) {
   const pathname = usePathname()
 
   const calisanlarHref = useMemo(() => {
-    if (hayaletDurum?.aktif) return '/performans/degerlendirme'
+    if (hayaletDurum?.aktif) return performansDegerlendirmeHref
     if (access.mode === 'kullanici') {
       const sn = access.sicilNo.trim()
       if (sn) return `/personel/${encodeURIComponent(sn)}`
     }
     return '/personel'
-  }, [access, hayaletDurum])
+  }, [access, hayaletDurum, performansDegerlendirmeHref])
 
   const menuGroups = useMemo(
     () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik),
@@ -551,7 +554,7 @@ export default function Sidebar({
           icon: '⭐',
           accordion: true,
           items: [
-            { href: '/performans/degerlendirme', label: 'Değerlendirme' },
+            { href: performansDegerlendirmeHref, label: 'Değerlendirme' },
             { href: '/performans/raporlama', label: 'Raporlama' },
           ],
         },
@@ -568,6 +571,16 @@ export default function Sidebar({
           }
           return { ...g, items }
         }
+        if (g.grup === 'Performans Yönetimi' && performansDegerlendirmeHref !== '/performans/degerlendirme') {
+          return {
+            ...g,
+            items: g.items.map(i =>
+              i.href === '/performans/degerlendirme'
+                ? { ...i, href: performansDegerlendirmeHref }
+                : i,
+            ),
+          }
+        }
         if (g.grup !== 'Personel Yönetimi') return g
         /** Modül kapalıysa yalnızca kendi personel kartı */
         if (mode === 'kullanici' && !menuModulAcik('personel', menuIzinleri)) {
@@ -581,7 +594,7 @@ export default function Sidebar({
       .filter((g): g is MenuGroup => g != null)
 
     return mapped
-  }, [menuGroups, mode, menuIzinleri, terfiMenuHref, calisanlarHref, access, hayaletDurum])
+  }, [menuGroups, mode, menuIzinleri, terfiMenuHref, calisanlarHref, access, hayaletDurum, performansDegerlendirmeHref])
 
   // Her accordion'ın açık/kapalı durumu grubun adına göre tutulur
   const [aciklar, setAciklar] = useState<Record<string, boolean>>(() => {

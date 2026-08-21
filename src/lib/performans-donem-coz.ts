@@ -26,3 +26,15 @@ export async function performansGuncelYilDonemId(
   const acik = liste.find(d => d.durum === 'Açık')
   return acik?.id ?? liste[0].id
 }
+
+/**
+ * Amir / hayalet / kullanıcı için değerlendirme giriş adresi.
+ * Güncel yıl dönemi varsa doğrudan `/performans/degerlendirme/{id}` (ara boş sayfa yok).
+ */
+export async function performansDegerlendirmeLandingHref(
+  supabase: SupabaseClient,
+  yil = new Date().getFullYear(),
+): Promise<string> {
+  const donemId = await performansGuncelYilDonemId(supabase, yil)
+  return donemId ? `/performans/degerlendirme/${donemId}` : '/performans/degerlendirme'
+}

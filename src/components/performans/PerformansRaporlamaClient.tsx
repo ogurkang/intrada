@@ -18,6 +18,7 @@ type Props = {
   ek2Satirlar: PerformansEk2Satir[]
   donemEtiket: string
   hayaletAktif?: boolean
+  degerlendirmeHref?: string
 }
 
 export default function PerformansRaporlamaClient({
@@ -28,6 +29,7 @@ export default function PerformansRaporlamaClient({
   ek2Satirlar,
   donemEtiket,
   hayaletAktif = false,
+  degerlendirmeHref = '/performans/degerlendirme',
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -60,7 +62,7 @@ export default function PerformansRaporlamaClient({
     return `/api/performans/raporlama/ek3/excel?${p.toString()}`
   }, [seciliDonemId, seciliMudurluk])
 
-  const geriHref = hayaletAktif ? '/performans/degerlendirme' : '/performans'
+  const geriHref = hayaletAktif ? degerlendirmeHref : '/performans'
   const geriMetin = hayaletAktif ? '← Değerlendirme' : '← Performans Yönetimi'
 
   return (

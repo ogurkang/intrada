@@ -24,6 +24,8 @@ interface DashboardShellProps {
   denetimAgac?: import('@/lib/denetim-menu').DenetimSidebarDonem[]
   kysAgac?: import('@/lib/kys-menu').KysSidebarMenu[]
   tasinirGorevlendirmeMenuAcik?: boolean
+  /** Amir/hayalet için güncel dönem URL’si; admin için dönem listesi. */
+  performansDegerlendirmeHref?: string
 }
 
 export default function DashboardShell({
@@ -37,6 +39,7 @@ export default function DashboardShell({
   denetimAgac,
   kysAgac,
   tasinirGorevlendirmeMenuAcik = false,
+  performansDegerlendirmeHref = '/performans/degerlendirme',
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -69,6 +72,7 @@ export default function DashboardShell({
           denetimAgac={denetimAgac}
           kysAgac={kysAgac}
           tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
+          performansDegerlendirmeHref={performansDegerlendirmeHref}
         />
       </aside>
 
@@ -82,7 +86,12 @@ export default function DashboardShell({
           {hayaletDurum?.aktif ? (
             <HayaletProfilBanner hedefAdSoyad={hayaletDurum.hedefAdSoyad} hedefSicil={hayaletDurum.hedefSicil} />
           ) : null}
-          <PermissionGate access={access} terfiMenuHref={terfiMenuHref} hayaletDurum={hayaletDurum}>
+          <PermissionGate
+            access={access}
+            terfiMenuHref={terfiMenuHref}
+            hayaletDurum={hayaletDurum}
+            performansDegerlendirmeHref={performansDegerlendirmeHref}
+          >
             {children}
           </PermissionGate>
         </main>

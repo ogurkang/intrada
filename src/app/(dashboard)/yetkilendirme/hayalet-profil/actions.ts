@@ -7,6 +7,7 @@ import {
   hayaletCookieYaz,
 } from '@/lib/hayalet-profil-server'
 import { hayaletProfilYetkisiVar } from '@/lib/hayalet-profil'
+import { performansDegerlendirmeLandingHref } from '@/lib/performans-donem-coz'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -39,7 +40,8 @@ export async function hayaletProfilBaslat(formData: FormData): Promise<{ hata?: 
 
   await hayaletCookieYaz(sicil)
   revalidatePath('/', 'layout')
-  redirect('/performans/degerlendirme')
+  const hedef = await performansDegerlendirmeLandingHref(gate.supabase)
+  redirect(hedef)
 }
 
 export async function hayaletProfilBitir(): Promise<void> {

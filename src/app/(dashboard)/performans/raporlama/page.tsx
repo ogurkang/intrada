@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { resolvePerformansOturum } from '@/lib/performans-oturum'
-import { performansGuncelYilDonemId } from '@/lib/performans-donem-coz'
+import { performansDegerlendirmeLandingHref, performansGuncelYilDonemId } from '@/lib/performans-donem-coz'
 import {
   performansDonemListesiYukle,
   performansRaporlamaVeriYukle,
@@ -26,6 +26,9 @@ export default async function PerformansRaporlamaPage({
   const oturum = await resolvePerformansOturum(supabase, user.id, access, hayaletDurum)
 
   const donemler = await performansDonemListesiYukle(supabase)
+  const degerlendirmeHref = oturum.hayaletAktif || !oturum.adminBypass
+    ? await performansDegerlendirmeLandingHref(supabase)
+    : '/performans/degerlendirme'
   let seciliDonemId = sp.donem_id ? Number(sp.donem_id) : null
   if (!seciliDonemId || !donemler.some(d => d.id === seciliDonemId)) {
     seciliDonemId =
@@ -48,6 +51,7 @@ export default async function PerformansRaporlamaPage({
           ek2Satirlar={[]}
           donemEtiket="—"
           hayaletAktif={oturum.hayaletAktif}
+          degerlendirmeHref={degerlendirmeHref}
         />
       </Suspense>
     )

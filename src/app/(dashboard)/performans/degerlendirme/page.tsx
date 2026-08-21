@@ -16,6 +16,10 @@ import {
   performansDonemKapat,
 } from '@/app/(dashboard)/performans/donem/actions'
 
+/**
+ * Admin: dönem listesi.
+ * Amir / hayalet / kullanıcı: güncel yıl dönemine yönlendirir (liste ara sayfası kullanılmaz).
+ */
 export default async function PerformansDegerlendirmePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,11 +31,12 @@ export default async function PerformansDegerlendirmePage() {
   const saltOkunur = access.mode === 'kullanici' || hayaletDurum?.aktif === true
 
   if (!oturum.adminBypass && oturum.sicil) {
-    const yapabilir = await performansDegerlendirmeYapabilir(supabase, oturum.sicil)
-    if (!yapabilir) return <PerformansDegerlendirmeYapilamazMesaji />
-
     const guncelYil = new Date().getFullYear()
-    const donemId = await performansGuncelYilDonemId(supabase, guncelYil)
+    const [yapabilir, donemId] = await Promise.all([
+      performansDegerlendirmeYapabilir(supabase, oturum.sicil),
+      performansGuncelYilDonemId(supabase, guncelYil),
+    ])
+    if (!yapabilir) return <PerformansDegerlendirmeYapilamazMesaji />
     if (donemId) redirect(`/performans/degerlendirme/${donemId}`)
     return <PerformansGuncelDonemYokMesaji yil={guncelYil} />
   }

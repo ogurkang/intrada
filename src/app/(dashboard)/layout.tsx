@@ -4,13 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import DashboardShell from '@/components/layout/DashboardShell'
-import { getAppAccess } from '@/lib/app-access'
+import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { hayaletProfilDurumCoz } from '@/lib/hayalet-profil-server'
 import { ensureAppProfileForAuthUser } from '@/lib/app-profile-ensure'
 import IlkKurulumGuard from '@/components/auth/IlkKurulumGuard'
 import { loadDenetimSidebarAgac } from '@/lib/denetim-menu'
 import { loadKysSidebarAgac } from '@/lib/kys-menu'
 import { tasinirGorevlendirmeMenuAcikMi } from '@/lib/uygulama-ayar'
+import { performansDegerlendirmeLandingHref } from '@/lib/performans-donem-coz'
 
 export default async function DashboardLayout({
   children,
@@ -77,11 +78,16 @@ export default async function DashboardLayout({
     process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
     'local-dev'
 
-  const [denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik] = await Promise.all([
-    loadDenetimSidebarAgac(supabase),
-    loadKysSidebarAgac(supabase),
-    tasinirGorevlendirmeMenuAcikMi(supabase),
-  ])
+  const [denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik, performansDegerlendirmeHref] =
+    await Promise.all([
+      loadDenetimSidebarAgac(supabase),
+      loadKysSidebarAgac(supabase),
+      tasinirGorevlendirmeMenuAcikMi(supabase),
+      // Amir / hayalet: menü doğrudan güncel döneme gitsin (ara boş /degerlendirme sayfası olmasın)
+      hayaletDurum?.aktif || !isAdminLike(access)
+        ? performansDegerlendirmeLandingHref(supabase)
+        : Promise.resolve('/performans/degerlendirme'),
+    ])
 
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
@@ -94,6 +100,7 @@ export default async function DashboardLayout({
         denetimAgac={denetimAgac}
         kysAgac={kysAgac}
         tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
+        performansDegerlendirmeHref={performansDegerlendirmeHref}
       >
         {children}
       </DashboardShell>
