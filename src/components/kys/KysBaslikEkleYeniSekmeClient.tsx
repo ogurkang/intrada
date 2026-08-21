@@ -105,7 +105,10 @@ export default function KysBaslikEkleYeniSekmeClient({ menuId, menuLabel, mudurl
           <h1 className="text-xl font-bold text-slate-800">{menuLabel} — Başlık Ekle</h1>
           <p className="text-sm text-slate-500">Kaydet sonrası sekme kapanır ve önceki sayfa yenilenir.</p>
         </div>
-        <Link href={`/kys/m/${menuId}`} className="text-sm text-slate-500 hover:text-slate-700">
+        <Link
+          href={`/kys/m/${menuId}`}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+        >
           Sayfaya dön
         </Link>
       </div>

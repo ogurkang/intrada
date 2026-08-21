@@ -9,10 +9,8 @@ import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPane
 import {
   kysBaslikEkle,
   kysBaslikGuncelle,
-  kysBaslikSiraTasi,
   kysBelgeKaydet,
   kysBelgeYuklemeHazirla,
-  kysMenuSiraTasi,
 } from '@/app/(dashboard)/kys/actions'
 import { kysBelgeStorageYukle } from '@/lib/kys-belge-yukle'
 import { kysBelgeAuditDegerGoster, kysBelgeAuditDiffSatirlari } from '@/lib/kys-audit'
@@ -97,15 +95,37 @@ export default function KysHubClient({
 
   // Geçmiş
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
+  const [arama, setArama] = useState('')
 
   const [baslikSortKey, setBaslikSortKey] = useState<string | null>('sira')
   const [baslikSortYon, setBaslikSortYon] = useState<KysListeSortYon>('asc')
   const [altSortKey, setAltSortKey] = useState<string | null>('sira')
   const [altSortYon, setAltSortYon] = useState<KysListeSortYon>('asc')
 
+  const q = arama.trim().toLocaleLowerCase('tr-TR')
+
+  const filtrelenmisBasliklar = useMemo(() => {
+    if (!q) return basliklar
+    return basliklar.filter(item => {
+      const haystack = [item.kod, item.baslik, item.aciklama, item.sorumlu_birim, item.dosya_adi]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR')
+      return haystack.includes(q)
+    })
+  }, [basliklar, q])
+
+  const filtrelenmisAltMenuler = useMemo(() => {
+    if (!q) return altMenuler
+    return altMenuler.filter(item => {
+      const haystack = [item.baslik, item.aciklama].filter(Boolean).join(' ').toLocaleLowerCase('tr-TR')
+      return haystack.includes(q)
+    })
+  }, [altMenuler, q])
+
   const siraliBasliklar = useMemo(
     () =>
-      kysListeSirala(basliklar, baslikSortKey, baslikSortYon, (item, key) => {
+      kysListeSirala(filtrelenmisBasliklar, baslikSortKey, baslikSortYon, (item, key) => {
         if (key === 'sira') return item.sira_no
         if (key === 'kod') return item.kod ?? ''
         if (key === 'baslik') return item.baslik
@@ -113,24 +133,21 @@ export default function KysHubClient({
         if (key === 'belge') return item.belge_id != null ? 1 : 0
         return null
       }),
-    [basliklar, baslikSortKey, baslikSortYon],
+    [filtrelenmisBasliklar, baslikSortKey, baslikSortYon],
   )
 
   const siraliAltMenuler = useMemo(
     () =>
-      kysListeSirala(altMenuler, altSortKey, altSortYon, (item, key) => {
+      kysListeSirala(filtrelenmisAltMenuler, altSortKey, altSortYon, (item, key) => {
         if (key === 'sira') return item.sira_no
         if (key === 'baslik') return item.baslik
         return null
       }),
-    [altMenuler, altSortKey, altSortYon],
+    [filtrelenmisAltMenuler, altSortKey, altSortYon],
   )
 
   const baslikSayfa = useKysListeSayfalama(siraliBasliklar, 25)
   const altSayfa = useKysListeSayfalama(siraliAltMenuler, 25)
-
-  const baslikDbSirasi = baslikSortKey === 'sira' && baslikSortYon === 'asc'
-  const altDbSirasi = altSortKey === 'sira' && altSortYon === 'asc'
 
   function baslikSortDegistir(key: string) {
     if (baslikSortKey === key) setBaslikSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
@@ -148,22 +165,6 @@ export default function KysHubClient({
       setAltSortYon('asc')
     }
     altSayfa.setSayfa(1)
-  }
-
-  function baslikSiraTasi(id: number, yon: 'yukari' | 'asagi') {
-    startTransition(async () => {
-      const res = await kysBaslikSiraTasi(id, yon)
-      if (res.hata) { setHata(res.hata); return }
-      router.refresh()
-    })
-  }
-
-  function altMenuSiraTasi(id: number, yon: 'yukari' | 'asagi') {
-    startTransition(async () => {
-      const res = await kysMenuSiraTasi(id, yon)
-      if (res.hata) { setHata(res.hata); return }
-      router.refresh()
-    })
   }
 
   function kaydet() {
@@ -283,30 +284,45 @@ export default function KysHubClient({
     <div className="space-y-8">
       {/* Başlık + işlemler */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold text-slate-800">{menuLabel}</h1>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/kys"
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            >
-              <span className="text-base leading-none">{'<'}</span>
-              KYS Yönetimi
-            </Link>
-            {!saltOkunur && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-bold text-slate-800">{menuLabel}</h1>
+            {aciklama ? <p className="max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
+          </div>
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Link
-                href={`/kys/m/${menuId}/baslik-ekle`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+                href="/kys"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
               >
-                <span className="text-lg leading-none">+</span>
-                Başlık Ekle
+                <span className="text-base leading-none">{'<'}</span>
+                KYS Yönetimi
               </Link>
-            )}
+              {!saltOkunur && (
+                <Link
+                  href={`/kys/m/${menuId}/baslik-ekle`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  Başlık Ekle
+                </Link>
+              )}
+            </div>
+            <input
+              type="search"
+              value={arama}
+              onChange={e => {
+                setArama(e.target.value)
+                baslikSayfa.setSayfa(1)
+                altSayfa.setSayfa(1)
+              }}
+              placeholder="Başlık, kod, birim veya alt menü ara…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:w-72"
+            />
           </div>
         </div>
-        {aciklama ? <p className="max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
       </div>
 
       {/* Alt Menü Listesi */}
@@ -333,37 +349,18 @@ export default function KysHubClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {altSayfa.sayfali.map((k, i) => {
+                  {altSayfa.sayfali.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-10 text-center text-slate-400">
+                        {q ? 'Arama kriterine uygun alt menü bulunamadı.' : 'Alt menü yok.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    altSayfa.sayfali.map((k, i) => {
                     const globalIdx = altSayfa.baslangicSira + i
                     return (
                       <tr key={k.id} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                          <div className="inline-flex items-center gap-1">
-                            {!saltOkunur && altDbSirasi ? (
-                              <span className="inline-flex flex-col">
-                                <button
-                                  type="button"
-                                  disabled={isPending || globalIdx === 0}
-                                  onClick={() => altMenuSiraTasi(k.id, 'yukari')}
-                                  className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                  title="Yukarı taşı"
-                                >
-                                  ▲
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={isPending || globalIdx >= altSayfa.toplam - 1}
-                                  onClick={() => altMenuSiraTasi(k.id, 'asagi')}
-                                  className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                  title="Aşağı taşı"
-                                >
-                                  ▼
-                                </button>
-                              </span>
-                            ) : null}
-                            <span>{globalIdx + 1}</span>
-                          </div>
-                        </td>
+                        <td className="px-3 py-3 text-center tabular-nums text-slate-600">{globalIdx + 1}</td>
                         <td className="px-4 py-3">
                           <Link href={k.href} className="font-medium text-slate-800 hover:text-teal-700">
                             {k.baslik}
@@ -382,7 +379,8 @@ export default function KysHubClient({
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -429,40 +427,21 @@ export default function KysHubClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {baslikSayfa.sayfali.map((item, i) => {
+                {baslikSayfa.sayfali.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                      {q ? 'Arama kriterine uygun başlık bulunamadı.' : 'Henüz başlık yok.'}
+                    </td>
+                  </tr>
+                ) : (
+                  baslikSayfa.sayfali.map((item, i) => {
                     const belgeLogKey = item.belge_id != null ? String(item.belge_id) : ''
                     const loglar = auditLoglarByRefId[String(item.id)] ?? []
                     const goruntulemeler = belgeLogKey ? goruntulemelerByRefId[belgeLogKey] ?? [] : []
                     const globalIdx = baslikSayfa.baslangicSira + i
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                          <div className="inline-flex items-center gap-1">
-                            {!saltOkunur && baslikDbSirasi ? (
-                              <span className="inline-flex flex-col">
-                                <button
-                                  type="button"
-                                  disabled={isPending || globalIdx === 0}
-                                  onClick={() => baslikSiraTasi(item.id, 'yukari')}
-                                  className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                  title="Yukarı taşı"
-                                >
-                                  ▲
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={isPending || globalIdx >= baslikSayfa.toplam - 1}
-                                  onClick={() => baslikSiraTasi(item.id, 'asagi')}
-                                  className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                  title="Aşağı taşı"
-                                >
-                                  ▼
-                                </button>
-                              </span>
-                            ) : null}
-                            <span>{globalIdx + 1}</span>
-                          </div>
-                        </td>
+                        <td className="px-3 py-3 text-center tabular-nums text-slate-600">{globalIdx + 1}</td>
                         <td className="px-3 py-3 tabular-nums text-slate-500">
                           {item.kod
                             ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{item.kod}</span>
@@ -540,7 +519,8 @@ export default function KysHubClient({
                         </td>
                       </tr>
                     )
-                  })}
+                  })
+                )}
               </tbody>
             </table>
           </div>

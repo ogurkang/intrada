@@ -9,7 +9,6 @@ import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPane
 import {
   kysBaslikEkle,
   kysBaslikGuncelle,
-  kysBaslikSiraTasi,
   kysBelgeKaydet,
   kysBelgeYuklemeHazirla,
 } from '@/app/(dashboard)/kys/actions'
@@ -95,12 +94,25 @@ export default function KysBaslikListeClient({
   const [sorumluBirimler, setSorumluBirimler] = useState<string[]>([])
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [arama, setArama] = useState('')
   const [sortKey, setSortKey] = useState<string | null>('sira')
   const [sortYon, setSortYon] = useState<KysListeSortYon>('asc')
 
+  const filtrelenmis = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr-TR')
+    if (!q) return basliklar
+    return basliklar.filter(item => {
+      const haystack = [item.kod, item.baslik, item.aciklama, item.sorumlu_birim, item.dosya_adi]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR')
+      return haystack.includes(q)
+    })
+  }, [basliklar, arama])
+
   const siraliBasliklar = useMemo(
     () =>
-      kysListeSirala(basliklar, sortKey, sortYon, (item, key) => {
+      kysListeSirala(filtrelenmis, sortKey, sortYon, (item, key) => {
         if (key === 'sira') return item.sira_no
         if (key === 'kod') return item.kod ?? ''
         if (key === 'baslik') return item.baslik
@@ -108,7 +120,7 @@ export default function KysBaslikListeClient({
         if (key === 'belge') return item.belge_id != null ? 1 : 0
         return null
       }),
-    [basliklar, sortKey, sortYon],
+    [filtrelenmis, sortKey, sortYon],
   )
 
   const {
@@ -122,8 +134,6 @@ export default function KysBaslikListeClient({
     baslangicSira,
   } = useKysListeSayfalama(siraliBasliklar, 25)
 
-  const dbSirasiAktif = sortKey === 'sira' && sortYon === 'asc'
-
   function sortDegistir(key: string) {
     if (sortKey === key) {
       setSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
@@ -132,17 +142,6 @@ export default function KysBaslikListeClient({
       setSortYon('asc')
     }
     setSayfa(1)
-  }
-
-  function siraTasi(id: number, yon: 'yukari' | 'asagi') {
-    startTransition(async () => {
-      const res = await kysBaslikSiraTasi(id, yon)
-      if (res.hata) {
-        setHata(res.hata)
-        return
-      }
-      router.refresh()
-    })
   }
 
   function kaydet() {
@@ -286,30 +285,44 @@ export default function KysBaslikListeClient({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold text-slate-800">{menuLabel}</h1>
-          <div className="flex items-center gap-2">
-            <Link
-              href={parentHref}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            >
-              <span className="text-base leading-none">{'<'}</span>
-              {parentLabel}
-            </Link>
-            {!saltOkunur && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-bold text-slate-800">{menuLabel}</h1>
+            {aciklama ? <p className="max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
+          </div>
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Link
-                href={`/kys/m/${menuId}/baslik-ekle`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+                href={parentHref}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
               >
-                <span className="text-lg leading-none">+</span>
-                Başlık Ekle
+                <span className="text-base leading-none">{'<'}</span>
+                {parentLabel}
               </Link>
-            )}
+              {!saltOkunur && (
+                <Link
+                  href={`/kys/m/${menuId}/baslik-ekle`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  Başlık Ekle
+                </Link>
+              )}
+            </div>
+            <input
+              type="search"
+              value={arama}
+              onChange={e => {
+                setArama(e.target.value)
+                setSayfa(1)
+              }}
+              placeholder="Başlık, kod veya birim ara…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:w-72"
+            />
           </div>
         </div>
-        {aciklama ? <p className="max-w-3xl text-sm text-slate-600">{aciklama}</p> : null}
       </div>
 
       {saltOkunur ? (
@@ -322,7 +335,7 @@ export default function KysBaslikListeClient({
         <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{hata}</p>
       ) : null}
 
-      {basliklar.length > 0 ? (
+      {basliklar.length > 0 || arama.trim() ? (
       <div className="space-y-3">
         <KysListeAracCubugu
           toplam={toplam}
@@ -338,7 +351,7 @@ export default function KysBaslikListeClient({
             <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <KysSortTh label="Sıra No" sortKey="sira" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} align="center" className="w-28" />
+                  <KysSortTh label="Sıra No" sortKey="sira" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} align="center" className="w-20" />
                   <KysSortTh label="Kod" sortKey="kod" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} className="w-28" />
                   <KysSortTh label="Başlık" sortKey="baslik" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} />
                   <KysSortTh label="Sorumlu Birim" sortKey="birim" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} />
@@ -347,40 +360,21 @@ export default function KysBaslikListeClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sayfali.map((item, i) => {
+                {sayfali.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                      {arama.trim() ? 'Arama kriterine uygun başlık bulunamadı.' : 'Bu menüde henüz başlık yok.'}
+                    </td>
+                  </tr>
+                ) : (
+                  sayfali.map((item, i) => {
                   const belgeLogKey = item.belge_id != null ? String(item.belge_id) : ''
                   const loglar = auditLoglarByRefId[String(item.id)] ?? []
                   const goruntulemeler = belgeLogKey ? goruntulemelerByRefId[belgeLogKey] ?? [] : []
                   const globalIdx = baslangicSira + i
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                        <div className="inline-flex items-center gap-1">
-                          {!saltOkunur && dbSirasiAktif ? (
-                            <span className="inline-flex flex-col">
-                              <button
-                                type="button"
-                                disabled={isPending || globalIdx === 0}
-                                onClick={() => siraTasi(item.id, 'yukari')}
-                                className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                title="Yukarı taşı"
-                              >
-                                ▲
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isPending || globalIdx >= toplam - 1}
-                                onClick={() => siraTasi(item.id, 'asagi')}
-                                className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
-                                title="Aşağı taşı"
-                              >
-                                ▼
-                              </button>
-                            </span>
-                          ) : null}
-                          <span>{globalIdx + 1}</span>
-                        </div>
-                      </td>
+                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">{globalIdx + 1}</td>
                       <td className="px-3 py-3 tabular-nums text-slate-500">
                         {item.kod ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{item.kod}</span> : <span className="text-slate-300">—</span>}
                       </td>
@@ -463,7 +457,8 @@ export default function KysBaslikListeClient({
                       </td>
                     </tr>
                   )
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>
