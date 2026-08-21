@@ -80,6 +80,7 @@ export default async function PerformansRaporlamaPage({
         ek2Satirlar={veri?.ek2Satirlar ?? []}
         donemEtiket={donemEtiket}
         hayaletAktif={oturum.hayaletAktif}
+        degerlendirmeHref={degerlendirmeHref}
       />
     </Suspense>
   )
