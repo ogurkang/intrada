@@ -20,7 +20,7 @@ export default async function KysHubSayfa({ menuId }: { menuId: number }) {
   if (!menu || menu.sayfa_turu !== 'hub') notFound()
 
   const [{ data: children }, { data: baslikRaw, error: baslikError }] = await Promise.all([
-    supabase.from('kys_menu').select('id, baslik, aciklama').eq('parent_id', menu.id).order('sira_no'),
+    supabase.from('kys_menu').select('id, baslik, aciklama, sira_no').eq('parent_id', menu.id).order('sira_no'),
     supabase
       .from('kys_baslik')
       .select('id, baslik, aciklama, kod, sira_no, sorumlu_birim, kys_belge(id, sorumlu_birim, dosya_adi, created_by_email)')
@@ -81,7 +81,13 @@ export default async function KysHubSayfa({ menuId }: { menuId: number }) {
       menuId={menu.id}
       menuLabel={menu.baslik}
       aciklama={menu.aciklama ?? ''}
-      altMenuler={(children ?? []).map(c => ({ id: c.id, baslik: c.baslik, aciklama: c.aciklama ?? undefined, href: kysMenuYolu(c.id) }))}
+      altMenuler={(children ?? []).map(c => ({
+        id: c.id,
+        baslik: c.baslik,
+        aciklama: c.aciklama ?? undefined,
+        href: kysMenuYolu(c.id),
+        sira_no: c.sira_no,
+      }))}
       basliklar={basliklar}
       mudurlukler={mudurlukler ?? []}
       auditLoglarByRefId={auditLoglarByBaslikId}

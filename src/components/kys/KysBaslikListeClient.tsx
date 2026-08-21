@@ -2,15 +2,28 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRef, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
 import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
-import { kysBaslikEkle, kysBaslikGuncelle, kysBelgeKaydet, kysBelgeYuklemeHazirla } from '@/app/(dashboard)/kys/actions'
+import {
+  kysBaslikEkle,
+  kysBaslikGuncelle,
+  kysBaslikSiraTasi,
+  kysBelgeKaydet,
+  kysBelgeYuklemeHazirla,
+} from '@/app/(dashboard)/kys/actions'
 import { kysBelgeStorageYukle } from '@/lib/kys-belge-yukle'
 import { kysBelgeAuditDegerGoster, kysBelgeAuditDiffSatirlari } from '@/lib/kys-audit'
 import { KYS_BELGE_MAX_BOYUT } from '@/lib/kys'
 import SorumluBirimCokluSecim, { birimListToString, birimStringToList } from '@/components/kys/SorumluBirimCokluSecim'
+import {
+  KysListeAracCubugu,
+  KysSortTh,
+  kysListeSirala,
+  useKysListeSayfalama,
+  type KysListeSortYon,
+} from '@/components/kys/KysListeKontrol'
 import type { KysGoruntulemeGrubu } from '@/lib/kys-goruntuleme'
 import type { Tables } from '@/types/database'
 
@@ -82,6 +95,55 @@ export default function KysBaslikListeClient({
   const [sorumluBirimler, setSorumluBirimler] = useState<string[]>([])
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [sortKey, setSortKey] = useState<string | null>('sira')
+  const [sortYon, setSortYon] = useState<KysListeSortYon>('asc')
+
+  const siraliBasliklar = useMemo(
+    () =>
+      kysListeSirala(basliklar, sortKey, sortYon, (item, key) => {
+        if (key === 'sira') return item.sira_no
+        if (key === 'kod') return item.kod ?? ''
+        if (key === 'baslik') return item.baslik
+        if (key === 'birim') return item.sorumlu_birim ?? ''
+        if (key === 'belge') return item.belge_id != null ? 1 : 0
+        return null
+      }),
+    [basliklar, sortKey, sortYon],
+  )
+
+  const {
+    sayfaBoyutu,
+    setSayfaBoyutu,
+    sayfa,
+    setSayfa,
+    toplamSayfa,
+    toplam,
+    sayfali,
+    baslangicSira,
+  } = useKysListeSayfalama(siraliBasliklar, 25)
+
+  const dbSirasiAktif = sortKey === 'sira' && sortYon === 'asc'
+
+  function sortDegistir(key: string) {
+    if (sortKey === key) {
+      setSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortYon('asc')
+    }
+    setSayfa(1)
+  }
+
+  function siraTasi(id: number, yon: 'yukari' | 'asagi') {
+    startTransition(async () => {
+      const res = await kysBaslikSiraTasi(id, yon)
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      router.refresh()
+    })
+  }
 
   function kaydet() {
     setHata(null)
@@ -261,34 +323,64 @@ export default function KysBaslikListeClient({
       ) : null}
 
       {basliklar.length > 0 ? (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="w-20 px-3 py-3 text-center font-semibold text-slate-700">Sıra No</th>
-                <th className="w-28 px-3 py-3 text-left font-semibold text-slate-700">Kod</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Başlık</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Sorumlu Birim</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Belge Durumu</th>
-                <th className="w-36 px-3 py-3 text-center font-semibold text-slate-700">İşlem</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {basliklar.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                    Bu menüde henüz başlık yok. “Başlık Ekle” ile oluşturabilirsiniz.
-                  </td>
+      <div className="space-y-3">
+        <KysListeAracCubugu
+          toplam={toplam}
+          sayfa={sayfa}
+          toplamSayfa={toplamSayfa}
+          sayfaBoyutu={sayfaBoyutu}
+          onSayfaBoyutu={setSayfaBoyutu}
+          onSayfa={setSayfa}
+          etiket="başlık"
+        />
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <KysSortTh label="Sıra No" sortKey="sira" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} align="center" className="w-28" />
+                  <KysSortTh label="Kod" sortKey="kod" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} className="w-28" />
+                  <KysSortTh label="Başlık" sortKey="baslik" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} />
+                  <KysSortTh label="Sorumlu Birim" sortKey="birim" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} />
+                  <KysSortTh label="Belge Durumu" sortKey="belge" aktifKey={sortKey} yon={sortYon} onSort={sortDegistir} />
+                  <th className="w-40 px-3 py-3 text-center font-semibold text-slate-700">İşlem</th>
                 </tr>
-              ) : (
-                basliklar.map((item, i) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sayfali.map((item, i) => {
                   const belgeLogKey = item.belge_id != null ? String(item.belge_id) : ''
                   const loglar = auditLoglarByRefId[String(item.id)] ?? []
                   const goruntulemeler = belgeLogKey ? goruntulemelerByRefId[belgeLogKey] ?? [] : []
+                  const globalIdx = baslangicSira + i
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">{i + 1}</td>
+                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">
+                        <div className="inline-flex items-center gap-1">
+                          {!saltOkunur && dbSirasiAktif ? (
+                            <span className="inline-flex flex-col">
+                              <button
+                                type="button"
+                                disabled={isPending || globalIdx === 0}
+                                onClick={() => siraTasi(item.id, 'yukari')}
+                                className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                                title="Yukarı taşı"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isPending || globalIdx >= toplam - 1}
+                                onClick={() => siraTasi(item.id, 'asagi')}
+                                className="h-4 w-5 text-[10px] leading-none text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                                title="Aşağı taşı"
+                              >
+                                ▼
+                              </button>
+                            </span>
+                          ) : null}
+                          <span>{globalIdx + 1}</span>
+                        </div>
+                      </td>
                       <td className="px-3 py-3 tabular-nums text-slate-500">
                         {item.kod ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">{item.kod}</span> : <span className="text-slate-300">—</span>}
                       </td>
@@ -371,10 +463,10 @@ export default function KysBaslikListeClient({
                       </td>
                     </tr>
                   )
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       ) : null}
