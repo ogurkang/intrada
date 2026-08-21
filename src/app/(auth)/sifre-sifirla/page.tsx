@@ -125,7 +125,7 @@ export default function SifreSifirlaPage() {
               maxLength={32}
             />
             <p className="text-xs text-slate-500 mt-1">
-              Yalnızca harf (A–Z). Türkçe karakter Latin harfe çevrilir; kayıt büyük harfle yapılır.
+              Yalnızca harf (A–Z) ve rakam (0–9). Türkçe karakter Latin harfe çevrilir; kayıt büyük harfle yapılır.
             </p>
           </div>
 

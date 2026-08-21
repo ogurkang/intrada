@@ -78,7 +78,7 @@ export default function DisDenetcilerClient({ denetciler }: { denetciler: Denetc
 
       <Modal open={ekleAcik} onClose={() => setEkleAcik(false)} title="Dış Denetçi Ekle">
         <form ref={formRef} className="space-y-4" onSubmit={e => { e.preventDefault(); gonder(e.currentTarget, disDenetciOlustur, () => { setEkleAcik(false); formRef.current?.reset() }) }}>
-          <Alan name="kullanici_adi" label="Kullanıcı Adı" required placeholder="SAYISTAYDENETCI" />
+          <Alan name="kullanici_adi" label="Kullanıcı Adı" required placeholder="MISAFIR2" />
           <Alan name="ad_soyad" label="Ad Soyad" required />
           <Alan name="kurum_adi" label="Kurum Adı" required placeholder="Sayıştay" />
           <Alan name="e_posta" label="E-posta (opsiyonel)" type="email" />

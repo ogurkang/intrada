@@ -1,5 +1,5 @@
 /**
- * Kalıcı kullanıcı adı: yalnızca İngilizce harf (A–Z), kayıt her zaman büyük harf.
+ * Kalıcı kullanıcı adı: İngilizce harf (A–Z) ve rakam (0–9), kayıt her zaman büyük harf.
  * Türkçe klavye girişi Latin harfe indirgenir (ör. Gürkan → GURKAN).
  */
 
@@ -23,23 +23,23 @@ function turkceyiLatinHarfe(s: string): string {
 }
 
 /**
- * Form / yapıştırma girdisinden yalnızca A–Z bırakır, büyük harfe çevirir.
+ * Form / yapıştırma girdisinden yalnızca A–Z ve 0–9 bırakır, büyük harfe çevirir.
  */
 export function normalizeKullaniciAdi(raw: string): string {
   const latin = turkceyiLatinHarfe(raw.trim())
-  const sadeceHarf = latin.replace(/[^a-zA-Z]/g, '')
-  return sadeceHarf.toUpperCase()
+  const sadeceHarfRakam = latin.replace(/[^a-zA-Z0-9]/g, '')
+  return sadeceHarfRakam.toUpperCase()
 }
 
 export function kullaniciAdiGecerliMi(normalized: string): boolean {
   const { min, max } = KULLANICI_ADI_BOYUT
   if (normalized.length < min || normalized.length > max) return false
-  return /^[A-Z]+$/.test(normalized)
+  return /^[A-Z0-9]+$/.test(normalized)
 }
 
 export function kullaniciAdiHataMetni(): string {
   const { min, max } = KULLANICI_ADI_BOYUT
-  return `Kullanıcı adı ${min}–${max} karakter olmalı; yalnızca harf (A–Z). Rakam veya özel karakter yok; yazdığınız küçük harf otomatik büyük kaydedilir.`
+  return `Kullanıcı adı ${min}–${max} karakter olmalı; harf (A–Z) ve rakam (0–9) kullanılabilir. Özel karakter yok; yazdığınız küçük harf otomatik büyük kaydedilir.`
 }
 
 /** Supabase Auth e-posta/şifre altyapısında kullanıcı adıyla giriş için iç kimlik. */

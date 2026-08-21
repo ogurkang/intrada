@@ -56,8 +56,8 @@ export default function IlkKurulumForm({ sicilNo, email }: { sicilNo: string; em
           maxLength={32}
         />
         <p className="text-xs text-slate-500 mt-1">
-          Yalnızca harf (A–Z). Türkçe karakter yazsanız Latin harfe çevrilir. Yazdığınız metin büyük harf ve böyle
-          kaydedilir (ör. adapazari → ADAPAZARI).
+          Harf (A–Z) ve rakam (0–9). Türkçe karakter yazsanız Latin harfe çevrilir. Yazdığınız metin büyük harf ve böyle
+          kaydedilir (ör. misafir2 → MISAFIR2).
         </p>
       </div>
 
