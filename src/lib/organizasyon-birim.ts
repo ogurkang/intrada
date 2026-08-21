@@ -262,7 +262,9 @@ export function organizasyonAgacKur(birimler: OrganizasyonBirimSatir[]): Organiz
       kokler.push(dugum)
     }
   })
-  const turSira: Record<string, number> = { baskan: 0, baskan_yardimcisi: 1, mudurluk: 2 }
+  // Başkanın doğrudan bağlı müdürlükleri, başkan yardımcılarının üstünde listelenir
+  // (Örn. Özel Kalem / Basın Yayın / Teftiş — başkanın altında görünür).
+  const turSira: Record<string, number> = { baskan: 0, mudurluk: 1, baskan_yardimcisi: 2 }
   const sirala = (liste: OrganizasyonAgacDugum[]) => {
     liste.sort((a, b) => {
       const t = (turSira[a.birim_turu] ?? 9) - (turSira[b.birim_turu] ?? 9)

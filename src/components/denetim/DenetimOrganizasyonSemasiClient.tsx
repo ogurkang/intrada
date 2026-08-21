@@ -57,7 +57,6 @@ export default function DenetimOrganizasyonSemasiClient({
             <tbody>
               {duz.map(({ dugum, seviye }) => {
                 const ozel = dugum.birim_turu !== 'mudurluk'
-                const telefon = dugum.birim_turu === 'mudurluk' ? dugum.personel_telefon : ''
                 return (
                   <tr key={dugum.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-2.5" style={{ paddingLeft: `${seviye * 1.5 + 1}rem` }}>
@@ -70,7 +69,7 @@ export default function DenetimOrganizasyonSemasiClient({
                       {dugum.personel_adi || <span className="italic text-slate-300">—</span>}
                     </td>
                     <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">
-                      {ozel ? <span className="text-slate-300">—</span> : telefon || <span className="italic text-slate-300">—</span>}
+                      {dugum.personel_telefon || <span className="italic text-slate-300">—</span>}
                     </td>
                   </tr>
                 )
