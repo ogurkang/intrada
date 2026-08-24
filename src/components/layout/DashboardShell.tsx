@@ -6,6 +6,7 @@ import Header from './Header'
 import PermissionGate from '@/components/auth/PermissionGate'
 import IntradaAsistanWidget from '@/components/asistan/IntradaAsistanWidget'
 import HayaletProfilBanner from '@/components/layout/HayaletProfilBanner'
+import TarayiciGeriIleriKilidi from '@/components/layout/TarayiciGeriIleriKilidi'
 import type { AppAccess } from '@/lib/app-access'
 import type { HayaletProfilDurum } from '@/lib/hayalet-profil'
 
@@ -45,6 +46,7 @@ export default function DashboardShell({
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      <TarayiciGeriIleriKilidi />
       {/* Mobil overlay */}
       {sidebarOpen && (
         <div
