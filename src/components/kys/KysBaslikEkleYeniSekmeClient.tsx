@@ -177,13 +177,25 @@ export default function KysBaslikEkleYeniSekmeClient({ menuId, menuLabel, mudurl
       {hata ? <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{hata}</p> : null}
 
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setYeniSatirlar([...yeniSatirlar, bosSatir()])}
-          className="rounded-lg border border-dashed border-slate-400 px-3 py-2 text-xs font-medium text-slate-700"
-        >
-          + Satır Ekle
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setYeniSatirlar([...yeniSatirlar, bosSatir()])}
+            className="rounded-lg border border-dashed border-slate-400 px-3 py-2 text-xs font-medium text-slate-700"
+          >
+            + Satır Ekle
+          </button>
+          {([5, 25, 50] as const).map(adet => (
+            <button
+              key={adet}
+              type="button"
+              onClick={() => setYeniSatirlar([...yeniSatirlar, ...Array.from({ length: adet }, bosSatir)])}
+              className="rounded-lg border border-dashed border-slate-400 px-3 py-2 text-xs font-medium text-slate-700"
+            >
+              + {adet} Satır Ekle
+            </button>
+          ))}
+        </div>
         <div className="flex gap-2">
           <button
             type="button"
