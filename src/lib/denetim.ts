@@ -1,5 +1,9 @@
 export const DENETIM_BELGE_BUCKET = 'denetim-belgeler'
 export const DENETIM_BELGE_MAX_BOYUT = 50 * 1024 * 1024
+export const DENETIM_BASLIK_SILME_ENGEL =
+  'Bu başlıkta yüklü dosya bulunduğu için silinemez. Önce dosyayı silmelisiniz.'
+export const DENETIM_MENU_SILME_ENGEL =
+  'Bu menüde alt menü, başlık veya yüklü dosya bulunduğu için silinemez. Önce onları silmelisiniz.'
 
 export const DENETIM_BELGE_MIME = [
   'application/pdf',
@@ -147,6 +151,10 @@ export type DenetimMenuChild = {
   label: string
   aciklama?: string
   ikon?: DenetimMenuIkonAnahtar
+  /** Dinamik menü kaydı; verildiğinde kart üzerinden düzenle/sil yapılabilir. */
+  menuId?: number
+  /** Sistem menüsü ise düzenleme/silme kapalıdır. */
+  sistem?: boolean
 }
 
 export type DenetimMenuBolum = {

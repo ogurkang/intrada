@@ -4,13 +4,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
-import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { IndirLink, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import SilOnayModal from '@/components/ui/SilOnayModal'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import {
   kysBaslikEkle,
   kysBaslikGuncelle,
+  kysBaslikSil,
   kysBelgeKaydet,
+  kysBelgeSil,
   kysBelgeYuklemeHazirla,
+  kysMenuGuncelle,
+  kysMenuSil,
 } from '@/app/(dashboard)/kys/actions'
 import { kysBelgeStorageYukle } from '@/lib/kys-belge-yukle'
 import { kysBelgeAuditDegerGoster, kysBelgeAuditDiffSatirlari } from '@/lib/kys-audit'
@@ -96,6 +101,14 @@ export default function KysHubClient({
   // Geçmiş
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
   const [arama, setArama] = useState('')
+
+  // Alt menü düzenle / sil
+  const [menuDuzenle, setMenuDuzenle] = useState<AltMenuKart | null>(null)
+  const [menuBaslik, setMenuBaslik] = useState('')
+  const [menuAciklama, setMenuAciklama] = useState('')
+
+  const [silOnay, setSilOnay] = useState<{ tur: 'baslik' | 'belge' | 'menu'; id: number; ad: string } | null>(null)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
 
   const [baslikSortKey, setBaslikSortKey] = useState<string | null>('sira')
   const [baslikSortYon, setBaslikSortYon] = useState<KysListeSortYon>('asc')
@@ -241,6 +254,47 @@ export default function KysHubClient({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  function menuDuzenleAc(kart: AltMenuKart) {
+    setMenuDuzenle(kart)
+    setMenuBaslik(kart.baslik)
+    setMenuAciklama(kart.aciklama ?? '')
+    setHata(null)
+  }
+
+  function menuDuzenleKaydet() {
+    if (!menuDuzenle) return
+    const fd = new FormData()
+    fd.set('id', String(menuDuzenle.id))
+    fd.set('baslik', menuBaslik)
+    fd.set('aciklama', menuAciklama)
+    setHata(null)
+    startTransition(async () => {
+      const res = await kysMenuGuncelle(fd)
+      if (res.hata) { setHata(res.hata); return }
+      setMenuDuzenle(null)
+      router.refresh()
+    })
+  }
+
+  function silOnayla() {
+    if (!silOnay) return
+    const { tur, id } = silOnay
+    const fd = new FormData()
+    fd.set('id', String(id))
+    startTransition(async () => {
+      const res = tur === 'belge' ? await kysBelgeSil(fd) : tur === 'menu' ? await kysMenuSil(fd) : await kysBaslikSil(fd)
+      if (res.hata) {
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
+        return
+      }
+      setSilOnay(null)
+      setDuzenleSatir(null)
+      setMenuDuzenle(null)
+      router.refresh()
+    })
+  }
+
   function yukleKaydet() {
     if (!yukleSatir) return
     const files = Array.from(fileRef.current?.files ?? [])
@@ -345,7 +399,7 @@ export default function KysHubClient({
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <KysSortTh label="Sıra No" sortKey="sira" aktifKey={altSortKey} yon={altSortYon} onSort={altSortDegistir} align="center" className="w-28" />
                     <KysSortTh label="Alt Menü" sortKey="baslik" aktifKey={altSortKey} yon={altSortYon} onSort={altSortDegistir} />
-                    <th className="w-28 px-3 py-3 text-center font-semibold text-slate-700">İşlem</th>
+                    <th className="w-36 px-3 py-3 text-center font-semibold text-slate-700">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -369,13 +423,22 @@ export default function KysHubClient({
                             <span className="mt-0.5 block text-xs text-slate-500">{k.aciklama}</span>
                           ) : null}
                         </td>
-                        <td className="px-3 py-3 text-center">
-                          <Link
-                            href={k.href}
-                            className="inline-flex rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                          >
-                            Aç →
-                          </Link>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            {!saltOkunur && (
+                              <KalemDuzenleDugmesi
+                                disabled={isPending}
+                                onClick={() => menuDuzenleAc(k)}
+                                title="Alt menüyü düzenle veya sil"
+                              />
+                            )}
+                            <Link
+                              href={k.href}
+                              className="inline-flex rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                            >
+                              Aç →
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -486,19 +549,22 @@ export default function KysHubClient({
                               />
                             )}
                             {item.belge_id != null ? (
-                              <a
-                                href={`/kys/onizle?id=${item.belge_id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
-                                title="Önizle"
-                                aria-label="Önizle"
-                              >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <circle cx="11" cy="11" r="7" />
-                                  <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                                </svg>
-                              </a>
+                              <>
+                                <a
+                                  href={`/kys/onizle?id=${item.belge_id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
+                                  title="Önizle"
+                                  aria-label="Önizle"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+                                  </svg>
+                                </a>
+                                <IndirLink href={`/api/kys/onizle?indir=1&id=${item.belge_id}`} title="Dosyayı indir" />
+                              </>
                             ) : null}
                             {!saltOkunur && (
                               <button
@@ -652,13 +718,41 @@ export default function KysHubClient({
             />
           </div>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => { setDuzenleSatir(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
-              İptal
-            </button>
-            <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {isPending ? 'Kaydediliyor…' : 'Güncelle'}
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {duzenleSatir?.belge_id != null ? (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() =>
+                    setSilOnay({
+                      tur: 'belge',
+                      id: duzenleSatir.belge_id as number,
+                      ad: duzenleSatir.dosya_adi ?? 'Yüklü dosya',
+                    })
+                  }
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                >
+                  Dosyayı Sil
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => duzenleSatir && setSilOnay({ tur: 'baslik', id: duzenleSatir.id, ad: duzenleSatir.baslik })}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                Başlığı Sil
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setDuzenleSatir(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -724,6 +818,78 @@ export default function KysHubClient({
         diffSatirlari={kysBelgeAuditDiffSatirlari}
         degerGoster={kysBelgeAuditDegerGoster}
       />
+
+      {/* Alt Menü Düzenle Modal */}
+      <Modal open={menuDuzenle != null} onClose={() => { setMenuDuzenle(null); setHata(null) }} title="Alt Menüyü Düzenle" size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Alt Menü Adı</label>
+            <input
+              value={menuBaslik}
+              onChange={e => setMenuBaslik(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
+            <textarea
+              value={menuAciklama}
+              onChange={e => setMenuAciklama(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => menuDuzenle && setSilOnay({ tur: 'menu', id: menuDuzenle.id, ad: menuDuzenle.baslik })}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+            >
+              Alt Menüyü Sil
+            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setMenuDuzenle(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={menuDuzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        pending={isPending}
+        mesaj={
+          silOnay?.tur === 'belge'
+            ? `“${silOnay.ad}” dosyası kalıcı olarak silinecek. Onaylıyor musunuz?`
+            : silOnay?.tur === 'menu'
+              ? `“${silOnay.ad}” alt menüsü kalıcı olarak silinecek. Onaylıyor musunuz?`
+              : `“${silOnay?.ad ?? ''}” başlığı kalıcı olarak silinecek. Onaylıyor musunuz?`
+        }
+        onEvet={silOnayla}
+      />
+
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silinemez" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">{silEngelMesaj}</p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSilEngelMesaj(null)}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

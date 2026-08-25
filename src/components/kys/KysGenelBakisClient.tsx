@@ -7,9 +7,9 @@ import Modal from '@/components/ui/Modal'
 import {
   GozDetayLink,
   KalemDuzenleDugmesi,
-  CopKutusuSilDugmesi,
   SaatGecmisDugmesi,
 } from '@/components/ui/TabloIslemIkonlari'
+import SilOnayModal from '@/components/ui/SilOnayModal'
 import {
   kysAnaAltMenuTopluEkle,
   kysAltMenuTopluEkle,
@@ -19,7 +19,7 @@ import {
   type KysBulkMenuSatir,
 } from '@/app/(dashboard)/kys/actions'
 import { kysMenuAuditDegerGoster, kysMenuAuditDiffSatirlari } from '@/lib/kys-audit'
-import { kysMenuYolu, KYS_MENU_SILME_ENGEL } from '@/lib/kys'
+import { kysMenuYolu } from '@/lib/kys'
 import type { Tables } from '@/types/database'
 
 export type KysAnaMenuSatir = {
@@ -67,7 +67,7 @@ export default function KysGenelBakisClient({
   const [duzenleAdi, setDuzenleAdi] = useState('')
   const [duzenleAciklama, setDuzenleAciklama] = useState('')
   const [silOnay, setSilOnay] = useState<{ id: number; baslik: string } | null>(null)
-  const [silEngelAcik, setSilEngelAcik] = useState(false)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
 
   function anaMenuAc() {
     setAnaSatirlar([boshSatir()])
@@ -222,16 +222,13 @@ export default function KysGenelBakisClient({
     fd.set('id', String(silOnay.id))
     startTransition(async () => {
       const res = await kysMenuSil(fd)
-      if (res.hata === KYS_MENU_SILME_ENGEL) {
-        setSilOnay(null)
-        setSilEngelAcik(true)
-        return
-      }
       if (res.hata) {
-        setHata(res.hata)
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
         return
       }
       setSilOnay(null)
+      setDuzenleMenu(null)
       router.refresh()
     })
   }
@@ -342,17 +339,6 @@ export default function KysGenelBakisClient({
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M4 20h4.586a1 1 0 00.707-.293l9.414-9.414a2 2 0 000-2.828l-3.172-3.172a2 2 0 00-2.828 0L4.293 14.707A1 1 0 004 15.414V20z" />
                                       </svg>
                                     </button>
-                                    <button
-                                      type="button"
-                                      disabled={isPending}
-                                      onClick={() => silIste(a)}
-                                      className="rounded p-0.5 text-red-500 hover:bg-white hover:text-red-700 disabled:opacity-40"
-                                      title="Alt menüyü sil"
-                                    >
-                                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2M4 7h16" />
-                                      </svg>
-                                    </button>
                                   </span>
                                 )}
                               </span>
@@ -368,18 +354,11 @@ export default function KysGenelBakisClient({
                             title="Menü geçmişi"
                           />
                           {!saltOkunur && (
-                            <>
-                              <KalemDuzenleDugmesi
-                                disabled={isPending}
-                                onClick={() => duzenleAc(m, 'ana')}
-                                title="Ana alt menüyü düzenle"
-                              />
-                              <CopKutusuSilDugmesi
-                                disabled={isPending}
-                                onClick={() => silIste(m)}
-                                title="Ana alt menüyü sil"
-                              />
-                            </>
+                            <KalemDuzenleDugmesi
+                              disabled={isPending}
+                              onClick={() => duzenleAc(m, 'ana')}
+                              title="Ana alt menüyü düzenle"
+                            />
                           )}
                           <GozDetayLink href={kysMenuYolu(m.id)} title="Detay" />
                         </div>
@@ -614,43 +593,42 @@ export default function KysGenelBakisClient({
             />
           </div>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => { setDuzenleMenu(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
-              İptal
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => duzenleMenu && silIste(duzenleMenu)}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              Sil
             </button>
-            <button type="button" disabled={isPending} onClick={kaydetDuzenle} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {isPending ? 'Kaydediliyor…' : 'Güncelle'}
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setDuzenleMenu(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={kaydetDuzenle} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
 
-      <Modal open={silOnay != null} onClose={() => setSilOnay(null)} title="Menüyü Sil" size="sm">
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            “{silOnay?.baslik}” menüsünü silmek istediğinize emin misiniz?
-          </p>
-          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setSilOnay(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
-              Vazgeç
-            </button>
-            <button type="button" disabled={isPending} onClick={silOnayla} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {isPending ? 'Siliniyor…' : 'Sil'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        mesaj={`“${silOnay?.baslik ?? ''}” menüsünü silmek istediğinize emin misiniz?`}
+        onEvet={silOnayla}
+        pending={isPending}
+      />
 
-      <Modal open={silEngelAcik} onClose={() => setSilEngelAcik(false)} title="Silme İşlemi Yapılamadı" size="md">
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silme işlemi yapılamadı" size="md">
         <div className="space-y-4">
-          <p className="text-sm font-medium text-slate-800">
-            Menü İçeriğinde Belge Bulunduğundan Silme İşlemi Gerçekleşmemiştir.
-          </p>
+          <p className="text-sm font-medium text-slate-800">{silEngelMesaj}</p>
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setSilEngelAcik(false)}
+              onClick={() => setSilEngelMesaj(null)}
               className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
             >
               Tamam

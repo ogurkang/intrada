@@ -6,7 +6,7 @@ import { getAppAccess } from '@/lib/app-access'
 import {
   KYS_BELGE_BUCKET,
   KYS_BELGE_MAX_BOYUT,
-  KYS_MENU_SILME_ENGEL,
+  KYS_BASLIK_SILME_ENGEL,
   kysBelgeMimeCoz,
   kysBelgeUzanti,
   kysMenuSlugUret,
@@ -310,23 +310,31 @@ export async function kysAltMenuTopluEkle(
   return { ok: true, hatalar: hatalar.length > 0 ? hatalar : undefined }
 }
 
-async function kysMenuAltindaBelgeVar(
+async function kysMenuSilEngelMesaji(
   supabase: Awaited<ReturnType<typeof createClient>>,
   menuId: number,
-): Promise<boolean> {
-  const ids = [menuId]
+): Promise<string | null> {
   const { data: kids } = await supabase.from('kys_menu').select('id').eq('parent_id', menuId)
-  for (const k of kids ?? []) ids.push(k.id)
-
+  const altSayi = kids?.length ?? 0
+  const ids = [menuId, ...(kids ?? []).map(k => k.id)]
   const { data: basliklar } = await supabase.from('kys_baslik').select('id').in('menu_id', ids)
   const baslikIds = (basliklar ?? []).map(b => b.id)
-  if (baslikIds.length === 0) return false
+  const { count: belgeSayi } = baslikIds.length
+    ? await supabase.from('kys_belge').select('id', { count: 'exact', head: true }).in('baslik_id', baslikIds)
+    : { count: 0 }
 
-  const { count } = await supabase
-    .from('kys_belge')
-    .select('id', { count: 'exact', head: true })
-    .in('baslik_id', baslikIds)
-  return (count ?? 0) > 0
+  const parcalar: string[] = []
+  if (altSayi > 0) parcalar.push('alt menü')
+  if (baslikIds.length > 0) parcalar.push('başlık')
+  if ((belgeSayi ?? 0) > 0) parcalar.push('yüklü dosya')
+  if (parcalar.length === 0) return null
+  const neler =
+    parcalar.length === 1
+      ? parcalar[0]
+      : parcalar.length === 2
+        ? `${parcalar[0]} ve ${parcalar[1]}`
+        : `${parcalar.slice(0, -1).join(', ')} ve ${parcalar[parcalar.length - 1]}`
+  return `Bu menüde ${neler} bulunduğu için silinemez. Önce onları silmelisiniz.`
 }
 
 export async function kysMenuGuncelle(formData: FormData): Promise<KysActionSonuc> {
@@ -384,9 +392,8 @@ export async function kysMenuSil(formData: FormData): Promise<KysActionSonuc> {
     .maybeSingle()
   if (!onceki) return { hata: 'Menü bulunamadı.' }
 
-  if (await kysMenuAltindaBelgeVar(supabase, id)) {
-    return { hata: KYS_MENU_SILME_ENGEL }
-  }
+  const doluHata = await kysMenuSilEngelMesaji(supabase, id)
+  if (doluHata) return { hata: doluHata }
 
   const { error } = await supabase.from('kys_menu').delete().eq('id', id)
   if (error) return { hata: error.message }
@@ -523,6 +530,83 @@ export async function kysBaslikGuncelle(formData: FormData): Promise<KysActionSo
     sonraki: { baslik, aciklama, kod, sorumlu_birim },
   })
   revalidateKys(onceki.menu_id)
+  return { ok: true, id }
+}
+
+export async function kysBaslikSil(formData: FormData): Promise<KysActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Başlık bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('kys_baslik')
+    .select('id, menu_id, baslik, aciklama, kod, sorumlu_birim')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Başlık bulunamadı.' }
+
+  const { count } = await supabase
+    .from('kys_belge')
+    .select('id', { count: 'exact', head: true })
+    .eq('baslik_id', id)
+  if ((count ?? 0) > 0) return { hata: KYS_BASLIK_SILME_ENGEL }
+
+  const { error } = await supabase.from('kys_baslik').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeKysBaslikAudit(supabase, {
+    baslikId: id,
+    islem: 'Sil',
+    ozet: `${onceki.baslik} başlığı silindi.`,
+    onceki: {
+      baslik: onceki.baslik,
+      aciklama: onceki.aciklama,
+      kod: onceki.kod,
+      sorumlu_birim: onceki.sorumlu_birim,
+    },
+  })
+  revalidateKys(onceki.menu_id)
+  return { ok: true, id }
+}
+
+export async function kysBelgeSil(formData: FormData): Promise<KysActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Belge bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('kys_belge')
+    .select('id, baslik_id, dosya_adi, storage_path, mime_type, boyut_byte, sorumlu_birim, kys_baslik(baslik, menu_id)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Belge bulunamadı.' }
+
+  const baslik = Array.isArray(onceki.kys_baslik) ? onceki.kys_baslik[0] : onceki.kys_baslik
+  if (onceki.storage_path) {
+    await supabase.storage.from(KYS_BELGE_BUCKET).remove([onceki.storage_path])
+  }
+  const { error } = await supabase.from('kys_belge').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeKysBelgeAudit(supabase, {
+    belgeId: id,
+    islem: 'Sil',
+    ozet: `${baslik?.baslik ?? 'Başlık'} belgesi silindi.`,
+    onceki: kysBelgeAuditSnapshot({
+      baslik: baslik?.baslik,
+      sorumlu_birim: onceki.sorumlu_birim,
+      dosya_adi: onceki.dosya_adi,
+      mime_type: onceki.mime_type,
+      boyut_byte: onceki.boyut_byte,
+    }),
+  })
+  if (baslik?.menu_id) revalidateKys(baslik.menu_id)
   return { ok: true, id }
 }
 

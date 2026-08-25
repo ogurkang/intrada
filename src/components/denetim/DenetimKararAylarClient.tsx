@@ -4,9 +4,14 @@ import Link from 'next/link'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
-import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { IndirLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import SilOnayModal from '@/components/ui/SilOnayModal'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
-import { denetimKararBelgeKaydet, denetimKararBelgeYuklemeHazirla } from '@/app/(dashboard)/denetim/actions'
+import {
+  denetimKararBelgeKaydet,
+  denetimKararBelgeSil,
+  denetimKararBelgeYuklemeHazirla,
+} from '@/app/(dashboard)/denetim/actions'
 import { denetimBelgeStorageYukle } from '@/lib/denetim-belge-yukle'
 import { DENETIM_AYLAR_TR, DENETIM_BELGE_MAX_BOYUT, type DenetimKararTuru } from '@/lib/denetim'
 import {
@@ -62,8 +67,26 @@ export default function DenetimKararAylarClient({
   const [yukleAy, setYukleAy] = useState<number | null>(null)
   const [sorumluBirim, setSorumluBirim] = useState('')
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [silOnay, setSilOnay] = useState<{ id: number; ad: string } | null>(null)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
 
   const yazmaKapali = donemKapali || saltOkunur
+
+  function silOnayla() {
+    if (!silOnay) return
+    const fd = new FormData()
+    fd.set('id', String(silOnay.id))
+    startTransition(async () => {
+      const res = await denetimKararBelgeSil(fd)
+      if (res.hata) {
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
+        return
+      }
+      setSilOnay(null)
+      router.refresh()
+    })
+  }
 
   function yukleAc(ay: number, mevcutBirim: string | null) {
     setYukleAy(ay)
@@ -184,19 +207,25 @@ export default function DenetimKararAylarClient({
                           title={s.belge_id ? 'Yükleme geçmişi' : 'Henüz belge yok'}
                         />
                         {s.belge_id != null ? (
-                          <a
-                            href={`/denetim/onizle?tur=karar&id=${s.belge_id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
-                            title="Önizle"
-                            aria-label="Önizle"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <circle cx="11" cy="11" r="7" />
-                              <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                            </svg>
-                          </a>
+                          <>
+                            <a
+                              href={`/denetim/onizle?tur=karar&id=${s.belge_id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
+                              title="Önizle"
+                              aria-label="Önizle"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <circle cx="11" cy="11" r="7" />
+                                <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+                              </svg>
+                            </a>
+                            <IndirLink
+                              href={`/api/denetim/onizle?indir=1&tur=karar&id=${s.belge_id}`}
+                              title="Dosyayı indir"
+                            />
+                          </>
                         ) : (
                           <span className={`${IKON} text-slate-300`} title="Belge yok" aria-hidden>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -220,6 +249,25 @@ export default function DenetimKararAylarClient({
                           </svg>
                         </button>
                         )}
+                        {!saltOkunur && s.belge_id != null ? (
+                          <button
+                            type="button"
+                            disabled={isPending || yazmaKapali}
+                            onClick={() =>
+                              setSilOnay({
+                                id: s.belge_id as number,
+                                ad: s.dosya_adi ?? `${DENETIM_AYLAR_TR[s.ay - 1]} belgesi`,
+                              })
+                            }
+                            className={`${IKON} text-red-600 hover:bg-red-50`}
+                            title={yazmaKapali ? 'Yalnızca görüntüleme' : 'Dosyayı sil'}
+                            aria-label="Dosyayı sil"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5h6v2m-8 0l1 13h8l1-13" />
+                            </svg>
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -294,6 +342,29 @@ export default function DenetimKararAylarClient({
         diffSatirlari={denetimKararAuditDiffSatirlari}
         degerGoster={denetimKararAuditDegerGoster}
       />
+
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        pending={isPending}
+        mesaj={`“${silOnay?.ad ?? ''}” dosyası kalıcı olarak silinecek. Onaylıyor musunuz?`}
+        onEvet={silOnayla}
+      />
+
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silinemez" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">{silEngelMesaj}</p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSilEngelMesaj(null)}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

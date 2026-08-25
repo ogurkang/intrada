@@ -26,12 +26,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ hata: 'Belge bulunamadı.' }, { status: 404 })
   }
 
+  const indir = url.searchParams.get('indir') === '1'
   const { data, error } = await supabase.storage
     .from(KYS_BELGE_BUCKET)
-    .createSignedUrl(belge.storage_path, 120)
+    .createSignedUrl(belge.storage_path, 120, indir ? { download: belge.dosya_adi } : undefined)
   if (error || !data?.signedUrl) {
     return NextResponse.json({ hata: 'Belge görüntülenemedi.' }, { status: 500 })
   }
+
+  if (indir) return NextResponse.redirect(data.signedUrl)
 
   return NextResponse.json({
     url: data.signedUrl,

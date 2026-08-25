@@ -7,6 +7,7 @@ import {
   DENETIM_AYLAR_TR,
   DENETIM_BELGE_BUCKET,
   DENETIM_BELGE_MAX_BOYUT,
+  DENETIM_BASLIK_SILME_ENGEL,
   denetimBelgeMimeCoz,
   denetimBelgeUzanti,
   denetimAltBolumBul,
@@ -491,6 +492,93 @@ export async function denetimAltMenuEkle(formData: FormData): Promise<DenetimAct
   return { ok: true, id: inserted.id }
 }
 
+export async function denetimDonemMenuGuncelle(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  const baslik = str(formData, 'baslik')
+  const aciklama = str(formData, 'aciklama') || null
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Menü bulunamadı.' }
+  if (baslik.length < 2) return { hata: 'Menü adı en az 2 karakter olmalıdır.' }
+  if (baslik.length > 120) return { hata: 'Menü adı en fazla 120 karakter olabilir.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_donem_menu')
+    .select('id, donem_id, baslik, aciklama, sistem_anahtari, denetim_donem!inner(durum)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Menü bulunamadı.' }
+  const durum = Array.isArray(onceki.denetim_donem) ? onceki.denetim_donem[0]?.durum : onceki.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı dönemde menü düzenlenemez.' }
+
+  const { error } = await supabase
+    .from('denetim_donem_menu')
+    .update({ baslik, aciklama, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) {
+    if (error.code === '23505') return { hata: 'Bu dönemde aynı adlı menü zaten var.' }
+    return { hata: error.message }
+  }
+  revalidateDonem(onceki.donem_id)
+  return { ok: true, id }
+}
+
+async function denetimMenuSilEngelMesaji(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  menuId: number,
+): Promise<string | null> {
+  const { data: kids } = await supabase.from('denetim_donem_menu').select('id').eq('parent_id', menuId)
+  const altSayi = kids?.length ?? 0
+  const ids = [menuId, ...(kids ?? []).map(k => k.id)]
+  const { data: basliklar } = await supabase.from('denetim_bolum_baslik').select('id').in('menu_id', ids)
+  const baslikIds = (basliklar ?? []).map(b => b.id)
+  const { count: belgeSayi } = baslikIds.length
+    ? await supabase.from('denetim_bolum_belge').select('id', { count: 'exact', head: true }).in('baslik_id', baslikIds)
+    : { count: 0 }
+
+  const parcalar: string[] = []
+  if (altSayi > 0) parcalar.push('alt menü')
+  if (baslikIds.length > 0) parcalar.push('başlık')
+  if ((belgeSayi ?? 0) > 0) parcalar.push('yüklü dosya')
+  if (parcalar.length === 0) return null
+  const neler =
+    parcalar.length === 1
+      ? parcalar[0]
+      : parcalar.length === 2
+        ? `${parcalar[0]} ve ${parcalar[1]}`
+        : `${parcalar.slice(0, -1).join(', ')} ve ${parcalar[parcalar.length - 1]}`
+  return `Bu menüde ${neler} bulunduğu için silinemez. Önce onları silmelisiniz.`
+}
+
+export async function denetimDonemMenuSil(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Menü bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_donem_menu')
+    .select('id, donem_id, baslik, sistem_anahtari, denetim_donem!inner(durum)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Menü bulunamadı.' }
+  const durum = Array.isArray(onceki.denetim_donem) ? onceki.denetim_donem[0]?.durum : onceki.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı dönemde menü silinemez.' }
+  if (onceki.sistem_anahtari) return { hata: 'Sistem menüleri silinemez.' }
+
+  const doluHata = await denetimMenuSilEngelMesaji(supabase, id)
+  if (doluHata) return { hata: doluHata }
+
+  const { error } = await supabase.from('denetim_donem_menu').delete().eq('id', id)
+  if (error) return { hata: error.message }
+  revalidateDonem(onceki.donem_id)
+  return { ok: true, id }
+}
+
 export async function denetimBolumBaslikEkle(formData: FormData): Promise<DenetimActionSonuc> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
@@ -653,6 +741,42 @@ export async function denetimBolumBaslikGuncelle(formData: FormData): Promise<De
   return { ok: true, id }
 }
 
+export async function denetimBolumBaslikSil(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Başlık bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_bolum_baslik')
+    .select('id, donem_id, baslik, aciklama, sorumlu_birim, denetim_donem!inner(durum)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Başlık bulunamadı.' }
+  const durum = Array.isArray(onceki.denetim_donem) ? onceki.denetim_donem[0]?.durum : onceki.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı dönemde başlık silinemez.' }
+
+  const { count } = await supabase
+    .from('denetim_bolum_belge')
+    .select('id', { count: 'exact', head: true })
+    .eq('baslik_id', id)
+  if ((count ?? 0) > 0) return { hata: DENETIM_BASLIK_SILME_ENGEL }
+
+  const { error } = await supabase.from('denetim_bolum_baslik').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeDenetimBolumBaslikAudit(supabase, {
+    baslikId: id,
+    islem: 'Sil',
+    ozet: `${onceki.baslik} başlığı silindi.`,
+    onceki: { baslik: onceki.baslik, aciklama: onceki.aciklama, sorumlu_birim: onceki.sorumlu_birim },
+  })
+  revalidateDonem(onceki.donem_id)
+  return { ok: true, id }
+}
+
 export async function denetimBolumBelgeYuklemeHazirla(formData: FormData): Promise<DenetimYuklemeHazirlik> {
   const gate = await oturum()
   if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
@@ -798,4 +922,85 @@ export async function denetimBolumBelgeKaydet(formData: FormData): Promise<Denet
     .eq('id', baslikId)
   revalidateDonem(baslik.donem_id)
   return { ok: true, id: inserted.id }
+}
+
+export async function denetimBolumBelgeSil(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Belge bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_bolum_belge')
+    .select('id, baslik_id, dosya_adi, storage_path, mime_type, boyut_byte, sorumlu_birim, denetim_bolum_baslik(baslik, bolum, donem_id, denetim_donem!inner(durum))')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Belge bulunamadı.' }
+  const baslik = Array.isArray(onceki.denetim_bolum_baslik) ? onceki.denetim_bolum_baslik[0] : onceki.denetim_bolum_baslik
+  const durum = Array.isArray(baslik?.denetim_donem) ? baslik?.denetim_donem[0]?.durum : baslik?.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı dönemde belge silinemez.' }
+
+  if (onceki.storage_path) {
+    await supabase.storage.from(DENETIM_BELGE_BUCKET).remove([onceki.storage_path])
+  }
+  const { error } = await supabase.from('denetim_bolum_belge').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeDenetimBolumBelgeAudit(supabase, {
+    belgeId: id,
+    islem: 'Sil',
+    ozet: `${baslik?.baslik ?? 'Başlık'} belgesi silindi.`,
+    onceki: denetimBolumBelgeAuditSnapshot({
+      baslik: baslik?.baslik,
+      bolum: baslik?.bolum,
+      sorumlu_birim: onceki.sorumlu_birim,
+      dosya_adi: onceki.dosya_adi,
+      mime_type: onceki.mime_type,
+      boyut_byte: onceki.boyut_byte,
+    }),
+  })
+  if (baslik?.donem_id) revalidateDonem(baslik.donem_id)
+  return { ok: true, id }
+}
+
+export async function denetimKararBelgeSil(formData: FormData): Promise<DenetimActionSonuc> {
+  const gate = await oturum()
+  if (gate.hata || !gate.user) return { hata: gate.hata ?? 'Oturum gerekli.' }
+  const { supabase } = gate
+
+  const id = Number.parseInt(str(formData, 'id'), 10)
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Belge bulunamadı.' }
+
+  const { data: onceki } = await supabase
+    .from('denetim_karar_belge')
+    .select('id, donem_id, karar_turu, ay, dosya_adi, storage_path, mime_type, boyut_byte, sorumlu_birim, denetim_donem!inner(durum)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!onceki) return { hata: 'Belge bulunamadı.' }
+  const durum = Array.isArray(onceki.denetim_donem) ? onceki.denetim_donem[0]?.durum : onceki.denetim_donem?.durum
+  if (durum === 'Kapalı') return { hata: 'Kapalı dönemde belge silinemez.' }
+
+  if (onceki.storage_path) {
+    await supabase.storage.from(DENETIM_BELGE_BUCKET).remove([onceki.storage_path])
+  }
+  const { error } = await supabase.from('denetim_karar_belge').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writeDenetimKararAudit(supabase, {
+    belgeId: id,
+    islem: 'Sil',
+    ozet: `${onceki.karar_turu} ${onceki.ay}. ay belgesi silindi.`,
+    onceki: denetimKararAuditSnapshot({
+      karar_turu: onceki.karar_turu,
+      ay: onceki.ay,
+      sorumlu_birim: onceki.sorumlu_birim,
+      dosya_adi: onceki.dosya_adi,
+      mime_type: onceki.mime_type,
+      boyut_byte: onceki.boyut_byte,
+    }),
+  })
+  revalidateDonem(onceki.donem_id)
+  return { ok: true, id }
 }

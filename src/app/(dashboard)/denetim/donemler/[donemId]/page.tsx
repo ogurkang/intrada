@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
 import { denetimDonemBolumler, denetimTarihGoster, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
 import { denetimMenuAgaciKur } from '@/lib/denetim-menu'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 
 export default async function DenetimDonemDetayPage({
   params,
@@ -20,6 +21,9 @@ export default async function DenetimDonemDetayPage({
   ])
   if (!donem) notFound()
 
+  const saltOkunur = await isCurrentDisDenetci(supabase)
+  const sistemMenuIdleri = new Set((menuler ?? []).filter(m => m.sistem_anahtari).map(m => m.id))
+
   const agac = denetimMenuAgaciKur(donemId, menuler ?? [])
   const kartlar = agac.length
     ? agac.map(b => ({
@@ -27,6 +31,8 @@ export default async function DenetimDonemDetayPage({
         label: b.label,
         aciklama: b.aciklama ?? undefined,
         ikon: b.ikon,
+        menuId: b.id,
+        sistem: sistemMenuIdleri.has(b.id),
       }))
     : denetimDonemBolumler(donemId).map(b => ({
         href: b.href,
@@ -65,6 +71,7 @@ export default async function DenetimDonemDetayPage({
         geriHref={`/denetim/donemler/${donemId}`}
         geriLabel=""
         kartlar={kartlar}
+        menuDuzenlenebilir={!saltOkunur && donem.durum === 'Açık'}
       />
     </div>
   )

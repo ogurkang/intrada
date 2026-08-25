@@ -1,7 +1,10 @@
 export const KYS_BELGE_BUCKET = 'kys-belgeler'
 export const KYS_BELGE_MAX_BOYUT = 50 * 1024 * 1024
 export const KYS_MENU_SILME_ENGEL =
-  'Menü İçeriğinde Belge Bulunduğundan Silme İşlemi Gerçekleşmemiştir.'
+  'Bu menüde alt menü, başlık veya yüklü dosya bulunduğu için silinemez. Önce onları silmelisiniz.'
+
+export const KYS_BASLIK_SILME_ENGEL =
+  'Bu başlıkta yüklü dosya bulunduğu için silinemez. Önce dosyayı silmelisiniz.'
 
 export const KYS_BELGE_MIME = [
   'application/pdf',

@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
-import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { IndirLink, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import SilOnayModal from '@/components/ui/SilOnayModal'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import {
   denetimBolumBaslikEkle,
   denetimBolumBaslikGuncelle,
+  denetimBolumBaslikSil,
   denetimBolumBelgeKaydet,
+  denetimBolumBelgeSil,
   denetimBolumBelgeYuklemeHazirla,
 } from '@/app/(dashboard)/denetim/actions'
 import { denetimBelgeStorageYukle } from '@/lib/denetim-belge-yukle'
@@ -91,6 +94,8 @@ export default function DenetimBolumBaslikListeClient({
   const [yukleSatir, setYukleSatir] = useState<DenetimBolumBaslikSatir | null>(null)
   const [sorumluBirim, setSorumluBirim] = useState('')
   const [gecmisSatir, setGecmisSatir] = useState<DenetimBolumBaslikSatir | null>(null)
+  const [silOnay, setSilOnay] = useState<{ tur: 'baslik' | 'belge'; id: number; ad: string } | null>(null)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const yazmaKapali = donemKapali || saltOkunur
 
@@ -129,6 +134,24 @@ export default function DenetimBolumBaslikListeClient({
     setDuzenleAciklama(satir.aciklama ?? '')
     setDuzenleBirim(satir.sorumlu_birim ?? '')
     setHata(null)
+  }
+
+  function silOnayla() {
+    if (!silOnay) return
+    const fd = new FormData()
+    fd.set('id', String(silOnay.id))
+    const tur = silOnay.tur
+    startTransition(async () => {
+      const res = tur === 'belge' ? await denetimBolumBelgeSil(fd) : await denetimBolumBaslikSil(fd)
+      if (res.hata) {
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
+        return
+      }
+      setSilOnay(null)
+      setDuzenleSatir(null)
+      router.refresh()
+    })
   }
 
   function duzenleKaydet() {
@@ -317,19 +340,25 @@ export default function DenetimBolumBaslikListeClient({
                           />
                           )}
                           {item.belge_id != null ? (
-                            <a
-                              href={`/denetim/onizle?tur=bolum&id=${item.belge_id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
-                              title="Önizle"
-                              aria-label="Önizle"
-                            >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <circle cx="11" cy="11" r="7" />
-                                <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                              </svg>
-                            </a>
+                            <>
+                              <a
+                                href={`/denetim/onizle?tur=bolum&id=${item.belge_id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
+                                title="Önizle"
+                                aria-label="Önizle"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <circle cx="11" cy="11" r="7" />
+                                  <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+                                </svg>
+                              </a>
+                              <IndirLink
+                                href={`/api/denetim/onizle?indir=1&tur=bolum&id=${item.belge_id}`}
+                                title="Dosyayı indir"
+                              />
+                            </>
                           ) : (
                             <span className={`${IKON} text-slate-300`} title="Belge yok" aria-hidden>
                               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -441,13 +470,41 @@ export default function DenetimBolumBaslikListeClient({
             />
           </div>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setDuzenleSatir(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
-              İptal
-            </button>
-            <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {isPending ? 'Kaydediliyor…' : 'Güncelle'}
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {duzenleSatir?.belge_id != null ? (
+                <button
+                  type="button"
+                  disabled={yazmaKapali || isPending}
+                  onClick={() =>
+                    setSilOnay({
+                      tur: 'belge',
+                      id: duzenleSatir.belge_id as number,
+                      ad: duzenleSatir.dosya_adi ?? 'Yüklü dosya',
+                    })
+                  }
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                >
+                  Dosyayı Sil
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={yazmaKapali || isPending}
+                onClick={() => duzenleSatir && setSilOnay({ tur: 'baslik', id: duzenleSatir.id, ad: duzenleSatir.baslik })}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                Başlığı Sil
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setDuzenleSatir(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -520,6 +577,33 @@ export default function DenetimBolumBaslikListeClient({
         diffSatirlari={denetimBolumBelgeAuditDiffSatirlari}
         degerGoster={denetimBolumBelgeAuditDegerGoster}
       />
+
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        pending={isPending}
+        mesaj={
+          silOnay?.tur === 'belge'
+            ? `“${silOnay.ad}” dosyası kalıcı olarak silinecek. Onaylıyor musunuz?`
+            : `“${silOnay?.ad ?? ''}” başlığı kalıcı olarak silinecek. Onaylıyor musunuz?`
+        }
+        onEvet={silOnayla}
+      />
+
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silinemez" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">{silEngelMesaj}</p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSilEngelMesaj(null)}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
-import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { IndirLink, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import SilOnayModal from '@/components/ui/SilOnayModal'
 import DenetimBelgeGecmisPanel from '@/components/denetim/DenetimBelgeGecmisPanel'
 import {
   kysBaslikEkle,
   kysBaslikGuncelle,
+  kysBaslikSil,
   kysBelgeKaydet,
+  kysBelgeSil,
   kysBelgeYuklemeHazirla,
 } from '@/app/(dashboard)/kys/actions'
 import { kysBelgeStorageYukle } from '@/lib/kys-belge-yukle'
@@ -93,6 +96,8 @@ export default function KysBaslikListeClient({
   const [yukleSatir, setYukleSatir] = useState<KysBaslikSatir | null>(null)
   const [sorumluBirimler, setSorumluBirimler] = useState<string[]>([])
   const [gecmisSatir, setGecmisSatir] = useState<KysBaslikSatir | null>(null)
+  const [silOnay, setSilOnay] = useState<{ tur: 'baslik' | 'belge'; id: number; ad: string } | null>(null)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [arama, setArama] = useState('')
   const [sortKey, setSortKey] = useState<string | null>('sira')
@@ -208,6 +213,23 @@ export default function KysBaslikListeClient({
     setDuzenleAciklama(satir.aciklama ?? '')
     setDuzenleBirimler(birimStringToList(satir.sorumlu_birim))
     setHata(null)
+  }
+
+  function silOnayla() {
+    if (!silOnay) return
+    const fd = new FormData()
+    fd.set('id', String(silOnay.id))
+    startTransition(async () => {
+      const res = silOnay.tur === 'belge' ? await kysBelgeSil(fd) : await kysBaslikSil(fd)
+      if (res.hata) {
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
+        return
+      }
+      setSilOnay(null)
+      setDuzenleSatir(null)
+      router.refresh()
+    })
   }
 
   function duzenleKaydet() {
@@ -417,19 +439,22 @@ export default function KysBaslikListeClient({
                             />
                           )}
                           {item.belge_id != null ? (
-                            <a
-                              href={`/kys/onizle?id=${item.belge_id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
-                              title="Önizle"
-                              aria-label="Önizle"
-                            >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <circle cx="11" cy="11" r="7" />
-                                <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                              </svg>
-                            </a>
+                            <>
+                              <a
+                                href={`/kys/onizle?id=${item.belge_id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`${IKON} text-indigo-600 hover:bg-indigo-50`}
+                                title="Önizle"
+                                aria-label="Önizle"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <circle cx="11" cy="11" r="7" />
+                                  <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+                                </svg>
+                              </a>
+                              <IndirLink href={`/api/kys/onizle?indir=1&id=${item.belge_id}`} title="Dosyayı indir" />
+                            </>
                           ) : (
                             <span className={`${IKON} text-slate-300`} title="Belge yok" aria-hidden>
                               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -588,13 +613,41 @@ export default function KysBaslikListeClient({
             />
           </div>
           {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setDuzenleSatir(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
-              İptal
-            </button>
-            <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {isPending ? 'Kaydediliyor…' : 'Güncelle'}
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {duzenleSatir?.belge_id != null ? (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() =>
+                    setSilOnay({
+                      tur: 'belge',
+                      id: duzenleSatir.belge_id as number,
+                      ad: duzenleSatir.dosya_adi ?? 'Yüklü dosya',
+                    })
+                  }
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                >
+                  Dosyayı Sil
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => duzenleSatir && setSilOnay({ tur: 'baslik', id: duzenleSatir.id, ad: duzenleSatir.baslik })}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                Başlığı Sil
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setDuzenleSatir(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -658,6 +711,33 @@ export default function KysBaslikListeClient({
         diffSatirlari={kysBelgeAuditDiffSatirlari}
         degerGoster={kysBelgeAuditDegerGoster}
       />
+
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        pending={isPending}
+        mesaj={
+          silOnay?.tur === 'belge'
+            ? `“${silOnay.ad}” dosyası kalıcı olarak silinecek. Onaylıyor musunuz?`
+            : `“${silOnay?.ad ?? ''}” başlığı kalıcı olarak silinecek. Onaylıyor musunuz?`
+        }
+        onEvet={silOnayla}
+      />
+
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silinemez" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">{silEngelMesaj}</p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSilEngelMesaj(null)}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

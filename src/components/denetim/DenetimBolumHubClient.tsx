@@ -1,7 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition, type ReactNode } from 'react'
+import Modal from '@/components/ui/Modal'
+import SilOnayModal from '@/components/ui/SilOnayModal'
+import { denetimDonemMenuGuncelle, denetimDonemMenuSil } from '@/app/(dashboard)/denetim/actions'
 import type { DenetimMenuChild, DenetimMenuIkonAnahtar } from '@/lib/denetim'
 
 interface Props {
@@ -12,6 +16,8 @@ interface Props {
   kartlar: DenetimMenuChild[]
   ustAlan?: ReactNode
   children?: ReactNode
+  /** true ise kartlarda düzenle (ve düzenle içinde sil) düğmesi görünür. */
+  menuDuzenlenebilir?: boolean
 }
 
 function MenuIkon({ ikon, className = 'w-6 h-6' }: { ikon?: DenetimMenuIkonAnahtar; className?: string }) {
@@ -189,7 +195,56 @@ export default function DenetimBolumHubClient({
   kartlar,
   ustAlan,
   children,
+  menuDuzenlenebilir = false,
 }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [duzenle, setDuzenle] = useState<DenetimMenuChild | null>(null)
+  const [menuAdi, setMenuAdi] = useState('')
+  const [menuAciklama, setMenuAciklama] = useState('')
+  const [hata, setHata] = useState<string | null>(null)
+  const [silOnay, setSilOnay] = useState<DenetimMenuChild | null>(null)
+  const [silEngelMesaj, setSilEngelMesaj] = useState<string | null>(null)
+
+  function duzenleAc(kart: DenetimMenuChild) {
+    setDuzenle(kart)
+    setMenuAdi(kart.label)
+    setMenuAciklama(kart.aciklama ?? '')
+    setHata(null)
+  }
+
+  function duzenleKaydet() {
+    if (!duzenle?.menuId) return
+    const fd = new FormData()
+    fd.set('id', String(duzenle.menuId))
+    fd.set('baslik', menuAdi)
+    fd.set('aciklama', menuAciklama)
+    setHata(null)
+    startTransition(async () => {
+      const res = await denetimDonemMenuGuncelle(fd)
+      if (res.hata) { setHata(res.hata); return }
+      setDuzenle(null)
+      router.refresh()
+    })
+  }
+
+  function silOnayla() {
+    if (!silOnay?.menuId) return
+    const fd = new FormData()
+    fd.set('id', String(silOnay.menuId))
+    startTransition(async () => {
+      const res = await denetimDonemMenuSil(fd)
+      if (res.hata) {
+        setSilOnay(null)
+        setSilEngelMesaj(res.hata)
+        return
+      }
+      setSilOnay(null)
+      setDuzenle(null)
+      router.refresh()
+    })
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -206,30 +261,111 @@ export default function DenetimBolumHubClient({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {kartlar.map(k => {
           const ton = IKON_TON[k.ikon ?? ''] ?? 'bg-slate-100 text-slate-700'
+          const duzenlenebilir = menuDuzenlenebilir && k.menuId != null && !k.sistem
           return (
-            <Link
-              key={k.href}
-              href={k.href}
-              className="group rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 hover:shadow-md transition-all"
-            >
-              <div className="flex items-start gap-3">
-                <span className={`inline-flex shrink-0 items-center justify-center w-11 h-11 rounded-xl ${ton}`}>
-                  <MenuIkon ikon={k.ikon} />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="font-semibold text-slate-800 leading-snug">{k.label}</h2>
-                  {k.aciklama ? <p className="text-xs text-slate-600 mt-2 leading-relaxed">{k.aciklama}</p> : null}
-                  <span className="text-xs font-medium text-slate-500 mt-3 inline-block group-hover:text-slate-800">
-                    Aç →
+            <div key={k.href} className="relative">
+              <Link
+                href={k.href}
+                className="group block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <span className={`inline-flex shrink-0 items-center justify-center w-11 h-11 rounded-xl ${ton}`}>
+                    <MenuIkon ikon={k.ikon} />
                   </span>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-slate-800 leading-snug">{k.label}</h2>
+                    {k.aciklama ? <p className="text-xs text-slate-600 mt-2 leading-relaxed">{k.aciklama}</p> : null}
+                    <span className="text-xs font-medium text-slate-500 mt-3 inline-block group-hover:text-slate-800">
+                      Aç →
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              {duzenlenebilir ? (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => duzenleAc(k)}
+                  className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+                  title="Menüyü düzenle veya sil"
+                  aria-label="Menüyü düzenle"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
           )
         })}
       </div>
       ) : null}
       {children}
+
+      <Modal open={duzenle != null} onClose={() => { setDuzenle(null); setHata(null) }} title="Menüyü Düzenle" size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Menü Adı</label>
+            <input
+              value={menuAdi}
+              onChange={e => setMenuAdi(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Açıklama (isteğe bağlı)</label>
+            <textarea
+              value={menuAciklama}
+              onChange={e => setMenuAciklama(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          {hata ? <p className="text-sm text-red-600">{hata}</p> : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => duzenle && setSilOnay(duzenle)}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+            >
+              Menüyü Sil
+            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setDuzenle(null); setHata(null) }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">
+                İptal
+              </button>
+              <button type="button" disabled={isPending} onClick={duzenleKaydet} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {isPending ? 'Kaydediliyor…' : 'Güncelle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <SilOnayModal
+        open={silOnay != null}
+        onClose={() => setSilOnay(null)}
+        pending={isPending}
+        mesaj={`“${silOnay?.label ?? ''}” menüsü kalıcı olarak silinecek. Onaylıyor musunuz?`}
+        onEvet={silOnayla}
+      />
+
+      <Modal open={silEngelMesaj != null} onClose={() => setSilEngelMesaj(null)} title="Silinemez" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">{silEngelMesaj}</p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSilEngelMesaj(null)}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
