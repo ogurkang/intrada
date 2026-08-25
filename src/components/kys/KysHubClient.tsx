@@ -28,6 +28,7 @@ import {
   useKysListeSayfalama,
   type KysListeSortYon,
 } from '@/components/kys/KysListeKontrol'
+import KysKlasorKart from '@/components/kys/KysKlasorKart'
 import type { KysGoruntulemeGrubu } from '@/lib/kys-goruntuleme'
 import type { KysBaslikSatir, KysMudurlukSecenek } from '@/components/kys/KysBaslikListeClient'
 import type { Tables } from '@/types/database'
@@ -112,8 +113,6 @@ export default function KysHubClient({
 
   const [baslikSortKey, setBaslikSortKey] = useState<string | null>('sira')
   const [baslikSortYon, setBaslikSortYon] = useState<KysListeSortYon>('asc')
-  const [altSortKey, setAltSortKey] = useState<string | null>('sira')
-  const [altSortYon, setAltSortYon] = useState<KysListeSortYon>('asc')
 
   const q = arama.trim().toLocaleLowerCase('tr-TR')
 
@@ -149,18 +148,7 @@ export default function KysHubClient({
     [filtrelenmisBasliklar, baslikSortKey, baslikSortYon],
   )
 
-  const siraliAltMenuler = useMemo(
-    () =>
-      kysListeSirala(filtrelenmisAltMenuler, altSortKey, altSortYon, (item, key) => {
-        if (key === 'sira') return item.sira_no
-        if (key === 'baslik') return item.baslik
-        return null
-      }),
-    [filtrelenmisAltMenuler, altSortKey, altSortYon],
-  )
-
   const baslikSayfa = useKysListeSayfalama(siraliBasliklar, 25)
-  const altSayfa = useKysListeSayfalama(siraliAltMenuler, 25)
 
   function baslikSortDegistir(key: string) {
     if (baslikSortKey === key) setBaslikSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
@@ -169,15 +157,6 @@ export default function KysHubClient({
       setBaslikSortYon('asc')
     }
     baslikSayfa.setSayfa(1)
-  }
-
-  function altSortDegistir(key: string) {
-    if (altSortKey === key) setAltSortYon(y => (y === 'asc' ? 'desc' : 'asc'))
-    else {
-      setAltSortKey(key)
-      setAltSortYon('asc')
-    }
-    altSayfa.setSayfa(1)
   }
 
   function kaydet() {
@@ -370,7 +349,6 @@ export default function KysHubClient({
               onChange={e => {
                 setArama(e.target.value)
                 baslikSayfa.setSayfa(1)
-                altSayfa.setSayfa(1)
               }}
               placeholder="Başlık, kod, birim veya alt menü ara…"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 sm:w-72"
@@ -379,77 +357,29 @@ export default function KysHubClient({
         </div>
       </div>
 
-      {/* Alt Menü Listesi */}
-      {altMenuler.length > 0 && (
+      {altMenuler.length > 0 ? (
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-slate-700">Alt Menüler</h2>
-          <KysListeAracCubugu
-            toplam={altSayfa.toplam}
-            sayfa={altSayfa.sayfa}
-            toplamSayfa={altSayfa.toplamSayfa}
-            sayfaBoyutu={altSayfa.sayfaBoyutu}
-            onSayfaBoyutu={altSayfa.setSayfaBoyutu}
-            onSayfa={altSayfa.setSayfa}
-            etiket="alt menü"
-          />
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <KysSortTh label="Sıra No" sortKey="sira" aktifKey={altSortKey} yon={altSortYon} onSort={altSortDegistir} align="center" className="w-28" />
-                    <KysSortTh label="Alt Menü" sortKey="baslik" aktifKey={altSortKey} yon={altSortYon} onSort={altSortDegistir} />
-                    <th className="w-36 px-3 py-3 text-center font-semibold text-slate-700">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {altSayfa.sayfali.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-10 text-center text-slate-400">
-                        {q ? 'Arama kriterine uygun alt menü bulunamadı.' : 'Alt menü yok.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    altSayfa.sayfali.map((k, i) => {
-                    const globalIdx = altSayfa.baslangicSira + i
-                    return (
-                      <tr key={k.id} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-3 text-center tabular-nums text-slate-600">{globalIdx + 1}</td>
-                        <td className="px-4 py-3">
-                          <Link href={k.href} className="font-medium text-slate-800 hover:text-teal-700">
-                            {k.baslik}
-                          </Link>
-                          {k.aciklama ? (
-                            <span className="mt-0.5 block text-xs text-slate-500">{k.aciklama}</span>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            {!saltOkunur && (
-                              <KalemDuzenleDugmesi
-                                disabled={isPending}
-                                onClick={() => menuDuzenleAc(k)}
-                                title="Alt menüyü düzenle veya sil"
-                              />
-                            )}
-                            <Link
-                              href={k.href}
-                              className="inline-flex rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                            >
-                              Aç →
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                  )}
-                </tbody>
-              </table>
+          {filtrelenmisAltMenuler.length === 0 ? (
+            <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-400">
+              Arama kriterine uygun alt menü bulunamadı.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filtrelenmisAltMenuler.map(k => (
+                <KysKlasorKart
+                  key={k.id}
+                  href={k.href}
+                  baslik={k.baslik}
+                  aciklama={k.aciklama}
+                  onDuzenle={saltOkunur ? undefined : () => menuDuzenleAc(k)}
+                  duzenleDisabled={isPending}
+                />
+              ))}
             </div>
-          </div>
+          )}
         </section>
-      )}
+      ) : null}
 
       {/* Başlık Listesi */}
       {basliklar.length > 0 ? (
