@@ -568,7 +568,6 @@ export async function denetimDonemMenuSil(formData: FormData): Promise<DenetimAc
   if (!onceki) return { hata: 'Menü bulunamadı.' }
   const durum = Array.isArray(onceki.denetim_donem) ? onceki.denetim_donem[0]?.durum : onceki.denetim_donem?.durum
   if (durum === 'Kapalı') return { hata: 'Kapalı dönemde menü silinemez.' }
-  if (onceki.sistem_anahtari) return { hata: 'Sistem menüleri silinemez.' }
 
   const doluHata = await denetimMenuSilEngelMesaji(supabase, id)
   if (doluHata) return { hata: doluHata }

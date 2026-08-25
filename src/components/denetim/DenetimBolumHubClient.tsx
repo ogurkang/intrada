@@ -261,7 +261,7 @@ export default function DenetimBolumHubClient({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {kartlar.map(k => {
           const ton = IKON_TON[k.ikon ?? ''] ?? 'bg-slate-100 text-slate-700'
-          const duzenlenebilir = menuDuzenlenebilir && k.menuId != null && !k.sistem
+          const duzenlenebilir = menuDuzenlenebilir && k.menuId != null
           return (
             <div key={k.href} className="relative">
               <Link

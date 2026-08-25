@@ -11,6 +11,7 @@ import {
   type DenetimMenuChild,
   type DenetimMenuIkonAnahtar,
 } from '@/lib/denetim'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 
 export default async function DenetimBolumSayfa({
   donemId,
@@ -52,9 +53,12 @@ export default async function DenetimBolumSayfa({
         label: c.baslik,
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
+        menuId: c.id,
       }))
     }
   }
+
+  const saltOkunur = await isCurrentDisDenetci(supabase)
 
   return (
     <DenetimBolumHubClient
@@ -63,6 +67,7 @@ export default async function DenetimBolumSayfa({
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
       kartlar={kartlar}
+      menuDuzenlenebilir={!saltOkunur && donem.durum === 'Açık'}
       ustAlan={
         parent ? (
           <DenetimHubBaslikBolumu

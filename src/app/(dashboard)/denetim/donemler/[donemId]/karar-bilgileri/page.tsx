@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
 import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import { denetimDonemBolumler, denetimMenuYolu, type DenetimMenuChild, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 
 export default async function DonemKararBilgileriPage({
   params,
@@ -37,10 +38,13 @@ export default async function DonemKararBilgileriPage({
         label: c.baslik,
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
+        menuId: c.id,
       }))
     }
   }
   if (!kartlar.length) notFound()
+
+  const saltOkunur = await isCurrentDisDenetci(supabase)
 
   return (
     <DenetimBolumHubClient
@@ -49,6 +53,7 @@ export default async function DonemKararBilgileriPage({
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
       kartlar={kartlar}
+      menuDuzenlenebilir={!saltOkunur && donem.durum === 'Açık'}
       ustAlan={
         parent ? (
           <DenetimHubBaslikBolumu

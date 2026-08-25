@@ -151,10 +151,8 @@ export type DenetimMenuChild = {
   label: string
   aciklama?: string
   ikon?: DenetimMenuIkonAnahtar
-  /** Dinamik menü kaydı; verildiğinde kart üzerinden düzenle/sil yapılabilir. */
+  /** Menü kaydının id'si; verildiğinde kart üzerinden düzenle/sil yapılabilir. */
   menuId?: number
-  /** Sistem menüsü ise düzenleme/silme kapalıdır. */
-  sistem?: boolean
 }
 
 export type DenetimMenuBolum = {

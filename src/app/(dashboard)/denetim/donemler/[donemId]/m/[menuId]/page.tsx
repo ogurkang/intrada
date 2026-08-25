@@ -67,7 +67,6 @@ export default async function DenetimDinamikMenuPage({
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
         menuId: c.id,
-        sistem: Boolean(c.sistem_anahtari),
       }))}
       ustAlan={
         <DenetimHubBaslikBolumu

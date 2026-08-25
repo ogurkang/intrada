@@ -4,6 +4,7 @@ import DenetimAltBolumSayfa from '@/components/denetim/DenetimAltBolumSayfa'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
 import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 
 export default async function DonemYonetmeliklerPage({
   params,
@@ -32,17 +33,20 @@ export default async function DonemYonetmeliklerPage({
       .eq('parent_id', menu.id)
       .order('sira_no')
     if (children?.length) {
+      const saltOkunur = await isCurrentDisDenetci(supabase)
       return (
         <DenetimBolumHubClient
           baslik={`${menu.baslik} — ${donem.donem_adi}`}
           aciklama={menu.aciklama ?? 'Bu menünün alt başlıkları.'}
           geriHref={`/denetim/donemler/${donemId}`}
           geriLabel="← Dönem"
+          menuDuzenlenebilir={!saltOkunur && donem.durum === 'Açık'}
           kartlar={children.map(c => ({
             href: denetimMenuYolu(donemId, c),
             label: c.baslik,
             aciklama: c.aciklama ?? undefined,
             ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? undefined,
+            menuId: c.id,
           }))}
           ustAlan={
             <DenetimHubBaslikBolumu

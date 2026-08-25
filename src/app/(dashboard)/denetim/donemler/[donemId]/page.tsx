@@ -22,7 +22,6 @@ export default async function DenetimDonemDetayPage({
   if (!donem) notFound()
 
   const saltOkunur = await isCurrentDisDenetci(supabase)
-  const sistemMenuIdleri = new Set((menuler ?? []).filter(m => m.sistem_anahtari).map(m => m.id))
 
   const agac = denetimMenuAgaciKur(donemId, menuler ?? [])
   const kartlar = agac.length
@@ -32,7 +31,6 @@ export default async function DenetimDonemDetayPage({
         aciklama: b.aciklama ?? undefined,
         ikon: b.ikon,
         menuId: b.id,
-        sistem: sistemMenuIdleri.has(b.id),
       }))
     : denetimDonemBolumler(donemId).map(b => ({
         href: b.href,

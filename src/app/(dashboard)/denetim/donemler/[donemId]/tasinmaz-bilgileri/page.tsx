@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import DenetimBolumHubClient from '@/components/denetim/DenetimBolumHubClient'
 import DenetimHubBaslikBolumu from '@/components/denetim/DenetimHubBaslikBolumu'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar } from '@/lib/denetim'
+import { isCurrentDisDenetci } from '@/lib/app-access'
 
 export default async function DonemTasinmazBilgileriPage({
   params,
@@ -28,17 +29,21 @@ export default async function DonemTasinmazBilgileriPage({
     ? await supabase.from('denetim_donem_menu').select('*').eq('parent_id', menu.id).order('sira_no')
     : { data: [] as never[] }
 
+  const saltOkunur = await isCurrentDisDenetci(supabase)
+
   return (
     <DenetimBolumHubClient
       baslik={`${menu?.baslik ?? 'Taşınmaz Bilgileri'} — ${donem.donem_adi}`}
       aciklama={menu?.aciklama ?? 'Belediye taşınmazlarına ilişkin denetim bilgileri.'}
       geriHref={`/denetim/donemler/${donemId}`}
       geriLabel="← Dönem"
+      menuDuzenlenebilir={!saltOkunur && donem.durum === 'Açık'}
       kartlar={(children ?? []).map(c => ({
         href: denetimMenuYolu(donemId, c),
         label: c.baslik,
         aciklama: c.aciklama ?? undefined,
         ikon: (c.ikon as DenetimMenuIkonAnahtar | null) ?? 'tasinmaz',
+        menuId: c.id,
       }))}
       ustAlan={
         menu ? (
