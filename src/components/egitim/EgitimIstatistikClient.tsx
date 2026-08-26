@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { egitimIstatistikExcelIndir } from '@/lib/egitim-istatistik-excel'
 import type { Tables } from '@/types/database'
 
 export interface IstatistikDonem {
@@ -126,6 +127,7 @@ export default function EgitimIstatistikClient({
   const [isaretleMode, setIsaretleMode] = useState(false)
   const [yerelKatilim, setYerelKatilim] = useState<Set<string>>(() => new Set(katilimKeys))
   const [isPending, startTransition] = useTransition()
+  const [excelPending, setExcelPending] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
 
   useEffect(() => {
@@ -196,6 +198,37 @@ export default function EgitimIstatistikClient({
     return egitimList.filter(e => aktifKatilim.has(`${sicil_no}:${e.id}`)).length
   }
 
+  async function excelIndir() {
+    if (!seciliDonem) return
+    setHata(null)
+    setExcelPending(true)
+    try {
+      const personelKaynak = mudFiltre
+        ? personeller.filter(p => (p.mudurluk ?? 'Belirtilmemiş') === mudFiltre)
+        : personeller
+      await egitimIstatistikExcelIndir({
+        donemAdi: seciliDonem.donem_adi,
+        kapsam: mudFiltre || 'Tüm müdürlükler',
+        egitimler: egitimler.map(e => ({
+          id: e.id,
+          egitim_adi: e.egitim_adi,
+          egitim_baslangic: e.egitim_baslangic,
+        })),
+        personeller: personelKaynak.map(p => ({
+          sicil_no: p.sicil_no,
+          ad_soyad: p.ad_soyad,
+          mudurluk: p.mudurluk,
+        })),
+        katilim: aktifKatilim,
+      })
+    } catch (err) {
+      console.error('EGITIM_ISTATISTIK_EXCEL_HATA', err)
+      setHata('Excel oluşturulamadı.')
+    } finally {
+      setExcelPending(false)
+    }
+  }
+
   if (!seciliDonem) {
     return (
       <div>
@@ -243,14 +276,22 @@ export default function EgitimIstatistikClient({
             {mudurluler.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
-        <div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void excelIndir()}
+            disabled={excelPending}
+            className="px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+          >
+            {excelPending ? 'Excel hazırlanıyor…' : 'Excel İndir'}
+          </button>
           {!isaretleMode ? (
             <button type="button" onClick={() => { setIsaretleMode(true); setYerelKatilim(new Set(katilimKeys)) }}
               className="px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors">
               Eğitimleri İşaretle
             </button>
           ) : (
-            <div className="flex items-center gap-2">
+            <>
               <button type="button" onClick={() => { setIsaretleMode(false); setYerelKatilim(new Set(katilimKeys)) }}
                 className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50">
                 İptal
@@ -259,7 +300,7 @@ export default function EgitimIstatistikClient({
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors">
                 {isPending ? 'Kaydediliyor…' : 'Kaydet'}
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
