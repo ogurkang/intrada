@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -25,7 +26,7 @@ export default async function TehlikeliSinifPersonelListesiPage({ searchParams }
   const supabase = await createClient()
   const [{ data: mudRaw }, { data: kadroRaw }, { data: calisanRaw }, mudSatirlar, sirketSatirlar] = await Promise.all([
     supabase.from('tanim_mudurluk').select('mudurluk_adi, tehlike_sinifi').eq('aktif', true),
-    supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu').not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
     supabase.from('calisan').select('sicil_no, ad_soyad, yerleske_adresi_id, gorev_yeri, gorev_turu'),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
     fetchSirketYerleskeTanimSatirlari(supabase),

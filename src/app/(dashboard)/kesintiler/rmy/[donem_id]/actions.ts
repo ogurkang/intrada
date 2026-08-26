@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { buildMemurSiciller, RMY_IZIN_TURLERI } from '@/lib/kesintiler-kadro'
 import { revalidatePath } from 'next/cache'
 
@@ -40,14 +41,16 @@ export async function rmyDetayYukle(donem_id: number): Promise<RmyDetayData | { 
   }
 
   // Memur personelin Rapor ve Refakatçi izinleri — İptal hariç
-  const { data: izinRaw } = await supabase
-    .from('izin_hareketleri')
-    .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-    .neq('durum', 'İptal Edildi')
-    .in('tur', [...RMY_IZIN_TURLERI])
-    .in('sicil_no', Array.from(memurSiciller))
-    .order('baslama')
-    .limit(500)
+  const { data: izinRaw } = await fetchAllPaged((from, to) =>
+    supabase
+      .from('izin_hareketleri')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .neq('durum', 'İptal Edildi')
+      .in('tur', [...RMY_IZIN_TURLERI])
+      .in('sicil_no', Array.from(memurSiciller))
+      .order('id')
+      .range(from, to),
+  )
 
   const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
   const adMap: Record<string, string> = {}

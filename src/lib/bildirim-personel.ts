@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type PersonelSecenek = {
@@ -18,10 +19,7 @@ function normStatu(s: string | null | undefined): string {
  * Kadro hareketlerinde durumu Dolu ve statüsü Memur olan kadrolarda asil olarak atanan personel.
  */
 export async function listMemurPersonelForMal(supabase: SupabaseClient): Promise<PersonelSecenek[]> {
-  const { data: khRows, error } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, gorev_unvani, kadro_unvani, statu, durumu')
-    .eq('durumu', 'Dolu')
+  const { data: khRows, error } = await fetchAllKadroHareketleri(supabase, 'asil, gorev_unvani, kadro_unvani, statu, durumu', q => q.eq('durumu', 'Dolu'))
 
   if (error || !khRows?.length) return []
 

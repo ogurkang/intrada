@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
@@ -114,12 +115,9 @@ export async function GET(req: Request) {
       { data: phIseRaw },
     ] = await Promise.all([
       supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
       supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, hizmet_suresi_yil, hizmet_suresi_ay, hizmet_suresi_gun'),
-      supabase.from('firma_calisanlar').select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi'),
+      fetchAllFirmaCalisanlar(supabase, 'id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi'),
       supabase
         .from('personel_hareketleri')
         .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')

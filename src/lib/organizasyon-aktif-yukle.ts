@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import {
   BIRIM_TURU_ETIKET,
   birimPersonelMetni,
@@ -44,12 +45,11 @@ export async function aktifOrganizasyonSemasiYukle(supabase: SupabaseClient): Pr
       .from('tanim_organizasyon_birim')
       .select('id, mudurluk_id, birim_turu, personel_sicil_no, ust_birim_id, sira_no, tanim_mudurluk ( mudurluk_adi )')
       .eq('organizasyon_id', organizasyon.id),
-    supabase
-      .from('kadro_hareketleri')
-      .select(
-        'durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
-      )
-      .in('durumu', ['Dolu', 'Vekil']),
+    fetchAllKadroHareketleri(
+      supabase,
+      'durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
+      q => q.in('durumu', ['Dolu', 'Vekil']),
+    ),
     supabase.from('calisan').select('sicil_no, telefon'),
   ])
 

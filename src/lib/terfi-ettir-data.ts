@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables } from '@/types/database'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
@@ -123,12 +124,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 
   const ogrenimTuruBySicil = new Map<string, string>()
   if (memurSiciller.length > 0) {
-    const { data: ogRes } = await supabase
-      .from('calisan_ogrenim')
-      .select('sicil_no, ogrenim_turu, kayit_zamani')
-      .in('sicil_no', memurSiciller)
-      .eq('aktif', true)
-      .order('kayit_zamani', { ascending: false })
+    const { data: ogRes } = await fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, kayit_zamani', q => q.in('sicil_no', memurSiciller).eq('aktif', true))
+    ;(ogRes ?? []).sort((a, b) => String(b.kayit_zamani ?? '').localeCompare(String(a.kayit_zamani ?? '')))
     const seenOg = new Set<string>()
     for (const o of ogRes ?? []) {
       if (seenOg.has(o.sicil_no)) continue

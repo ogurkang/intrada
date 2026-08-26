@@ -1,5 +1,6 @@
 'use server'
 
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
@@ -47,10 +48,7 @@ function parseYerleskeId(raw: unknown): number | null {
 
 async function kadroMudurlugu(supabase: Awaited<ReturnType<typeof createClient>>, sicil_no: string): Promise<string> {
   const D = new Date().toISOString().slice(0, 10)
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-    .eq('asil', sicil_no)
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.eq('asil', sicil_no))
 
   const { secilenKadroSatirAsil } = await import('@/lib/kadro-statu-sec')
   const sec = secilenKadroSatirAsil((kadroRaw ?? []) as Parameters<typeof secilenKadroSatirAsil>[0], D)

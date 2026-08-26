@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppAccess, isAdminLike, type AppAccess } from '@/lib/app-access'
 
@@ -32,14 +33,10 @@ export async function getKullaniciGorevMudurlukleri(
   }
 
   // ADABEL personeli (firma_calisanlar) kadro_hareketleri'nde yok; müdürlüğü orada tutulur.
-  const { data: firmaData, error: firmaErr } = await supabase
-    .from('firma_calisanlar')
-    .select('gorev_mudurlugu')
-    .eq('sicil_no', sn)
-    .is('ayrilis_tarihi', null)
+  const { data: firmaData, error: firmaErr } = await fetchAllFirmaCalisanlar(supabase, 'gorev_mudurlugu', q => q.eq('sicil_no', sn).is('ayrilis_tarihi', null))
 
   if (firmaErr) {
-    console.error('getKullaniciGorevMudurlukleri firma', firmaErr.message)
+    console.error('getKullaniciGorevMudurlukleri firma', firmaErr)
   } else {
     for (const row of firmaData ?? []) {
       const m = String(row.gorev_mudurlugu ?? '').trim()

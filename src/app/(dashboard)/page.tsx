@@ -5,6 +5,7 @@ import type { GorevHatirlaticiItem } from '@/components/dashboard/GorevHatirlati
 import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
 import { dashboardStatuSayilariHesapla, dashboardKadroSatirlariYukle } from '@/lib/dashboard-statu-sayilari'
+import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
 import { izinDurumDegistir } from './izin/actions'
 import type {
   KadroDoluluk, IzinIstatistik, BekleyenIzin,
@@ -32,18 +33,14 @@ export default async function DashboardPage() {
 
   const [
     kadroRaw,
-    { data: izinYilRaw },
+    izinYilRes,
     { data: bekleyenRaw },
     { data: tatilRaw },
     { data: izindekiRaw },
   ] = await Promise.all([
     dashboardKadroSatirlariYukle(supabase),
 
-    // Bu yılın tüm izin hareketleri (durum dağılımı)
-    supabase
-      .from('izin_hareketleri')
-      .select('durum')
-      .eq('yil', buYil),
+    fetchAllIzinHareketleriByYil<{ durum: string | null }>(supabase, buYil, { select: 'durum' }),
 
     // 4) Bekleyen (Taslak) izinler — en fazla 20
     supabase
@@ -186,6 +183,7 @@ export default async function DashboardPage() {
 
   // İzin istatistik
   const izinIstatistik: IzinIstatistik = { taslak: 0, onaylandi: 0, iptal: 0, degistirildi: 0 }
+  const izinYilRaw = izinYilRes.data
   ;(izinYilRaw ?? []).forEach(i => {
     if (i.durum === 'Taslak')        izinIstatistik.taslak++
     if (i.durum === 'Onaylandı')     izinIstatistik.onaylandi++

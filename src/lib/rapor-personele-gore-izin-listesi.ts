@@ -1,3 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+import { fetchAllIzinHareketleriForKullanilanRapor } from '@/lib/izin-hareketleri-load'
 import {
   kadroBaslangic,
   kadroSatirAktifMi,
@@ -94,4 +97,60 @@ export function buildPersoneleGoreIzinListesi(input: {
   })
 
   return out
+}
+
+const SAYFA = 1000
+
+async function fetchAllSelect<T>(
+  supabase: SupabaseClient<Database>,
+  table: 'kadro_hareketleri' | 'calisan',
+  select: string,
+): Promise<T[]> {
+  let from = 0
+  const all: T[] = []
+  while (true) {
+    let q = supabase.from(table).select(select).range(from, from + SAYFA - 1)
+    if (table === 'kadro_hareketleri') {
+      q = q.not('asil', 'is', null)
+    }
+    const { data, error } = await q
+    if (error) throw new Error(error.message)
+    if (!data?.length) break
+    all.push(...(data as T[]))
+    if (data.length < SAYFA) break
+    from += SAYFA
+  }
+  return all
+}
+
+export async function yuklePersoneleGoreKullanilanIzinListesi(
+  supabase: SupabaseClient<Database>,
+  yil: number,
+): Promise<{ satirlar: PersoneleGoreIzinSatir[]; hata?: string }> {
+  try {
+    const [kadro, calisanRaw, izinRes] = await Promise.all([
+      fetchAllSelect<KadroRaporRow>(
+        supabase,
+        'kadro_hareketleri',
+        'asil, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+      ),
+      fetchAllSelect<{ sicil_no: string; ad_soyad: string }>(supabase, 'calisan', 'sicil_no, ad_soyad'),
+      fetchAllIzinHareketleriForKullanilanRapor(supabase, yil),
+    ])
+    if (izinRes.error) return { satirlar: [], hata: izinRes.error }
+
+    const calisanBySicil = new Map<string, { sicil_no: string; ad_soyad: string }>()
+    for (const c of calisanRaw) calisanBySicil.set(c.sicil_no, c)
+
+    const today = new Date().toISOString().slice(0, 10)
+    const satirlar = buildPersoneleGoreIzinListesi({
+      D: today,
+      kadro,
+      calisanBySicil,
+      izinRows: izinRes.data,
+    })
+    return { satirlar }
+  } catch (err) {
+    return { satirlar: [], hata: err instanceof Error ? err.message : 'Rapor yüklenemedi.' }
+  }
 }

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { Tables } from '@/types/database'
 import { getPasaportPersonel, listPasaportPersonel } from '@/lib/pasaport-personel'
 
@@ -40,7 +41,7 @@ function sicilKadroOzet(sicil: string, kadrolar: KH[]): { unvan: string | null; 
 }
 
 async function kadroHaritasiYukle(supabase: SupabaseClient): Promise<Map<string, KH[]>> {
-  const { data: khRows } = await supabase.from('kadro_hareketleri').select(KADRO_SELECT).is('ayrilis_tarihi', null)
+  const { data: khRows } = await fetchAllKadroHareketleri(supabase, KADRO_SELECT, q => q.is('ayrilis_tarihi', null))
   const map = new Map<string, KH[]>()
   for (const raw of khRows ?? []) {
     const kh = raw as KH

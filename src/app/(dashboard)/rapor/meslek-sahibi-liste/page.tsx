@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import MeslekSahibiListeRaporClient, {
   type MeslekSahibiListeTabVerisi,
@@ -65,17 +66,10 @@ export default async function MeslekSahibiListePage({
     { data: phAyrRaw },
     { data: phIseRaw },
   ] = await Promise.all([
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
-    supabase
-      .from('firma_calisanlar')
-      .select('id, ad_soyad, sicil_no, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, ogrenim, meslegi'),
-    supabase
-      .from('calisan_ogrenim')
-      .select('sicil_no, ogrenim_turu, varsayilan, aktif, meslegi'),
+    fetchAllFirmaCalisanlar(supabase, 'id, ad_soyad, sicil_no, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, ogrenim, meslegi'),
+    fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan, aktif, meslegi'),
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')

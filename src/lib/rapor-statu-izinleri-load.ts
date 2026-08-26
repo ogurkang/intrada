@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { KadroRaporRow, RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import {
   statuIzinMudurlukListesi,
@@ -45,13 +46,13 @@ export async function yukleStatuIzinRaporVerisi(
   const { statuTip, yil } = input
 
   const [
-    { data: kadroRaw },
+    kadroRes,
     { data: calisanRaw },
     { data: hakRaw },
     hareketler,
     { data: izinTurRaw },
   ] = await Promise.all([
-    supabase.from('kadro_hareketleri').select(KADRO_SELECT).not('asil', 'is', null),
+    fetchAllKadroHareketleri<KadroRaporRow>(supabase, KADRO_SELECT),
     supabase.from('calisan').select('sicil_no, ad_soyad'),
     supabase
       .from('izin_haklari')
@@ -64,7 +65,7 @@ export async function yukleStatuIzinRaporVerisi(
       .in('izin_hakki_kullanimi', ['Evet', 'Yıllık İzin']),
   ])
 
-  const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
+  const kadro: KadroRaporRow[] = (kadroRes.data ?? []).filter(r => r.asil) as KadroRaporRow[]
   const hakBySicil = new Map<string, StatuIzinHakRow>()
   for (const h of (hakRaw ?? []) as StatuIzinHakRow[]) {
     const sicil = normSicil(h.sicil_no)

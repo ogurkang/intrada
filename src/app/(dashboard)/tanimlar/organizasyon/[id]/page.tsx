@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import OrganizasyonDetayClient from '@/components/tanimlar/OrganizasyonDetayClient'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import {
@@ -55,12 +56,11 @@ export default async function OrganizasyonDetayPage({
       .select('id, mudurluk_adi')
       .eq('aktif', true)
       .order('mudurluk_adi'),
-    supabase
-      .from('kadro_hareketleri')
-      .select(
-        'durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
-      )
-      .in('durumu', ['Dolu', 'Vekil']),
+    fetchAllKadroHareketleri(
+      supabase,
+      'durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil, asil_calisan:calisan!kadro_hareketleri_asil_fkey ( ad_soyad ), vekil_calisan:calisan!kadro_hareketleri_vekil_fkey ( ad_soyad )',
+      q => q.in('durumu', ['Dolu', 'Vekil']),
+    ),
   ])
 
   const indeks = organizasyonPersonelIndeksKur((kadroRaw ?? []) as unknown as KadroUnvanSatir[])

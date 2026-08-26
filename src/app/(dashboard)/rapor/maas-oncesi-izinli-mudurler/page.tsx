@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import MaasOncesiIzinliMudurlerClient, {
   type MaasOncesiTabVerisi,
 } from '@/components/rapor/MaasOncesiIzinliMudurlerClient'
@@ -30,11 +31,7 @@ export default async function MaasOncesiIzinliMudurlerPage({
   const supabase = await createClient()
 
   // Tüm aktif kadro kayıtları
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-    .not('asil', 'is', null)
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null).not('asil', 'is', null))
 
   // Sicil → unvan haritası
   const sicilUnvanMap = new Map<string, string>()
@@ -66,13 +63,23 @@ export default async function MaasOncesiIzinliMudurlerPage({
   // İzin kayıtları (seçili yıl — 10-14 aralığına isabet edenler için yeterli)
   let izinRaw: { sicil_no: string | null; tur: string | null; ayrilis: string | null; baslama: string | null; vekalet: string | null }[] = []
   if (mudurSicilList.length > 0) {
-    const { data } = await supabase
-      .from('izin_hareketleri')
-      .select('sicil_no, tur, ayrilis, baslama, vekalet')
-      .neq('durum', 'İptal Edildi')
-      .in('sicil_no', mudurSicilList)
-      .lte('ayrilis', `${yil}-12-31`)
-      .gte('baslama', `${yil}-01-01`)
+    const { data } = await fetchAllPaged<{
+      sicil_no: string | null
+      tur: string | null
+      ayrilis: string | null
+      baslama: string | null
+      vekalet: string | null
+    }>((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sicil_no, tur, ayrilis, baslama, vekalet')
+        .neq('durum', 'İptal Edildi')
+        .in('sicil_no', mudurSicilList)
+        .lte('ayrilis', `${yil}-12-31`)
+        .gte('baslama', `${yil}-01-01`)
+        .order('id')
+        .range(from, to),
+    )
     izinRaw = data ?? []
   }
 

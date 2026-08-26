@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { getCariYilAraligi } from '@/lib/tarih'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
 
@@ -19,10 +20,7 @@ export async function GET() {
   const yilBasMs = yilBas.getTime()
   const yilSonMs = yilSon.getTime()
 
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null))
 
   const zabitaSiciller = new Set<string>()
   for (const k of kadroRaw ?? []) {
@@ -34,12 +32,16 @@ export async function GET() {
 
   const raporGunBySicil: Record<string, number> = {}
   if (zabitaSiciller.size > 0) {
-    const { data: izinRaw } = await supabase
-      .from('izin_hareketleri')
-      .select('sicil_no, ayrilis, baslama, gun')
-      .in('sicil_no', Array.from(zabitaSiciller))
-      .neq('durum', 'İptal Edildi')
-      .in('tur', ['Rapor', 'Heyet Raporu'])
+    const { data: izinRaw } = await fetchAllPaged((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sicil_no, ayrilis, baslama, gun')
+        .in('sicil_no', Array.from(zabitaSiciller))
+        .neq('durum', 'İptal Edildi')
+        .in('tur', ['Rapor', 'Heyet Raporu'])
+        .order('id')
+        .range(from, to),
+    )
 
     const MS_PER_DAY = 24 * 60 * 60 * 1000
     for (const iz of izinRaw ?? []) {

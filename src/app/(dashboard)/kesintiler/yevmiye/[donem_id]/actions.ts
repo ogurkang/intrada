@@ -1,5 +1,6 @@
 'use server'
 
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getKullaniciGorevMudurlukleri, assertKullaniciMudurlukErisimi } from '@/lib/kullanici-mudurluk'
@@ -213,11 +214,7 @@ export async function yevmiyePuantajYukle(
   )
 
   // Kadro: Sözleşmeli ve İşçi, ayrılış boş
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, statu, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-    .in('statu', ['Sözleşmeli', 'İşçi'])
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, statu, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null).in('statu', ['Sözleşmeli', 'İşçi']))
 
   const calisanMap: Record<string, string> = {}
   const siciller = [...new Set((kadroRaw ?? []).flatMap(k => [k.asil, k.vekil].filter(Boolean) as string[]))]
@@ -401,10 +398,7 @@ export async function yevmiyePuantajYukle(
   const { data: ozetTumRaw } = await supabase
     .from('personel_kadro_ozet')
     .select('sicil_no, ad_soyad, gorev_mudurlugu')
-  const { data: kadroTumRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu')
-    .is('ayrilis_tarihi', null)
+  const { data: kadroTumRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null))
   for (const m of mudurlukler) {
     const hedefMud = normMud(m)
     const siciller = new Set<string>()

@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -22,7 +23,7 @@ export default async function KadroDuzenlePage({
     { data: unvanRaw },
   ] = await Promise.all([
     supabase.from('kadro_hareketleri').select('*').eq('id', idNum).single(),
-    supabase.from('kadro_hareketleri').select('gelis_nedeni, ayrilis_nedeni'),
+    fetchAllKadroHareketleri(supabase, 'gelis_nedeni, ayrilis_nedeni'),
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
     supabase.from('tanim_statu').select('statu_adi').eq('aktif', true).order('statu_adi'),
     supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),

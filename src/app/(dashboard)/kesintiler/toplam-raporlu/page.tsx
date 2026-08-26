@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import ToplamRaporluMemurlarClient, { type ToplamRaporluSatir } from '@/components/kesintiler/ToplamRaporluMemurlarClient'
 import { getCariYilAraligi } from '@/lib/tarih'
 
@@ -13,10 +14,7 @@ export default async function ToplamRaporluMemurlarPage() {
   const yilSonMs = yilSon.getTime()
 
   // 1. Zabıta Müdürlüğü'nde aktif personel (kadro_hareketleri: ayrılış boş, gorev/kadro müdürlüğü = Zabıta)
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, gorev_mudurlugu, kadro_mudurlugu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null))
 
   const zabitaSiciller = new Set<string>()
   for (const k of kadroRaw ?? []) {
@@ -38,12 +36,16 @@ export default async function ToplamRaporluMemurlarPage() {
   }
 
   // 2. İzin hareketleri: Rapor + Heyet Raporu, İptal Edildi hariç
-  const { data: izinRaw } = await supabase
-    .from('izin_hareketleri')
-    .select('sicil_no, tur, ayrilis, baslama, gun')
-    .in('sicil_no', Array.from(zabitaSiciller))
-    .neq('durum', 'İptal Edildi')
-    .in('tur', ['Rapor', 'Heyet Raporu'])
+  const { data: izinRaw } = await fetchAllPaged((from, to) =>
+    supabase
+      .from('izin_hareketleri')
+      .select('sicil_no, tur, ayrilis, baslama, gun')
+      .in('sicil_no', Array.from(zabitaSiciller))
+      .neq('durum', 'İptal Edildi')
+      .in('tur', ['Rapor', 'Heyet Raporu'])
+      .order('id')
+      .range(from, to),
+  )
 
   // 3. Cari yıl içindeki rapor/heyet günlerini hesapla (takvim günü, Başlama günü hariç - GAS mantığı)
   const raporGunBySicil: Record<string, number> = {}

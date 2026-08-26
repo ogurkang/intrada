@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import IsgGorevYeriDegisenPersonelClient, {
   type GorevYeriDegisenTabVerisi,
@@ -55,13 +56,12 @@ export default async function IsgGorevYeriDegisenPersonelPage({
         )
         .order('yururluk_tarihi', { ascending: false }),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
-      supabase
-        .from('kadro_hareketleri')
-        .select(
-          'id, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu',
-        )
-        .not('asil', 'is', null),
-      supabase.from('firma_calisanlar').select('sicil_no'),
+      fetchAllKadroHareketleri(
+        supabase,
+        'id, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu',
+        q => q.not('asil', 'is', null),
+      ),
+      fetchAllFirmaCalisanlar(supabase, 'sicil_no'),
     ])
 
   const adBySicil = calisanAdHaritasiOlustur(calisanRaw ?? [])

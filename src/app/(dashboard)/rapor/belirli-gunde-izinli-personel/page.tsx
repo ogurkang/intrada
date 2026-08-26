@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import BelirliGundeIzinliPersonelClient from '@/components/rapor/BelirliGundeIzinliPersonelClient'
 import type { BelirliGundeIzinliSatir } from '@/components/rapor/BelirliGundeIzinliPersonelClient'
 import {
@@ -36,20 +37,23 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
 
   const supabase = await createClient()
 
-  const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, mudSatirlar, sirketSatirlar] =
+  const [{ data: izinRaw }, { data: calisanRaw }, kadroRes, mudSatirlar, sirketSatirlar] =
     await Promise.all([
-      supabase
-        .from('izin_hareketleri')
-        .select('sicil_no, tur, ayrilis, baslama, durum')
-        .neq('durum', 'İptal Edildi')
-        .lte('ayrilis', tarih)
-        .gt('baslama', tarih)
-        .order('sicil_no'),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from('izin_hareketleri')
+          .select('sicil_no, tur, ayrilis, baslama, durum')
+          .neq('durum', 'İptal Edildi')
+          .lte('ayrilis', tarih)
+          .gt('baslama', tarih)
+          .order('id')
+          .range(from, to),
+      ),
       supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorev_turu_aciklama, gorev_yeri, yerleske_adresi_id'),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri<KadroRaporRow>(
+        supabase,
+        'asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+      ),
       fetchMudurlukYerleskeTanimSatirlari(supabase),
       fetchSirketYerleskeTanimSatirlari(supabase),
     ])
@@ -74,7 +78,7 @@ export default async function BelirliGundeIzinliPersonelPage({ searchParams }: P
   const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
 
   const byAsil = new Map<string, KadroRaporRow[]>()
-  for (const r of kadroRaw ?? []) {
+  for (const r of kadroRes.data ?? []) {
     const asil = String(r.asil ?? '').trim()
     if (!asil) continue
     const list = byAsil.get(asil) ?? []

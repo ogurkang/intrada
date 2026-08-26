@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import {
@@ -55,14 +56,11 @@ export async function GET(req: Request) {
     const periyot = parsePeriyot(searchParams.get('p'))
 
     const [{ data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
       supabase
         .from('calisan')
       .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
-      supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, varsayilan'),
+      fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
     ])
 
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]

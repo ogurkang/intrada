@@ -1,5 +1,6 @@
 'use server'
 
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { revalidateFirmaCalisanPaths } from '@/lib/revalidate-firma-calisan'
@@ -39,9 +40,7 @@ function parseTarihFromNeden(neden: string | null): string | null {
 /** Client'tan tetiklenebilir: ayrılış nedeni gg.aa.yyyy ise ayrılış tarihine taşır. Render sırasında çağrılmamalı. */
 export async function firmaAyrilisTarihiNormalize(): Promise<{ guncellenen: number }> {
   const supabase = await createClient()
-  const { data: rows } = await supabase
-    .from('firma_calisanlar')
-    .select('id, ayrilis_tarihi, ayrilis_nedeni')
+  const { data: rows } = await fetchAllFirmaCalisanlar(supabase, 'id, ayrilis_tarihi, ayrilis_nedeni')
   let guncellenen = 0
   for (const r of rows ?? []) {
     if (r.ayrilis_tarihi && r.ayrilis_tarihi.trim()) continue
@@ -68,10 +67,7 @@ function tarih(fd: FormData, key: string): string | null {
  * ADABEL sicilleri kadro sicilleriyle çakışmasın diye 'A' önekiyle döner (örn. "A124").
  */
 async function sonrakiSicilNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  const { data: rows } = await supabase
-    .from('firma_calisanlar')
-    .select('sicil_no')
-    .not('sicil_no', 'is', null)
+  const { data: rows } = await fetchAllFirmaCalisanlar(supabase, 'sicil_no', q => q.not('sicil_no', 'is', null))
 
   let maks = 0
   for (const r of rows ?? []) {

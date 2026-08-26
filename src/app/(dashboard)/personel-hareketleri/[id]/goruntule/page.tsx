@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import PersonelHareketiGoruntuleClient from '@/components/personel/PersonelHareketiGoruntuleClient'
@@ -155,10 +156,7 @@ export default async function PersonelHareketiGoruntulePage({
       kadroLabel = `${kh.kadro_sira_no ?? hareket.kadro_sira_no} – ${unvan} (${mud})${rol ? ' – ' + rol : ''}`
     }
   } else if (hareket.kadro_sira_no) {
-    const { data: khRows } = await supabase
-      .from('kadro_hareketleri')
-      .select('kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil')
-      .eq('kadro_sira_no', hareket.kadro_sira_no)
+    const { data: khRows } = await fetchAllKadroHareketleri(supabase, 'kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, asil, vekil', q => q.eq('kadro_sira_no', hareket.kadro_sira_no))
     const kh = (khRows ?? []).find(
       (r: { asil: string | null; vekil: string | null }) =>
         (r.asil ?? '').trim() === sicil_no || (r.vekil ?? '').trim() === sicil_no,

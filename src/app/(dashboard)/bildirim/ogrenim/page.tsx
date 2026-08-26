@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import OgrenimClient from '@/components/bildirim/OgrenimClient'
 import { sortBildirimOgrenimList, sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
@@ -8,7 +9,7 @@ export default async function OgrenimPage() {
   const supabase = await createClient()
 
   const [{ data: raw }, { data: ogrenimTurleriRaw }, { data: ayrilanPh }] = await Promise.all([
-    supabase.from('calisan_ogrenim').select('*, calisan(ad_soyad, tckn)').order('sicil_no', { ascending: true }),
+    fetchAllCalisanOgrenim(supabase, '*, calisan(ad_soyad, tckn)'),
     supabase.from('tanim_ogrenim').select('id, isim'),
     supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').not('ayrilis_tarihi', 'is', null),
   ])

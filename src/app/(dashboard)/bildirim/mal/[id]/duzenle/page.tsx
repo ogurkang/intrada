@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import MalBildirimFormClient, { type MalDuzenleInitial } from '@/components/bildirim/MalBildirimFormClient'
@@ -40,11 +41,7 @@ export default async function Page({ params }: Props) {
     dogum_yeri: string | null
   } | null
 
-  const { data: khList } = await supabase
-    .from('kadro_hareketleri')
-    .select('gorev_unvani, kadro_unvani, statu, durumu, asil')
-    .eq('durumu', 'Dolu')
-    .eq('asil', r.sicil_no)
+  const { data: khList } = await fetchAllKadroHareketleri(supabase, 'gorev_unvani, kadro_unvani, statu, durumu, asil', q => q.eq('durumu', 'Dolu').eq('asil', r.sicil_no))
 
   const memurKadro = (khList ?? []).find(
     k => String((k as { statu?: string }).statu ?? '').trim().toLowerCase() === 'memur',

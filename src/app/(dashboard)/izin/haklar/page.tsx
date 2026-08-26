@@ -5,6 +5,8 @@ import { izinHaklariKullanilanTopluGuncelle } from '../actions'
 import { getAppAccess } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
+import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
+import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 import type { Tables, Views } from '@/types/database'
 
 interface Props {
@@ -21,19 +23,31 @@ export default async function IzinHaklarPage({ searchParams }: Props) {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   const canEdit = access.mode === 'admin'
 
-  const [{ data: personelRaw }, { data: hakRaw }] = await Promise.all([
+  const bugun = new Date().toISOString().slice(0, 10)
+  const [{ data: personelRaw }, { data: hakRaw }, { data: phRaw }] = await Promise.all([
     supabase
       .from('personel_kadro_ozet')
-      .select('sicil_no, ad_soyad, statu')
+      .select('sicil_no, ad_soyad, statu, kadro_durumu')
       .order('ad_soyad'),
     supabase
       .from('izin_haklari')
       .select('*')
       .eq('yil', yil),
+    supabase
+      .from('personel_hareketleri')
+      .select('sicil_no, ayrilis_tarihi, ayrilis_nedeni')
+      .order('yururluk_tarihi', { ascending: false }),
   ])
 
   type PKO = Views<'personel_kadro_ozet'>
-  const personeller = (personelRaw ?? []) as PKO[]
+  const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRaw ?? [])
+  const personeller = filterOutGodmodeCalisan(
+    ((personelRaw ?? []) as PKO[]).filter(p => {
+      if (!p.sicil_no) return false
+      if (!p.kadro_durumu) return false
+      return personelAktifMi(sonAyrilisHaritasi.get(p.sicil_no), bugun)
+    }),
+  )
   const haklar      = (hakRaw      ?? []) as Tables<'izin_haklari'>[]
 
   // Her personel için o yılın hak kaydını eşleştir

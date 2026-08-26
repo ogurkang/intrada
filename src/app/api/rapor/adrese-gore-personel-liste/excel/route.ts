@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -52,10 +53,7 @@ export async function GET(req: Request) {
     const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: mahalleRaw }] =
       await Promise.all([
         supabase.from('tanim_statu').select('statu_adi, sira_no'),
-        supabase
-          .from('kadro_hareketleri')
-          .select('asil, statu, gorev_unvani, kadro_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-          .not('asil', 'is', null),
+        fetchAllKadroHareketleri(supabase, 'asil, statu, gorev_unvani, kadro_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
         supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, mahalle_id, adres_detay, adresi'),
         supabase.from('tanim_adres_mahalle').select('id, il, ilce, mahalle_adi'),
       ])

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, imzaMergelerSecili, imzaSatiriSecili, mergeSatir, type ImzaRol } from '@/lib/kesintiler-excel'
 import { buildTurAdiToKodMap } from '@/lib/izin-puantaj-kodu'
@@ -113,12 +114,16 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
     .eq('durum', true)
   const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
 
-  const { data: izinRaw } = await supabase
-    .from('izin_hareketleri')
-    .select('sicil_no, tur, ayrilis, baslama, durum')
-    .neq('durum', 'İptal Edildi')
-    .lte('ayrilis', bitis)
-    .gt('baslama', baslangic)
+  const { data: izinRaw } = await fetchAllPaged((from, to) =>
+    supabase
+      .from('izin_hareketleri')
+      .select('sicil_no, tur, ayrilis, baslama, durum')
+      .neq('durum', 'İptal Edildi')
+      .lte('ayrilis', bitis)
+      .gt('baslama', baslangic)
+      .order('id')
+      .range(from, to),
+  )
   const izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
     izinRaw ?? [],
     String(baslangic).slice(0, 10),
@@ -126,11 +131,7 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
     turAdiToKod,
   )
 
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, statu, gorev_mudurlugu, kadro_mudurlugu')
-    .is('ayrilis_tarihi', null)
-    .in('statu', ['Sözleşmeli', 'İşçi'])
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, statu, gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null).in('statu', ['Sözleşmeli', 'İşçi']))
 
   const personelByMud: { sicil: string; adSoyad: string; statu: string }[] = []
   const seen = new Set<string>()

@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** Raporlu Memurlar, İzinli Vekiller, İzinli Zabıtalar ve Sosyal Hak için ortak kadro kuralları */
@@ -99,11 +100,7 @@ async function fetchAllActiveKadro<T>(
  * (/kesintiler/rmy ile aynı)
  */
 export async function buildMemurSiciller(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil')
-    .is('ayrilis_tarihi', null)
-    .eq('statu', 'Memur')
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil', q => q.is('ayrilis_tarihi', null).eq('statu', 'Memur'))
 
   const memurSiciller = new Set<string>()
   for (const k of kadroRaw ?? []) {

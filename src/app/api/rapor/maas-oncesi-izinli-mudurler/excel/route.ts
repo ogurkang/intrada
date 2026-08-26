@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { applyGridBorders, mergeSatir } from '@/lib/kesintiler-excel'
 
 const AY_TAM = [
@@ -36,11 +37,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
 
   // Aktif kadro
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-    .is('ayrilis_tarihi', null)
-    .not('asil', 'is', null)
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null).not('asil', 'is', null))
 
   const mudurMap = new Map<string, { unvan: string; vekilSicil: string | null }>()
   for (const k of kadroRaw ?? []) {
@@ -62,13 +59,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Müdür kadrosu bulunamadı' }, { status: 404 })
   }
 
-  const { data: izinRaw } = await supabase
-    .from('izin_hareketleri')
-    .select('sicil_no, tur, ayrilis, baslama, vekalet')
-    .neq('durum', 'İptal Edildi')
-    .in('sicil_no', mudurSicilList)
-    .lte('ayrilis', `${yil}-12-31`)
-    .gte('baslama', `${yil}-01-01`)
+  const { data: izinRaw } = await fetchAllPaged((from, to) =>
+    supabase
+      .from('izin_hareketleri')
+      .select('sicil_no, tur, ayrilis, baslama, vekalet')
+      .neq('durum', 'İptal Edildi')
+      .in('sicil_no', mudurSicilList)
+      .lte('ayrilis', `${yil}-12-31`)
+      .gte('baslama', `${yil}-01-01`)
+      .order('id')
+      .range(from, to),
+  )
 
   const adMap: Record<string, string> = {}
   if (mudurSicilList.length > 0) {

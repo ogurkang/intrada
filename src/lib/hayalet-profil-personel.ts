@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import {
@@ -58,7 +59,7 @@ export async function hayaletProfilPersonelListesi(
         'asil, vekil, statu, durumu, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu',
         { durumu: ['Dolu', 'Vekil'] },
       ),
-      supabase.from('firma_calisanlar').select('sicil_no'),
+      fetchAllFirmaCalisanlar(supabase, 'sicil_no'),
       supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true),
     ])
 

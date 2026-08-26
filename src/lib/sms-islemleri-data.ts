@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import {
@@ -38,10 +39,7 @@ export async function fetchSmsIslemleriVeri(supabase: SupabaseClient): Promise<S
     sablonlar,
   ] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad, telefon, dogum_tarihi'),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, gorev_mudurlugu, kadro_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi')

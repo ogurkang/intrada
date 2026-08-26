@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import AraziPuantajClient, { type AraziPersonel, type AraziDonemBilgi } from '@/components/kesintiler/AraziPuantajClient'
@@ -80,12 +81,7 @@ export default async function AraziPuantajPage({ params }: Props) {
   // 3) Bu ünvanlardan birinde görev yapan aktif personel (kadro_hareketleri üzerinden)
   let personeller: AraziPersonel[] = []
   if (araziUnvanlar.length > 0) {
-    const { data: kadroRaw } = await supabase
-      .from('kadro_hareketleri')
-      .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu')
-      .is('ayrilis_tarihi', null)
-      .in('kadro_unvani', araziUnvanlar)
-      .not('asil', 'is', null)
+    const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu', q => q.is('ayrilis_tarihi', null).in('kadro_unvani', araziUnvanlar).not('asil', 'is', null))
 
     const sicilNolar = [...new Set((kadroRaw ?? []).map(k => k.asil).filter(Boolean))] as string[]
 
@@ -126,13 +122,7 @@ export default async function AraziPuantajPage({ params }: Props) {
   let mudurlukDropdown: string[] = []
   if (araziUnvanlar.length > 0) {
     const [{ data: mudKadro }, { data: mudTanimRaw }] = await Promise.all([
-      supabase
-        .from('kadro_hareketleri')
-        .select('gorev_mudurlugu, kadro_mudurlugu')
-        .is('ayrilis_tarihi', null)
-        .in('kadro_unvani', araziUnvanlar)
-        .in('statu', ['Sözleşmeli', 'İşçi'])
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null).in('kadro_unvani', araziUnvanlar).in('statu', ['Sözleşmeli', 'İşçi']).not('asil', 'is', null)),
       supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true),
     ])
     const byNorm = new Map<string, string>()
@@ -211,14 +201,17 @@ export default async function AraziPuantajPage({ params }: Props) {
       .eq('durum', true)
     const turAdiToKod = buildTurAdiToKodMap(izinTurRaw ?? [])
 
-    const { data: izinRaw } = await supabase
-      .from('izin_hareketleri')
-      .select('sicil_no, baslama, ayrilis, tur, durum')
-      .in('sicil_no', sicilListArazi)
-      .neq('durum', 'İptal Edildi')
-      /* Yarı açık [ayrilis, baslama): dönem ile kesişen kayıtlar */
-      .lte('ayrilis', donem.bitis_tarihi)
-      .gt('baslama', donem.baslangic_tarihi)
+    const { data: izinRaw } = await fetchAllPaged((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sicil_no, baslama, ayrilis, tur, durum')
+        .in('sicil_no', sicilListArazi)
+        .neq('durum', 'İptal Edildi')
+        .lte('ayrilis', donem.bitis_tarihi)
+        .gt('baslama', donem.baslangic_tarihi)
+        .order('id')
+        .range(from, to),
+    )
 
     izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
       izinRaw ?? [],
@@ -240,10 +233,7 @@ export default async function AraziPuantajPage({ params }: Props) {
       ? mudurluklerListRaw.filter(m => mudurlukSecenekleri.some(u => normMudStr(u) === normMudStr(m)))
       : mudurluklerListRaw
   const mudurlukPersonelMap: Record<string, { sicil_no: string; ad_soyad: string }[]> = {}
-  const { data: kadroTumRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil, gorev_mudurlugu, kadro_mudurlugu')
-    .is('ayrilis_tarihi', null)
+  const { data: kadroTumRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null))
   const { data: ozetTumRaw } = await supabase
     .from('personel_kadro_ozet')
     .select('sicil_no, ad_soyad, gorev_mudurlugu')

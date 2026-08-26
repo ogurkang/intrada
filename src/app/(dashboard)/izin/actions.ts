@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { revalidatePath } from 'next/cache'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import {
@@ -542,11 +543,15 @@ export async function izinHaklariKullanilanTopluGuncelle(): Promise<{ hata?: str
 /** Devam niteliğindeki izin kayıtlarının ayrılış tarihini önceki izinin başlama tarihine günceller. */
 export async function izinDevamAyrilisTopluGuncelle(): Promise<{ hata?: string; guncellenen: number }> {
   const supabase = await createClient()
-  const { data: kayitlar } = await supabase
-    .from('izin_hareketleri')
-    .select('id, sicil_no, tur, ayrilis, baslama')
-    .in('durum', HAKTAN_DUSEN_DURUMLAR)
-    .or('tur.ilike.%Yıllık%')
+  const { data: kayitlar } = await fetchAllPaged((from, to) =>
+    supabase
+      .from('izin_hareketleri')
+      .select('id, sicil_no, tur, ayrilis, baslama')
+      .in('durum', HAKTAN_DUSEN_DURUMLAR)
+      .or('tur.ilike.%Yıllık%')
+      .order('id')
+      .range(from, to),
+  )
   if (!kayitlar?.length) return { guncellenen: 0 }
   let guncellenen = 0
   for (const k of kayitlar) {

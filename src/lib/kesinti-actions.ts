@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { revalidatePath } from 'next/cache'
 import type { IzinSatir } from '@/components/kesintiler/DonemListClient'
 import {
@@ -232,10 +233,7 @@ export function makeDonemActions(
     // Zabıta Müdürlüğü filtresi (IZY) veya Vekil filtresi (IVY)
     let ozelSiciller: Set<string> | null = null
     if (options?.zabitaFilter) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, vekil, kadro_mudurlugu, ayrilis_tarihi')
-        .is('ayrilis_tarihi', null)
+      const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, kadro_mudurlugu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null))
       ozelSiciller = new Set<string>()
       for (const k of kadroRaw ?? []) {
         const mud = (k.kadro_mudurlugu ?? '').trim()
@@ -244,10 +242,7 @@ export function makeDonemActions(
         if (sicil) ozelSiciller.add(sicil)
       }
     } else if (options?.vekilFilter) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
-        .is('ayrilis_tarihi', null)
+      const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null))
       ozelSiciller = new Set<string>()
       const asilMuduruSiciller = new Set<string>()
       for (const k of kadroRaw ?? []) {
@@ -262,22 +257,14 @@ export function makeDonemActions(
         ozelSiciller.delete(sicil)
       }
     } else if (options?.memurFilter) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, vekil, statu, ayrilis_tarihi')
-        .is('ayrilis_tarihi', null)
-        .eq('statu', 'Memur')
+      const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, statu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null).eq('statu', 'Memur'))
       ozelSiciller = new Set<string>()
       for (const k of kadroRaw ?? []) {
         const sicil = (k.asil ?? k.vekil ?? '').trim()
         if (sicil) ozelSiciller.add(sicil)
       }
     } else if (options?.memurSozlesmeliFilter) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, vekil, statu, ayrilis_tarihi')
-        .is('ayrilis_tarihi', null)
-        .in('statu', ['Memur', 'Sözleşmeli'])
+      const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil, statu, ayrilis_tarihi', q => q.is('ayrilis_tarihi', null).in('statu', ['Memur', 'Sözleşmeli']))
       ozelSiciller = new Set<string>()
       for (const k of kadroRaw ?? []) {
         const sicil = (k.asil ?? k.vekil ?? '').trim()
@@ -295,48 +282,35 @@ export function makeDonemActions(
     // IVY (vekilFilter): Vekil personelin TÜM izinleri — İptal hariç, tüm türler
     // Diğer modüller: dönem aralığındaki izinler, İptal hariç
     const IZY_IZIN_TURLERI = 'tur.ilike.%Yıllık%,tur.ilike.%Ölüm%,tur.ilike.%Evlilik%,tur.ilike.%Babalık%,tur.ilike.%Mehil%,tur.ilike.%Mazeret%,tur.ilike.%İdari%,tur.ilike.%Doğum Öncesi%,tur.ilike.%Doğum Sonrası%'
-    let izinQuery = supabase
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, baslama, ayrilis, gun')
-      .order('baslama')
-    if (options?.zabitaFilter) {
-      izinQuery = izinQuery
+    const { data: izinRaw } = await fetchAllPaged<{
+      sira_no: string | null
+      sicil_no: string | null
+      tur: string | null
+      baslama: string | null
+      ayrilis: string | null
+      gun: number | null
+    }>((from, to) => {
+      let q = supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, baslama, ayrilis, gun')
         .neq('durum', 'İptal Edildi')
-        .or(IZY_IZIN_TURLERI)
-        .limit(500)
-      if (ozelSiciller && ozelSiciller.size > 0) {
-        izinQuery = izinQuery.in('sicil_no', [...ozelSiciller])
+        .order('id')
+        .range(from, to)
+      if (options?.zabitaFilter) {
+        q = q.or(IZY_IZIN_TURLERI)
+        if (ozelSiciller && ozelSiciller.size > 0) q = q.in('sicil_no', [...ozelSiciller])
+      } else if (options?.vekilFilter) {
+        if (ozelSiciller && ozelSiciller.size > 0) q = q.in('sicil_no', [...ozelSiciller])
+      } else if (options?.memurFilter) {
+        q = q.in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
+        if (ozelSiciller && ozelSiciller.size > 0) q = q.in('sicil_no', [...ozelSiciller])
+      } else if (options?.memurSozlesmeliFilter) {
+        if (ozelSiciller && ozelSiciller.size > 0) q = q.in('sicil_no', [...ozelSiciller])
+      } else {
+        q = q.lte('baslama', donemRow.bitis_tarihi).gte('ayrilis', donemRow.baslangic_tarihi)
       }
-    } else if (options?.vekilFilter) {
-      izinQuery = izinQuery
-        .neq('durum', 'İptal Edildi')
-        .limit(500)
-      if (ozelSiciller && ozelSiciller.size > 0) {
-        izinQuery = izinQuery.in('sicil_no', [...ozelSiciller])
-      }
-    } else if (options?.memurFilter) {
-      izinQuery = izinQuery
-        .neq('durum', 'İptal Edildi')
-        .in('tur', ['Rapor', 'Refakatçi Raporu', 'Refakatçi İzni'])
-        .limit(500)
-      if (ozelSiciller && ozelSiciller.size > 0) {
-        izinQuery = izinQuery.in('sicil_no', [...ozelSiciller])
-      }
-    } else if (options?.memurSozlesmeliFilter) {
-      izinQuery = izinQuery
-        .neq('durum', 'İptal Edildi')
-        .limit(500)
-      if (ozelSiciller && ozelSiciller.size > 0) {
-        izinQuery = izinQuery.in('sicil_no', [...ozelSiciller])
-      }
-    } else {
-      izinQuery = izinQuery
-        .lte('baslama', donemRow.bitis_tarihi)
-        .gte('ayrilis', donemRow.baslangic_tarihi)
-        .neq('durum', 'İptal Edildi')
-        .limit(200)
-    }
-    const { data: izinRaw } = await izinQuery
+      return q
+    })
 
     // Çalışan adlarını eşle
     const sicilNolar = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))]

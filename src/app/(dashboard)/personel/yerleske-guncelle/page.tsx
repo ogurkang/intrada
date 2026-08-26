@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import YerleskeGuncelleClient from '@/components/personel/YerleskeGuncelleClient'
@@ -45,10 +46,7 @@ export default async function YerleskeGuncellePage() {
       .select('sicil_no, ayrilis_tarihi')
       .order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    supabase
-      .from('firma_calisanlar')
-      .select('id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, ayrilis_tarihi, kuruma_giris_tarihi, e_posta, yerleske_adresi_id')
-      .order('ad_soyad'),
+    fetchAllFirmaCalisanlar(supabase, 'id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, ayrilis_tarihi, kuruma_giris_tarihi, e_posta, yerleske_adresi_id'),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
     fetchSirketYerleskeTanimSatirlari(supabase),
   ])

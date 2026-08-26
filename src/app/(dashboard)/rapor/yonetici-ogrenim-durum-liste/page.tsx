@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { yoneticiOgrenimDurumListeSatirlari } from '@/lib/rapor-yonetici-ogrenim-durum-liste'
@@ -13,12 +14,8 @@ export default async function YoneticiOgrenimDurumListePage() {
 
   const [{ data: calisanRaw, error }, { data: kadroRaw }, { data: ogrenimRaw }] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad'),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, vekil, statu, kadro_unvani, gorev_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu'),
-    supabase
-      .from('calisan_ogrenim')
-      .select('sicil_no, ogrenim_turu, okul_adi, bolum, mezuniyet_tarihi, meslegi, varsayilan'),
+    fetchAllKadroHareketleri(supabase, 'asil, vekil, statu, kadro_unvani, gorev_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu'),
+    fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, okul_adi, bolum, mezuniyet_tarihi, meslegi, varsayilan'),
   ])
 
   const satirlar = yoneticiOgrenimDurumListeSatirlari({

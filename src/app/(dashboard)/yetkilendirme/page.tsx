@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail, godmodeSicilSet } from '@/lib/godmode-calisan'
@@ -39,10 +40,7 @@ export default async function YetkilendirmePage() {
         .order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
       supabase.from('app_profiles').select('id, sicil_no, rol, menu_izinleri, hesap_aktif').eq('profil_turu', 'personel'),
-      supabase
-        .from('firma_calisanlar')
-        .select('sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi, e_posta')
-        .order('sicil_no'),
+      fetchAllFirmaCalisanlar(supabase, 'sicil_no, ad_soyad, gorevi, gorev_mudurlugu, ayrilis_tarihi, e_posta'),
     ])
 
   const calisanlar = filterOutGodmodeCalisan(calisanlarRaw ?? [])

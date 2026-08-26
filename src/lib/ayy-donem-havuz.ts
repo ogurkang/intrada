@@ -7,6 +7,7 @@
  * OD zinciri: önceki dönem hesabı, o dönemin havuzu ve daha önceki OD ile yapılır.
  */
 
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
@@ -72,11 +73,7 @@ function dedupeBySiraNo(rows: AyyIzinDbRow[]): AyyIzinDbRow[] {
 }
 
 export async function ayyGetMemurSozlesmeliSiciller(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data: kadroRaw } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil')
-    .is('ayrilis_tarihi', null)
-    .in('statu', ['Memur', 'Sözleşmeli'])
+  const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, vekil', q => q.is('ayrilis_tarihi', null).in('statu', ['Memur', 'Sözleşmeli']))
   const set = new Set<string>()
   for (const k of kadroRaw ?? []) {
     const s = (k.asil ?? k.vekil ?? '').trim()

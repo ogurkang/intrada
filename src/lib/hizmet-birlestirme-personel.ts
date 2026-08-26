@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface HizmetBirlestirmePersonel {
@@ -10,10 +11,7 @@ export interface HizmetBirlestirmePersonel {
 export async function listHizmetBirlestirmePersonel(
   supabase: SupabaseClient,
 ): Promise<HizmetBirlestirmePersonel[]> {
-  const { data: khRows } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, vekil')
-    .is('ayrilis_tarihi', null)
+  const { data: khRows } = await fetchAllKadroHareketleri(supabase, 'asil, vekil', q => q.is('ayrilis_tarihi', null))
 
   const sicilSet = new Set<string>()
   for (const kh of khRows ?? []) {

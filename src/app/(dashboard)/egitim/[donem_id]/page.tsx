@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import EgitimDetayClient, {
@@ -26,7 +27,7 @@ export default async function EgitimDetayPage({ params }: Props) {
     supabase.from('egitim_takvimi_donem').select('*').eq('id', donem_id).single(),
     supabase.from('egitim_takvimi_egitim').select('*').eq('donem_id', donem_id).order('egitim_baslangic'),
     supabase.from('egitim_istatistik_katilim').select('egitim_id, sicil_no').eq('donem_id', donem_id),
-    supabase.from('kadro_hareketleri').select('asil, gorev_mudurlugu, kadro_mudurlugu').is('ayrilis_tarihi', null).not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null).not('asil', 'is', null)),
     supabase.from('calisan').select('sicil_no, ad_soyad'),
   ])
 

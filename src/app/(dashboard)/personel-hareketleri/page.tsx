@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import PersonelHareketiListClient from '@/components/personel/PersonelHareketiListClient'
 import { personelHareketIslemNo } from '@/lib/personel-hareket-islem-no'
@@ -10,11 +11,7 @@ export default async function PersonelHareketiListPage() {
   const supabase = await createClient()
 
   const [{ data: kadroRaw }, { data: calisanRaw }, { data: hareketRaw }] = await Promise.all([
-    supabase
-      .from('kadro_hareketleri')
-      .select('*')
-      .eq('statu', 'Memur')
-      .is('ayrilis_tarihi', null),
+    fetchAllKadroHareketleri(supabase, '*', q => q.eq('statu', 'Memur').is('ayrilis_tarihi', null)),
     supabase
       .from('calisan')
       .select('sicil_no, ad_soyad'),

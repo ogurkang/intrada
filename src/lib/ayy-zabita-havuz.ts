@@ -3,6 +3,7 @@
  * `ayy_zabita_normal_kesinti_sicil` tablosundakiler normal (memur) kesintiye döner.
  */
 
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 function kadroSatiriZabitaMi(k: {
@@ -21,10 +22,7 @@ function kadroSatiriZabitaMi(k: {
 
 /** Aktif kadroda zabıta kabul edilen tüm siciller (asıl). */
 export async function ayyKadroZabitaSicilListesi(supabase: SupabaseClient): Promise<string[]> {
-  const { data: kh } = await supabase
-    .from('kadro_hareketleri')
-    .select('asil, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
-    .is('ayrilis_tarihi', null)
+  const { data: kh } = await fetchAllKadroHareketleri(supabase, 'asil, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu', q => q.is('ayrilis_tarihi', null))
   const set = new Set<string>()
   for (const k of kh ?? []) {
     if (!kadroSatiriZabitaMi(k)) continue

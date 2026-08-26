@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import EgitimIstatistikShell from '@/components/egitim/EgitimIstatistikShell'
 import type {
   IstatistikDonem,
@@ -51,13 +52,17 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
         .select('id, egitim_adi, kisa_ad, kanal, sure_dakika, katilimci_sayisi, program, egitim_baslangic, egitim_bitis')
         .eq('donem_id', seciliDonemId!)
         .order('egitim_baslangic'),
-      supabase.from('egitim_istatistik_katilim')
-        .select('sicil_no, egitim_id')
-        .eq('donem_id', seciliDonemId!),
-      supabase.from('kadro_hareketleri')
-        .select('asil, gorev_mudurlugu, kadro_mudurlugu')
-        .is('ayrilis_tarihi', null)
-        .not('asil', 'is', null),
+      fetchAllPaged<{ sicil_no: string; egitim_id: number }>((from, to) =>
+        supabase
+          .from('egitim_istatistik_katilim')
+          .select('sicil_no, egitim_id')
+          .eq('donem_id', seciliDonemId!)
+          .order('egitim_id')
+          .range(from, to),
+      ),
+      fetchAllKadroHareketleri(supabase, 'asil, gorev_mudurlugu, kadro_mudurlugu', q =>
+        q.is('ayrilis_tarihi', null).not('asil', 'is', null),
+      ),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
     ])
 

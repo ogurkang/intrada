@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
 import { createClient } from '@/lib/supabase/server'
@@ -46,11 +47,7 @@ export async function GET(request: NextRequest) {
     const cal = kayit.calisan as { ad_soyad?: string | null; tckn?: string | null } | null
     let kadroUnvani = ''
     let gorevUnvani = ''
-    const { data: khList } = await supabase
-      .from('kadro_hareketleri')
-      .select('gorev_unvani, kadro_unvani, statu, durumu, asil')
-      .eq('durumu', 'Dolu')
-      .eq('asil', kayit.sicil_no)
+    const { data: khList } = await fetchAllKadroHareketleri(supabase, 'gorev_unvani, kadro_unvani, statu, durumu, asil', q => q.eq('durumu', 'Dolu').eq('asil', kayit.sicil_no))
     const memurKadro = (khList ?? []).find(
       k => String((k as { statu?: string }).statu ?? '').trim().toLowerCase() === 'memur',
     ) as { gorev_unvani?: string; kadro_unvani?: string } | undefined

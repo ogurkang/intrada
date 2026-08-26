@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
@@ -32,10 +33,7 @@ export async function GET(request: NextRequest) {
       .from('calisan')
       .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi, gorev_turu_aciklama')
       .in('gorev_turu', [...GOREV_TURU_RAPOR_TURLERI]),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
   ])
 
   const byAsil = new Map<string, KadroRaporRow[]>()

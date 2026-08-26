@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import {
   buildMemurSiciller,
   buildVekilSiciller,
@@ -74,39 +75,45 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
 
   let rmyRaw: RawIzin[] = []
   if (memurSiciller.size > 0) {
-    const { data } = await supabase
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-      .neq('durum', 'İptal Edildi')
-      .in('tur', [...RMY_IZIN_TURLERI])
-      .in('sicil_no', Array.from(memurSiciller))
-      .order('baslama')
-      .limit(500)
+    const { data } = await fetchAllPaged((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .neq('durum', 'İptal Edildi')
+        .in('tur', [...RMY_IZIN_TURLERI])
+        .in('sicil_no', Array.from(memurSiciller))
+        .order('id')
+        .range(from, to),
+    )
     rmyRaw = (data ?? []) as RawIzin[]
   }
 
   let ivyRaw: RawIzin[] = []
   if (vekilSiciller.size > 0) {
-    const { data } = await supabase
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-      .neq('durum', 'İptal Edildi')
-      .in('sicil_no', Array.from(vekilSiciller))
-      .order('baslama')
-      .limit(500)
+    const { data } = await fetchAllPaged((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .neq('durum', 'İptal Edildi')
+        .in('sicil_no', Array.from(vekilSiciller))
+        .order('id')
+        .range(from, to),
+    )
     ivyRaw = (data ?? []) as RawIzin[]
   }
 
   let izyRaw: RawIzin[] = []
   if (zabitaSiciller.size > 0) {
-    const { data } = await supabase
-      .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
-      .neq('durum', 'İptal Edildi')
-      .or(IZY_IZIN_TURLERI_OR)
-      .in('sicil_no', Array.from(zabitaSiciller))
-      .order('baslama')
-      .limit(500)
+    const { data } = await fetchAllPaged((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .neq('durum', 'İptal Edildi')
+        .or(IZY_IZIN_TURLERI_OR)
+        .in('sicil_no', Array.from(zabitaSiciller))
+        .order('id')
+        .range(from, to),
+    )
     izyRaw = (data ?? []) as RawIzin[]
   }
 

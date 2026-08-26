@@ -268,7 +268,6 @@ function buildMenuGroups(
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },
       { href: '/rapor/gorev-yerine-gore-liste', label: 'Görev Yerine Göre Personel Listesi' },
-      { href: '/rapor/gorev-yerine-gore-iletisim-bilgileri', label: 'Görev Yerine Göre İletişim Bilgileri' },
       { href: '/rapor/mudurluge-gore-personel-liste', label: 'Müdürlüğe Göre Personel Listesi' },
       { href: '/rapor/tehlike-siniflarina-gore-mudurluk', label: 'Tehlike Sınıflarına Göre Müdürlük Raporu' },
       { href: '/rapor/tehlikeli-sinif-mudurluk-listesi', label: 'Tehlike Sınıfına Göre Müdürlük Listesi' },

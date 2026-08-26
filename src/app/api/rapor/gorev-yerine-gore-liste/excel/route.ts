@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { filterOutGodmodeCalisan, filterOutHiddenSystemByEmail } from '@/lib/godmode-calisan'
@@ -97,7 +98,7 @@ export async function GET(req: Request) {
         kadro: k,
       }
     })
-    const { data: firmaRaw } = await supabase.from('firma_calisanlar').select('id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet, yerleske_adresi_id').order('ad_soyad')
+    const { data: firmaRaw } = await fetchAllFirmaCalisanlar(supabase, 'id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet, yerleske_adresi_id')
     const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
       .map(f => ({ kayit_key: `firma:${f.id}`, kind: 'firma' as const, statuEtiket: FIRMA_STATU_ETIKET, sicil_no: f.sicil_no, ad_soyad: f.ad_soyad, cinsiyet: f.cinsiyet, gorev_mudurlugu: f.gorev_mudurlugu, gorevi: f.gorevi, yerleske_adresi_id: f.yerleske_adresi_id ?? null }))
     const sirali = [...kadroSatirlarRaw, ...firmaSatirlarRaw].sort((a, b) =>

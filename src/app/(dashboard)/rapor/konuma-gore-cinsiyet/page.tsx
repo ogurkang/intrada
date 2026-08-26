@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import StatuyeGoreCinsiyetClient, {
   type StatuyeGoreCinsiyetTabVerisi,
@@ -72,16 +73,13 @@ export default async function KonumaGoreCinsiyetPage({
   ] = await Promise.all([
     fetchMudurlukYerleskeTanimSatirlari(supabase),
     fetchSirketYerleskeTanimSatirlari(supabase),
-    supabase
-      .from('kadro_hareketleri')
-      .select(
-        'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
-      )
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(
+      supabase,
+      'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, gorev_mudurlugu, kadro_mudurlugu',
+      q => q.not('asil', 'is', null),
+    ),
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, gorev_yeri, gorev_turu, yerleske_adresi_id'),
-    supabase
-      .from('firma_calisanlar')
-      .select('id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
+    fetchAllFirmaCalisanlar(supabase, 'id, ad_soyad, cinsiyet, kuruma_giris_tarihi, ayrilis_tarihi, gorev_mudurlugu, yerleske_adresi_id'),
     supabase
       .from('personel_hareketleri')
       .select('sicil_no, ayrilis_tarihi, ise_baslama_tarihi')

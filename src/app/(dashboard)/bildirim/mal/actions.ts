@@ -1,5 +1,6 @@
 'use server'
 
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Json } from '@/types/database'

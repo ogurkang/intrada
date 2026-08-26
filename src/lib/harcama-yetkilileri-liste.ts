@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { trNormalize } from '@/lib/turkce-search'
 
@@ -22,10 +23,7 @@ function mudurUnvaniMi(unvan: string): boolean {
 export async function harcamaYetkilileriSatirlariYukle(): Promise<HarcamaYetkilisiSatir[]> {
   const supabase = await createClient()
   const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
-    supabase
-      .from('kadro_hareketleri')
-      .select('id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no, durumu')
-      .order('id', { ascending: true }),
+    fetchAllKadroHareketleri(supabase, 'id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no, durumu'),
     supabase.from('calisan').select('sicil_no, ad_soyad, telefon, e_posta'),
   ])
 

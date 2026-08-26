@@ -152,7 +152,7 @@ export default function IzinHakYonetimClient({
           {canEdit && onYenidenHesapla && (
             <button onClick={yenidenHesapla} disabled={isPending}
               title="Kullanılan izin günlerini izin hareketlerinden yeniden hesaplar (örn. Supabase'de elle düzeltilen kayıtlar için)."
-              className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors font-medium whitespace-nowrap disabled:opacity-50">
+              className="flex items-center gap-2 bg-orange-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium whitespace-nowrap disabled:opacity-50">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15" />
               </svg>

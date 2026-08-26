@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fetchPersonelSendikaAtDate } from '@/lib/personel-sendika-load'
@@ -23,10 +24,7 @@ export async function GET(req: Request) {
 
     const supabase = await createClient()
     const [{ data: kadroRaw }, { data: calisanRaw }, { data: mudurlukRaw }, sendikaBySicil] = await Promise.all([
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
       supabase.from('calisan').select('sicil_no, ad_soyad, telefon'),
       supabase.from('tanim_mudurluk').select('id, mudurluk_adi'),
       fetchPersonelSendikaAtDate(supabase, D),

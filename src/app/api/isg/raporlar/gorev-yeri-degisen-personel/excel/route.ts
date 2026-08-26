@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
@@ -55,13 +56,12 @@ export async function GET(req: Request) {
             'id, sicil_no, kadro_id, eski_gorev_yeri, yeni_gorev_yeri, yururluk_tarihi, kayit_tarihi, ise_baslama_tarihi, ayrilis_tarihi, ayrilis_nedeni',
           ),
         supabase.from('calisan').select('sicil_no, ad_soyad'),
-        supabase
-          .from('kadro_hareketleri')
-          .select(
-            'id, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu',
-          )
-          .not('asil', 'is', null),
-        supabase.from('firma_calisanlar').select('sicil_no'),
+        fetchAllKadroHareketleri(
+          supabase,
+          'id, asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu',
+          q => q.not('asil', 'is', null),
+        ),
+        fetchAllFirmaCalisanlar(supabase, 'sicil_no'),
       ])
 
     const adBySicil = calisanAdHaritasiOlustur(calisanRaw ?? [])

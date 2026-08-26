@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -44,11 +45,11 @@ export default async function FirmaPersonelDuzenlePage({
     tanimSatirlar,
     sirketSatirlar,
   ] = await Promise.all([
-    supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
+    fetchAllFirmaCalisanlar(supabase, 'gorev_mudurlugu'),
     sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
-    supabase.from('firma_calisanlar').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
-    supabase.from('kadro_hareketleri').select('ayrilis_nedeni').not('ayrilis_nedeni', 'is', null),
+    fetchAllFirmaCalisanlar(supabase, 'ayrilis_nedeni', q => q.not('ayrilis_nedeni', 'is', null)),
+    fetchAllKadroHareketleri(supabase, 'ayrilis_nedeni', q => q.not('ayrilis_nedeni', 'is', null)),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
     fetchSirketYerleskeTanimSatirlari(supabase),
   ])

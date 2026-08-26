@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import {
   kadroBaslangic,
   kadroSatirAktifMi,
@@ -42,18 +43,18 @@ export async function GET(request: NextRequest) {
 
   const [{ data: izinRaw }, { data: calisanRaw }, { data: kadroRaw }, mudSatirlar, sirketSatirlar] =
     await Promise.all([
-      supabase
-        .from('izin_hareketleri')
-        .select('sicil_no, tur, ayrilis, baslama, durum')
-        .neq('durum', 'İptal Edildi')
-        .lte('ayrilis', tarih)
-        .gt('baslama', tarih)
-        .order('sicil_no'),
+      fetchAllPaged((from, to) =>
+        supabase
+          .from('izin_hareketleri')
+          .select('sicil_no, tur, ayrilis, baslama, durum')
+          .neq('durum', 'İptal Edildi')
+          .lte('ayrilis', tarih)
+          .gt('baslama', tarih)
+          .order('id')
+          .range(from, to),
+      ),
       supabase.from('calisan').select('sicil_no, ad_soyad, gorev_turu, gorev_turu_aciklama, gorev_yeri, yerleske_adresi_id'),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
       fetchMudurlukYerleskeTanimSatirlari(supabase),
       fetchSirketYerleskeTanimSatirlari(supabase),
     ])

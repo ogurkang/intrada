@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { periyotSonGunu, type KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
     const seciliSet = new Set(seciliKanlar)
     const supabase = await createClient()
     const [{ data: kadroRaw }, { data: calisanRaw }] = await Promise.all([
-      supabase.from('kadro_hareketleri').select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu').not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
       supabase.from('calisan').select('sicil_no, ad_soyad, kan_grubu, telefon'),
     ])
     const byAsil = new Map<string, KadroRaporRow[]>()

@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
@@ -59,12 +60,9 @@ export async function GET(req: Request) {
 
     const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
       supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-      supabase
-        .from('kadro_hareketleri')
-        .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, kadro_unvani, gorev_unvani')
-        .not('asil', 'is', null),
+      fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, kadro_unvani, gorev_unvani', q => q.not('asil', 'is', null)),
       supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
-      supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, varsayilan'),
+      fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
     ])
 
     const tanimStatuler: TanimStatuRow[] = (tanimStatuRaw ?? []).map(r => ({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPersonelHareketleri } from '@/lib/supabase-sayfala'
 import { periyotSonGunu, type RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { raporExcelStandartResponse } from '@/lib/rapor-excel-standart'
 import {
@@ -45,18 +46,17 @@ export async function GET(req: Request) {
 
     const [{ data: kadroRaw }, { data: calisanRaw }, { data: ayarRaw }, { data: phRaw }, { data: auditRaw }] =
       await Promise.all([
-        supabase
-          .from('kadro_hareketleri')
-          .select(
-            'id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
-          )
-          .order('id', { ascending: true }),
+        fetchAllKadroHareketleri(
+          supabase,
+          'id, kadro_unvani, asil, vekil, iptal_karar_tarihi, iptal_karar_no, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+        ),
         supabase.from('calisan').select('sicil_no, ad_soyad, telefon, e_posta'),
         sb.from('rapor_yonetici_iletisim_liste_ayar').select('kayit_key, sira_no').order('sira_no', { ascending: true }),
-        supabase
-          .from('personel_hareketleri')
-          .select('sicil_no, kadro_id, kadro_rol, yururluk_tarihi, ise_baslama_tarihi, ayrilis_tarihi')
-          .not('kadro_id', 'is', null),
+        fetchAllPersonelHareketleri(
+          supabase,
+          'sicil_no, kadro_id, kadro_rol, yururluk_tarihi, ise_baslama_tarihi, ayrilis_tarihi',
+          q => q.not('kadro_id', 'is', null),
+        ),
         supabase
           .from('personel_audit_log')
           .select('created_at, onceki, sonraki, ref_id')

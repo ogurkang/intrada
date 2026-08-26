@@ -1,3 +1,4 @@
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import FirmaPersonelYeniClient from '@/components/personel/FirmaPersonelYeniClient'
 import { sortOgrenimIsimListesi } from '@/lib/ogrenim-sira'
@@ -14,7 +15,7 @@ export default async function FirmaPersonelYeniPage() {
     { data: tanimSirket },
     { data: tanimOgr },
   ] = await Promise.all([
-    supabase.from('firma_calisanlar').select('gorev_mudurlugu'),
+    fetchAllFirmaCalisanlar(supabase, 'gorev_mudurlugu'),
     sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
   ])

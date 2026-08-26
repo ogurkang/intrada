@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
 import { RAPOR_TANIMLARI, type RaporTanim } from '@/lib/rapor-tanimlari'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 
 export interface RaporKapsamOzet {
   tarih: string
@@ -56,11 +57,14 @@ export async function yukleRaporYonetimVerisi(supabase: SupabaseClient): Promise
     { data: ihrGecmis },
   ] = await Promise.all([
     sb.from('rapor_tanim').select('*').eq('aktif', true).order('baslik'),
-    supabase
-      .from('personel_audit_log')
-      .select('*')
-      .eq('ref_table', 'rapor_tanim')
-      .order('created_at', { ascending: false }),
+    fetchAllPaged<Tables<'personel_audit_log'>>((from, to) =>
+      supabase
+        .from('personel_audit_log')
+        .select('*')
+        .eq('ref_table', 'rapor_tanim')
+        .order('created_at', { ascending: false })
+        .range(from, to),
+    ),
     sb.from('rapor_gorev_yeri_liste_ayar').select('updated_at').order('updated_at', { ascending: false }).limit(1),
     sb.from('rapor_yonetici_iletisim_liste_ayar').select('updated_at').order('updated_at', { ascending: false }).limit(1),
     supabase

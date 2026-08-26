@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import IzinLimitineTakilanPersonelListeClient, {
   type IzinLimitineTakilanPersonelTabVerisi,
 } from '@/components/rapor/IzinLimitineTakilanPersonelListeClient'
@@ -37,23 +38,27 @@ export default async function IzinLimitineTakilanPersonelListePage({
     .filter(Boolean)
 
   const supabase = await createClient()
-  const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: izinRaw }] = await Promise.all([
+  const [{ data: tanimStatuRaw }, kadroRes, { data: calisanRaw }, { data: izinRaw }] = await Promise.all([
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri<KadroRaporRow>(
+      supabase,
+      'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu',
+    ),
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet'),
-    supabase
-      .from('izin_hareketleri')
-      .select('sicil_no, ayrilis, gun, tur')
-      .neq('durum', 'İptal Edildi')
-      .gte('ayrilis', `${yil}-01-01`)
-      .lte('ayrilis', `${yil}-12-31`),
+    fetchAllPaged<{ sicil_no: string | null; ayrilis: string | null; gun: number | null; tur: string | null }>((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('sicil_no, ayrilis, gun, tur')
+        .neq('durum', 'İptal Edildi')
+        .gte('ayrilis', `${yil}-01-01`)
+        .lte('ayrilis', `${yil}-12-31`)
+        .order('id')
+        .range(from, to),
+    ),
   ])
 
   const tanimStatuler: TanimStatuRow[] = (tanimStatuRaw ?? []).map(r => ({ statu_adi: r.statu_adi, sira_no: r.sira_no }))
-  const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
+  const kadro: KadroRaporRow[] = (kadroRes.data ?? []) as KadroRaporRow[]
   const calisanBySicil = new Map<string, CalisanRaporRow>()
   for (const c of calisanRaw ?? []) {
     calisanBySicil.set(c.sicil_no, { sicil_no: c.sicil_no, ad_soyad: c.ad_soyad, cinsiyet: c.cinsiyet })

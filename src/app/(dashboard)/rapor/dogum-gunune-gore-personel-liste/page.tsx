@@ -1,3 +1,4 @@
+import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
@@ -40,10 +41,7 @@ export default async function DogumGununeGorePersonelListePage({
   const supabase = await createClient()
   const [{ data: calisanRaw }, { data: kadroRaw }] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad, dogum_tarihi'),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu', q => q.not('asil', 'is', null)),
   ])
   const kadroByAsil = new Map<string, KadroRaporRow[]>()
   for (const k of (kadroRaw ?? []) as KadroRaporRow[]) {

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 
 export type ModulHubAuditTip =
   | 'ogrenim'
@@ -31,11 +32,14 @@ export async function loadAuditLoglarByRefTables(
   const tables = [...new Set(refTables.map(t => t.trim()).filter(Boolean))]
   if (!tables.length) return {}
 
-  const { data } = await supabase
-    .from('personel_audit_log')
-    .select('*')
-    .in('ref_table', tables)
-    .order('created_at', { ascending: false })
+  const { data } = await fetchAllPaged<Tables<'personel_audit_log'>>((from, to) =>
+    supabase
+      .from('personel_audit_log')
+      .select('*')
+      .in('ref_table', tables)
+      .order('created_at', { ascending: false })
+      .range(from, to),
+  )
 
   const map: Record<string, Tables<'personel_audit_log'>[]> = {}
   for (const log of data ?? []) {

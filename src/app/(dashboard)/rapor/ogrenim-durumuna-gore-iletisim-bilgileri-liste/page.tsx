@@ -1,3 +1,4 @@
+import { fetchAllCalisanOgrenim, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 import OgrenimDurumunaGoreIletisimBilgileriListeClient, {
   type OgrenimIletisimBilgileriTabVerisi,
@@ -37,12 +38,9 @@ export default async function OgrenimDurumunaGoreIletisimBilgileriListePage({
   const supabase = await createClient()
   const [{ data: tanimStatuRaw }, { data: kadroRaw }, { data: calisanRaw }, { data: ogrenimRaw }] = await Promise.all([
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
-    supabase
-      .from('kadro_hareketleri')
-      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu')
-      .not('asil', 'is', null),
+    fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
     supabase.from('calisan').select('sicil_no, ad_soyad, cinsiyet, telefon, e_posta'),
-    supabase.from('calisan_ogrenim').select('sicil_no, ogrenim_turu, okul_adi, bolum, varsayilan, aktif'),
+    fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, okul_adi, bolum, varsayilan, aktif'),
   ])
 
   const tanimStatuler: TanimStatuRow[] = (tanimStatuRaw ?? []).map(r => ({ statu_adi: r.statu_adi, sira_no: r.sira_no }))

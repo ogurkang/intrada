@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
+import { fetchAllKadroHareketleri, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { assertKullaniciMudurlukFromSession } from '@/lib/kullanici-mudurluk'
 import { applyBordersToRows, applyGridBordersRange, imzaMergelerSecili, imzaSatiriSecili, mergeSatir, type ImzaRol } from '@/lib/kesintiler-excel'
 import { buildTurAdiToKodMap, PUANTAJ_KOD_ACIKLAMA } from '@/lib/izin-puantaj-kodu'
@@ -135,12 +136,7 @@ export async function GET(request: NextRequest) {
 
     let personeller: { sicil_no: string; ad_soyad: string; mudurluk: string; oran: number; statu: string | null }[] = []
     if (araziUnvanlar.length > 0) {
-      const { data: kadroRaw } = await supabase
-        .from('kadro_hareketleri')
-        .select('asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu')
-        .is('ayrilis_tarihi', null)
-        .in('kadro_unvani', araziUnvanlar)
-        .not('asil', 'is', null)
+      const { data: kadroRaw } = await fetchAllKadroHareketleri(supabase, 'asil, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu, statu', q => q.is('ayrilis_tarihi', null).in('kadro_unvani', araziUnvanlar).not('asil', 'is', null))
 
       const mudurlukFiltre = mudurluk
         ? (k: { gorev_mudurlugu?: string | null; kadro_mudurlugu?: string | null }) =>
@@ -219,13 +215,17 @@ export async function GET(request: NextRequest) {
     const sicilExcel = personeller.map(p => p.sicil_no)
     let izinKodlariBySicilGun: Record<string, Record<string, string>> = {}
     if (sicilExcel.length > 0) {
-      const { data: izinRaw } = await supabase
+    const { data: izinRaw } = await fetchAllPaged((from, to) =>
+      supabase
         .from('izin_hareketleri')
         .select('sicil_no, baslama, ayrilis, tur, durum')
         .in('sicil_no', sicilExcel)
         .neq('durum', 'İptal Edildi')
         .lte('ayrilis', donem.bitis_tarihi)
         .gt('baslama', donem.baslangic_tarihi)
+        .order('id')
+        .range(from, to),
+    )
       izinKodlariBySicilGun = izinKodlariBySicilGunFromHareketler(
         izinRaw ?? [],
         String(donem.baslangic_tarihi).slice(0, 10),
