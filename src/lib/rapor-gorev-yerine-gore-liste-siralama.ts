@@ -96,8 +96,8 @@ function mudurlukteKategoriSonunaEkle(
 
 /**
  * Kayıtlı sıra sabittir (anlık görüntü).
- * Ayrılanlar çıkarılır. Müdürlük değişen ve yeni kayıtlar, gittikleri müdürlükte
- * kendi istihdam grubunun sonuna eklenir. Başka kimse yer değiştirmez.
+ * Ayrılanlar çıkarılır. Yeni personel ve kurum içi müdürlük nakli (kadro/personel
+ * kaydıyla) gittikleri müdürlükte kendi grubunun sonuna eklenir. Sayfa yükü sırayı bozmaz.
  */
 export function gorevYerineGoreListeArtimliSenkron(
   satirlar: GorevYerineGoreListeSatir[],
@@ -107,29 +107,36 @@ export function gorevYerineGoreListeArtimliSenkron(
   const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s]))
   const oncekiByKey = new Map(oncekiAyar.map(a => [a.kayit_key, a]))
 
-  let keys = oncekiAyar.map(a => a.kayit_key).filter(k => satirByKey.has(k))
+  const keysOnceki = oncekiAyar.map(a => a.kayit_key).filter(k => satirByKey.has(k))
+  const keysOncekiSet = new Set(keysOnceki)
+  const otomatikSet = new Set(otomatikEkleKeys)
 
   const eklenecek: string[] = []
   const eklenecekSet = new Set<string>()
 
-  for (const key of keys) {
+  // Sayfa yükü sırayı bozmaz. Nakil: kadro/personel kaydı + müdürlük gerçekten değiştiyse.
+  for (const key of keysOnceki) {
     const prev = oncekiByKey.get(key)
     const s = satirByKey.get(key)
-    if (s && prev && mudurlukAnahtar(prev.mudurluk) !== mudurlukAnahtar(s.mudurluk)) {
-      if (!eklenecekSet.has(key)) {
-        eklenecekSet.add(key)
-        eklenecek.push(key)
-      }
+    if (
+      s &&
+      prev &&
+      otomatikSet.has(key) &&
+      mudurlukAnahtar(prev.mudurluk) !== mudurlukAnahtar(s.mudurluk)
+    ) {
+      eklenecekSet.add(key)
+      eklenecek.push(key)
     }
   }
 
+  // Yeni personel: listede yoksa grubun sonuna eklenir (mevcut kayıt yerinde kalır).
   for (const key of otomatikEkleKeys) {
-    if (!satirByKey.has(key) || eklenecekSet.has(key)) continue
+    if (!satirByKey.has(key) || eklenecekSet.has(key) || keysOncekiSet.has(key)) continue
     eklenecekSet.add(key)
     eklenecek.push(key)
   }
 
-  keys = keys.filter(k => !eklenecekSet.has(k))
+  let keys = keysOnceki.filter(k => !eklenecekSet.has(k))
 
   for (const key of eklenecek) {
     keys = mudurlukteKategoriSonunaEkle(keys, satirByKey, key)

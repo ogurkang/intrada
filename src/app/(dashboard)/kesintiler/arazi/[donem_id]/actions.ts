@@ -20,6 +20,7 @@ async function araziTarihIzinliMi(
     .from('izin_hareketleri')
     .select('id')
     .eq('sicil_no', sicil_no)
+    .neq('yil', 2025)
     .neq('durum', 'İptal Edildi')
     /* İzinli gün: ayrılış ≤ gün < işe dönüş (başlama) */
     .lte('ayrilis', tarih)

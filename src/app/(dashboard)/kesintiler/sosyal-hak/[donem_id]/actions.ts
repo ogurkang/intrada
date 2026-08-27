@@ -78,7 +78,8 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     const { data } = await fetchAllPaged((from, to) =>
       supabase
         .from('izin_hareketleri')
-        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, yil')
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .in('tur', [...RMY_IZIN_TURLERI])
         .in('sicil_no', Array.from(memurSiciller))
@@ -93,7 +94,8 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     const { data } = await fetchAllPaged((from, to) =>
       supabase
         .from('izin_hareketleri')
-        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, yil')
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .in('sicil_no', Array.from(vekilSiciller))
         .order('id')
@@ -107,7 +109,8 @@ export async function sosyalHakDetayYukle(donem_id: number): Promise<SosyalHakDe
     const { data } = await fetchAllPaged((from, to) =>
       supabase
         .from('izin_hareketleri')
-        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+        .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, yil')
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .or(IZY_IZIN_TURLERI_OR)
         .in('sicil_no', Array.from(zabitaSiciller))

@@ -206,6 +206,7 @@ export default async function AraziPuantajPage({ params }: Props) {
         .from('izin_hareketleri')
         .select('sicil_no, baslama, ayrilis, tur, durum')
         .in('sicil_no', sicilListArazi)
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .lte('ayrilis', donem.bitis_tarihi)
         .gt('baslama', donem.baslangic_tarihi)

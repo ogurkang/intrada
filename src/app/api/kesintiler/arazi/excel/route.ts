@@ -220,6 +220,7 @@ export async function GET(request: NextRequest) {
         .from('izin_hareketleri')
         .select('sicil_no, baslama, ayrilis, tur, durum')
         .in('sicil_no', sicilExcel)
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .lte('ayrilis', donem.bitis_tarihi)
         .gt('baslama', donem.baslangic_tarihi)

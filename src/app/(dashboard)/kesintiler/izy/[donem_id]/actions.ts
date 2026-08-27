@@ -43,7 +43,8 @@ export async function izyDetayYukle(donem_id: number): Promise<IzyDetayData | { 
   const { data: izinRaw } = await fetchAllPaged((from, to) =>
     supabase
       .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, yil')
+      .neq('yil', 2025)
       .neq('durum', 'İptal Edildi')
       .or(IZY_IZIN_TURLERI_OR)
       .in('sicil_no', Array.from(zabitaSiciller))

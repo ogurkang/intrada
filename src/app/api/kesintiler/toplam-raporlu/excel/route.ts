@@ -37,6 +37,7 @@ export async function GET() {
         .from('izin_hareketleri')
         .select('sicil_no, ayrilis, baslama, gun')
         .in('sicil_no', Array.from(zabitaSiciller))
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .in('tur', ['Rapor', 'Heyet Raporu'])
         .order('id')

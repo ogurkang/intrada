@@ -419,6 +419,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
         .from('izin_hareketleri')
         .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
         .in('sira_no', siraNoList)
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
 
       const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
@@ -498,6 +499,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
           .from('izin_hareketleri')
           .select('sicil_no')
           .in('sira_no', extraSiraNos)
+          .neq('yil', 2025)
           .neq('durum', 'İptal Edildi')
         const extraSiciller = [...new Set((extraIzin ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
         if (extraSiciller.length > 0) {
@@ -519,6 +521,7 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
         .from('izin_hareketleri')
         .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
         .in('sicil_no', rhSiciller)
+        .neq('yil', 2025)
         .in('tur', ['Rapor', 'Heyet Raporu'])
         .neq('durum', 'İptal Edildi')
       annualRhIzinler = buildIzyAnnualRhIzinler(izinler, rhRaw ?? [], adMap, unvanMap)

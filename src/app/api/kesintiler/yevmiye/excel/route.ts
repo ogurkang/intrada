@@ -118,6 +118,7 @@ async function yevmiyeExcelVeriCek(donemId: number, mudurluk: string, statu: str
     supabase
       .from('izin_hareketleri')
       .select('sicil_no, tur, ayrilis, baslama, durum')
+      .neq('yil', 2025)
       .neq('durum', 'İptal Edildi')
       .lte('ayrilis', bitis)
       .gt('baslama', baslangic)

@@ -44,7 +44,8 @@ export async function ivyDetayYukle(donem_id: number): Promise<IvyDetayData | { 
   const { data: izinRaw } = await fetchAllPaged((from, to) =>
     supabase
       .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, yil')
+      .neq('yil', 2025)
       .neq('durum', 'İptal Edildi')
       .in('sicil_no', Array.from(vekilSiciller))
       .order('id')

@@ -568,3 +568,149 @@ export async function izinDevamAyrilisTopluGuncelle(): Promise<{ hata?: string; 
   revalidatePath('/izin')
   return { guncellenen }
 }
+
+export type GecmisIzinAktarSatir = {
+  siraNo: string
+  islemYapan: string
+  tarih: string
+  sicilNo: string
+  adSoyad: string
+  vekalet: string
+  tur: string
+  ayrilis: string
+  baslama: string
+  gun: string
+  durum: string
+}
+
+function tarihIsoGecmis(s: string): string | null {
+  const t = String(s ?? '').trim()
+  if (!t) return null
+  const m = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
+  if (m) return `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`
+  if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
+  return null
+}
+
+function parseSiraGecmis(raw: string, yilVarsayilan: number): { yil: number; sira_no: string } {
+  const t = String(raw ?? '').trim()
+  const m = t.match(/^(\d{4})\s*[\/.\-]\s*(.+)$/)
+  if (m) return { yil: Number(m[1]), sira_no: String(m[2]).trim() }
+  return { yil: yilVarsayilan, sira_no: t || '001' }
+}
+
+function mapDurumGecmis(raw: string): Durum {
+  const n = String(raw ?? '').trim().toLocaleLowerCase('tr-TR')
+  if (n.includes('iptal')) return 'İptal Edildi'
+  if (n.includes('değiştir') || n.includes('degistir')) return 'Değiştirildi'
+  if (n.includes('taslak')) return 'Taslak'
+  if (n.includes('onay')) return 'Onaylandı'
+  return 'Onaylandı'
+}
+
+/** Excel önizlemesindeki geçmiş izinleri izin_hareketleri'ne yazar; haktan düşen türlerde bakiyeyi günceller. */
+export async function gecmisIzinleriSistemeIsle(
+  satirlar: GecmisIzinAktarSatir[],
+): Promise<{ hata?: string; eklenen?: number; atlanan?: number; mesaj?: string }> {
+  if (!satirlar?.length) return { hata: 'Aktarılacak kayıt yok.' }
+  const supabase = await createClient()
+
+  const siciller = [...new Set(satirlar.map(s => s.sicilNo.trim()).filter(Boolean))]
+  const calisanSet = new Set<string>()
+  for (let i = 0; i < siciller.length; i += 200) {
+    const { data } = await supabase
+      .from('calisan')
+      .select('sicil_no')
+      .in('sicil_no', siciller.slice(i, i + 200))
+    for (const c of data ?? []) if (c.sicil_no) calisanSet.add(c.sicil_no)
+  }
+
+  let eklenen = 0
+  let atlanan = 0
+  const hatalar: string[] = []
+  const hakGuncelle = new Map<string, { sicil: string; yil: number }>()
+
+  for (const s of satirlar) {
+    const sicil_no = s.sicilNo.trim()
+    const tur = s.tur.trim()
+    const ayrilis = tarihIsoGecmis(s.ayrilis)
+    const baslama = tarihIsoGecmis(s.baslama)
+    const gun = parseInt(String(s.gun).replace(',', '.'), 10)
+    if (!sicil_no || !tur || !ayrilis || !baslama || !(gun > 0)) {
+      atlanan++
+      continue
+    }
+    if (!calisanSet.has(sicil_no)) {
+      atlanan++
+      hatalar.push(`${sicil_no}: personel bulunamadı`)
+      continue
+    }
+    const yilVarsayilan = Number(ayrilis.slice(0, 4))
+    const { yil, sira_no } = parseSiraGecmis(s.siraNo, yilVarsayilan)
+    const durum = mapDurumGecmis(s.durum)
+    const kayitTarihi = tarihIsoGecmis(s.tarih)
+
+    const { data: mevcutSira } = await supabase
+      .from('izin_hareketleri')
+      .select('id')
+      .eq('yil', yil)
+      .eq('sira_no', sira_no)
+      .maybeSingle()
+    if (mevcutSira) {
+      atlanan++
+      continue
+    }
+
+    const { data: cakisan } = await supabase
+      .from('izin_hareketleri')
+      .select('id')
+      .eq('sicil_no', sicil_no)
+      .eq('tur', tur)
+      .eq('ayrilis', ayrilis)
+      .eq('baslama', baslama)
+      .neq('durum', 'İptal Edildi')
+      .limit(1)
+      .maybeSingle()
+    if (cakisan) {
+      atlanan++
+      continue
+    }
+
+    const { error } = await supabase.from('izin_hareketleri').insert({
+      yil,
+      sira_no,
+      sicil_no,
+      tur,
+      ayrilis,
+      baslama,
+      gun,
+      vekalet: s.vekalet.trim() || null,
+      durum,
+      kayit_tarihi: kayitTarihi ? `${kayitTarihi}T12:00:00.000Z` : new Date().toISOString(),
+      islem_yapan: s.islemYapan.trim() || null,
+    })
+    if (error) {
+      atlanan++
+      hatalar.push(`${sira_no}: ${error.message}`)
+      continue
+    }
+    eklenen++
+    if (durum === 'Onaylandı' || durum === 'Değiştirildi') {
+      hakGuncelle.set(`${sicil_no}|${yil}`, { sicil: sicil_no, yil })
+    }
+  }
+
+  for (const { sicil, yil } of hakGuncelle.values()) {
+    await izinHaklariKullanilanGuncelle(supabase, sicil, yil)
+  }
+
+  revalidatePath('/izin')
+  revalidatePath('/izin/haklar')
+  revalidatePath('/izin/gecmis-izinler')
+  const ekstra = hatalar.length ? ` Örnek: ${hatalar.slice(0, 3).join('; ')}` : ''
+  return {
+    eklenen,
+    atlanan,
+    mesaj: `${eklenen} kayıt yazıldı, ${atlanan} atlandı.${ekstra}`,
+  }
+}

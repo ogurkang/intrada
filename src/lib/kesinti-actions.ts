@@ -292,7 +292,8 @@ export function makeDonemActions(
     }>((from, to) => {
       let q = supabase
         .from('izin_hareketleri')
-        .select('sira_no, sicil_no, tur, baslama, ayrilis, gun')
+        .select('sira_no, sicil_no, tur, baslama, ayrilis, gun, yil')
+        .neq('yil', 2025)
         .neq('durum', 'İptal Edildi')
         .order('id')
         .range(from, to)

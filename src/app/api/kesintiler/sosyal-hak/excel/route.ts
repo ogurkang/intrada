@@ -168,6 +168,7 @@ async function hesaplaModul(
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .in('sira_no', siraNoList)
+    .neq('yil', 2025)
     .neq('durum', 'İptal Edildi')
   if (turFiltre) izinQuery = izinQuery.in('tur', turFiltre)
   const { data: izinRawAny } = await izinQuery
@@ -227,6 +228,7 @@ async function hesaplaModul(
           .from('izin_hareketleri')
           .select('sicil_no')
           .in('sira_no', extraSiraNos)
+          .neq('yil', 2025)
           .neq('durum', 'İptal Edildi') as { data: { sicil_no: string | null }[] | null }
         const extraSiciller = [...new Set((extraIzin ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]
         if (extraSiciller.length > 0) {
@@ -251,6 +253,7 @@ async function hesaplaModul(
         .from('izin_hareketleri')
         .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
         .in('sicil_no', rhSiciller)
+        .neq('yil', 2025)
         .in('tur', ['Rapor', 'Heyet Raporu'])
         .neq('durum', 'İptal Edildi')
       izyAnnualRhIzinler = buildIzyAnnualRhIzinler(izinler, (rhRaw ?? []) as IzinDbRow[], adMap, unvanMap)
@@ -433,6 +436,7 @@ export async function GET(request: NextRequest) {
     .from('izin_hareketleri')
     .select('sira_no, sicil_no, tur, ayrilis, baslama, gun')
     .in('sira_no', siraNoList)
+    .neq('yil', 2025)
     .neq('durum', 'İptal Edildi')
 
   const siciller = [...new Set((izinRaw ?? []).map(i => i.sicil_no).filter(Boolean))] as string[]

@@ -118,7 +118,8 @@ async function queryIzinA(
   for (const part of chunk(sicilList, IN_CHUNK)) {
     let q = supabase
       .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi, yil')
+      .neq('yil', 2025)
       .neq('durum', 'İptal Edildi')
       .in('sicil_no', part)
     if (prev) {
@@ -150,7 +151,8 @@ async function queryIzinBySiraNo(
   for (const part of chunk(siraNos, IN_CHUNK)) {
     const { data, error } = await supabase
       .from('izin_hareketleri')
-      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi')
+      .select('sira_no, sicil_no, tur, ayrilis, baslama, gun, kayit_tarihi, yil')
+      .neq('yil', 2025)
       .neq('durum', 'İptal Edildi')
       .in('sira_no', part)
     if (error) throw new Error(error.message)
