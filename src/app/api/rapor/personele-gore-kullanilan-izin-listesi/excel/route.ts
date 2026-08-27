@@ -83,32 +83,36 @@ export async function GET(req: Request) {
     const COLS = 9
     const gruplar = gruplaPersoneleGoreIzinSatirlari(satirlar)
     const dataRows: (string | number)[][] = []
-    const kisiBaslikSatirlari = new Set<number>()
     const kisiToplamSatirlari = new Set<number>()
+    const kimlikBirlestirmeleri: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = []
     let excelRow = 6
     for (const grup of gruplar) {
-      kisiBaslikSatirlari.add(excelRow)
-      dataRows.push(
-        padRow(COLS, [
-          grup.sira,
-          grup.sicil_no,
-          grup.ad_soyad,
-          grup.unvan,
-          'Ayrılış',
-          'Başlama',
-          'İzin Türü',
-          'Durum',
-          'Gün Bilgisi',
-        ]),
-      )
-      excelRow++
-      for (const s of grup.kayitlar) {
-        dataRows.push(padRow(COLS, ['', '', '', '', s.ayrilis, s.baslama, s.tur, s.durum, s.gun]))
+      const blokBas = excelRow
+      grup.kayitlar.forEach((s, i) => {
+        dataRows.push(
+          padRow(COLS, [
+            i === 0 ? grup.sira : '',
+            i === 0 ? grup.sicil_no : '',
+            i === 0 ? grup.ad_soyad : '',
+            i === 0 ? grup.unvan : '',
+            s.ayrilis,
+            s.baslama,
+            s.tur,
+            s.durum,
+            s.gun,
+          ]),
+        )
         excelRow++
-      }
+      })
       kisiToplamSatirlari.add(excelRow)
       dataRows.push(padRow(COLS, ['', '', '', '', '', '', '', 'İzin toplamı', grup.toplamGun]))
       excelRow++
+      const blokSon = excelRow - 1
+      if (blokSon > blokBas) {
+        for (let c = 0; c <= 3; c++) {
+          kimlikBirlestirmeleri.push({ s: { r: blokBas, c }, e: { r: blokSon, c } })
+        }
+      }
     }
 
     const rows: (string | number)[][] = [
@@ -142,6 +146,7 @@ export async function GET(req: Request) {
       { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } },
       { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
       { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 7 } },
+      ...kimlikBirlestirmeleri,
     ]
     ws['!cols'] = [
       { wch: 8 },
@@ -165,11 +170,11 @@ export async function GET(req: Request) {
         const isTitle = r <= 3
         const isHead = r === headerRow
         const isTotal = r === totalRow
-        const isKisiBaslik = kisiBaslikSatirlari.has(r)
         const isKisiToplam = kisiToplamSatirlari.has(r)
         const inData = r >= headerRow && r <= totalRow
+        const kimlikHucresi = r > headerRow && r < totalRow && c <= 3
         cell.s = {
-          font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal || isKisiBaslik || isKisiToplam },
+          font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal || isKisiToplam },
           alignment: {
             vertical: 'center',
             horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 8 ? 'right' : 'left',
@@ -181,10 +186,13 @@ export async function GET(req: Request) {
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } }
         } else if (isTotal) {
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
-        } else if (isKisiBaslik) {
-          cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'E0F2FE' } }
-        } else if (isKisiToplam) {
-          cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } }
+        }
+        if (kimlikHucresi) {
+          cell.s.alignment = {
+            vertical: 'center',
+            horizontal: c === 0 ? 'center' : 'left',
+            wrapText: true,
+          }
         }
       }
     }
