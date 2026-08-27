@@ -834,16 +834,24 @@ function IzinBilgileriTab({
   const [sortKey, setSortKey] = useState<IzinSortKey>('sira_no')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
+  const hareketYillari = (h: IzinHareketi): number[] => {
+    const ys: number[] = []
+    if (typeof h.yil === 'number') ys.push(h.yil)
+    const ay = Number(String(h.ayrilis ?? '').slice(0, 4))
+    if (ay) ys.push(ay)
+    return ys
+  }
+
   const yillar = useMemo(() => {
     const set = new Set<number>()
     izinHaklari.forEach(h => set.add(h.yil))
-    izinHareketleri.forEach(h => set.add(h.yil))
+    izinHareketleri.forEach(h => hareketYillari(h).forEach(y => set.add(y)))
     set.add(buYil)
     return Array.from(set).sort((a, b) => b - a).slice(0, 6)
   }, [izinHaklari, izinHareketleri, buYil])
 
   const defaultYil = useMemo(() => {
-    const nonTaslakYillar = izinHareketleri.filter(h => h.durum !== 'Taslak').map(h => h.yil).filter((y): y is number => typeof y === 'number')
+    const nonTaslakYillar = izinHareketleri.filter(h => h.durum !== 'Taslak').flatMap(hareketYillari)
     return nonTaslakYillar.length ? Math.max(...nonTaslakYillar) : buYil
   }, [izinHareketleri, buYil])
   const [secilenYil, setSecilenYil] = useState(defaultYil)
@@ -851,7 +859,11 @@ function IzinBilgileriTab({
 
   const hakBuYil = izinHaklari.find(h => h.yil === secilenYil)
   const hareketlerBuYil = izinHareketleri
-    .filter(h => h.yil === secilenYil && h.durum !== 'Taslak')
+    .filter(h => {
+      if (h.durum === 'Taslak') return false
+      const ayrilisYil = Number(String(h.ayrilis ?? '').slice(0, 4))
+      return h.yil === secilenYil || ayrilisYil === secilenYil
+    })
     .sort((a, b) => {
       const num = (v: string | null | undefined) => Number.parseInt(String(v ?? '0'), 10) || 0
       const str = (v: string | null | undefined) => String(v ?? '').toLocaleLowerCase('tr-TR')

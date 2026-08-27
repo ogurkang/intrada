@@ -2,9 +2,10 @@
 
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx-js-style'
-import { gecmisIzinleriSistemeIsle } from '@/app/(dashboard)/izin/actions'
+import { gecmisIzinleriSistemeIsle, type GecmisIzinAtlama } from '@/app/(dashboard)/izin/actions'
 
 type PreviewRow = {
+  excelSatir: number
   siraNo: string
   islemYapan: string
   tarih: string
@@ -40,6 +41,12 @@ function ikiHane(n: number): string {
 }
 
 function formatGgAaYyyy(d: Date): string {
+  // Excel/SheetJS Date UTC gece yarısıdır; yerel getDate() TR'de bazen önceki güne düşer.
+  // Saat 0 UTC ise takvim günü UTC'dir; aksi halde (yerel gece yarısı) yerel gün kullanılır.
+  const utcSaat = d.getUTCHours()
+  if (utcSaat === 0 && d.getUTCMinutes() === 0) {
+    return `${ikiHane(d.getUTCDate())}/${ikiHane(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
+  }
   return `${ikiHane(d.getDate())}/${ikiHane(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
@@ -100,16 +107,21 @@ export default function GecmisIzinlerClient() {
   const [hata, setHata] = useState('')
   const [isleniyor, setIsleniyor] = useState(false)
   const [sonuc, setSonuc] = useState('')
+  const [atlananlar, setAtlananlar] = useState<GecmisIzinAtlama[]>([])
 
   const sistemeIsle = async () => {
     if (!rows.length || isleniyor) return
     if (!confirm(`${rows.length} kayıt izin hareketlerine yazılacak. 2025/ sıra nolu izinler kesinti menülerine girmez. Devam edilsin mi?`)) return
     setIsleniyor(true)
     setSonuc('')
+    setAtlananlar([])
     try {
       const res = await gecmisIzinleriSistemeIsle(rows)
       if (res.hata) setHata(res.hata)
-      else setSonuc(res.mesaj ?? `${res.eklenen ?? 0} kayıt yazıldı.`)
+      else {
+        setSonuc(res.mesaj ?? `${res.eklenen ?? 0} kayıt yazıldı.`)
+        setAtlananlar(res.atlananlar ?? [])
+      }
     } catch {
       setHata('Sisteme işleme sırasında bir hata oluştu.')
     } finally {
@@ -119,7 +131,7 @@ export default function GecmisIzinlerClient() {
 
   const excelOku = async (file: File) => {
     const ab = await file.arrayBuffer()
-    const wb = XLSX.read(ab, { type: 'array', cellDates: true })
+    const wb = XLSX.read(ab, { type: 'array' })
     const ilkSheet = wb.SheetNames[0]
     if (!ilkSheet) {
       setRows([])
@@ -131,7 +143,7 @@ export default function GecmisIzinlerClient() {
     const ham = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(ws, {
       header: 1,
       defval: '',
-      raw: true,
+      raw: false,
     })
 
     if (!ham.length) {
@@ -161,16 +173,19 @@ export default function GecmisIzinlerClient() {
     const iGun = idxOf('gün', 'gun')
     const iDurum = idxOf('durum')
 
-    const out: PreviewRow[] = ham.slice(1).map(r => {
+    const out: PreviewRow[] = ham.slice(1).map((r, idx) => {
       const asMap: Record<string, string> = {}
       for (let i = 0; i < headerRow.length; i++) {
         asMap[headerMap[i]] = String(r[i] ?? '').trim()
       }
+      const sicilHam = iSicil >= 0 ? String(r[iSicil] ?? '').trim() : pick(asMap, 'sicil no', 'sicil')
+      const sicilNo = /^\d+\.0+$/.test(sicilHam) ? sicilHam.replace(/\.0+$/, '') : sicilHam
       return {
+        excelSatir: idx + 2,
         siraNo: iSira >= 0 ? String(r[iSira] ?? '').trim() : pick(asMap, 'sıra no', 'sira no'),
         islemYapan: iIslemYapan >= 0 ? String(r[iIslemYapan] ?? '').trim() : pick(asMap, 'işlem yapan', 'islem yapan'),
         tarih: hucreyiTarihMetni(iTarih >= 0 ? r[iTarih] : pick(asMap, 'tarih')),
-        sicilNo: iSicil >= 0 ? String(r[iSicil] ?? '').trim() : pick(asMap, 'sicil no', 'sicil'),
+        sicilNo,
         adSoyad: iAd >= 0 ? String(r[iAd] ?? '').trim() : pick(asMap, 'adı soyadı', 'adi soyadi', 'ad soyad'),
         vekalet: iVekalet >= 0 ? String(r[iVekalet] ?? '').trim() : pick(asMap, 'vekalet'),
         tur: iTur >= 0 ? String(r[iTur] ?? '').trim() : pick(asMap, 'tür', 'tur'),
@@ -216,6 +231,7 @@ export default function GecmisIzinlerClient() {
               if (!f) {
                 setRows([])
                 setHata('')
+                setAtlananlar([])
                 return
               }
               void excelOku(f).catch(() => {
@@ -249,6 +265,41 @@ export default function GecmisIzinlerClient() {
           Sisteme İşle, kayıtları izin hareketlerine yazar ve haktan düşen türlerde bakiyeyi günceller. 2025/ sıra nolu izinler kesinti menülerine girmez.
         </p>
         {sonuc ? <p className="text-xs text-emerald-700 mt-1">{sonuc}</p> : null}
+        {atlananlar.length > 0 ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold text-amber-900 mb-2">
+              Atlanan {atlananlar.length} kayıt — Excel’de ilgili sütunu düzeltip yeniden yükleyin
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-amber-800">
+                    <th className="py-1 pr-3">Excel satır</th>
+                    <th className="py-1 pr-3">Sıra No</th>
+                    <th className="py-1 pr-3">Sicil</th>
+                    <th className="py-1 pr-3">Ad Soyad</th>
+                    <th className="py-1 pr-3">Sorunlu sütun</th>
+                    <th className="py-1 pr-3">Değer</th>
+                    <th className="py-1">Ne yapmalısınız</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {atlananlar.map((a, i) => (
+                    <tr key={`${a.excelSatir}-${a.sicilNo}-${i}`} className="border-t border-amber-100 text-amber-950">
+                      <td className="py-1.5 pr-3 font-mono">{a.excelSatir ?? '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono">{a.siraNo || '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono">{a.sicilNo || '—'}</td>
+                      <td className="py-1.5 pr-3">{a.adSoyad || '—'}</td>
+                      <td className="py-1.5 pr-3 font-semibold">{a.sutun}</td>
+                      <td className="py-1.5 pr-3 font-mono">{a.deger || '—'}</td>
+                      <td className="py-1.5">{a.neden}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
         <p className="text-xs text-slate-500 mt-1">
           * Gün: Excel'de sütun yoksa ayrılış – başlama farkından takvim günü olarak hesaplanır.
         </p>

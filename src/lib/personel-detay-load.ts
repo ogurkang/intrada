@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
 import { isUuidSegment } from '@/lib/personel-link'
 import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 
 export type PersonelDetayMalRow = {
   id: number
@@ -95,7 +96,7 @@ export async function fetchPersonelDetayPageData(
     { data: hareketlerRaw },
     { data: auditLogRaw },
     { data: izinHaklariRaw },
-    { data: izinHareketleriRaw },
+    izinHareketleriPaged,
     { data: terfiRaw },
     { data: ogrenimRaw },
     { data: sendikaRaw },
@@ -128,12 +129,15 @@ export async function fetchPersonelDetayPageData(
       .select('*')
       .eq('sicil_no', sicil_no)
       .order('yil', { ascending: false }),
-    supabase
-      .from('izin_hareketleri')
-      .select('*')
-      .eq('sicil_no', sicil_no)
-      .order('yil', { ascending: false })
-      .order('sira_no', { ascending: false }),
+    fetchAllPaged<Tables<'izin_hareketleri'>>((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('*')
+        .eq('sicil_no', sicil_no)
+        .order('yil', { ascending: false })
+        .order('sira_no', { ascending: false })
+        .range(from, to),
+    ),
     supabase
       .from('terfi_hareketleri')
       .select('*')
@@ -176,7 +180,7 @@ export async function fetchPersonelDetayPageData(
   const hareketler = (hareketlerRaw ?? []) as Tables<'personel_hareketleri'>[]
   const auditLoglar = (auditLogRaw ?? []) as Tables<'personel_audit_log'>[]
   const izinHaklari = (izinHaklariRaw ?? []) as Tables<'izin_haklari'>[]
-  const izinHareketleri = (izinHareketleriRaw ?? []) as Tables<'izin_hareketleri'>[]
+  const izinHareketleri = (izinHareketleriPaged.data ?? []) as Tables<'izin_hareketleri'>[]
   const terfiKayitlari = (terfiRaw ?? []) as Tables<'terfi_hareketleri'>[]
   const ogrenimler = sortCalisanOgrenimByTuru((ogrenimRaw ?? []) as Tables<'calisan_ogrenim'>[])
   const sendikalar = (sendikaRaw ?? []).map(r => {
