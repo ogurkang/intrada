@@ -16,6 +16,7 @@ export interface PersoneleGoreIzinSatir {
   tur: string
   durum: string
   gun: number
+  mudur: boolean
 }
 
 export interface IzinHareketRaporRow {
@@ -25,6 +26,12 @@ export interface IzinHareketRaporRow {
   baslama: string | null
   gun: number | null
   durum: string | null
+}
+
+function unvandaMuduruVar(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'>): boolean {
+  const ku = String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')
+  const gu = String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')
+  return ku.includes('müdürü') || gu.includes('müdürü')
 }
 
 function formatTarih(s: string | null | undefined): string {
@@ -53,17 +60,15 @@ export function buildPersoneleGoreIzinListesi(input: {
   }
 
   const mudurlukBySicil = new Map<string, string>()
+  const secilenKadroBySicil = new Map<string, KadroRaporRow>()
   for (const [sicil, rows] of byAsil) {
     const aktif = rows.filter(r => kadroSatirAktifMi(r, D))
-    if (aktif.length === 0) {
-      const sorted = [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))
-      const latest = sorted[0]
-      if (latest) {
-        mudurlukBySicil.set(sicil, String(latest.kadro_mudurlugu ?? latest.gorev_mudurlugu ?? '').trim())
-      }
-      continue
-    }
-    const secilen = aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
+    const secilen =
+      aktif.length === 0
+        ? [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
+        : aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
+    if (!secilen) continue
+    secilenKadroBySicil.set(sicil, secilen)
     mudurlukBySicil.set(sicil, String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim())
   }
 
@@ -88,6 +93,10 @@ export function buildPersoneleGoreIzinListesi(input: {
       tur: String(iz.tur ?? '').trim(),
       durum: String(iz.durum ?? '').trim() || '—',
       gun,
+      mudur: (() => {
+        const k = secilenKadroBySicil.get(sicil)
+        return k ? unvandaMuduruVar(k) : false
+      })(),
     })
   }
 
@@ -135,7 +144,7 @@ export async function yuklePersoneleGoreKullanilanIzinListesi(
       fetchAllSelect<KadroRaporRow>(
         supabase,
         'kadro_hareketleri',
-        'asil, kadro_mudurlugu, gorev_mudurlugu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+        'asil, kadro_mudurlugu, gorev_mudurlugu, kadro_unvani, gorev_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
       ),
       fetchAllSelect<{ sicil_no: string; ad_soyad: string }>(supabase, 'calisan', 'sicil_no, ad_soyad'),
       fetchAllIzinHareketleriForKullanilanRapor(supabase, yil),

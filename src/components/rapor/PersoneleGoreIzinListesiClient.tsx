@@ -13,6 +13,7 @@ interface PersoneleGoreIzinSatir {
   tur: string
   durum: string
   gun: number
+  mudur: boolean
 }
 
 type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'ayrilis' | 'baslama' | 'tur' | 'durum' | 'gun'
@@ -49,6 +50,7 @@ export default function PersoneleGoreIzinListesiClient({
   const [sicilFiltre, setSicilFiltre] = useState('')
   const [turFiltre, setTurFiltre] = useState('')
   const [durumFiltre, setDurumFiltre] = useState('taslak-haric')
+  const [personelFiltre, setPersonelFiltre] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('sicil_no')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -94,12 +96,15 @@ export default function PersoneleGoreIzinListesiClient({
     } else if (durumFiltre) {
       rows = rows.filter(r => r.durum === durumFiltre)
     }
+    if (personelFiltre === 'mudurler') {
+      rows = rows.filter(r => r.mudur)
+    }
     const dir = sortDir === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => {
       if (sortKey === 'gun') return (a.gun - b.gun) * dir
       return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
     })
-  }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, sortKey, sortDir])
+  }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, personelFiltre, sortKey, sortDir])
 
   const yilDegistir = useCallback(
     (y: number) => router.push(`${raporBasePath}?y=${y}`),
@@ -112,8 +117,9 @@ export default function PersoneleGoreIzinListesiClient({
     if (sicilFiltre.trim()) p.set('s', sicilFiltre.trim())
     if (turFiltre) p.set('t', turFiltre)
     p.set('d', durumFiltre || 'tumu')
+    if (personelFiltre) p.set('pe', personelFiltre)
     return p.toString()
-  }, [yil, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre])
+  }, [yil, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, personelFiltre])
 
   const thClass = (key: SortKey) =>
     `px-4 py-3 font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-100 transition-colors whitespace-nowrap ${
@@ -133,7 +139,7 @@ export default function PersoneleGoreIzinListesiClient({
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Personele Göre Kullanılan İzin Listesi</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Seçili yılda kullanılan izinler; müdürlük, sicil, tür ve duruma göre filtrelenebilir.
+            Seçili yılda kullanılan izinler; müdürlük, sicil, tür, durum ve personele göre filtrelenebilir.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 justify-end shrink-0">
@@ -212,6 +218,19 @@ export default function PersoneleGoreIzinListesiClient({
             placeholder="Ara…"
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 w-40"
           />
+        </div>
+
+        {/* Personel */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600 whitespace-nowrap">Personel</label>
+          <select
+            value={personelFiltre}
+            onChange={e => setPersonelFiltre(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+          >
+            <option value="">Tümü</option>
+            <option value="mudurler">Müdürler</option>
+          </select>
         </div>
 
         {/* Tür */}

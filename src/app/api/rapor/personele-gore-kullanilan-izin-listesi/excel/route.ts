@@ -37,6 +37,7 @@ export async function GET(req: Request) {
     const sicilFiltre = String(searchParams.get('s') ?? '').trim().toLocaleLowerCase('tr-TR')
     const turFiltre = String(searchParams.get('t') ?? '').trim()
     const durumFiltre = String(searchParams.get('d') ?? 'taslak-haric').trim()
+    const personelFiltre = String(searchParams.get('pe') ?? '').trim()
 
     const { satirlar: hamSatirlar, hata } = await yuklePersoneleGoreKullanilanIzinListesi(supabase, yil)
     if (hata) return NextResponse.json({ error: hata }, { status: 500 })
@@ -61,11 +62,15 @@ export async function GET(req: Request) {
     } else if (durumFiltre && durumFiltre !== 'tumu') {
       satirlar = satirlar.filter(r => r.durum === durumFiltre)
     }
+    if (personelFiltre === 'mudurler') {
+      satirlar = satirlar.filter(r => r.mudur)
+    }
 
     const mudurlukMetin = mudurlukFilterler.length ? mudurlukFilterler.join(', ') : 'Tümü'
     const turMetin = turFiltre || 'Tümü'
     const durumMetin =
       durumFiltre === 'taslak-haric' ? 'Taslak hariç' : durumFiltre === 'tumu' || !durumFiltre ? 'Tümü' : durumFiltre
+    const personelMetin = personelFiltre === 'mudurler' ? 'Müdürler' : 'Tümü'
     const olusturmaTarihi = new Date().toLocaleDateString('tr-TR', {
       day: 'numeric',
       month: 'long',
@@ -77,7 +82,7 @@ export async function GET(req: Request) {
       padRow(COLS, ['Personele Göre Kullanılan İzin Listesi']),
       padRow(COLS, [`Yıl: ${yil}`]),
       padRow(COLS, [`Oluşturulma tarihi: ${olusturmaTarihi}`]),
-      padRow(COLS, [`Müdürlük: ${mudurlukMetin}  |  Tür: ${turMetin}  |  Durum: ${durumMetin}`]),
+      padRow(COLS, [`Müdürlük: ${mudurlukMetin}  |  Tür: ${turMetin}  |  Durum: ${durumMetin}  |  Personel: ${personelMetin}`]),
       padRow(COLS, ['']),
       padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']),
       ...satirlar.map((s, i) =>
