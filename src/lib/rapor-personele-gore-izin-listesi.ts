@@ -17,6 +17,7 @@ export interface PersoneleGoreIzinSatir {
   durum: string
   gun: number
   mudur: boolean
+  unvan: string
 }
 
 export interface IzinHareketRaporRow {
@@ -32,6 +33,52 @@ function unvandaMuduruVar(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'
   const ku = String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')
   const gu = String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')
   return ku.includes('müdürü') || gu.includes('müdürü')
+}
+
+function mudurUnvaniSec(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'>): string {
+  const ku = String(k.kadro_unvani ?? '').trim()
+  const gu = String(k.gorev_unvani ?? '').trim()
+  const has = (s: string) => s.toLocaleLowerCase('tr-TR').includes('müdürü')
+  if (gu && has(gu)) return gu
+  if (ku && has(ku)) return ku
+  return ''
+}
+
+function genelUnvan(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'>): string {
+  return String(k.gorev_unvani ?? '').trim() || String(k.kadro_unvani ?? '').trim()
+}
+
+export function gruplaPersoneleGoreIzinSatirlari(satirlar: PersoneleGoreIzinSatir[]): {
+  sira: number
+  sicil_no: string
+  ad_soyad: string
+  unvan: string
+  toplamGun: number
+  kayitlar: PersoneleGoreIzinSatir[]
+}[] {
+  const sira: string[] = []
+  const bySicil = new Map<string, PersoneleGoreIzinSatir[]>()
+  for (const r of satirlar) {
+    const list = bySicil.get(r.sicil_no)
+    if (!list) {
+      sira.push(r.sicil_no)
+      bySicil.set(r.sicil_no, [r])
+    } else {
+      list.push(r)
+    }
+  }
+  return sira.map((sicil, i) => {
+    const kayitlar = bySicil.get(sicil) ?? []
+    const ilk = kayitlar[0]
+    return {
+      sira: i + 1,
+      sicil_no: sicil,
+      ad_soyad: ilk?.ad_soyad ?? '',
+      unvan: ilk?.unvan ?? '',
+      toplamGun: kayitlar.reduce((s, x) => s + x.gun, 0),
+      kayitlar,
+    }
+  })
 }
 
 function formatTarih(s: string | null | undefined): string {
@@ -60,6 +107,7 @@ export function buildPersoneleGoreIzinListesi(input: {
   }
 
   const mudurlukBySicil = new Map<string, string>()
+  const kadroBySicil = new Map<string, KadroRaporRow>()
   for (const [sicil, rows] of byAsil) {
     const aktif = rows.filter(r => kadroSatirAktifMi(r, D))
     const secilen =
@@ -67,16 +115,28 @@ export function buildPersoneleGoreIzinListesi(input: {
         ? [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
         : aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
     if (!secilen) continue
+    kadroBySicil.set(sicil, secilen)
     mudurlukBySicil.set(sicil, String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim())
   }
 
   const mudurSiciller = new Set<string>()
+  const unvanBySicil = new Map<string, string>()
   for (const r of kadro ?? []) {
     if (!unvandaMuduruVar(r)) continue
+    const unvan = mudurUnvaniSec(r)
     const asil = String(r.asil ?? '').trim()
     const vekil = String(r.vekil ?? '').trim()
-    if (asil) mudurSiciller.add(asil)
-    if (vekil) mudurSiciller.add(vekil)
+    if (asil) {
+      mudurSiciller.add(asil)
+      if (unvan && !unvanBySicil.has(asil)) unvanBySicil.set(asil, unvan)
+    }
+    if (vekil) {
+      mudurSiciller.add(vekil)
+      if (unvan) unvanBySicil.set(vekil, unvan)
+      const mud = String(r.kadro_mudurlugu ?? r.gorev_mudurlugu ?? '').trim()
+      if (mud && !mudurlukBySicil.has(vekil)) mudurlukBySicil.set(vekil, mud)
+      if (!kadroBySicil.has(vekil)) kadroBySicil.set(vekil, r)
+    }
   }
 
   const out: PersoneleGoreIzinSatir[] = []
@@ -101,6 +161,7 @@ export function buildPersoneleGoreIzinListesi(input: {
       durum: String(iz.durum ?? '').trim() || '—',
       gun,
       mudur: mudurSiciller.has(sicil),
+      unvan: unvanBySicil.get(sicil) || (kadroBySicil.get(sicil) ? genelUnvan(kadroBySicil.get(sicil)!) : ''),
     })
   }
 
