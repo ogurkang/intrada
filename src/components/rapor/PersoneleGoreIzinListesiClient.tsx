@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Fragment, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { gruplaPersoneleGoreIzinListesi } from '@/lib/rapor-personele-gore-izin-listesi'
 
 interface PersoneleGoreIzinSatir {
   sicil_no: string
@@ -15,7 +14,6 @@ interface PersoneleGoreIzinSatir {
   durum: string
   gun: number
   mudur: boolean
-  unvan: string
 }
 
 type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'ayrilis' | 'baslama' | 'tur' | 'durum' | 'gun'
@@ -107,8 +105,6 @@ export default function PersoneleGoreIzinListesiClient({
       return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
     })
   }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, personelFiltre, sortKey, sortDir])
-
-  const gruplar = useMemo(() => gruplaPersoneleGoreIzinListesi(gorunenSatirlar), [gorunenSatirlar])
 
   const yilDegistir = useCallback(
     (y: number) => router.push(`${raporBasePath}?y=${y}`),
@@ -274,14 +270,14 @@ export default function PersoneleGoreIzinListesiClient({
 
         {/* Sonuç sayısı */}
         <span className="ml-auto text-sm text-slate-500">
-          {gruplar.length} personel · {gorunenSatirlar.length} kayıt
+          {gorunenSatirlar.length} kayıt
         </span>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse min-w-[1080px]">
+          <table className="w-full text-sm border-collapse min-w-[960px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">Sıra No</th>
@@ -293,13 +289,12 @@ export default function PersoneleGoreIzinListesiClient({
                   <SortIcon dir={sortKey === 'sicil_no' ? sortDir : null} />
                 </th>
                 <th
-                  className={`text-left ${thClass('ad_soyad')} min-w-[180px]`}
+                  className={`text-left ${thClass('ad_soyad')} min-w-[200px]`}
                   onClick={() => handleSort('ad_soyad')}
                 >
                   Adı Soyadı
                   <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[180px]">Unvan</th>
                 <th
                   className={`text-left ${thClass('ayrilis')} w-28`}
                   onClick={() => handleSort('ayrilis')}
@@ -315,7 +310,7 @@ export default function PersoneleGoreIzinListesiClient({
                   <SortIcon dir={sortKey === 'baslama' ? sortDir : null} />
                 </th>
                 <th
-                  className={`text-left ${thClass('tur')} min-w-[140px]`}
+                  className={`text-left ${thClass('tur')} min-w-[160px]`}
                   onClick={() => handleSort('tur')}
                 >
                   İzin Türü
@@ -337,68 +332,38 @@ export default function PersoneleGoreIzinListesiClient({
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {gruplar.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {gorunenSatirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
               ) : (
-                gruplar.map(grup => (
-                  <Fragment key={grup.sicil_no}>
-                    <tr className="bg-teal-50 border-t-2 border-teal-200">
-                      <td className="px-3 py-2.5 text-center tabular-nums font-semibold text-teal-900">
-                        {grup.sira}
-                      </td>
-                      <td className="px-4 py-2.5 font-mono text-xs font-semibold text-teal-900">
-                        {grup.sicil_no}
-                      </td>
-                      <td className="px-4 py-2.5 font-semibold text-teal-950">{grup.ad_soyad}</td>
-                      <td className="px-4 py-2.5 text-teal-900 text-xs">{grup.mudur ? grup.unvan || '—' : ''}</td>
-                      <td colSpan={5} className="px-4 py-2.5 text-xs text-teal-800">
-                        Ayrılış / Başlama
-                      </td>
-                    </tr>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <td colSpan={4} className="px-4 py-1.5 text-xs text-slate-500">
-                        {grup.mudurluk || '—'}
-                      </td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-slate-600">Ayrılış</td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-slate-600">Başlama</td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-slate-600">İzin Türü</td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-slate-600">Durum</td>
-                      <td className="px-4 py-1.5 text-right text-xs font-semibold text-slate-800">
-                        İzin toplamı: {grup.toplamGun}
-                      </td>
-                    </tr>
-                    {grup.kayitlar.map((row, i) => (
-                      <tr
-                        key={`${row.sicil_no}-${row.ayrilis}-${row.baslama}-${row.durum}-${i}`}
-                        className="hover:bg-slate-50 transition-colors border-b border-slate-100"
-                      >
-                        <td className="px-3 py-2 text-center text-slate-300">·</td>
-                        <td className="px-4 py-2" />
-                        <td className="px-4 py-2" />
-                        <td className="px-4 py-2" />
-                        <td className="px-4 py-2 text-slate-700 text-xs tabular-nums">{row.ayrilis}</td>
-                        <td className="px-4 py-2 text-slate-700 text-xs tabular-nums">{row.baslama}</td>
-                        <td className="px-4 py-2 text-slate-700">{row.tur}</td>
-                        <td className="px-4 py-2 text-slate-700">{row.durum}</td>
-                        <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-800">
-                          {row.gun}
-                        </td>
-                      </tr>
-                    ))}
-                  </Fragment>
+                gorunenSatirlar.map((row, i) => (
+                  <tr
+                    key={`${row.sicil_no}-${row.ayrilis}-${row.baslama}-${row.durum}-${i}`}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
+                    <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>
+                    <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.ayrilis}</td>
+                    <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.baslama}</td>
+                    <td className="px-4 py-2.5 text-slate-700">{row.tur}</td>
+                    <td className="px-4 py-2.5 text-slate-700">{row.durum}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800">
+                      {row.gun}
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
-            {gruplar.length > 0 && (
+            {gorunenSatirlar.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
-                  <td colSpan={8} className="px-4 py-2.5 text-slate-700">
-                    Genel toplam ({gruplar.length} personel, {gorunenSatirlar.length} kayıt)
+                  <td colSpan={7} className="px-4 py-2.5 text-slate-700">
+                    Toplam ({gorunenSatirlar.length} kayıt)
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-800">
                     {gorunenSatirlar.reduce((s, r) => s + r.gun, 0)}
