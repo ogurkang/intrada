@@ -14,6 +14,7 @@ export interface TanimStatuRow {
 
 export interface KadroRaporRow {
   asil: string | null
+  vekil?: string | null
   statu: string | null
   kuruma_giris_tarihi: string | null
   memuriyet_tarihi: string | null

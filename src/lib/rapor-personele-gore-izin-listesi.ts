@@ -60,7 +60,6 @@ export function buildPersoneleGoreIzinListesi(input: {
   }
 
   const mudurlukBySicil = new Map<string, string>()
-  const secilenKadroBySicil = new Map<string, KadroRaporRow>()
   for (const [sicil, rows] of byAsil) {
     const aktif = rows.filter(r => kadroSatirAktifMi(r, D))
     const secilen =
@@ -68,8 +67,16 @@ export function buildPersoneleGoreIzinListesi(input: {
         ? [...rows].sort((a, b) => kadroBaslangic(b).localeCompare(kadroBaslangic(a)))[0]
         : aktif.reduce((a, b) => (kadroBaslangic(a) >= kadroBaslangic(b) ? a : b))
     if (!secilen) continue
-    secilenKadroBySicil.set(sicil, secilen)
     mudurlukBySicil.set(sicil, String(secilen.kadro_mudurlugu ?? secilen.gorev_mudurlugu ?? '').trim())
+  }
+
+  const mudurSiciller = new Set<string>()
+  for (const r of kadro ?? []) {
+    if (!unvandaMuduruVar(r)) continue
+    const asil = String(r.asil ?? '').trim()
+    const vekil = String(r.vekil ?? '').trim()
+    if (asil) mudurSiciller.add(asil)
+    if (vekil) mudurSiciller.add(vekil)
   }
 
   const out: PersoneleGoreIzinSatir[] = []
@@ -93,10 +100,7 @@ export function buildPersoneleGoreIzinListesi(input: {
       tur: String(iz.tur ?? '').trim(),
       durum: String(iz.durum ?? '').trim() || '—',
       gun,
-      mudur: (() => {
-        const k = secilenKadroBySicil.get(sicil)
-        return k ? unvandaMuduruVar(k) : false
-      })(),
+      mudur: mudurSiciller.has(sicil),
     })
   }
 
@@ -123,7 +127,7 @@ async function fetchAllSelect<T>(
   while (true) {
     let q = supabase.from(table).select(select).range(from, from + SAYFA - 1)
     if (table === 'kadro_hareketleri') {
-      q = q.not('asil', 'is', null)
+      q = q.or('asil.not.is.null,vekil.not.is.null')
     }
     const { data, error } = await q
     if (error) throw new Error(error.message)
@@ -144,7 +148,7 @@ export async function yuklePersoneleGoreKullanilanIzinListesi(
       fetchAllSelect<KadroRaporRow>(
         supabase,
         'kadro_hareketleri',
-        'asil, kadro_mudurlugu, gorev_mudurlugu, kadro_unvani, gorev_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
+        'asil, vekil, kadro_mudurlugu, gorev_mudurlugu, kadro_unvani, gorev_unvani, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu',
       ),
       fetchAllSelect<{ sicil_no: string; ad_soyad: string }>(supabase, 'calisan', 'sicil_no, ad_soyad'),
       fetchAllIzinHareketleriForKullanilanRapor(supabase, yil),
