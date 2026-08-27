@@ -68,10 +68,8 @@ export type GorevYeriListeSenkronOpts = {
 }
 
 /**
- * Kayıt listesini güncel verilere göre artımlı senkronize eder.
- * Mevcut sıra korunur; ayrılanlar çıkarılır.
- * Müdürlük değişen / yeni kayıtlar kendi istihdam grubunun (Memur → Sözleşmeli → İşçi) sonuna alınır.
- * Her müdürlük bloğunda istihdam türü sırası zorunlu uygulanır.
+ * Kayıtlı sıra sabittir. Ayrılanlar çıkarılır.
+ * Müdürlük değişen ve yeni kayıtlar, gittikleri müdürlükte kendi istihdam grubunun sonuna alınır.
  */
 export async function gorevYeriListeSenkronizeEt(
   supabase: SupabaseClient,
@@ -307,17 +305,10 @@ export async function gorevYeriListeDenetimdenGeriYukleInternal(
     mudurluk: satirByKey.get(k)?.mudurluk ?? null,
   }))
 
-  const referansKayit = String(log.islem ?? '') === 'Referans Sıralama Kaydı'
   const sirali =
-    referansKayit && yeniKeys.length === 0
+    yeniKeys.length === 0
       ? restoredKeys
-      : referansKayit
-        ? gorevYerineGoreListeArtimliSenkron(
-            satirlar,
-            oncekiAyar,
-            yeniKeys,
-          )
-        : gorevYerineGoreListeSiraOlustur(satirlar, oncekiAyar, yeniKeys)
+      : gorevYerineGoreListeArtimliSenkron(satirlar, oncekiAyar, yeniKeys)
 
   const { data: mevcutRows, error: mevcutErr } = await sb
     .from('rapor_gorev_yeri_liste_ayar')

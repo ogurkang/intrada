@@ -81,12 +81,17 @@ export async function GET(req: Request) {
     })
 
     const COLS = 9
+    const KOLON_BASLIK = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Unvan', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']
     const gruplar = gruplaPersoneleGoreIzinSatirlari(satirlar)
     const dataRows: (string | number)[][] = []
+    const kisiBaslikSatirlari = new Set<number>()
     const kisiToplamSatirlari = new Set<number>()
     const kimlikBirlestirmeleri: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = []
-    let excelRow = 6
+    let excelRow = 5
     for (const grup of gruplar) {
+      kisiBaslikSatirlari.add(excelRow)
+      dataRows.push(padRow(COLS, KOLON_BASLIK))
+      excelRow++
       const blokBas = excelRow
       grup.kayitlar.forEach((s, i) => {
         dataRows.push(
@@ -121,7 +126,6 @@ export async function GET(req: Request) {
       padRow(COLS, [`Oluşturulma tarihi: ${olusturmaTarihi}`]),
       padRow(COLS, [`Müdürlük: ${mudurlukMetin}  |  Tür: ${turMetin}  |  Durum: ${durumMetin}  |  Personel: ${personelMetin}`]),
       padRow(COLS, ['']),
-      padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Unvan', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']),
       ...dataRows,
       padRow(COLS, [
         'Genel toplam',
@@ -137,8 +141,8 @@ export async function GET(req: Request) {
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
-    const headerRow = 5
-    const totalRow = 6 + dataRows.length
+    const dataBas = 5
+    const totalRow = dataBas + dataRows.length
 
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
@@ -168,11 +172,11 @@ export async function GET(req: Request) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cell = ws[addr] as any
         const isTitle = r <= 3
-        const isHead = r === headerRow
+        const isHead = kisiBaslikSatirlari.has(r)
         const isTotal = r === totalRow
         const isKisiToplam = kisiToplamSatirlari.has(r)
-        const inData = r >= headerRow && r <= totalRow
-        const kimlikHucresi = r > headerRow && r < totalRow && c <= 3
+        const inData = r >= dataBas && r <= totalRow
+        const kimlikHucresi = r >= dataBas && r < totalRow && c <= 3 && !isHead
         cell.s = {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal || isKisiToplam },
           alignment: {
