@@ -36,6 +36,7 @@ export async function GET(req: Request) {
       .filter(Boolean)
     const sicilFiltre = String(searchParams.get('s') ?? '').trim().toLocaleLowerCase('tr-TR')
     const turFiltre = String(searchParams.get('t') ?? '').trim()
+    const durumFiltre = String(searchParams.get('d') ?? 'taslak-haric').trim()
 
     const { satirlar: hamSatirlar, hata } = await yuklePersoneleGoreKullanilanIzinListesi(supabase, yil)
     if (hata) return NextResponse.json({ error: hata }, { status: 500 })
@@ -55,27 +56,34 @@ export async function GET(req: Request) {
     if (turFiltre) {
       satirlar = satirlar.filter(r => r.tur === turFiltre)
     }
+    if (durumFiltre === 'taslak-haric') {
+      satirlar = satirlar.filter(r => r.durum !== 'Taslak')
+    } else if (durumFiltre && durumFiltre !== 'tumu') {
+      satirlar = satirlar.filter(r => r.durum === durumFiltre)
+    }
 
     const mudurlukMetin = mudurlukFilterler.length ? mudurlukFilterler.join(', ') : 'Tümü'
     const turMetin = turFiltre || 'Tümü'
+    const durumMetin =
+      durumFiltre === 'taslak-haric' ? 'Taslak hariç' : durumFiltre === 'tumu' || !durumFiltre ? 'Tümü' : durumFiltre
     const olusturmaTarihi = new Date().toLocaleDateString('tr-TR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     })
 
-    const COLS = 6
+    const COLS = 8
     const rows: (string | number)[][] = [
       padRow(COLS, ['Personele Göre Kullanılan İzin Listesi']),
       padRow(COLS, [`Yıl: ${yil}`]),
       padRow(COLS, [`Oluşturulma tarihi: ${olusturmaTarihi}`]),
-      padRow(COLS, [`Müdürlük filtresi: ${mudurlukMetin}  |  Tür filtresi: ${turMetin}`]),
+      padRow(COLS, [`Müdürlük: ${mudurlukMetin}  |  Tür: ${turMetin}  |  Durum: ${durumMetin}`]),
       padRow(COLS, ['']),
-      padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Kayıt Bilgisi', 'İzin Türü', 'Gün Bilgisi']),
+      padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']),
       ...satirlar.map((s, i) =>
-        padRow(COLS, [i + 1, s.sicil_no, s.ad_soyad, s.kayit_bilgisi, s.tur, s.gun]),
+        padRow(COLS, [i + 1, s.sicil_no, s.ad_soyad, s.ayrilis, s.baslama, s.tur, s.durum, s.gun]),
       ),
-      padRow(COLS, ['Toplam', '', '', '', '', satirlar.length]),
+      padRow(COLS, ['Toplam', '', '', '', '', '', '', satirlar.reduce((s, r) => s + r.gun, 0)]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -84,13 +92,22 @@ export async function GET(req: Request) {
     const totalRow = dataStart + satirlar.length
 
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 5 } },
-      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
+      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 6 } },
     ]
-    ws['!cols'] = [{ wch: 8 }, { wch: 14 }, { wch: 30 }, { wch: 24 }, { wch: 24 }, { wch: 12 }]
+    ws['!cols'] = [
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 30 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 12 },
+    ]
 
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
     for (let r = 0; r <= range.e.r; r++) {
@@ -107,7 +124,7 @@ export async function GET(req: Request) {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 5 ? 'right' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 7 ? 'right' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),

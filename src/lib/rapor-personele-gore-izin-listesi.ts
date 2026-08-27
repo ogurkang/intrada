@@ -11,8 +11,10 @@ export interface PersoneleGoreIzinSatir {
   sicil_no: string
   ad_soyad: string
   mudurluk: string
-  kayit_bilgisi: string
+  ayrilis: string
+  baslama: string
   tur: string
+  durum: string
   gun: number
 }
 
@@ -75,15 +77,16 @@ export function buildPersoneleGoreIzinListesi(input: {
     const calisan = calisanBySicil.get(sicil)
     if (!calisan) continue
     const mudurluk = mudurlukBySicil.get(sicil) ?? ''
-    const ayrilis = formatTarih(iz.ayrilis)
-    const baslama = formatTarih(iz.baslama)
-    const kayit_bilgisi = ayrilis && baslama ? `${ayrilis} – ${baslama}` : ayrilis || baslama || '—'
+    const ayrilis = formatTarih(iz.ayrilis) || '—'
+    const baslama = formatTarih(iz.baslama) || '—'
     out.push({
       sicil_no: sicil,
       ad_soyad: calisan.ad_soyad,
       mudurluk,
-      kayit_bilgisi,
+      ayrilis,
+      baslama,
       tur: String(iz.tur ?? '').trim(),
+      durum: String(iz.durum ?? '').trim() || '—',
       gun,
     })
   }
@@ -91,8 +94,8 @@ export function buildPersoneleGoreIzinListesi(input: {
   out.sort((a, b) => {
     const sicilCmp = a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true })
     if (sicilCmp !== 0) return sicilCmp
-    const ayrilisA = a.kayit_bilgisi.slice(0, 10).split('.').reverse().join('')
-    const ayrilisB = b.kayit_bilgisi.slice(0, 10).split('.').reverse().join('')
+    const ayrilisA = a.ayrilis.split('.').reverse().join('')
+    const ayrilisB = b.ayrilis.split('.').reverse().join('')
     return ayrilisA.localeCompare(ayrilisB)
   })
 

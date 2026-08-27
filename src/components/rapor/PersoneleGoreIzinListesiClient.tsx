@@ -8,12 +8,14 @@ interface PersoneleGoreIzinSatir {
   sicil_no: string
   ad_soyad: string
   mudurluk: string
-  kayit_bilgisi: string
+  ayrilis: string
+  baslama: string
   tur: string
+  durum: string
   gun: number
 }
 
-type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'kayit_bilgisi' | 'tur' | 'gun'
+type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'ayrilis' | 'baslama' | 'tur' | 'durum' | 'gun'
 type SortDir = 'asc' | 'desc'
 
 interface Props {
@@ -46,6 +48,7 @@ export default function PersoneleGoreIzinListesiClient({
   const [mudurlukFiltreler, setMudurlukFiltreler] = useState<string[]>([])
   const [sicilFiltre, setSicilFiltre] = useState('')
   const [turFiltre, setTurFiltre] = useState('')
+  const [durumFiltre, setDurumFiltre] = useState('taslak-haric')
   const [sortKey, setSortKey] = useState<SortKey>('sicil_no')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -59,6 +62,14 @@ export default function PersoneleGoreIzinListesiClient({
       }
     },
     [sortKey],
+  )
+
+  const tumDurumlar = useMemo(
+    () =>
+      [...new Set(satirlar.map(r => r.durum).filter(d => d && d !== '—'))].sort((a, b) =>
+        a.localeCompare(b, 'tr'),
+      ),
+    [satirlar],
   )
 
   const gorunenSatirlar = useMemo(() => {
@@ -78,12 +89,17 @@ export default function PersoneleGoreIzinListesiClient({
     if (turFiltre) {
       rows = rows.filter(r => r.tur === turFiltre)
     }
+    if (durumFiltre === 'taslak-haric') {
+      rows = rows.filter(r => r.durum !== 'Taslak')
+    } else if (durumFiltre) {
+      rows = rows.filter(r => r.durum === durumFiltre)
+    }
     const dir = sortDir === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => {
       if (sortKey === 'gun') return (a.gun - b.gun) * dir
       return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
     })
-  }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, sortKey, sortDir])
+  }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, sortKey, sortDir])
 
   const yilDegistir = useCallback(
     (y: number) => router.push(`${raporBasePath}?y=${y}`),
@@ -95,8 +111,9 @@ export default function PersoneleGoreIzinListesiClient({
     if (mudurlukFiltreler.length) p.set('m', mudurlukFiltreler.join(','))
     if (sicilFiltre.trim()) p.set('s', sicilFiltre.trim())
     if (turFiltre) p.set('t', turFiltre)
+    p.set('d', durumFiltre || 'tumu')
     return p.toString()
-  }, [yil, mudurlukFiltreler, sicilFiltre, turFiltre])
+  }, [yil, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre])
 
   const thClass = (key: SortKey) =>
     `px-4 py-3 font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-100 transition-colors whitespace-nowrap ${
@@ -116,7 +133,7 @@ export default function PersoneleGoreIzinListesiClient({
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Personele Göre Kullanılan İzin Listesi</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Seçili yılda kullanılan izinler; müdürlük, sicil ve türe göre filtrelenebilir.
+            Seçili yılda kullanılan izinler; müdürlük, sicil, tür ve duruma göre filtrelenebilir.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 justify-end shrink-0">
@@ -214,6 +231,24 @@ export default function PersoneleGoreIzinListesiClient({
           </select>
         </div>
 
+        {/* Durum */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600 whitespace-nowrap">Durum</label>
+          <select
+            value={durumFiltre}
+            onChange={e => setDurumFiltre(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 max-w-[200px]"
+          >
+            <option value="taslak-haric">Taslak hariç</option>
+            <option value="">Tümü</option>
+            {tumDurumlar.map(d => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Sonuç sayısı */}
         <span className="ml-auto text-sm text-slate-500">
           {gorunenSatirlar.length} kayıt
@@ -223,7 +258,7 @@ export default function PersoneleGoreIzinListesiClient({
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse min-w-[800px]">
+          <table className="w-full text-sm border-collapse min-w-[960px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center px-3 py-3 font-semibold text-slate-700 w-16">Sıra No</th>
@@ -242,11 +277,18 @@ export default function PersoneleGoreIzinListesiClient({
                   <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
                 </th>
                 <th
-                  className={`text-left ${thClass('kayit_bilgisi')} min-w-[180px]`}
-                  onClick={() => handleSort('kayit_bilgisi')}
+                  className={`text-left ${thClass('ayrilis')} w-28`}
+                  onClick={() => handleSort('ayrilis')}
                 >
-                  Kayıt Bilgisi
-                  <SortIcon dir={sortKey === 'kayit_bilgisi' ? sortDir : null} />
+                  Ayrılış
+                  <SortIcon dir={sortKey === 'ayrilis' ? sortDir : null} />
+                </th>
+                <th
+                  className={`text-left ${thClass('baslama')} w-28`}
+                  onClick={() => handleSort('baslama')}
+                >
+                  Başlama
+                  <SortIcon dir={sortKey === 'baslama' ? sortDir : null} />
                 </th>
                 <th
                   className={`text-left ${thClass('tur')} min-w-[160px]`}
@@ -254,6 +296,13 @@ export default function PersoneleGoreIzinListesiClient({
                 >
                   İzin Türü
                   <SortIcon dir={sortKey === 'tur' ? sortDir : null} />
+                </th>
+                <th
+                  className={`text-left ${thClass('durum')} w-32`}
+                  onClick={() => handleSort('durum')}
+                >
+                  Durum
+                  <SortIcon dir={sortKey === 'durum' ? sortDir : null} />
                 </th>
                 <th
                   className={`text-right ${thClass('gun')} w-28`}
@@ -267,21 +316,23 @@ export default function PersoneleGoreIzinListesiClient({
             <tbody className="divide-y divide-slate-100">
               {gorunenSatirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
               ) : (
                 gorunenSatirlar.map((row, i) => (
                   <tr
-                    key={`${row.sicil_no}-${row.kayit_bilgisi}-${i}`}
+                    key={`${row.sicil_no}-${row.ayrilis}-${row.baslama}-${row.durum}-${i}`}
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                     <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>
-                    <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.kayit_bilgisi}</td>
+                    <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.ayrilis}</td>
+                    <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.baslama}</td>
                     <td className="px-4 py-2.5 text-slate-700">{row.tur}</td>
+                    <td className="px-4 py-2.5 text-slate-700">{row.durum}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800">
                       {row.gun}
                     </td>
@@ -292,7 +343,7 @@ export default function PersoneleGoreIzinListesiClient({
             {gorunenSatirlar.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
-                  <td colSpan={5} className="px-4 py-2.5 text-slate-700">
+                  <td colSpan={7} className="px-4 py-2.5 text-slate-700">
                     Toplam ({gorunenSatirlar.length} kayıt)
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-800">
