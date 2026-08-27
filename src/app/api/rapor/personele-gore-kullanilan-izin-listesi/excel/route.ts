@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
-import { yuklePersoneleGoreKullanilanIzinListesi } from '@/lib/rapor-personele-gore-izin-listesi'
+import {
+  gruplaPersoneleGoreIzinListesi,
+  yuklePersoneleGoreKullanilanIzinListesi,
+} from '@/lib/rapor-personele-gore-izin-listesi'
 
 const MIN_YIL = 2000
 const MAX_YIL = 2035
@@ -77,41 +80,91 @@ export async function GET(req: Request) {
       year: 'numeric',
     })
 
-    const COLS = 8
+    const COLS = 9
+    const gruplar = gruplaPersoneleGoreIzinListesi(satirlar)
+    const dataRows: (string | number)[][] = []
+    const grupBaslikSatirlari = new Set<number>()
+    const toplamBaslikSatirlari = new Set<number>()
+    let excelRow = 6
+    for (const grup of gruplar) {
+      grupBaslikSatirlari.add(excelRow)
+      dataRows.push(
+        padRow(COLS, [
+          grup.sira,
+          grup.sicil_no,
+          grup.ad_soyad,
+          grup.mudur ? grup.unvan : '',
+          'Ayrılış / Başlama',
+          '',
+          '',
+          '',
+          '',
+        ]),
+      )
+      excelRow++
+      toplamBaslikSatirlari.add(excelRow)
+      dataRows.push(
+        padRow(COLS, [
+          '',
+          '',
+          '',
+          grup.mudurluk,
+          'Ayrılış',
+          'Başlama',
+          'İzin Türü',
+          'Durum',
+          `İzin toplamı: ${grup.toplamGun}`,
+        ]),
+      )
+      excelRow++
+      for (const s of grup.kayitlar) {
+        dataRows.push(padRow(COLS, ['', '', '', '', s.ayrilis, s.baslama, s.tur, s.durum, s.gun]))
+        excelRow++
+      }
+    }
+
     const rows: (string | number)[][] = [
       padRow(COLS, ['Personele Göre Kullanılan İzin Listesi']),
       padRow(COLS, [`Yıl: ${yil}`]),
       padRow(COLS, [`Oluşturulma tarihi: ${olusturmaTarihi}`]),
       padRow(COLS, [`Müdürlük: ${mudurlukMetin}  |  Tür: ${turMetin}  |  Durum: ${durumMetin}  |  Personel: ${personelMetin}`]),
       padRow(COLS, ['']),
-      padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']),
-      ...satirlar.map((s, i) =>
-        padRow(COLS, [i + 1, s.sicil_no, s.ad_soyad, s.ayrilis, s.baslama, s.tur, s.durum, s.gun]),
-      ),
-      padRow(COLS, ['Toplam', '', '', '', '', '', '', satirlar.reduce((s, r) => s + r.gun, 0)]),
+      padRow(COLS, ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Unvan', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']),
+      ...dataRows,
+      padRow(COLS, [
+        'Genel toplam',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        `${gruplar.length} personel / ${satirlar.length} kayıt`,
+        satirlar.reduce((s, r) => s + r.gun, 0),
+      ]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
     const headerRow = 5
-    const dataStart = 6
-    const totalRow = dataStart + satirlar.length
+    const totalRow = 6 + dataRows.length
 
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
-      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 6 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
+      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 7 } },
     ]
     ws['!cols'] = [
       { wch: 8 },
       { wch: 14 },
-      { wch: 30 },
+      { wch: 28 },
+      { wch: 28 },
       { wch: 12 },
       { wch: 12 },
-      { wch: 24 },
+      { wch: 22 },
       { wch: 14 },
-      { wch: 12 },
+      { wch: 16 },
     ]
 
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
@@ -129,7 +182,7 @@ export async function GET(req: Request) {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 7 ? 'right' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 8 ? 'right' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),
@@ -138,6 +191,12 @@ export async function GET(req: Request) {
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } }
         } else if (isTotal) {
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }
+        } else if (grupBaslikSatirlari.has(r)) {
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'CCFBF1' } }
+          cell.s.font = { name: 'Calibri', sz: 11, bold: true }
+        } else if (toplamBaslikSatirlari.has(r)) {
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } }
+          cell.s.font = { name: 'Calibri', sz: 10, bold: true }
         }
       }
     }

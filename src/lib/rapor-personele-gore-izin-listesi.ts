@@ -17,6 +17,18 @@ export interface PersoneleGoreIzinSatir {
   durum: string
   gun: number
   mudur: boolean
+  unvan: string
+}
+
+export interface PersoneleGoreIzinGrup {
+  sira: number
+  sicil_no: string
+  ad_soyad: string
+  mudurluk: string
+  unvan: string
+  mudur: boolean
+  toplamGun: number
+  kayitlar: PersoneleGoreIzinSatir[]
 }
 
 export interface IzinHareketRaporRow {
@@ -32,6 +44,44 @@ function unvandaMuduruVar(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'
   const ku = String(k.kadro_unvani ?? '').toLocaleLowerCase('tr-TR')
   const gu = String(k.gorev_unvani ?? '').toLocaleLowerCase('tr-TR')
   return ku.includes('müdürü') || gu.includes('müdürü')
+}
+
+/** Asil/vekil fark etmeksizin «müdürü» geçen unvanı seçer; görev unvanı öncelikli. */
+function mudurUnvaniSec(k: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'>): string {
+  const ku = String(k.kadro_unvani ?? '').trim()
+  const gu = String(k.gorev_unvani ?? '').trim()
+  const has = (s: string) => s.toLocaleLowerCase('tr-TR').includes('müdürü')
+  if (gu && has(gu)) return gu
+  if (ku && has(ku)) return ku
+  return ''
+}
+
+export function gruplaPersoneleGoreIzinListesi(satirlar: PersoneleGoreIzinSatir[]): PersoneleGoreIzinGrup[] {
+  const sira: string[] = []
+  const bySicil = new Map<string, PersoneleGoreIzinSatir[]>()
+  for (const r of satirlar) {
+    const list = bySicil.get(r.sicil_no)
+    if (!list) {
+      sira.push(r.sicil_no)
+      bySicil.set(r.sicil_no, [r])
+    } else {
+      list.push(r)
+    }
+  }
+  return sira.map((sicil, i) => {
+    const kayitlar = bySicil.get(sicil) ?? []
+    const ilk = kayitlar[0]
+    return {
+      sira: i + 1,
+      sicil_no: sicil,
+      ad_soyad: ilk?.ad_soyad ?? '',
+      mudurluk: ilk?.mudurluk ?? '',
+      unvan: ilk?.unvan ?? '',
+      mudur: Boolean(ilk?.mudur),
+      toplamGun: kayitlar.reduce((s, x) => s + x.gun, 0),
+      kayitlar,
+    }
+  })
 }
 
 function formatTarih(s: string | null | undefined): string {
@@ -71,12 +121,28 @@ export function buildPersoneleGoreIzinListesi(input: {
   }
 
   const mudurSiciller = new Set<string>()
+  const unvanBySicil = new Map<string, { unvan: string; asilMi: boolean }>()
   for (const r of kadro ?? []) {
     if (!unvandaMuduruVar(r)) continue
+    const unvan = mudurUnvaniSec(r)
     const asil = String(r.asil ?? '').trim()
     const vekil = String(r.vekil ?? '').trim()
-    if (asil) mudurSiciller.add(asil)
-    if (vekil) mudurSiciller.add(vekil)
+    if (asil) {
+      mudurSiciller.add(asil)
+      if (unvan) {
+        const onceki = unvanBySicil.get(asil)
+        if (!onceki || !onceki.asilMi) unvanBySicil.set(asil, { unvan, asilMi: true })
+      }
+    }
+    if (vekil) {
+      mudurSiciller.add(vekil)
+      if (unvan) {
+        const onceki = unvanBySicil.get(vekil)
+        if (!onceki) unvanBySicil.set(vekil, { unvan, asilMi: false })
+      }
+      const mud = String(r.kadro_mudurlugu ?? r.gorev_mudurlugu ?? '').trim()
+      if (mud && !mudurlukBySicil.has(vekil)) mudurlukBySicil.set(vekil, mud)
+    }
   }
 
   const out: PersoneleGoreIzinSatir[] = []
@@ -101,6 +167,7 @@ export function buildPersoneleGoreIzinListesi(input: {
       durum: String(iz.durum ?? '').trim() || '—',
       gun,
       mudur: mudurSiciller.has(sicil),
+      unvan: unvanBySicil.get(sicil)?.unvan ?? '',
     })
   }
 
