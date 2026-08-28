@@ -13,6 +13,7 @@ import {
 } from '@/lib/izin-gun'
 import { tatilYapisiHesapla } from '@/lib/tatil-yapisi'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { ggAayyyyToIso } from '@/lib/tarih'
 
 type Durum = 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
 
@@ -652,15 +653,6 @@ function normalizeSicilGecmis(s: string): string {
   return t
 }
 
-function tarihIsoGecmis(s: string): string | null {
-  const t = String(s ?? '').trim()
-  if (!t) return null
-  const m = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
-  if (m) return `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`
-  if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
-  return null
-}
-
 function parseSiraGecmis(raw: string, yilVarsayilan: number): { yil: number; sira_no: string } {
   const t = String(raw ?? '').trim()
   const m = t.match(/^(\d{4})\s*[\/.\-]\s*(.+)$/)
@@ -720,8 +712,8 @@ export async function gecmisIzinleriSistemeIsle(
     const tur = s.tur.trim()
     const ayrilisHam = s.ayrilis.trim()
     const baslamaHam = s.baslama.trim()
-    const ayrilis = tarihIsoGecmis(ayrilisHam)
-    const baslama = tarihIsoGecmis(baslamaHam)
+    const ayrilis = ggAayyyyToIso(ayrilisHam)
+    const baslama = ggAayyyyToIso(baslamaHam)
     const gun = parseInt(String(s.gun).replace(',', '.'), 10)
     if (!sicil_no) {
       atla(s, 'Sicil No', s.sicilNo, 'Sicil No boş. Excel’de bu hücreyi doldurun.')
@@ -766,7 +758,7 @@ export async function gecmisIzinleriSistemeIsle(
     const yilVarsayilan = Number(ayrilis.slice(0, 4))
     const { yil, sira_no } = parseSiraGecmis(s.siraNo, yilVarsayilan)
     const durum = mapDurumGecmis(s.durum)
-    const kayitTarihi = tarihIsoGecmis(s.tarih)
+    const kayitTarihi = ggAayyyyToIso(s.tarih)
 
     const { data: mevcutSira } = await supabase
       .from('izin_hareketleri')

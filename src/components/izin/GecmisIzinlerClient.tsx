@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx-js-style'
 import { gecmisIzinleriSistemeIsle, type GecmisIzinAtlama } from '@/app/(dashboard)/izin/actions'
+import { hucreToGgAayyyy, parseTarihEsnek } from '@/lib/tarih'
 
 type PreviewRow = {
   excelSatir: number
@@ -36,65 +37,19 @@ function pick(map: Record<string, string>, ...keys: string[]): string {
   return ''
 }
 
-function ikiHane(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function formatGgAaYyyy(d: Date): string {
-  // Excel/SheetJS Date UTC gece yarısıdır; yerel getDate() TR'de bazen önceki güne düşer.
-  // Saat 0 UTC ise takvim günü UTC'dir; aksi halde (yerel gece yarısı) yerel gün kullanılır.
-  const utcSaat = d.getUTCHours()
-  if (utcSaat === 0 && d.getUTCMinutes() === 0) {
-    return `${ikiHane(d.getUTCDate())}/${ikiHane(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
-  }
-  return `${ikiHane(d.getDate())}/${ikiHane(d.getMonth() + 1)}/${d.getFullYear()}`
-}
-
-function excelSeriToDate(n: number): Date | null {
-  if (!Number.isFinite(n) || n < 1 || n > 80_000) return null
-  const ssf = (XLSX as unknown as { SSF?: { parse_date_code?: (n: number) => { y: number; m: number; d: number } } }).SSF
-  const parsed = ssf?.parse_date_code?.(n)
-  if (parsed?.y) return new Date(parsed.y, parsed.m - 1, parsed.d)
-  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n * 86_400_000))
-  if (isNaN(d.getTime())) return null
-  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-}
-
-/** Metni gün/ay/yıl (gg/aa/yyyy, gg.aa.yyyy, gg-aa-yyyy) olarak okur. */
-function parseTarih(s: string): Date | null {
-  const t = s.trim()
-  if (!t) return null
-  const tr = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})$/)
-  if (tr) {
-    const gun = Number(tr[1])
-    const ay = Number(tr[2])
-    let yil = Number(tr[3])
-    if (yil < 100) yil += 2000
-    if (ay < 1 || ay > 12 || gun < 1 || gun > 31) return null
-    const d = new Date(yil, ay - 1, gun)
-    return isNaN(d.getTime()) ? null : d
-  }
-  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
-  return null
-}
-
-function hucreyiTarihMetni(v: unknown): string {
-  if (v == null || v === '') return ''
-  if (v instanceof Date && !isNaN(v.getTime())) return formatGgAaYyyy(v)
-  if (typeof v === 'number') {
-    const d = excelSeriToDate(v)
-    return d ? formatGgAaYyyy(d) : String(v)
-  }
-  const t = String(v).trim()
-  const d = parseTarih(t)
-  return d ? formatGgAaYyyy(d) : t
+function wsHucre(ws: XLSX.WorkSheet, satir: number, sutun: number): unknown {
+  if (sutun < 0) return ''
+  const ref = XLSX.utils.encode_cell({ r: satir, c: sutun })
+  const cell = ws[ref]
+  if (!cell) return ''
+  if (cell.t === 'n' && typeof cell.v === 'number') return cell.v
+  return cell.w ?? cell.v ?? ''
 }
 
 /** Ayrılış ve başlama tarihinden takvim günü hesapla (başlama − ayrılış). */
 function gunHesapla(ayrilis: string, baslama: string): string {
-  const a = parseTarih(ayrilis)
-  const b = parseTarih(baslama)
+  const a = parseTarihEsnek(ayrilis)
+  const b = parseTarihEsnek(baslama)
   if (!a || !b) return ''
   const fark = Math.round((b.getTime() - a.getTime()) / 86_400_000)
   return fark > 0 ? String(fark) : ''
@@ -143,7 +98,7 @@ export default function GecmisIzinlerClient() {
     const ham = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(ws, {
       header: 1,
       defval: '',
-      raw: false,
+      raw: true,
     })
 
     if (!ham.length) {
@@ -174,29 +129,33 @@ export default function GecmisIzinlerClient() {
     const iDurum = idxOf('durum')
 
     const out: PreviewRow[] = ham.slice(1).map((r, idx) => {
+      const excelSatir = idx + 2
       const asMap: Record<string, string> = {}
       for (let i = 0; i < headerRow.length; i++) {
         asMap[headerMap[i]] = String(r[i] ?? '').trim()
       }
       const sicilHam = iSicil >= 0 ? String(r[iSicil] ?? '').trim() : pick(asMap, 'sicil no', 'sicil')
       const sicilNo = /^\d+\.0+$/.test(sicilHam) ? sicilHam.replace(/\.0+$/, '') : sicilHam
+      const ayrilisHam = hucreToGgAayyyy(wsHucre(ws, excelSatir - 1, iAyrilis >= 0 ? iAyrilis : -1))
+        || hucreToGgAayyyy(pick(asMap, 'ayrılış', 'ayrilis'))
+      const baslamaHam = hucreToGgAayyyy(wsHucre(ws, excelSatir - 1, iBaslama >= 0 ? iBaslama : -1))
+        || hucreToGgAayyyy(pick(asMap, 'başlama', 'baslama'))
       return {
-        excelSatir: idx + 2,
+        excelSatir,
         siraNo: iSira >= 0 ? String(r[iSira] ?? '').trim() : pick(asMap, 'sıra no', 'sira no'),
         islemYapan: iIslemYapan >= 0 ? String(r[iIslemYapan] ?? '').trim() : pick(asMap, 'işlem yapan', 'islem yapan'),
-        tarih: hucreyiTarihMetni(iTarih >= 0 ? r[iTarih] : pick(asMap, 'tarih')),
+        tarih: hucreToGgAayyyy(wsHucre(ws, excelSatir - 1, iTarih >= 0 ? iTarih : -1))
+          || hucreToGgAayyyy(pick(asMap, 'tarih')),
         sicilNo,
         adSoyad: iAd >= 0 ? String(r[iAd] ?? '').trim() : pick(asMap, 'adı soyadı', 'adi soyadi', 'ad soyad'),
         vekalet: iVekalet >= 0 ? String(r[iVekalet] ?? '').trim() : pick(asMap, 'vekalet'),
         tur: iTur >= 0 ? String(r[iTur] ?? '').trim() : pick(asMap, 'tür', 'tur'),
-        ayrilis: hucreyiTarihMetni(iAyrilis >= 0 ? r[iAyrilis] : pick(asMap, 'ayrılış', 'ayrilis')),
-        baslama: hucreyiTarihMetni(iBaslama >= 0 ? r[iBaslama] : pick(asMap, 'başlama', 'baslama')),
+        ayrilis: ayrilisHam,
+        baslama: baslamaHam,
         gun: (() => {
           const excelGun = iGun >= 0 ? String(r[iGun] ?? '').trim() : pick(asMap, 'gün', 'gun')
           if (excelGun) return excelGun
-          const ay = hucreyiTarihMetni(iAyrilis >= 0 ? r[iAyrilis] : pick(asMap, 'ayrılış', 'ayrilis'))
-          const bas = hucreyiTarihMetni(iBaslama >= 0 ? r[iBaslama] : pick(asMap, 'başlama', 'baslama'))
-          return gunHesapla(ay, bas)
+          return gunHesapla(ayrilisHam, baslamaHam)
         })(),
         durum: iDurum >= 0 ? String(r[iDurum] ?? '').trim() : pick(asMap, 'durum'),
       }
@@ -215,6 +174,7 @@ export default function GecmisIzinlerClient() {
         <h1 className="text-2xl font-bold text-slate-800">Geçmiş İzinler</h1>
         <p className="text-sm text-slate-600 mt-1">
           Excel ile geçmiş izin kayıtlarını yükleyebilir, izin hareketleri düzeninde listeden kontrol edebilirsiniz.
+          Tarihler gg.aa.yyyy biçiminde okunur ve sisteme işlenir.
         </p>
       </div>
 
