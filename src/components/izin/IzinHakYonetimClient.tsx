@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { KalemDuzenleDugmesi, SaatGecmisDugmesi, YenidenHesaplaDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { izinHakkiAuditDegerGoster, izinHakkiAuditDiffSatirlari, izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
 import type { Tables, Views } from '@/types/database'
 
@@ -24,6 +24,7 @@ interface Props {
   tumYillar:   number[]
   onKaydet:    (fd: FormData) => Promise<{ hata?: string }>
   onYenidenHesapla?: () => Promise<{ hata?: string; guncellenen?: number; toplam?: number }>
+  onTekYenidenHesapla?: (sicil_no: string, yil: number) => Promise<{ hata?: string }>
   odakSicilNo?: string | null
   returnTo?: string | null
   canEdit?: boolean
@@ -38,7 +39,7 @@ function renkBg(kalan: number) {
 }
 
 export default function IzinHakYonetimClient({
-  yil, satirlar, tumYillar, onKaydet, onYenidenHesapla,
+  yil, satirlar, tumYillar, onKaydet, onYenidenHesapla, onTekYenidenHesapla,
   odakSicilNo, returnTo, canEdit = true,
   auditLoglarByRefId = {},
 }: Props) {
@@ -50,6 +51,7 @@ export default function IzinHakYonetimClient({
   const [sunuciHata, setSunuciHata]        = useState<string | null>(null)
   const [gecmisRefId, setGecmisRefId]      = useState<string | null>(null)
   const [hesapMesaj, setHesapMesaj]        = useState<string | null>(null)
+  const [satirHesapSicil, setSatirHesapSicil] = useState<string | null>(null)
   const [isPending, startTransition]       = useTransition()
 
   function yenidenHesapla() {
@@ -64,6 +66,25 @@ export default function IzinHakYonetimClient({
         return
       }
       setHesapMesaj(`Kullanılan günler yeniden hesaplandı (${res.guncellenen ?? 0}/${res.toplam ?? 0} kayıt).`)
+      router.refresh()
+    })
+  }
+
+  function satirYenidenHesapla(s: SatirVeri) {
+    if (!onTekYenidenHesapla || !s.hak) return
+    const ad = s.ad_soyad ?? s.sicil_no
+    if (!window.confirm(`${ad} için ${yil} yılı "Kullanılan" izin günü izin hareketlerinden yeniden hesaplanacak. Devam edilsin mi?`)) return
+    setSunuciHata(null)
+    setHesapMesaj(null)
+    setSatirHesapSicil(s.sicil_no)
+    startTransition(async () => {
+      const res = await onTekYenidenHesapla(s.sicil_no, yil)
+      setSatirHesapSicil(null)
+      if (res.hata) {
+        setSunuciHata(res.hata)
+        return
+      }
+      setHesapMesaj(`${ad} için kullanılan gün yeniden hesaplandı.`)
       router.refresh()
     })
   }
@@ -272,6 +293,13 @@ export default function IzinHakYonetimClient({
 
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
+                        {canEdit && onTekYenidenHesapla && s.hak && (
+                          <YenidenHesaplaDugmesi
+                            onClick={() => satirYenidenHesapla(s)}
+                            disabled={isPending || satirHesapSicil === s.sicil_no}
+                            title={satirHesapSicil === s.sicil_no ? 'Hesaplanıyor…' : 'Kullanılanı yeniden hesapla'}
+                          />
+                        )}
                         <SaatGecmisDugmesi
                           sayi={auditLoglar.length}
                           onClick={() => setGecmisRefId(refId)}

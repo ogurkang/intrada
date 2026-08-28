@@ -555,6 +555,43 @@ export async function izinHaklariKullanilanTopluGuncelle(): Promise<{ hata?: str
   return { guncellenen, toplam }
 }
 
+/** Tek personel için kullanilan_gun değerini izin_hareketleri'nden hesaplar. */
+export async function izinHaklariKullanilanTekGuncelle(
+  sicil_no: string,
+  yil: number,
+): Promise<{ hata?: string }> {
+  const sicil = String(sicil_no ?? '').trim()
+  if (!sicil) return { hata: 'Sicil no zorunludur.' }
+  if (!yil || yil < 2000 || yil > 2100) return { hata: 'Geçersiz yıl.' }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum bulunamadı.' }
+  const { data: profil } = await supabase
+    .from('app_profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profil?.rol !== 'admin') {
+    return { hata: 'Bu işlem için admin yetkisi gerekir.' }
+  }
+
+  const { data: hak } = await supabase
+    .from('izin_haklari')
+    .select('id')
+    .eq('sicil_no', sicil)
+    .eq('yil', yil)
+    .maybeSingle()
+  if (!hak) return { hata: `${yil} yılı için izin hakkı kaydı bulunamadı.` }
+
+  await izinHaklariKullanilanGuncelle(supabase, sicil, yil)
+  revalidatePath('/izin')
+  revalidatePath('/izin/haklar')
+  return {}
+}
+
 /** Devam niteliğindeki izin kayıtlarının ayrılış tarihini önceki izinin başlama tarihine günceller. */
 export async function izinDevamAyrilisTopluGuncelle(): Promise<{ hata?: string; guncellenen: number }> {
   const supabase = await createClient()
