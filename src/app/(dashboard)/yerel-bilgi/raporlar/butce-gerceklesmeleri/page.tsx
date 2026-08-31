@@ -2,20 +2,26 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
-import { mudurlukIdFromAuthSession } from '@/lib/kadro-mudurluk-id'
+import { butceIslemMudurlukCoz } from '@/lib/yerel-bilgi-butce-mudurluk'
+import YerelBilgiMudurlukSecici from '@/components/yerel-bilgi/YerelBilgiMudurlukSecici'
 
 function fmt(n: number | null) {
   if (n == null || !Number.isFinite(Number(n))) return '0,00'
   return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
 }
 
-export default async function ButceGerceklesmeleriRaporPage() {
+interface Props {
+  searchParams: Promise<{ mudurluk_id?: string }>
+}
+
+export default async function ButceGerceklesmeleriRaporPage({ searchParams }: Props) {
+  const { mudurluk_id } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const access = await getAppAccess(supabase, user.id)
-  const mudId = await mudurlukIdFromAuthSession(supabase, user.id, access)
+  const { isAdmin, mudId, mudurlukler } = await butceIslemMudurlukCoz(supabase, user.id, access, mudurluk_id)
   const yil = new Date().getFullYear()
 
   const [{ data: giderDefs }, { data: gelirDefs }, { data: islemRaw }, { data: mudRow }] = await Promise.all([
@@ -39,22 +45,47 @@ export default async function ButceGerceklesmeleriRaporPage() {
   const giderToplam = giderRows.reduce((acc, k) => acc + Number(giderMap.get(k.id) ?? 0), 0)
   const gelirToplam = gelirRows.reduce((acc, k) => acc + Number(gelirMap.get(k.id) ?? 0), 0)
 
+  const excelHref =
+    mudId != null
+      ? `/api/yerel-bilgi/raporlar/butce-gerceklesmeleri/excel?mudurluk_id=${mudId}`
+      : null
   const excelBtn =
-    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors'
+    'inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:pointer-events-none'
   const geriBtn =
     'inline-flex items-center rounded-lg bg-slate-800 text-white text-sm px-4 py-2 font-medium hover:bg-slate-700 transition-colors'
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{yil} Yılı Bütçe Gerçekleşmeleri Raporu</h1>
-          <p className="text-sm text-slate-500 mt-1">Müdürlük: {mudRow?.mudurluk_adi ?? 'Tanımsız'}</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Müdürlük: {mudRow?.mudurluk_adi ?? (isAdmin ? 'Seçilmedi' : 'Tanımsız')}
+          </p>
         </div>
-        <div className="flex gap-2 justify-end">
-          <Link href="/api/yerel-bilgi/raporlar/butce-gerceklesmeleri/excel" className={excelBtn}>Excel İndir</Link>
+        <div className="flex gap-2 justify-end flex-wrap">
+          {excelHref ? (
+            <Link href={excelHref} className={excelBtn}>Excel İndir</Link>
+          ) : (
+            <span className={excelBtn} aria-disabled>Excel İndir</span>
+          )}
           <Link href="/yerel-bilgi/raporlar" className={geriBtn}>← Yerel Bilgi — Raporlar</Link>
         </div>
       </div>
+
+      {isAdmin && mudurlukler.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <YerelBilgiMudurlukSecici
+            mudurlukler={mudurlukler}
+            seciliMudurlukId={mudId}
+            basePath="/yerel-bilgi/raporlar/butce-gerceklesmeleri"
+          />
+          {mudId == null && (
+            <p className="text-xs text-amber-700 mt-2">Raporu görüntülemek için müdürlük seçin.</p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b font-semibold text-slate-700">Bütçe Gider Türü (Gerçekleşme)</div>

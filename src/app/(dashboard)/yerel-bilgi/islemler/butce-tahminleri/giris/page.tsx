@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
-import { mudurlukIdFromAuthSession } from '@/lib/kadro-mudurluk-id'
+import { butceIslemMudurlukCoz } from '@/lib/yerel-bilgi-butce-mudurluk'
 import YerelBilgiButceMatrisClient, {
   type ButceKalemSatir,
 } from '@/components/yerel-bilgi/YerelBilgiButceMatrisClient'
@@ -11,7 +11,12 @@ function tutarToInput(n: number | null): string {
   return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(n))
 }
 
-export default async function ButceTahminleriGirisPage() {
+interface Props {
+  searchParams: Promise<{ mudurluk_id?: string }>
+}
+
+export default async function ButceTahminleriGirisPage({ searchParams }: Props) {
+  const { mudurluk_id } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -19,8 +24,9 @@ export default async function ButceTahminleriGirisPage() {
   if (!user) redirect('/login')
 
   const access = await getAppAccess(supabase, user.id)
-  const mudCozum = await mudurlukIdFromAuthSession(supabase, user.id, access)
-  const kayitYapilabilir = mudCozum != null
+  const { isAdmin, mudId, mudurlukler } = await butceIslemMudurlukCoz(supabase, user.id, access, mudurluk_id)
+  const kayitYapilabilir = mudId != null
+  const mudurlukAdi = mudurlukler.find(m => m.id === mudId)?.mudurluk_adi ?? null
 
   const yilEtiketi = new Date().getFullYear() + 1
 
@@ -41,8 +47,8 @@ export default async function ButceTahminleriGirisPage() {
       .eq('aktif', true)
       .order('sira_no', { ascending: true, nullsFirst: false })
       .order('id', { ascending: true }),
-    mudCozum != null
-      ? supabase.from('yerel_bilgi_butce_tahmin_islem').select('*').eq('mudurluk_id', mudCozum)
+    mudId != null
+      ? supabase.from('yerel_bilgi_butce_tahmin_islem').select('*').eq('mudurluk_id', mudId)
       : Promise.resolve({ data: [], error: null }),
   ])
 
@@ -107,7 +113,16 @@ export default async function ButceTahminleriGirisPage() {
         gelirKalemleri={gelirKalemleri}
         baslangicGider={baslangicGider}
         baslangicGelir={baslangicGelir}
-        kaydetSonrasiHref="/yerel-bilgi/raporlar/butce-tahminleri"
+        kaydetSonrasiHref={
+          mudId != null
+            ? `/yerel-bilgi/raporlar/butce-tahminleri?mudurluk_id=${mudId}`
+            : '/yerel-bilgi/raporlar/butce-tahminleri'
+        }
+        isAdmin={isAdmin}
+        mudurlukler={mudurlukler}
+        seciliMudurlukId={mudId}
+        mudurlukAdi={mudurlukAdi}
+        girisBasePath="/yerel-bilgi/islemler/butce-tahminleri/giris"
       />
     </>
   )

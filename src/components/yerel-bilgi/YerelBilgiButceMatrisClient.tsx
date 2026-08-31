@@ -7,6 +7,8 @@ import {
   butceMatrisKaydet,
   type ButceIslemTur,
 } from '@/app/(dashboard)/yerel-bilgi/islemler/lib/yerel-bilgi-butce-islem-actions'
+import YerelBilgiMudurlukSecici from '@/components/yerel-bilgi/YerelBilgiMudurlukSecici'
+import type { MudurlukSecenek } from '@/lib/yerel-bilgi-butce-mudurluk'
 
 export type ButceKalemSatir = {
   id: number
@@ -41,6 +43,11 @@ type Props = {
   gelirKalemleri: ButceKalemSatir[]
   baslangicGider: Record<number, string>
   baslangicGelir: Record<number, string>
+  isAdmin?: boolean
+  mudurlukler?: MudurlukSecenek[]
+  seciliMudurlukId?: number | null
+  mudurlukAdi?: string | null
+  girisBasePath?: string
 }
 
 export default function YerelBilgiButceMatrisClient({
@@ -57,6 +64,11 @@ export default function YerelBilgiButceMatrisClient({
   gelirKalemleri,
   baslangicGider,
   baslangicGelir,
+  isAdmin = false,
+  mudurlukler = [],
+  seciliMudurlukId = null,
+  mudurlukAdi = null,
+  girisBasePath = '',
 }: Props) {
   const router = useRouter()
   const ilkGiderInputRef = useRef<HTMLInputElement>(null)
@@ -95,6 +107,7 @@ export default function YerelBilgiButceMatrisClient({
   )
 
   const engel = !kayitYapilabilir
+  const adminMudurlukSecilmedi = isAdmin && seciliMudurlukId == null
   const inputKilitli = engel || !duzenlemeAcik
 
   function duzenlemeyiAc() {
@@ -106,7 +119,12 @@ export default function YerelBilgiButceMatrisClient({
     if (engel || !duzenlemeAcik) return
     setSunucuHata(null)
     startTransition(async () => {
-      const res = await butceMatrisKaydet(tur, gider, gelir)
+      const res = await butceMatrisKaydet(
+        tur,
+        gider,
+        gelir,
+        isAdmin && seciliMudurlukId != null ? seciliMudurlukId : undefined,
+      )
       if (res.hata) {
         setSunucuHata(res.hata)
         return
@@ -195,6 +213,22 @@ export default function YerelBilgiButceMatrisClient({
         </Link>
       </div>
 
+      {isAdmin && mudurlukler.length > 0 && girisBasePath && (
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+          <YerelBilgiMudurlukSecici
+            mudurlukler={mudurlukler}
+            seciliMudurlukId={seciliMudurlukId}
+            basePath={girisBasePath}
+          />
+          {adminMudurlukSecilmedi && (
+            <p className="text-xs text-amber-700 mt-2">Görüntülemek ve kaydetmek için müdürlük seçin.</p>
+          )}
+          {mudurlukAdi && (
+            <p className="text-xs text-slate-500 mt-2">Seçili müdürlük: {mudurlukAdi}</p>
+          )}
+        </div>
+      )}
+
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
           <div className="min-w-0 flex-1">
@@ -223,7 +257,7 @@ export default function YerelBilgiButceMatrisClient({
           </div>
         </div>
 
-        {engel && (
+        {engel && !isAdmin && (
           <div className="mx-4 mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-4 text-sm">
             Profilinizde sicil veya kadroda görev müdürlüğü bulunamadı; kayıt yapılamaz. IK ile iletişime geçin.
           </div>

@@ -2,19 +2,20 @@ import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
-import { mudurlukIdFromAuthSession } from '@/lib/kadro-mudurluk-id'
+import { butceIslemMudurlukCoz } from '@/lib/yerel-bilgi-butce-mudurluk'
 
 function fmt(n: number | null) {
   if (n == null || !Number.isFinite(Number(n))) return '0,00'
   return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 })
   const access = await getAppAccess(supabase, user.id)
-  const mudId = await mudurlukIdFromAuthSession(supabase, user.id, access)
+  const mudurlukParam = new URL(req.url).searchParams.get('mudurluk_id')
+  const { mudId } = await butceIslemMudurlukCoz(supabase, user.id, access, mudurlukParam)
   if (mudId == null) return NextResponse.json({ error: 'Müdürlük bulunamadı' }, { status: 400 })
 
   const [{ data: mud }, { data: gider }, { data: gelir }, { data: islem }] = await Promise.all([

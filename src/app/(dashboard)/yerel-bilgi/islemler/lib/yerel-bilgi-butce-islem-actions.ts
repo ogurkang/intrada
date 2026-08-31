@@ -17,10 +17,12 @@ const REVALIDATE_PATHS: Record<ButceIslemTur, string[]> = {
   tahmin: [
     '/yerel-bilgi/islemler/butce-tahminleri',
     '/yerel-bilgi/islemler/butce-tahminleri/giris',
+    '/yerel-bilgi/raporlar/butce-tahminleri',
   ],
   gider: [
     '/yerel-bilgi/islemler/butce-gerceklesmeleri',
     '/yerel-bilgi/islemler/butce-gerceklesmeleri/giris',
+    '/yerel-bilgi/raporlar/butce-gerceklesmeleri',
   ],
 }
 
@@ -31,23 +33,33 @@ function parseTutar(raw: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-/** Tanımlardaki tüm gider + gelir kalemleri için tutarları kaydeder (tek müdürlük = oturum kadrosu). */
+/** Tanımlardaki tüm gider + gelir kalemleri için tutarları kaydeder. Personel: oturum kadrosu; admin: seçili müdürlük. */
 export async function butceMatrisKaydet(
   tur: ButceIslemTur,
   gider: Record<string, string>,
   gelir: Record<string, string>,
+  adminMudurlukId?: number,
 ): Promise<{ hata?: string }> {
   const auth = await requireYerelBilgiIslem()
   if (!auth.ok) return { hata: auth.hata }
   const userId = auth.userId
 
   const supabase = await createClient()
-  const access = await getAppAccess(supabase, userId)
-  const mudIdKayit = await mudurlukIdFromAuthSession(supabase, userId, access)
-  if (mudIdKayit == null) {
-    return {
-      hata:
-        'Profilinizde sicil veya kadroda görev müdürlüğü bulunamadı; kayıt atanamıyor. IK ile iletişime geçin.',
+  let mudIdKayit: number | null = null
+
+  if (auth.isAdmin) {
+    if (adminMudurlukId == null || !Number.isFinite(adminMudurlukId) || adminMudurlukId <= 0) {
+      return { hata: 'Kayıt için müdürlük seçilmelidir.' }
+    }
+    mudIdKayit = adminMudurlukId
+  } else {
+    const access = await getAppAccess(supabase, userId)
+    mudIdKayit = await mudurlukIdFromAuthSession(supabase, userId, access)
+    if (mudIdKayit == null) {
+      return {
+        hata:
+          'Profilinizde sicil veya kadroda görev müdürlüğü bulunamadı; kayıt atanamıyor. IK ile iletişime geçin.',
+      }
     }
   }
   const { data: mudRow, error: mudErr } = await supabase
