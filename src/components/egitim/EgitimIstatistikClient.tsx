@@ -341,15 +341,15 @@ export default function EgitimIstatistikClient({
 
       {seciliEgitimler.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-14rem)]">
             <table className="text-xs border-collapse" style={{ minWidth: `${seciliEgitimler.length * 80 + 260}px` }}>
               <thead>
-                {/* Ay numaraları (başlangıç tarihinden) */}
-                <tr className="bg-white border-b border-slate-100">
-                  <th className="sticky left-0 bg-white z-20 border-r border-slate-200" />
-                  <th className="border-r border-slate-200" />
+                {/* Ay numaraları (başlangıç tarihinden) — dondurulmuş satır 1 */}
+                <tr className="sticky top-0 z-30 h-7 bg-white border-b border-slate-100 shadow-[0_1px_0_0_rgba(0,0,0,0.04)]">
+                  <th className="sticky left-0 top-0 z-50 bg-white border-r border-slate-200 min-w-48" />
+                  <th className="sticky top-0 z-30 bg-white border-r border-slate-200 w-14" />
                   {seciliEgitimler.map(e => (
-                    <th key={`ay-${e.id}`} className="px-2 py-1 border-r border-slate-100 w-20">
+                    <th key={`ay-${e.id}`} className="sticky top-0 z-30 bg-white px-2 py-1 border-r border-slate-100 w-20">
                       <p
                         className="text-[11px] font-bold text-indigo-600 text-center"
                         title={
@@ -367,34 +367,36 @@ export default function EgitimIstatistikClient({
                     </th>
                   ))}
                 </tr>
-                {/* Eğitim başlıkları */}
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="sticky left-0 bg-slate-50 z-20 px-3 py-3 text-left font-semibold text-slate-600 min-w-48 border-r border-slate-200">
+                {/* Eğitim başlıkları — dondurulmuş satır 2 */}
+                <tr className="sticky top-7 z-30 h-14 bg-slate-50 border-b border-slate-200 shadow-[0_1px_0_0_rgba(0,0,0,0.06)]">
+                  <th className="sticky left-0 top-7 z-50 bg-slate-50 px-3 py-2 text-left font-semibold text-slate-600 min-w-48 border-r border-slate-200">
                     Personel
                   </th>
-                  <th className="px-2 py-3 text-center font-semibold text-slate-600 w-14 border-r border-slate-200">
+                  <th className="sticky top-7 z-30 bg-slate-50 px-2 py-2 text-center font-semibold text-slate-600 w-14 border-r border-slate-200">
                     Toplam
                   </th>
                   {seciliEgitimler.map(e => (
-                    <th key={e.id} className="px-2 py-2 border-r border-slate-100 w-20">
-                      <p className="font-semibold text-slate-700 text-center leading-tight truncate max-w-[72px] mx-auto"
-                        title={e.egitim_adi}>
+                    <th key={e.id} className="sticky top-7 z-30 bg-slate-50 px-2 py-2 border-r border-slate-100 w-20">
+                      <p
+                        className="font-semibold text-slate-700 text-center leading-tight line-clamp-2 max-w-[72px] mx-auto"
+                        title={e.egitim_adi}
+                      >
                         {e.kisa_ad ?? e.egitim_adi.substring(0, 8)}
                       </p>
                       {e.kanal && (
-                        <p className="text-slate-400 text-center mt-0.5">{e.kanal.substring(0, 6)}</p>
+                        <p className="text-slate-400 text-center mt-0.5 truncate max-w-[72px] mx-auto">{e.kanal.substring(0, 6)}</p>
                       )}
                     </th>
                   ))}
                 </tr>
-                {/* Katılım sayıları */}
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="sticky left-0 bg-slate-50 z-20 border-r border-slate-200 px-3 py-1.5 text-left text-[10px] text-slate-400 font-normal">
+                {/* Katılım sayıları — dondurulmuş satır 3 */}
+                <tr className="sticky top-[5.25rem] z-30 h-8 bg-slate-50 border-b border-slate-200 shadow-[0_2px_4px_-2px_rgba(0,0,0,0.08)]">
+                  <th className="sticky left-0 top-[5.25rem] z-50 bg-slate-50 border-r border-slate-200 px-3 py-1.5 text-left text-[10px] text-slate-400 font-normal min-w-48">
                     {filtreli.length} personel gösteriliyor
                   </th>
-                  <th className="border-r border-slate-200" />
+                  <th className="sticky top-[5.25rem] z-30 bg-slate-50 border-r border-slate-200 w-14" />
                   {seciliEgitimler.map(e => (
-                    <th key={e.id} className="text-center py-1.5 font-bold text-indigo-600 border-r border-slate-100">
+                    <th key={e.id} className="sticky top-[5.25rem] z-30 bg-slate-50 text-center py-1.5 font-bold text-indigo-600 border-r border-slate-100">
                       {kisiSayisi(e.id)}
                     </th>
                   ))}
@@ -412,12 +414,12 @@ export default function EgitimIstatistikClient({
                 {filtreli.map(p => {
                   const toplamEgitim = kisiEgitimSayisi(p.sicil_no, seciliEgitimler)
                   return (
-                    <tr key={p.sicil_no} className="hover:bg-slate-50 transition-colors">
-                      <td className="sticky left-0 bg-white z-10 px-3 py-2 border-r border-slate-200">
+                    <tr key={p.sicil_no} className="group hover:bg-slate-50 transition-colors">
+                      <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 min-w-48">
                         <p className="font-medium text-slate-800 leading-tight">{p.ad_soyad ?? p.sicil_no}</p>
                         <p className="text-slate-400 font-mono text-[10px] mt-0.5">{p.mudurluk ?? p.sicil_no}</p>
                       </td>
-                      <td className="px-2 py-2 text-center border-r border-slate-200">
+                      <td className="px-2 py-2 text-center border-r border-slate-200 w-14">
                         <span className={`font-bold tabular-nums ${
                           toplamEgitim === seciliEgitimler.length ? 'text-green-600' :
                           toplamEgitim > 0 ? 'text-indigo-600' : 'text-slate-300'
