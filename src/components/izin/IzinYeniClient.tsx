@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { izinCakismaKontrol, izinGunHesapla } from '@/app/(dashboard)/izin/actions'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
+import { IZIN_HAKKI_YETERSIZ_MESAJ } from '@/lib/izin-mesaj'
+import Modal from '@/components/ui/Modal'
 
 interface Personel { sicil_no: string; ad_soyad: string }
 
@@ -37,9 +39,19 @@ export default function IzinYeniClient({
   const [gun, setGun]                 = useState(0)
   const [bilgi, setBilgi]             = useState('')
   const [hata, setHata]               = useState<string | null>(null)
+  const [uyariPopup, setUyariPopup]   = useState<string | null>(null)
   const [isPending, startTransition]  = useTransition()
 
   const isYillikIzin = tur === 'Yıllık İzin' || (tur && tur.includes('Yıllık'))
+
+  function gosterHata(mesaj: string) {
+    if (mesaj === IZIN_HAKKI_YETERSIZ_MESAJ) {
+      setUyariPopup(mesaj)
+      setHata(null)
+      return
+    }
+    setHata(mesaj)
+  }
 
   useEffect(() => {
     if (!ayrilis || !baslama) { setGun(0); setBilgi(''); return }
@@ -79,14 +91,14 @@ export default function IzinYeniClient({
 
     const cakismaKontrol = await izinCakismaKontrol(fd)
     if (cakismaKontrol.hata) {
-      setHata(cakismaKontrol.hata)
+      gosterHata(cakismaKontrol.hata)
       return
     }
 
     startTransition(async () => {
       const res = await onEkle(fd)
       if (res.hata) {
-        setHata(res.hata)
+        gosterHata(res.hata)
         return
       }
       broadcastIntradaRefresh('izin')
@@ -232,6 +244,33 @@ export default function IzinYeniClient({
           </button>
         </div>
       </form>
+
+      <Modal
+        open={uyariPopup != null}
+        onClose={() => setUyariPopup(null)}
+        title="İzin Hakkı Uyarısı"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex gap-3 items-start">
+            <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <p className="text-sm text-slate-800 leading-relaxed pt-2">{uyariPopup}</p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setUyariPopup(null)}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

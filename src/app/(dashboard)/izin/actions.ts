@@ -14,6 +14,7 @@ import {
 import { tatilYapisiHesapla } from '@/lib/tatil-yapisi'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import { ggAayyyyToIso } from '@/lib/tarih'
+import { IZIN_HAKKI_YETERSIZ_MESAJ } from '@/lib/izin-mesaj'
 
 type Durum = 'Taslak' | 'Onaylandı' | 'Değiştirildi' | 'İptal Edildi'
 
@@ -25,6 +26,42 @@ function hareketYili(ayrilis: string | null | undefined, yil: number | null | un
   const fromAyrilis = String(ayrilis ?? '').slice(0, 4)
   if (/^\d{4}$/.test(fromAyrilis)) return Number(fromAyrilis)
   return typeof yil === 'number' ? yil : null
+}
+
+function yillikIzinTuruMu(tur: string): boolean {
+  return tur === 'Yıllık İzin' || tur.includes('Yıllık')
+}
+
+/** Yıllık izin günü, ilgili yılın kalan hakkını aşıyorsa hata mesajı döner.
+ *  Düzenlemede halihazırda haktan düşmüş eski günler kalan'a geri eklenir. */
+async function yillikIzinHakKontrol(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sicil_no: string,
+  ayrilis: string | null | undefined,
+  yil: number | null | undefined,
+  istenenGun: number,
+  eskiDusenGun = 0,
+): Promise<string | null> {
+  const hakYil = hareketYili(ayrilis, yil)
+  if (hakYil == null) return IZIN_HAKKI_YETERSIZ_MESAJ
+
+  const { data: hak } = await supabase
+    .from('izin_haklari')
+    .select('kalan_gun, devreden_gun, hak_edilen_gun, kullanilan_gun')
+    .eq('sicil_no', sicil_no)
+    .eq('yil', hakYil)
+    .maybeSingle()
+
+  const kalan =
+    hak?.kalan_gun ??
+    (hak
+      ? (hak.devreden_gun ?? 0) + (hak.hak_edilen_gun ?? 0) - (hak.kullanilan_gun ?? 0)
+      : null)
+
+  if (kalan == null) return IZIN_HAKKI_YETERSIZ_MESAJ
+  const kullanilabilir = kalan + Math.max(0, eskiDusenGun)
+  if (istenenGun > kullanilabilir) return IZIN_HAKKI_YETERSIZ_MESAJ
+  return null
 }
 
 /** Belirtilen (sicil_no, yil) için izin_hareketleri'ndeki Onaylandı/Değiştirildi günlerini topla ve izin_haklari.kullanilan_gun güncelle.
@@ -125,7 +162,7 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
   if (baslama <= ayrilis) return { hata: 'Başlama tarihi ayrılış tarihinden sonra olmalıdır.' }
 
   let ayrilisKayit = ayrilis
-  const isYillikIzin = tur === 'Yıllık İzin' || tur.includes('Yıllık')
+  const isYillikIzin = yillikIzinTuruMu(tur)
   if (isYillikIzin) {
     const hesap = await izinGunHesapla(sicil_no, tur, ayrilis, baslama)
     gun = hesap.gun
@@ -139,6 +176,11 @@ export async function izinEkle(formData: FormData): Promise<{ hata?: string }> {
   const { data: calisan } = await supabase
     .from('calisan').select('sicil_no').eq('sicil_no', sicil_no).maybeSingle()
   if (!calisan) return { hata: `"${sicil_no}" sicil numaralı personel bulunamadı.` }
+
+  if (isYillikIzin) {
+    const hakHata = await yillikIzinHakKontrol(supabase, sicil_no, ayrilisKayit, yil, gun)
+    if (hakHata) return { hata: hakHata }
+  }
 
   const cakisma = await izinCakismaMesaji(supabase, sicil_no, ayrilisKayit, baslama)
   if (cakisma) return { hata: cakisma }
@@ -248,13 +290,30 @@ export async function izinGuncelle(id: number, formData: FormData): Promise<{ ha
     .single()
 
   let ayrilisKayit = ayrilis
-  const isYillikIzin = tur === 'Yıllık İzin' || tur.includes('Yıllık')
+  const isYillikIzin = yillikIzinTuruMu(tur)
   if (isYillikIzin && mevcut?.sicil_no && ayrilis && baslama) {
     const hesap = await izinGunHesapla(mevcut.sicil_no, tur, ayrilis, baslama, mevcut.id)
     gun = hesap.gun
     if (hesap.ayrilisGuncel) ayrilisKayit = hesap.ayrilisGuncel
   }
   if (gun <= 0) return { hata: 'Gün sayısı 0\'dan büyük olmalıdır.' }
+
+  if (isYillikIzin && mevcut?.sicil_no) {
+    const eskiDusen =
+      HAKTAN_DUSEN_DURUMLAR.includes((mevcut.durum as Durum) ?? 'Taslak') &&
+      yillikIzinTuruMu(mevcut.tur ?? '')
+        ? (mevcut.gun ?? 0)
+        : 0
+    const hakHata = await yillikIzinHakKontrol(
+      supabase,
+      mevcut.sicil_no,
+      ayrilisKayit,
+      mevcut.yil,
+      gun,
+      eskiDusen,
+    )
+    if (hakHata) return { hata: hakHata }
+  }
 
   const yeniDurum = (durumVal || 'Değiştirildi') as Durum
   const vekaletStr = str(formData, 'vekalet')
@@ -336,9 +395,26 @@ export async function izinDurumDegistir(id: number, yeniDurum: Durum): Promise<{
   const islemEtiketi = await getIslemYapanEtiketi()
   const { data: mevcut } = await supabase
     .from('izin_hareketleri')
-    .select('sicil_no, yil, public_id, tur, durum')
+    .select('sicil_no, yil, public_id, tur, durum, gun, ayrilis')
     .eq('id', id)
     .single()
+
+  if (
+    mevcut?.sicil_no &&
+    yillikIzinTuruMu(mevcut.tur ?? '') &&
+    HAKTAN_DUSEN_DURUMLAR.includes(yeniDurum) &&
+    !HAKTAN_DUSEN_DURUMLAR.includes((mevcut.durum as Durum) ?? 'Taslak')
+  ) {
+    const hakHata = await yillikIzinHakKontrol(
+      supabase,
+      mevcut.sicil_no,
+      mevcut.ayrilis,
+      mevcut.yil,
+      mevcut.gun ?? 0,
+    )
+    if (hakHata) return { hata: hakHata }
+  }
+
   const { error } = await supabase
     .from('izin_hareketleri')
     .update({ durum: yeniDurum, islem_yapan: islemEtiketi })
