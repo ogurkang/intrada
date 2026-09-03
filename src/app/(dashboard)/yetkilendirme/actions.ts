@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { authUserIdByEmail } from '@/lib/auth-admin-helpers'
+import { authUserIdByEmail, authUserIdMapByEmails } from '@/lib/auth-admin-helpers'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { revalidatePath } from 'next/cache'
 import {
@@ -373,4 +373,203 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
 
   revalidatePath('/yetkilendirme')
   return {}
+}
+
+export interface TopluOlusturKayit {
+  sicil_no: string
+  rol: 'admin' | 'kullanici'
+  hesap_aktif: boolean
+  /** Kullanıcı rolünde açık olan modül anahtarları (Terfi hariç) */
+  menu: string[]
+}
+
+export interface TopluOlusturSonuc {
+  hata?: string
+  olusturulan?: number
+  /** Personel/ADABEL kaydında e-posta bulunmayan siciller */
+  epostasiz?: string[]
+  /** E-posta var ama Supabase Auth’ta hesabı olmayan siciller */
+  authsiz?: string[]
+  /** Auth hesabı zaten başka bir sicilin profiline bağlı olan siciller */
+  baglantili?: string[]
+}
+
+/** Toplu: profili olmayan sicillere e-posta eşleşmesi ile yetkilendirme profili açar. */
+export async function appProfilTopluOlustur(
+  kayitlar: TopluOlusturKayit[],
+): Promise<TopluOlusturSonuc> {
+  const r = await requireAdmin()
+  if (r.error || !r.supabase) return { hata: 'Bu işlem için yönetici yetkisi gerekir.' }
+
+  const istekler = new Map<string, TopluOlusturKayit>()
+  for (const k of kayitlar ?? []) {
+    const sicil = String(k?.sicil_no ?? '').trim()
+    if (!sicil) continue
+    if (k.rol !== 'admin' && k.rol !== 'kullanici') continue
+    if (!istekler.has(sicil)) istekler.set(sicil, { ...k, sicil_no: sicil })
+  }
+  if (!istekler.size) return { hata: 'Profil açılacak sicil bulunamadı.' }
+
+  const siciller = [...istekler.keys()]
+
+  let admin
+  try {
+    admin = createServiceRoleClient()
+  } catch {
+    return {
+      hata: 'Toplu oluşturma için sunucuda SUPABASE_SERVICE_ROLE_KEY tanımlı olmalı (.env.local / Vercel).',
+    }
+  }
+
+  /** Uzun `in(...)` listeleri PostgREST URL sınırını aşabildiğinden parça parça sorgulanır. */
+  const SICIL_PARCA = 150
+  const sicilParcalari: string[][] = []
+  for (let i = 0; i < siciller.length; i += SICIL_PARCA) {
+    sicilParcalari.push(siciller.slice(i, i + SICIL_PARCA))
+  }
+
+  const mevcutProfiller: { sicil_no: string | null }[] = []
+  const calisanlar: { sicil_no: string; e_posta: string | null }[] = []
+  const firmalar: { sicil_no: string | null; e_posta: string | null }[] = []
+
+  for (const parca of sicilParcalari) {
+    const [prof, cal, firma] = await Promise.all([
+      r.supabase.from('app_profiles').select('sicil_no').in('sicil_no', parca),
+      r.supabase.from('calisan').select('sicil_no, e_posta').in('sicil_no', parca),
+      r.supabase
+        .from('firma_calisanlar')
+        .select('sicil_no, e_posta, kayit_zamani')
+        .in('sicil_no', parca)
+        .is('ayrilis_tarihi', null)
+        .order('kayit_zamani', { ascending: false }),
+    ])
+    const ilkHata = prof.error ?? cal.error ?? firma.error
+    if (ilkHata) return { hata: ilkHata.message }
+    mevcutProfiller.push(...(prof.data ?? []))
+    calisanlar.push(...(cal.data ?? []))
+    firmalar.push(...(firma.data ?? []))
+  }
+
+  const profilliSet = new Set(mevcutProfiller.map(p => p.sicil_no))
+  const epostaBySicil = new Map<string, string>()
+  for (const f of firmalar) {
+    const e = (f.e_posta ?? '').trim().toLowerCase()
+    if (f.sicil_no && e && !epostaBySicil.has(f.sicil_no)) epostaBySicil.set(f.sicil_no, e)
+  }
+  /** Personel kaydı ADABEL kaydına göre önceliklidir (tekli oluşturma ile aynı sıra) */
+  for (const c of calisanlar) {
+    const e = (c.e_posta ?? '').trim().toLowerCase()
+    if (c.sicil_no && e) epostaBySicil.set(c.sicil_no, e)
+  }
+
+  const epostasiz: string[] = []
+  const authsiz: string[] = []
+  const baglantili: string[] = []
+  const hedefler: { sicil_no: string; email: string; kayit: TopluOlusturKayit }[] = []
+
+  for (const sicil of siciller) {
+    if (profilliSet.has(sicil)) continue
+    const email = epostaBySicil.get(sicil)
+    if (!email) {
+      epostasiz.push(sicil)
+      continue
+    }
+    hedefler.push({ sicil_no: sicil, email, kayit: istekler.get(sicil)! })
+  }
+
+  if (!hedefler.length) return { olusturulan: 0, epostasiz, authsiz, baglantili }
+
+  const authMap = await authUserIdMapByEmails(
+    admin,
+    hedefler.map(h => h.email),
+  )
+
+  /** Auth hesabı başka bir sicile bağlıysa insert birincil anahtar çakışmasıyla tüm partiyi düşürür */
+  const bagliAuthId = new Set<string>()
+  const cozulenIdler = [...new Set([...authMap.values()])]
+  for (let i = 0; i < cozulenIdler.length; i += SICIL_PARCA) {
+    const { data, error } = await r.supabase
+      .from('app_profiles')
+      .select('id')
+      .in('id', cozulenIdler.slice(i, i + SICIL_PARCA))
+    if (error) return { hata: error.message }
+    for (const p of data ?? []) bagliAuthId.add(p.id)
+  }
+
+  const simdi = new Date().toISOString()
+  const eklenecekler: {
+    id: string
+    sicil_no: string
+    rol: 'admin' | 'kullanici'
+    hesap_aktif: boolean
+    menu_izinleri: Record<string, boolean>
+    ilk_giris_tamam: boolean
+    kurtarma_hash: Record<string, never>
+    updated_at: string
+  }[] = []
+  const kullanilanAuthId = new Set<string>()
+
+  for (const h of hedefler) {
+    const authUserId = authMap.get(h.email)
+    if (!authUserId) {
+      authsiz.push(h.sicil_no)
+      continue
+    }
+    if (bagliAuthId.has(authUserId) || kullanilanAuthId.has(authUserId)) {
+      baglantili.push(h.sicil_no)
+      continue
+    }
+    kullanilanAuthId.add(authUserId)
+
+    const menu_izinleri: Record<string, boolean> = {}
+    if (h.kayit.rol !== 'admin') {
+      for (const key of h.kayit.menu) {
+        if (MENU_KEYS.includes(key as (typeof MENU_KEYS)[number])) menu_izinleri[key] = true
+      }
+    }
+
+    eklenecekler.push({
+      id: authUserId,
+      sicil_no: h.sicil_no,
+      rol: h.kayit.rol,
+      hesap_aktif: h.kayit.hesap_aktif,
+      menu_izinleri,
+      ilk_giris_tamam: false,
+      kurtarma_hash: {},
+      updated_at: simdi,
+    })
+  }
+
+  if (!eklenecekler.length) return { olusturulan: 0, epostasiz, authsiz, baglantili }
+
+  const { error } = await r.supabase.from('app_profiles').insert(eklenecekler)
+  if (error) return { hata: error.message, epostasiz, authsiz, baglantili }
+
+  const {
+    data: { user },
+  } = await r.supabase.auth.getUser()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: auditHata } = await (r.supabase as any).from('personel_audit_log').insert(
+    eklenecekler.map(e => ({
+      sicil_no: e.sicil_no,
+      modul: 'yetkilendirme',
+      islem: 'Toplu Profil Oluştur',
+      ozet: `${e.sicil_no} için yetkilendirme profili oluşturuldu (toplu işlem)`,
+      actor_id: user?.id ?? null,
+      actor_email: user?.email ?? null,
+      ref_table: 'app_profiles',
+      ref_id: e.sicil_no,
+      onceki: null,
+      sonraki: yetkiAuditSnapshot({
+        rol: e.rol,
+        hesap_aktif: e.hesap_aktif,
+        menu_izinleri: e.menu_izinleri,
+      }),
+    })),
+  )
+  if (auditHata) console.error('YETKI_TOPLU_OLUSTUR_AUDIT_FAILED', auditHata)
+
+  revalidatePath('/yetkilendirme')
+  return { olusturulan: eklenecekler.length, epostasiz, authsiz, baglantili }
 }

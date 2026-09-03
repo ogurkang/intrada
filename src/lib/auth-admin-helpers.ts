@@ -25,6 +25,35 @@ export async function authUserIdByEmail(
 }
 
 /**
+ * Toplu işlemler için e-posta → Auth kullanıcı id eşlemesi.
+ * `authUserIdByEmail` her çağrıda tüm listeyi taradığından, çok sicilde tek tarama yapılır.
+ */
+export async function authUserIdMapByEmails(
+  admin: SupabaseClient,
+  emails: string[],
+): Promise<Map<string, string>> {
+  const aranan = new Set(emails.map(e => e.trim().toLowerCase()).filter(Boolean))
+  const map = new Map<string, string>()
+  if (!aranan.size) return map
+
+  for (let page = 1; page <= LIST_MAX_PAGES; page++) {
+    try {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: LIST_PER_PAGE })
+      if (error) break
+      for (const u of data.users) {
+        const e = (u.email ?? '').toLowerCase()
+        if (e && aranan.has(e) && !map.has(e)) map.set(e, u.id)
+      }
+      if (data.users.length < LIST_PER_PAGE) break
+      if (map.size === aranan.size) break
+    } catch {
+      break
+    }
+  }
+  return map
+}
+
+/**
  * Şifre sıfırlama: doğrulanan sicile bağlı giriş hesabı (app_profiles → auth.users).
  * Profil yoksa eski kurulumlar için e-posta ile Auth listesinde aranır.
  */

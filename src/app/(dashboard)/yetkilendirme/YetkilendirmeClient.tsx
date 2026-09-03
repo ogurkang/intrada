@@ -9,6 +9,7 @@ import {
   appProfilOlustur,
   appProfilTopluAdmin,
   appProfilTopluKaydet,
+  appProfilTopluOlustur,
 } from './actions'
 import {
   MENU_YETKILENDIRME_MODULLERI,
@@ -73,6 +74,12 @@ function baslangicDraft(p: YetkiSatir['profil']): Draft {
     hesapAktif: p.hesap_aktif !== false,
     authUuid: '',
   }
+}
+
+/** Uzun sicil listelerini mesajda kısaltır */
+function sicilOzet(siciller: string[], gosterilecek = 5): string {
+  const ilk = siciller.slice(0, gosterilecek).join(', ')
+  return siciller.length > gosterilecek ? `${ilk}, +${siciller.length - gosterilecek}` : ilk
 }
 
 /** Satırın kaydedilmemiş değişikliği olup olmadığını karşılaştırmak için */
@@ -237,6 +244,12 @@ export default function YetkilendirmeClient({
     [degisenler],
   )
 
+  /** Filtredeki profili olmayan satırlar — toplu oluşturmanın hedefi */
+  const olusturulacaklar = useMemo(
+    () => filtreliSatirlar.filter(s => !s.profil),
+    [filtreliSatirlar],
+  )
+
   const authUuidDegistir = useCallback(
     (sicil: string, v: string) => {
       guncelleDraft(sicil, d => ({ ...d, authUuid: v }))
@@ -325,6 +338,55 @@ export default function YetkilendirmeClient({
     })
   }
 
+  function topluOlustur() {
+    if (!olusturulacaklar.length) {
+      setBasari(null)
+      setHata('Filtrede profili olmayan satır yok.')
+      return
+    }
+    const onay = window.confirm(
+      `Filtredeki profili olmayan ${olusturulacaklar.length} satır için yetkilendirme profili açılacak.\n` +
+        'Tablodaki rol, erişim ve modül işaretleri uygulanır. Devam edilsin mi?',
+    )
+    if (!onay) return
+
+    setHata(null)
+    setBasari(null)
+    startTransition(async () => {
+      const r = await appProfilTopluOlustur(
+        olusturulacaklar.map(s => {
+          const d = draft[s.sicil_no] ?? baslangicDraft(null)
+          return {
+            sicil_no: s.sicil_no,
+            rol: d.rol,
+            hesap_aktif: d.hesapAktif,
+            menu: MENU_YETKILENDIRME_TABLO_MODULLERI.filter(m => d.menu[m.key] === true).map(m => m.key),
+          }
+        }),
+      )
+      if (r.hata) {
+        setHata(r.hata)
+        return
+      }
+      const notlar: string[] = []
+      if (r.epostasiz?.length) {
+        notlar.push(`${r.epostasiz.length} sicilde e-posta yok (${sicilOzet(r.epostasiz)})`)
+      }
+      if (r.authsiz?.length) {
+        notlar.push(`${r.authsiz.length} sicilin Auth hesabı yok (${sicilOzet(r.authsiz)})`)
+      }
+      if (r.baglantili?.length) {
+        notlar.push(
+          `${r.baglantili.length} sicilin Auth hesabı başka bir profile bağlı (${sicilOzet(r.baglantili)})`,
+        )
+      }
+      setBasari(
+        `${r.olusturulan ?? 0} profil oluşturuldu.` + (notlar.length ? ` Atlananlar: ${notlar.join('; ')}.` : ''),
+      )
+      router.refresh()
+    })
+  }
+
   function topluAdmin() {
     const ids = [...seciliProfilId]
     if (!ids.length) {
@@ -373,6 +435,15 @@ export default function YetkilendirmeClient({
             className="text-sm font-medium bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-40"
           >
             Toplu kaydet ({degisenler.kaydedilebilir.length})
+          </button>
+          <button
+            type="button"
+            disabled={isPending || olusturulacaklar.length === 0}
+            onClick={topluOlustur}
+            title="Filtredeki profili olmayan tüm satırlar için profil açar"
+            className="text-sm font-medium bg-emerald-700 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 disabled:opacity-40"
+          >
+            Toplu oluştur ({olusturulacaklar.length})
           </button>
           <button
             type="button"
@@ -596,7 +667,8 @@ export default function YetkilendirmeClient({
         işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
         Modül başlığının altındaki kutu, o modülü <strong>filtredeki tüm kullanıcı satırlarına</strong> (diğer sayfalar dahil)
         uygular; sarı işaretli satırlar kaydedilmemiş değişikliklerdir ve <strong>Toplu kaydet</strong> ile tek seferde
-        kaydedilir.
+        kaydedilir. <strong>Toplu oluştur</strong>, filtredeki profili olmayan satırlara tablodaki işaretlerle profil açar;
+        e-postası veya Auth hesabı olmayan siciller atlanır ve sonuç mesajında listelenir.
       </p>
 
       <AuditGecmisPanel
