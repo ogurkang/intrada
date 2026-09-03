@@ -346,7 +346,9 @@ export default function YetkilendirmeClient({
     }
     const onay = window.confirm(
       `Filtredeki profili olmayan ${olusturulacaklar.length} satır için yetkilendirme profili açılacak.\n` +
-        'Tablodaki rol, erişim ve modül işaretleri uygulanır. Devam edilsin mi?',
+        'Tablodaki rol, erişim ve modül işaretleri uygulanır.\n\n' +
+        'Supabase Auth hesabı olmayanlar için varsayılan şifreyle (TCKN ilk 3 hane + nokta + doğum yılı) ' +
+        'giriş hesabı da oluşturulur.\n\nDevam edilsin mi?',
     )
     if (!onay) return
 
@@ -363,6 +365,7 @@ export default function YetkilendirmeClient({
             menu: MENU_YETKILENDIRME_TABLO_MODULLERI.filter(m => d.menu[m.key] === true).map(m => m.key),
           }
         }),
+        true,
       )
       if (r.hata) {
         setHata(r.hata)
@@ -372,8 +375,13 @@ export default function YetkilendirmeClient({
       if (r.epostasiz?.length) {
         notlar.push(`${r.epostasiz.length} sicilde e-posta yok (${sicilOzet(r.epostasiz)})`)
       }
+      if (r.sifresiz?.length) {
+        notlar.push(
+          `${r.sifresiz.length} sicilde TCKN/doğum tarihi eksik olduğundan şifre üretilemedi (${sicilOzet(r.sifresiz)})`,
+        )
+      }
       if (r.authsiz?.length) {
-        notlar.push(`${r.authsiz.length} sicilin Auth hesabı yok (${sicilOzet(r.authsiz)})`)
+        notlar.push(`${r.authsiz.length} sicilin Auth hesabı açılamadı (${sicilOzet(r.authsiz)})`)
       }
       if (r.baglantili?.length) {
         notlar.push(
@@ -381,7 +389,10 @@ export default function YetkilendirmeClient({
         )
       }
       setBasari(
-        `${r.olusturulan ?? 0} profil oluşturuldu.` + (notlar.length ? ` Atlananlar: ${notlar.join('; ')}.` : ''),
+        `${r.olusturulan ?? 0} profil oluşturuldu` +
+          (r.authOlusturulan ? `, ${r.authOlusturulan} giriş hesabı açıldı` : '') +
+          '.' +
+          (notlar.length ? ` Atlananlar: ${notlar.join('; ')}.` : ''),
       )
       router.refresh()
     })
@@ -667,8 +678,9 @@ export default function YetkilendirmeClient({
         işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
         Modül başlığının altındaki kutu, o modülü <strong>filtredeki tüm kullanıcı satırlarına</strong> (diğer sayfalar dahil)
         uygular; sarı işaretli satırlar kaydedilmemiş değişikliklerdir ve <strong>Toplu kaydet</strong> ile tek seferde
-        kaydedilir. <strong>Toplu oluştur</strong>, filtredeki profili olmayan satırlara tablodaki işaretlerle profil açar;
-        e-postası veya Auth hesabı olmayan siciller atlanır ve sonuç mesajında listelenir.
+        kaydedilir. <strong>Toplu oluştur</strong>, filtredeki profili olmayan satırlara tablodaki işaretlerle profil açar ve
+        Auth hesabı olmayanlara varsayılan şifreyle (TCKN ilk 3 hane + doğum yılı) giriş hesabı oluşturur; e-postası ya da
+        TCKN/doğum tarihi eksik olan siciller atlanır ve sonuç mesajında listelenir.
       </p>
 
       <AuditGecmisPanel

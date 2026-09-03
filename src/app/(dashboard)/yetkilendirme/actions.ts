@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { authUserIdByEmail, authUserIdMapByEmails } from '@/lib/auth-admin-helpers'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { godmodeSicilSet } from '@/lib/godmode-calisan'
+import { varsayilanSifreFromCalisan } from '@/lib/varsayilan-sifre'
 import { revalidatePath } from 'next/cache'
 import {
   yetkiAuditSnapshot,
@@ -386,25 +388,34 @@ export interface TopluOlusturKayit {
 export interface TopluOlusturSonuc {
   hata?: string
   olusturulan?: number
+  /** `authHesabiAc` ile yeni açılan Supabase Auth giriş hesabı sayısı */
+  authOlusturulan?: number
   /** Personel/ADABEL kaydında e-posta bulunmayan siciller */
   epostasiz?: string[]
   /** E-posta var ama Supabase Auth’ta hesabı olmayan siciller */
   authsiz?: string[]
+  /** TCKN veya doğum tarihi eksik olduğu için varsayılan şifre üretilemeyen siciller */
+  sifresiz?: string[]
   /** Auth hesabı zaten başka bir sicilin profiline bağlı olan siciller */
   baglantili?: string[]
 }
 
-/** Toplu: profili olmayan sicillere e-posta eşleşmesi ile yetkilendirme profili açar. */
+/**
+ * Toplu: profili olmayan sicillere e-posta eşleşmesi ile yetkilendirme profili açar.
+ * `authHesabiAc` verilirse Auth hesabı olmayanlara varsayılan şifreyle giriş hesabı da açılır.
+ */
 export async function appProfilTopluOlustur(
   kayitlar: TopluOlusturKayit[],
+  authHesabiAc = false,
 ): Promise<TopluOlusturSonuc> {
   const r = await requireAdmin()
   if (r.error || !r.supabase) return { hata: 'Bu işlem için yönetici yetkisi gerekir.' }
 
+  const god = godmodeSicilSet()
   const istekler = new Map<string, TopluOlusturKayit>()
   for (const k of kayitlar ?? []) {
     const sicil = String(k?.sicil_no ?? '').trim()
-    if (!sicil) continue
+    if (!sicil || god.has(sicil)) continue
     if (k.rol !== 'admin' && k.rol !== 'kullanici') continue
     if (!istekler.has(sicil)) istekler.set(sicil, { ...k, sicil_no: sicil })
   }
@@ -428,17 +439,23 @@ export async function appProfilTopluOlustur(
     sicilParcalari.push(siciller.slice(i, i + SICIL_PARCA))
   }
 
+  type KimlikSatir = {
+    sicil_no: string | null
+    e_posta: string | null
+    tckn?: string | null
+    dogum_tarihi?: string | null
+  }
   const mevcutProfiller: { sicil_no: string | null }[] = []
-  const calisanlar: { sicil_no: string; e_posta: string | null }[] = []
-  const firmalar: { sicil_no: string | null; e_posta: string | null }[] = []
+  const calisanlar: KimlikSatir[] = []
+  const firmalar: KimlikSatir[] = []
 
   for (const parca of sicilParcalari) {
     const [prof, cal, firma] = await Promise.all([
       r.supabase.from('app_profiles').select('sicil_no').in('sicil_no', parca),
-      r.supabase.from('calisan').select('sicil_no, e_posta').in('sicil_no', parca),
+      r.supabase.from('calisan').select('sicil_no, e_posta, tckn, dogum_tarihi').in('sicil_no', parca),
       r.supabase
         .from('firma_calisanlar')
-        .select('sicil_no, e_posta, kayit_zamani')
+        .select('sicil_no, e_posta, tckn, dogum_tarihi, kayit_zamani')
         .in('sicil_no', parca)
         .is('ayrilis_tarihi', null)
         .order('kayit_zamani', { ascending: false }),
@@ -451,38 +468,72 @@ export async function appProfilTopluOlustur(
   }
 
   const profilliSet = new Set(mevcutProfiller.map(p => p.sicil_no))
-  const epostaBySicil = new Map<string, string>()
+  const kimlikBySicil = new Map<string, KimlikSatir>()
   for (const f of firmalar) {
-    const e = (f.e_posta ?? '').trim().toLowerCase()
-    if (f.sicil_no && e && !epostaBySicil.has(f.sicil_no)) epostaBySicil.set(f.sicil_no, e)
+    if (f.sicil_no && !kimlikBySicil.has(f.sicil_no)) kimlikBySicil.set(f.sicil_no, f)
   }
   /** Personel kaydı ADABEL kaydına göre önceliklidir (tekli oluşturma ile aynı sıra) */
   for (const c of calisanlar) {
-    const e = (c.e_posta ?? '').trim().toLowerCase()
-    if (c.sicil_no && e) epostaBySicil.set(c.sicil_no, e)
+    if (c.sicil_no) kimlikBySicil.set(c.sicil_no, c)
   }
 
   const epostasiz: string[] = []
   const authsiz: string[] = []
+  const sifresiz: string[] = []
   const baglantili: string[] = []
-  const hedefler: { sicil_no: string; email: string; kayit: TopluOlusturKayit }[] = []
+  const hedefler: { sicil_no: string; email: string; kimlik: KimlikSatir; kayit: TopluOlusturKayit }[] = []
 
   for (const sicil of siciller) {
     if (profilliSet.has(sicil)) continue
-    const email = epostaBySicil.get(sicil)
-    if (!email) {
+    const kimlik = kimlikBySicil.get(sicil)
+    const email = (kimlik?.e_posta ?? '').trim().toLowerCase()
+    if (!kimlik || !email) {
       epostasiz.push(sicil)
       continue
     }
-    hedefler.push({ sicil_no: sicil, email, kayit: istekler.get(sicil)! })
+    hedefler.push({ sicil_no: sicil, email, kimlik, kayit: istekler.get(sicil)! })
   }
 
-  if (!hedefler.length) return { olusturulan: 0, epostasiz, authsiz, baglantili }
+  if (!hedefler.length) return { olusturulan: 0, epostasiz, authsiz, sifresiz, baglantili }
 
   const authMap = await authUserIdMapByEmails(
     admin,
     hedefler.map(h => h.email),
   )
+
+  /** Auth hesabı olmayanlara varsayılan şifreyle giriş hesabı aç (ilk girişte değiştirilir). */
+  let authOlusturulan = 0
+  if (authHesabiAc) {
+    for (const h of hedefler) {
+      if (authMap.has(h.email)) continue
+
+      const sifre = varsayilanSifreFromCalisan(h.kimlik.tckn, h.kimlik.dogum_tarihi)
+      if (!sifre) {
+        sifresiz.push(h.sicil_no)
+        continue
+      }
+
+      const { data, error } = await admin.auth.admin.createUser({
+        email: h.email,
+        password: sifre,
+        email_confirm: true,
+      })
+
+      if (data?.user?.id) {
+        authMap.set(h.email, data.user.id)
+        authOlusturulan++
+        continue
+      }
+
+      /** Yarış durumu: hesap bu arada açılmış olabilir */
+      const mevcutId = await authUserIdByEmail(admin, h.email)
+      if (mevcutId) {
+        authMap.set(h.email, mevcutId)
+        continue
+      }
+      console.error('YETKI_TOPLU_AUTH_OLUSTURMA_HATASI', h.sicil_no, error?.message)
+    }
+  }
 
   /** Auth hesabı başka bir sicile bağlıysa insert birincil anahtar çakışmasıyla tüm partiyi düşürür */
   const bagliAuthId = new Set<string>()
@@ -509,10 +560,13 @@ export async function appProfilTopluOlustur(
   }[] = []
   const kullanilanAuthId = new Set<string>()
 
+  const sifresizSet = new Set(sifresiz)
+
   for (const h of hedefler) {
     const authUserId = authMap.get(h.email)
     if (!authUserId) {
-      authsiz.push(h.sicil_no)
+      /** Şifre üretilemediği için hesap açılamayanlar zaten `sifresiz` altında raporlanıyor */
+      if (!sifresizSet.has(h.sicil_no)) authsiz.push(h.sicil_no)
       continue
     }
     if (bagliAuthId.has(authUserId) || kullanilanAuthId.has(authUserId)) {
@@ -540,10 +594,12 @@ export async function appProfilTopluOlustur(
     })
   }
 
-  if (!eklenecekler.length) return { olusturulan: 0, epostasiz, authsiz, baglantili }
+  if (!eklenecekler.length) {
+    return { olusturulan: 0, authOlusturulan, epostasiz, authsiz, sifresiz, baglantili }
+  }
 
   const { error } = await r.supabase.from('app_profiles').insert(eklenecekler)
-  if (error) return { hata: error.message, epostasiz, authsiz, baglantili }
+  if (error) return { hata: error.message, authOlusturulan, epostasiz, authsiz, sifresiz, baglantili }
 
   const {
     data: { user },
@@ -571,5 +627,12 @@ export async function appProfilTopluOlustur(
   if (auditHata) console.error('YETKI_TOPLU_OLUSTUR_AUDIT_FAILED', auditHata)
 
   revalidatePath('/yetkilendirme')
-  return { olusturulan: eklenecekler.length, epostasiz, authsiz, baglantili }
+  return {
+    olusturulan: eklenecekler.length,
+    authOlusturulan,
+    epostasiz,
+    authsiz,
+    sifresiz,
+    baglantili,
+  }
 }
