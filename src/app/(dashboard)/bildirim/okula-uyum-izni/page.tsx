@@ -5,6 +5,7 @@ import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import OkulaUyumIzniListeClient, {
   type OkulaUyumIzniListeKayit,
 } from '@/components/bildirim/OkulaUyumIzniListeClient'
+import { okulaUyumIzniSil } from './actions'
 
 export default async function OkulaUyumIzniPage() {
   const supabase = await createClient()
@@ -12,6 +13,7 @@ export default async function OkulaUyumIzniPage() {
     data: { user },
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const canDelete = isAdminLike(access)
   const kullaniciSicil =
     !isAdminLike(access) && access.mode === 'kullanici' ? access.sicilNo.trim() : null
 
@@ -72,7 +74,12 @@ export default async function OkulaUyumIzniPage() {
         </Link>
       </div>
 
-      <OkulaUyumIzniListeClient kayitlar={kayitlar} auditLoglarByRefId={auditLoglarByRefId} />
+      <OkulaUyumIzniListeClient
+        kayitlar={kayitlar}
+        auditLoglarByRefId={auditLoglarByRefId}
+        canDelete={canDelete}
+        onSil={canDelete ? okulaUyumIzniSil : undefined}
+      />
     </div>
   )
 }

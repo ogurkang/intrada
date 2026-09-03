@@ -19,16 +19,30 @@ type Sonuc = { hata?: string; ok?: boolean; id?: number }
 interface Props {
   personeller: BildirimFormPersonel[]
   sabitSicil?: string
+  mode?: 'create' | 'edit'
+  kayitId?: number
+  baslangic?: {
+    ogrenci_ad_soyad: string
+    baslayacagi_sinif: string
+  }
   onKaydet: (fd: FormData) => Promise<Sonuc>
 }
 
-export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKaydet }: Props) {
+export default function OkulaUyumIzniFormClient({
+  personeller,
+  sabitSicil,
+  mode = 'create',
+  kayitId,
+  baslangic,
+  onKaydet,
+}: Props) {
   const router = useRouter()
+  const duzenleme = mode === 'edit'
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
-  const [ogrenciAdSoyad, setOgrenciAdSoyad] = useState('')
-  const [sinif, setSinif] = useState('')
+  const [ogrenciAdSoyad, setOgrenciAdSoyad] = useState(baslangic?.ogrenci_ad_soyad ?? '')
+  const [sinif, setSinif] = useState(baslangic?.baslayacagi_sinif ?? '')
 
   const aramaOgeleri = useMemo(
     () => personeller.map(p => ({ sicil_no: p.sicil_no, ad_soyad: p.ad_soyad, alt: p.tckn ?? '' })),
@@ -49,6 +63,9 @@ export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKay
       ogrenciAdSoyad.trim() &&
       sinif,
   )
+
+  const geriHref =
+    duzenleme && kayitId ? `/bildirim/okula-uyum-izni/${kayitId}` : '/bildirim/okula-uyum-izni'
 
   const onizlemeAlanlar =
     secili && formHazir
@@ -100,7 +117,8 @@ export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKay
         setHata(sonuc.hata)
         return
       }
-      router.push('/bildirim/okula-uyum-izni')
+      if (duzenleme && kayitId) router.push(`/bildirim/okula-uyum-izni/${kayitId}`)
+      else router.push('/bildirim/okula-uyum-izni')
       router.refresh()
     })
   }
@@ -109,15 +127,18 @@ export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKay
     <div className="space-y-6">
       <div>
         <Link
-          href="/bildirim/okula-uyum-izni"
+          href={geriHref}
           className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
         >
-          ← Okula Uyum İzni
+          ← {duzenleme ? 'Talep Detayı' : 'Okula Uyum İzni'}
         </Link>
-        <h1 className="text-2xl font-bold text-slate-800">Yeni Okula Uyum İzni Talebi</h1>
+        <h1 className="text-2xl font-bold text-slate-800">
+          {duzenleme ? 'Okula Uyum İzni Talebini Düzenle' : 'Yeni Okula Uyum İzni Talebi'}
+        </h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Personel seçildiğinde sicil, unvan ve müdürlük bilgileri kadro kaydından alınır. Öğrenci
-          bilgilerini girerek üç saatlik idari izin dilekçesi oluşturabilirsiniz.
+          {duzenleme
+            ? 'Öğrenci adı soyadı ve başlayacağı sınıf bilgilerini güncelleyebilirsiniz.'
+            : 'Personel seçildiğinde sicil, unvan ve müdürlük bilgileri kadro kaydından alınır. Öğrenci bilgilerini girerek üç saatlik idari izin dilekçesi oluşturabilirsiniz.'}
         </p>
       </div>
 
@@ -127,7 +148,7 @@ export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKay
             personeller={aramaOgeleri}
             value={seciliSicil}
             onChange={setSeciliSicil}
-            readOnly={Boolean(sabitSicil)}
+            readOnly={Boolean(sabitSicil) || duzenleme}
           />
 
           {secili ? (
@@ -195,9 +216,9 @@ export default function OkulaUyumIzniFormClient({ personeller, sabitSicil, onKay
               disabled={pending || !formHazir}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
             >
-              {pending ? 'Kaydediliyor…' : 'Oluştur'}
+              {pending ? 'Kaydediliyor…' : duzenleme ? 'Kaydet' : 'Oluştur'}
             </button>
-            <Link href="/bildirim/okula-uyum-izni" className="text-sm text-slate-600 hover:text-slate-800">
+            <Link href={geriHref} className="text-sm text-slate-600 hover:text-slate-800">
               İptal
             </Link>
           </div>

@@ -69,17 +69,25 @@ export default async function OkulaUyumIzniDetayPage({ params }: Props) {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Okula Uyum İzni Talebi Detayı</h1>
         </div>
-        <a
-          href={`/api/bildirim/okula-uyum-izni/word?id=${kayit.id}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Word İndir
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/bildirim/okula-uyum-izni/${kayit.id}/duzenle`}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            Düzenle
+          </Link>
+          <a
+            href={`/api/bildirim/okula-uyum-izni/word?id=${kayit.id}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Word İndir
+          </a>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden max-w-2xl">

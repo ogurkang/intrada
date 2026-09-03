@@ -1,8 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { GozDetayLink, IndirLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import {
+  CopKutusuSilDugmesi,
+  GozDetayLink,
+  IndirLink,
+  KalemDuzenleLink,
+  SaatGecmisDugmesi,
+} from '@/components/ui/TabloIslemIkonlari'
 import {
   okulaUyumIzinAuditDegerGoster,
   okulaUyumIzinAuditDiffSatirlari,
@@ -23,10 +30,29 @@ export interface OkulaUyumIzniListeKayit {
 interface Props {
   kayitlar: OkulaUyumIzniListeKayit[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
+  canDelete?: boolean
+  onSil?: (id: number) => Promise<{ hata?: string }>
 }
 
-export default function OkulaUyumIzniListeClient({ kayitlar, auditLoglarByRefId }: Props) {
+export default function OkulaUyumIzniListeClient({
+  kayitlar,
+  auditLoglarByRefId,
+  canDelete = false,
+  onSil,
+}: Props) {
+  const router = useRouter()
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  function handleSil(id: number) {
+    if (!onSil) return
+    if (!confirm('Bu bildirim kaydı silinecek. Onaylıyor musunuz?')) return
+    startTransition(async () => {
+      const r = await onSil(id)
+      if (r.hata) alert(r.hata)
+      else router.refresh()
+    })
+  }
 
   return (
     <>
@@ -41,7 +67,7 @@ export default function OkulaUyumIzniListeClient({ kayitlar, auditLoglarByRefId 
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Unvan</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Öğrenci</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Sınıf</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-36">İşlemler</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-44">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -74,10 +100,21 @@ export default function OkulaUyumIzniListeClient({ kayitlar, auditLoglarByRefId 
                             title="İşlem geçmişi"
                           />
                           <GozDetayLink href={`/bildirim/okula-uyum-izni/${k.id}`} title="Detay" />
+                          <KalemDuzenleLink
+                            href={`/bildirim/okula-uyum-izni/${k.id}/duzenle`}
+                            title="Düzenle"
+                          />
                           <IndirLink
                             href={`/api/bildirim/okula-uyum-izni/word?id=${k.id}`}
                             title="Word İndir"
                           />
+                          {canDelete && onSil ? (
+                            <CopKutusuSilDugmesi
+                              onClick={() => handleSil(k.id)}
+                              disabled={isPending}
+                              title="Sil"
+                            />
+                          ) : null}
                         </div>
                       </td>
                     </tr>
