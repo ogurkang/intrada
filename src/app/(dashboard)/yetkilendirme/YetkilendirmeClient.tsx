@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
-import { appProfilGuncelle, appProfilOlustur, appProfilTopluAdmin } from './actions'
+import {
+  appProfilGuncelle,
+  appProfilOlustur,
+  appProfilTopluAdmin,
+  appProfilTopluKaydet,
+} from './actions'
 import {
   MENU_YETKILENDIRME_MODULLERI,
   MENU_YETKILENDIRME_TABLO_MODULLERI,
@@ -68,6 +73,12 @@ function baslangicDraft(p: YetkiSatir['profil']): Draft {
     hesapAktif: p.hesap_aktif !== false,
     authUuid: '',
   }
+}
+
+/** Satırın kaydedilmemiş değişikliği olup olmadığını karşılaştırmak için */
+function draftImza(d: Draft): string {
+  const acik = MENU_YETKILENDIRME_TABLO_MODULLERI.filter(x => d.menu[x.key] === true).map(x => x.key)
+  return `${d.rol}|${d.hesapAktif ? 1 : 0}|${acik.join(',')}`
 }
 
 const SAYFA_BOYUTU = 10
@@ -179,6 +190,53 @@ export default function YetkilendirmeClient({
     [guncelleDraft],
   )
 
+  /** Sütun başlığındaki kutu: filtredeki tüm kullanıcı satırlarına aynı modülü uygular. */
+  const sutunToggle = useCallback(
+    (key: MenuModulKey, checked: boolean) => {
+      setDraft(prev => {
+        const next = { ...prev }
+        for (const s of filtreliSatirlar) {
+          const cur = next[s.sicil_no] ?? baslangicDraft(s.profil)
+          if (cur.rol === 'admin') continue
+          const menu = { ...cur.menu }
+          if (checked) menu[key] = true
+          else delete menu[key]
+          next[s.sicil_no] = { ...cur, menu }
+        }
+        return next
+      })
+    },
+    [filtreliSatirlar],
+  )
+
+  const sutunTumuAcik = useMemo(() => {
+    const hedefler = filtreliSatirlar.filter(s => (draft[s.sicil_no]?.rol ?? 'kullanici') !== 'admin')
+    const map: Partial<Record<MenuModulKey, boolean>> = {}
+    for (const m of MENU_YETKILENDIRME_TABLO_MODULLERI) {
+      map[m.key] = hedefler.length > 0 && hedefler.every(s => draft[s.sicil_no]?.menu[m.key] === true)
+    }
+    return map
+  }, [filtreliSatirlar, draft])
+
+  /** Kaydedilmemiş değişikliği olan satırlar (profili olanlar toplu kaydedilebilir) */
+  const degisenler = useMemo(() => {
+    const kaydedilebilir: { profileId: string; sicil: string; d: Draft }[] = []
+    const profilsiz: string[] = []
+    for (const s of satirlar) {
+      const d = draft[s.sicil_no]
+      if (!d) continue
+      if (draftImza(d) === draftImza(baslangicDraft(s.profil))) continue
+      if (s.profil) kaydedilebilir.push({ profileId: s.profil.id, sicil: s.sicil_no, d })
+      else profilsiz.push(s.sicil_no)
+    }
+    return { kaydedilebilir, profilsiz }
+  }, [satirlar, draft])
+
+  const degisenSiciller = useMemo(
+    () => new Set(degisenler.kaydedilebilir.map(x => x.sicil).concat(degisenler.profilsiz)),
+    [degisenler],
+  )
+
   const authUuidDegistir = useCallback(
     (sicil: string, v: string) => {
       guncelleDraft(sicil, d => ({ ...d, authUuid: v }))
@@ -234,6 +292,39 @@ export default function YetkilendirmeClient({
     })
   }
 
+  function topluKaydet() {
+    const { kaydedilebilir, profilsiz } = degisenler
+    if (!kaydedilebilir.length) {
+      setBasari(null)
+      setHata(
+        profilsiz.length
+          ? `Değişen ${profilsiz.length} satırın profili yok; bu satırları «Oluştur» ile kaydedin.`
+          : 'Kaydedilecek değişiklik yok.',
+      )
+      return
+    }
+    setHata(null)
+    setBasari(null)
+    startTransition(async () => {
+      const r = await appProfilTopluKaydet(
+        kaydedilebilir.map(x => ({
+          profile_id: x.profileId,
+          rol: x.d.rol,
+          hesap_aktif: x.d.hesapAktif,
+          menu: MENU_YETKILENDIRME_TABLO_MODULLERI.filter(m => x.d.menu[m.key] === true).map(m => m.key),
+        })),
+      )
+      if (r.hata) setHata(r.hata)
+      else {
+        setBasari(
+          `${r.guncellenen ?? kaydedilebilir.length} kayıt güncellendi.` +
+            (profilsiz.length ? ` Profili olmayan ${profilsiz.length} satır atlandı («Oluştur» kullanın).` : ''),
+        )
+        router.refresh()
+      }
+    })
+  }
+
   function topluAdmin() {
     const ids = [...seciliProfilId]
     if (!ids.length) {
@@ -273,14 +364,25 @@ export default function YetkilendirmeClient({
           tabloda yok; Terfi personel yönetimi üzerinden yönetilir. Varsayılan:{' '}
           <strong>Kullanıcı</strong>, menüler kapalı. Yönetici = tüm modüller (salt okunur işaretler).
         </p>
-        <button
-          type="button"
-          disabled={isPending || seciliProfilId.size === 0}
-          onClick={topluAdmin}
-          className="shrink-0 text-sm font-medium bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-amber-800 disabled:opacity-40"
-        >
-          Seçilenleri yönetici yap ({seciliProfilId.size})
-        </button>
+        <div className="shrink-0 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={isPending || degisenler.kaydedilebilir.length === 0}
+            onClick={topluKaydet}
+            title="Tabloda yaptığınız tüm işaretlemeleri tek seferde kaydeder"
+            className="text-sm font-medium bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-40"
+          >
+            Toplu kaydet ({degisenler.kaydedilebilir.length})
+          </button>
+          <button
+            type="button"
+            disabled={isPending || seciliProfilId.size === 0}
+            onClick={topluAdmin}
+            className="text-sm font-medium bg-amber-700 text-white px-4 py-2 rounded-lg hover:bg-amber-800 disabled:opacity-40"
+          >
+            Seçilenleri yönetici yap ({seciliProfilId.size})
+          </button>
+        </div>
       </div>
 
       {hata && <p className="mb-3 text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
@@ -342,7 +444,15 @@ export default function YetkilendirmeClient({
               <th className="text-center px-1 py-0.5 font-normal border-r border-slate-100">Kullanıcı</th>
               <th className="text-center px-1 py-0.5 font-normal border-r border-slate-100">Açık</th>
               {MENU_YETKILENDIRME_TABLO_MODULLERI.map(m => (
-                <th key={m.key} className="p-0" />
+                <th key={m.key} className="text-center px-0.5 py-0.5">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-400"
+                    checked={sutunTumuAcik[m.key] === true}
+                    onChange={e => sutunToggle(m.key, e.target.checked)}
+                    title={`${m.label}: filtredeki tüm kullanıcı satırlarına uygula`}
+                  />
+                </th>
               ))}
               <th colSpan={2} />
             </tr>
@@ -354,10 +464,12 @@ export default function YetkilendirmeClient({
               const adminMi = d.rol === 'admin'
               const menuSaltOkunur = adminMi
               const pid = s.profil?.id
+              const degisti = degisenSiciller.has(s.sicil_no)
+              const hucreZemin = degisti ? 'bg-amber-50' : 'bg-white'
 
               return (
-                <tr key={s.sicil_no} className="hover:bg-slate-50/50">
-                  <td className="sticky left-0 z-[5] bg-white border-r border-slate-100 px-1 py-1.5 text-center">
+                <tr key={s.sicil_no} className={degisti ? 'bg-amber-50' : 'hover:bg-slate-50/50'}>
+                  <td className={`sticky left-0 z-[5] ${hucreZemin} border-r border-slate-100 px-1 py-1.5 text-center`}>
                     {pid ? (
                       <input
                         type="checkbox"
@@ -370,11 +482,11 @@ export default function YetkilendirmeClient({
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="sticky left-10 z-[5] bg-white border-r border-slate-100 px-1 py-1.5 text-slate-500">{i + 1}</td>
-                  <td className="sticky left-[4.5rem] z-[5] bg-white border-r border-slate-100 px-2 py-1.5 font-mono text-slate-800 whitespace-nowrap">
+                  <td className={`sticky left-10 z-[5] ${hucreZemin} border-r border-slate-100 px-1 py-1.5 text-slate-500`}>{i + 1}</td>
+                  <td className={`sticky left-[4.5rem] z-[5] ${hucreZemin} border-r border-slate-100 px-2 py-1.5 font-mono text-slate-800 whitespace-nowrap`}>
                     {s.sicil_no}
                   </td>
-                  <td className="sticky left-[9.5rem] z-[5] bg-white border-r border-slate-200 px-2 py-1.5 text-slate-800 min-w-[140px]">
+                  <td className={`sticky left-[9.5rem] z-[5] ${hucreZemin} border-r border-slate-200 px-2 py-1.5 text-slate-800 min-w-[140px]`}>
                     {s.ad_soyad}
                   </td>
                   <td className="text-center px-1 py-1">
@@ -430,7 +542,7 @@ export default function YetkilendirmeClient({
                       <span className="text-slate-400 text-[10px]">—</span>
                     )}
                   </td>
-                  <td className="sticky right-0 z-[5] bg-white border-l border-slate-200 px-2 py-1">
+                  <td className={`sticky right-0 z-[5] ${hucreZemin} border-l border-slate-200 px-2 py-1`}>
                     <div className="flex items-center justify-end gap-1">
                       <SaatGecmisDugmesi
                         sayi={(auditLoglarByRefId[s.sicil_no] ?? []).length}
@@ -482,6 +594,9 @@ export default function YetkilendirmeClient({
         Profilli satır: {profilliSayisi} / {satirlar.length}. Profil yoksa: Auth’ta hesap + personel veya ADABEL Personeli
         e-posta uyumluysa <strong>Oluştur</strong> yeterli (UUID isteğe bağlı). Toplu yönetici için sol kutuyu
         işaretleyin. <strong>Erişim</strong> kutusunu kapatırsanız ilgili kullanıcı sisteme giriş yapsa bile ekranlara erişemez.
+        Modül başlığının altındaki kutu, o modülü <strong>filtredeki tüm kullanıcı satırlarına</strong> (diğer sayfalar dahil)
+        uygular; sarı işaretli satırlar kaydedilmemiş değişikliklerdir ve <strong>Toplu kaydet</strong> ile tek seferde
+        kaydedilir.
       </p>
 
       <AuditGecmisPanel

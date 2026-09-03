@@ -132,6 +132,130 @@ export async function appProfilTopluAdmin(profileIds: string[]): Promise<{ hata?
   return {}
 }
 
+export interface TopluYetkiKayit {
+  profile_id: string
+  rol: 'admin' | 'kullanici'
+  hesap_aktif: boolean
+  /** Kullanıcı rolünde açık olan modül anahtarları (Terfi hariç) */
+  menu: string[]
+}
+
+/** Toplu: tabloda değiştirilen satırların rol/erişim/menü ayarlarını tek seferde kaydeder. */
+export async function appProfilTopluKaydet(
+  kayitlar: TopluYetkiKayit[],
+): Promise<{ hata?: string; guncellenen?: number }> {
+  const r = await requireAdmin()
+  if (r.error || !r.supabase) return { hata: 'Bu işlem için yönetici yetkisi gerekir.' }
+
+  const gecerli = (kayitlar ?? []).filter(
+    k =>
+      /^[0-9a-f-]{36}$/i.test(k?.profile_id ?? '') &&
+      (k.rol === 'admin' || k.rol === 'kullanici'),
+  )
+  if (!gecerli.length) return { hata: 'Kaydedilecek değişiklik yok.' }
+
+  const { data: mevcutlar, error: okumaHata } = await r.supabase
+    .from('app_profiles')
+    .select('id, sicil_no, rol, menu_izinleri, hesap_aktif')
+    .in(
+      'id',
+      gecerli.map(k => k.profile_id),
+    )
+  if (okumaHata) return { hata: okumaHata.message }
+
+  const mevcutMap = new Map((mevcutlar ?? []).map(p => [p.id, p]))
+  const simdi = new Date().toISOString()
+
+  const {
+    data: { user },
+  } = await r.supabase.auth.getUser()
+
+  type AuditSatir = {
+    sicil_no: string | null
+    modul: string
+    islem: string
+    ozet: string
+    actor_id: string | null
+    actor_email: string | null
+    ref_table: string
+    ref_id: string | null
+    onceki: unknown
+    sonraki: unknown
+  }
+  const auditSatirlari: AuditSatir[] = []
+
+  const isler = gecerli
+    .map(k => {
+      const mevcut = mevcutMap.get(k.profile_id)
+      if (!mevcut) return null
+
+      const prevMenu = (mevcut.menu_izinleri as Record<string, boolean> | null) ?? {}
+      const secili: Record<string, boolean> = {}
+      for (const key of k.menu) {
+        if (MENU_KEYS.includes(key as (typeof MENU_KEYS)[number])) secili[key] = true
+      }
+      /** Yetkilendirme tablosunda «Terfi» yok; mevcut `terfi` bayrağını koru */
+      const menu_izinleri =
+        k.rol === 'admin'
+          ? {}
+          : {
+              ...secili,
+              ...(typeof prevMenu.terfi === 'boolean' ? { terfi: prevMenu.terfi } : {}),
+            }
+
+      auditSatirlari.push({
+        sicil_no: mevcut.sicil_no ?? null,
+        modul: 'yetkilendirme',
+        islem: 'Toplu Kaydet',
+        ozet: `${mevcut.sicil_no ?? '—'} yetkilendirme kaydı güncellendi (toplu işlem)`,
+        actor_id: user?.id ?? null,
+        actor_email: user?.email ?? null,
+        ref_table: 'app_profiles',
+        ref_id: mevcut.sicil_no ?? null,
+        onceki: yetkiAuditSnapshot(mevcut),
+        sonraki: yetkiAuditSnapshot({ rol: k.rol, hesap_aktif: k.hesap_aktif, menu_izinleri }),
+      })
+
+      return { profile_id: k.profile_id, rol: k.rol, hesap_aktif: k.hesap_aktif, menu_izinleri }
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null)
+
+  if (!isler.length) return { hata: 'Kaydedilecek profil bulunamadı.' }
+
+  const PARCA = 20
+  let guncellenen = 0
+  for (let i = 0; i < isler.length; i += PARCA) {
+    const parca = isler.slice(i, i + PARCA)
+    const sonuclar = await Promise.all(
+      parca.map(is =>
+        r.supabase!
+          .from('app_profiles')
+          .update({
+            rol: is.rol,
+            hesap_aktif: is.hesap_aktif,
+            menu_izinleri: is.menu_izinleri,
+            updated_at: simdi,
+          })
+          .eq('id', is.profile_id),
+      ),
+    )
+    const ilkHata = sonuclar.find(s => s.error)?.error
+    if (ilkHata) return { hata: ilkHata.message, guncellenen }
+    guncellenen += parca.length
+  }
+
+  if (auditSatirlari.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: auditHata } = await (r.supabase as any)
+      .from('personel_audit_log')
+      .insert(auditSatirlari)
+    if (auditHata) console.error('YETKI_TOPLU_AUDIT_FAILED', auditHata)
+  }
+
+  revalidatePath('/yetkilendirme')
+  return { guncellenen }
+}
+
 export async function appProfilOlustur(_prev: unknown, formData: FormData): Promise<{ hata?: string }> {
   const r = await requireAdmin()
   if (r.error || !r.supabase) return { hata: 'Bu işlem için yönetici yetkisi gerekir.' }
