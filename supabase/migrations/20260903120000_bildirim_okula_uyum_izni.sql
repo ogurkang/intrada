@@ -13,7 +13,7 @@ create table if not exists public.okula_uyum_izni_bildirimleri (
   updated_at timestamptz not null default now(),
   created_by uuid null,
   created_by_email text null,
-  constraint okula_uyum_izni_sinif_chk check (baslayacagi_sinif in ('1. Sınıf', '5. Sınıf'))
+  constraint okula_uyum_izni_sinif_chk check (baslayacagi_sinif in ('Okul Öncesi', '1. Sınıf', '5. Sınıf'))
 );
 
 comment on table public.okula_uyum_izni_bildirimleri is

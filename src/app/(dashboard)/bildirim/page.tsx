@@ -223,7 +223,7 @@ export default async function BildirimHubPage() {
     {
       key: 'okula-uyum-izni',
       baslik: 'Okula Uyum İzni',
-      aciklama: '1. ve 5. sınıf uyum haftası üç saatlik idari izin dilekçesi oluşturma',
+      aciklama: 'Okul öncesi, 1. ve 5. sınıf uyum haftası üç saatlik idari izin dilekçesi oluşturma',
       href: '/bildirim/okula-uyum-izni',
       refTable: 'okula_uyum_izni_bildirimleri' as const,
       sayi: okulaUyumSayisi ?? 0,

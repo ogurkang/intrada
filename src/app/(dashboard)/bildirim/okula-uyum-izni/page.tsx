@@ -58,7 +58,7 @@ export default async function OkulaUyumIzniPage() {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Okula Uyum İzni</h1>
           <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-            1. ve 5. sınıf uyum haftası için üç saatlik idari izin talep formları aşağıda listelenir.
+            Okul öncesi, 1. ve 5. sınıf uyum haftası için üç saatlik idari izin talep formları aşağıda listelenir.
             Word belgesi indirerek dilekçe çıktısı alabilirsiniz.
           </p>
         </div>

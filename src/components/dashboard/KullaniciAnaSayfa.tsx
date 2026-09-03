@@ -62,7 +62,7 @@ export default function KullaniciAnaSayfa({
       },
       {
         baslik: 'Okula Uyum İzni',
-        aciklama: '1. ve 5. sınıf uyum haftası üç saatlik idari izin dilekçesi oluşturma.',
+        aciklama: 'Okul öncesi, 1. ve 5. sınıf uyum haftası üç saatlik idari izin dilekçesi oluşturma.',
         href: '/bildirim/okula-uyum-izni',
         emoji: '🎒',
       },

@@ -8,7 +8,7 @@ import { trNormalize } from '@/lib/turkce-search'
 export const OKULA_UYUM_IZIN_MAKAM = BILDIRIM_MAKAM
 export const OKULA_UYUM_IZIN_BIRIM = BILDIRIM_BIRIM
 
-export const OKULA_UYUM_SINIF_SECENEKLERI = ['1. Sınıf', '5. Sınıf'] as const
+export const OKULA_UYUM_SINIF_SECENEKLERI = ['Okul Öncesi', '1. Sınıf', '5. Sınıf'] as const
 export type OkulaUyumSinif = (typeof OKULA_UYUM_SINIF_SECENEKLERI)[number]
 
 export const OKULA_UYUM_YAZI_SAYISI = 'E-66836956-010.07-404473'
@@ -38,7 +38,7 @@ export function okulaUyumIzinParagraflar(p: {
 
   return [
     `Belediyenizde ${sicil} sicil numarası ile ${unvan} olarak ${mud} çalışmaktayım.`,
-    `Milli Eğitim Bakanlığı'nca Maarif Model kapsamında ${OKULA_UYUM_DONEM} 1. ve 5. Sınıf öğrencilerine yönelik uyum haftası uygulaması çerçevesinde ailelerden bir kişinin velisi olarak öğrenci ile birlikte ${OKULA_UYUM_HAFTA} haftasında katılım sağlayabileceği belirtilmiştir.`,
+    `Milli Eğitim Bakanlığı'nca Maarif Model kapsamında ${OKULA_UYUM_DONEM} Okul Öncesi, 1. ve 5. Sınıf öğrencilerine yönelik uyum haftası uygulaması çerçevesinde ailelerden bir kişinin velisi olarak öğrenci ile birlikte ${OKULA_UYUM_HAFTA} haftasında katılım sağlayabileceği belirtilmiştir.`,
     `Bu kapsamda Cumhurbaşkanlığı Genel Sekreterliği Personel ve Prensipler Genel Müdürlüğü'nün ${OKULA_UYUM_YAZI_SAYISI} sayılı yazısına istinaden aşağıda bilgileri bulunan öğrenci için okulca yapılacak etkinliklere katılım ile sınırlı olmak üzere üç saatlik idari izin verilmesi hususunda gereğini arz ederim.`,
   ]
 }

@@ -38,7 +38,7 @@ export async function okulaUyumIzniEkle(formData: FormData): Promise<OkulaUyumIz
 
   const sinif = str(formData, 'baslayacagi_sinif')
   if (!okulaUyumSinifGecerliMi(sinif)) {
-    return { hata: 'Başlayacağı sınıf 1. Sınıf veya 5. Sınıf olmalıdır.' }
+    return { hata: 'Başlayacağı sınıf Okul Öncesi, 1. Sınıf veya 5. Sınıf olmalıdır.' }
   }
 
   const personel = await getBildirimFormPersonel(supabase, sicil)
@@ -133,7 +133,7 @@ export async function okulaUyumIzniGuncelle(
 
   const sinif = str(formData, 'baslayacagi_sinif')
   if (!okulaUyumSinifGecerliMi(sinif)) {
-    return { hata: 'Başlayacağı sınıf 1. Sınıf veya 5. Sınıf olmalıdır.' }
+    return { hata: 'Başlayacağı sınıf Okul Öncesi, 1. Sınıf veya 5. Sınıf olmalıdır.' }
   }
 
   const personel = await getBildirimFormPersonel(supabase, sicil)
