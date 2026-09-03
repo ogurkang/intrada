@@ -1267,6 +1267,30 @@ export interface Database {
         }
         Relationships: []
       }
+      okula_uyum_izni_bildirimleri: {
+        Row: {
+          id: number; sicil_no: string; ad_soyad: string; tckn: string | null
+          unvan: string; mudurluk: string
+          ogrenci_ad_soyad: string; baslayacagi_sinif: string
+          created_at: string; updated_at: string
+          created_by: string | null; created_by_email: string | null
+        }
+        Insert: {
+          id?: number; sicil_no: string; ad_soyad: string; tckn?: string | null
+          unvan: string; mudurluk: string
+          ogrenci_ad_soyad: string; baslayacagi_sinif: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Update: {
+          id?: number; sicil_no?: string; ad_soyad?: string; tckn?: string | null
+          unvan?: string; mudurluk?: string
+          ogrenci_ad_soyad?: string; baslayacagi_sinif?: string
+          created_at?: string; updated_at?: string
+          created_by?: string | null; created_by_email?: string | null
+        }
+        Relationships: []
+      }
       yari_zamanli_calisma_bildirimleri: {
         Row: {
           id: number; sicil_no: string; ad_soyad: string; tckn: string | null

@@ -159,6 +159,7 @@ export function kullaniciPathAllowed(
       path.startsWith('/bildirim/hizmet-birlestirme') ||
       path.startsWith('/bildirim/mehil-izni') ||
       path.startsWith('/bildirim/aylik-izin') ||
+      path.startsWith('/bildirim/okula-uyum-izni') ||
       path.startsWith('/bildirim/yari-zamanli-calisma') ||
       path.startsWith('/bildirim/harcirah-talep') ||
       path.startsWith('/bildirim/calisma-belgesi') ||

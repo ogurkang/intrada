@@ -312,6 +312,7 @@ function buildMenuGroups(
       { href: '/bildirim/hizmet-birlestirme', label: 'Hizmet Birleştirme İşlemleri' },
       { href: '/bildirim/mehil-izni', label: 'Mehil İzni Bildirimi' },
       { href: '/bildirim/aylik-izin', label: 'Aylıksız İşlemleri' },
+      { href: '/bildirim/okula-uyum-izni', label: 'Okula Uyum İzni' },
       { href: '/bildirim/yari-zamanli-calisma', label: 'Yarı Zamanlı Çalışma İşlemleri' },
       { href: '/bildirim/harcirah-talep', label: 'Harcırah Talep Bildirimi' },
       { href: '/bildirim/calisma-belgesi', label: 'Çalışma Belgesi İşlemleri' },

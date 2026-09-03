@@ -61,6 +61,12 @@ export default function KullaniciAnaSayfa({
         emoji: '🏖️',
       },
       {
+        baslik: 'Okula Uyum İzni',
+        aciklama: '1. ve 5. sınıf uyum haftası üç saatlik idari izin dilekçesi oluşturma.',
+        href: '/bildirim/okula-uyum-izni',
+        emoji: '🎒',
+      },
+      {
         baslik: 'Yarı Zamanlı Çalışma İşlemleri',
         aciklama: '657 SK Eki m.43 yarı zamanlı çalışma dilekçesi ve ek form oluşturma.',
         href: '/bildirim/yari-zamanli-calisma',
