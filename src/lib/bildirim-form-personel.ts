@@ -1,7 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
+import { fetchAllFirmaCalisanlar, fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { Tables } from '@/types/database'
 import { getPasaportPersonel, listPasaportPersonel } from '@/lib/pasaport-personel'
+import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
+import { FIRMA_STATU_ETIKET } from '@/lib/firma-statu-etiket'
+import {
+  filterOutGodmodeCalisan,
+  filterOutHiddenSystemByEmail,
+  godmodeSicilSet,
+  isHiddenSystemEmail,
+} from '@/lib/godmode-calisan'
+import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KH = Tables<'kadro_hareketleri'>
 
@@ -92,6 +101,137 @@ export async function listBildirimFormPersonel(supabase: SupabaseClient): Promis
       mudurluk: ozet.mudurluk,
     }
   })
+}
+
+function kadroOzetUnvan(k: { gorev_unvani: string | null; kadro_unvani: string | null } | undefined): string | null {
+  return String(k?.gorev_unvani ?? k?.kadro_unvani ?? '').trim() || null
+}
+
+/** ADABEL kayıtlarının çoğunda `gorevi` boş; dilekçede unvan alanı boş kalmasın diye kademeli geri dönüş. */
+function adabelUnvan(f: { gorevi: string | null; meslegi?: string | null }): string {
+  return String(f.gorevi ?? '').trim() || String(f.meslegi ?? '').trim() || FIRMA_STATU_ETIKET
+}
+
+function kadroOzetMudurluk(
+  k: { gorev_mudurlugu: string | null; kadro_mudurlugu: string | null } | undefined,
+): string | null {
+  return String(k?.gorev_mudurlugu ?? k?.kadro_mudurlugu ?? '').trim() || null
+}
+
+/**
+ * Statü ayrımı yapmadan aktif belediye personeli (memur, sözleşmeli, işçi) + aktif ADABEL çalışanları.
+ * `listBildirimFormPersonel` yalnızca memur kadrosu olanları döndürür; bu liste tüm statüleri kapsar.
+ */
+export async function listBildirimFormTumPersonel(
+  supabase: SupabaseClient,
+): Promise<BildirimFormPersonel[]> {
+  const bugun = new Date().toISOString().slice(0, 10)
+
+  const [{ data: calisanRaw }, { data: phRaw }, { data: kadroOzetRaw }, { data: firmaRaw }] = await Promise.all([
+    supabase.from('calisan').select('sicil_no, ad_soyad, tckn, e_posta'),
+    supabase
+      .from('personel_hareketleri')
+      .select('sicil_no, ayrilis_tarihi, ayrilis_nedeni')
+      .order('yururluk_tarihi', { ascending: false }),
+    supabase
+      .from('personel_kadro_ozet')
+      .select('sicil_no, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu'),
+    fetchAllFirmaCalisanlar<{
+      sicil_no: string | null
+      ad_soyad: string
+      tckn: string | null
+      gorevi: string | null
+      meslegi: string | null
+      gorev_mudurlugu: string | null
+      ayrilis_tarihi: string | null
+      e_posta: string | null
+    }>(supabase, 'sicil_no, ad_soyad, tckn, gorevi, meslegi, gorev_mudurlugu, ayrilis_tarihi, e_posta'),
+  ])
+
+  const sonAyrilis = sonAyrilisHaritasiOlustur(phRaw ?? [])
+  const kadroOzetMap = new Map((kadroOzetRaw ?? []).map(k => [k.sicil_no, k]))
+
+  const kadroPersonel = filterOutHiddenSystemByEmail(filterOutGodmodeCalisan(calisanRaw ?? []))
+    .filter(c => personelAktifMi(sonAyrilis.get(c.sicil_no), bugun))
+    .map<BildirimFormPersonel>(c => {
+      const k = kadroOzetMap.get(c.sicil_no)
+      return {
+        sicil_no: c.sicil_no,
+        ad_soyad: c.ad_soyad ?? c.sicil_no,
+        tckn: c.tckn ?? null,
+        unvan: kadroOzetUnvan(k),
+        mudurluk: kadroOzetMudurluk(k),
+      }
+    })
+
+  const kadroSicilSet = new Set(kadroPersonel.map(p => p.sicil_no))
+  const god = godmodeSicilSet()
+
+  const adabelPersonel = filterOutHiddenSystemByEmail(firmaRaw ?? [])
+    .filter(f => {
+      const sicil = String(f.sicil_no ?? '').trim()
+      if (!sicil || god.has(sicil) || kadroSicilSet.has(sicil)) return false
+      return isFirmaCalisanAktif(f.ayrilis_tarihi, bugun)
+    })
+    .map<BildirimFormPersonel>(f => ({
+      sicil_no: String(f.sicil_no).trim(),
+      ad_soyad: f.ad_soyad,
+      tckn: f.tckn ?? null,
+      unvan: adabelUnvan(f),
+      mudurluk: String(f.gorev_mudurlugu ?? '').trim() || null,
+    }))
+
+  return [...kadroPersonel, ...adabelPersonel].sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'))
+}
+
+/** `listBildirimFormTumPersonel` ile aynı kapsamda tek personel (kullanıcı kendi formu / düzenleme). */
+export async function getBildirimFormTumPersonel(
+  supabase: SupabaseClient,
+  sicil_no: string,
+): Promise<BildirimFormPersonel | null> {
+  const sicil = String(sicil_no ?? '').trim()
+  if (!sicil) return null
+
+  const { data: cal } = await supabase
+    .from('calisan')
+    .select('sicil_no, ad_soyad, tckn')
+    .eq('sicil_no', sicil)
+    .maybeSingle()
+
+  if (cal) {
+    const { data: k } = await supabase
+      .from('personel_kadro_ozet')
+      .select('sicil_no, gorev_unvani, kadro_unvani, gorev_mudurlugu, kadro_mudurlugu')
+      .eq('sicil_no', sicil)
+      .maybeSingle()
+
+    return {
+      sicil_no: cal.sicil_no,
+      ad_soyad: cal.ad_soyad ?? cal.sicil_no,
+      tckn: cal.tckn ?? null,
+      unvan: kadroOzetUnvan(k ?? undefined),
+      mudurluk: kadroOzetMudurluk(k ?? undefined),
+    }
+  }
+
+  const { data: firma } = await supabase
+    .from('firma_calisanlar')
+    .select('sicil_no, ad_soyad, tckn, gorevi, meslegi, gorev_mudurlugu, e_posta')
+    .eq('sicil_no', sicil)
+    .is('ayrilis_tarihi', null)
+    .order('kayit_zamani', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!firma || isHiddenSystemEmail(firma.e_posta)) return null
+
+  return {
+    sicil_no: sicil,
+    ad_soyad: firma.ad_soyad,
+    tckn: firma.tckn ?? null,
+    unvan: adabelUnvan(firma),
+    mudurluk: String(firma.gorev_mudurlugu ?? '').trim() || null,
+  }
 }
 
 /** Tek personel (kullanıcı kendi formu). */

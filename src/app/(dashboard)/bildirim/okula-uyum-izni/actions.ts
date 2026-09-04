@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
-import { getBildirimFormPersonel } from '@/lib/bildirim-form-personel'
+import { getBildirimFormTumPersonel } from '@/lib/bildirim-form-personel'
 import { okulaUyumSinifGecerliMi } from '@/lib/okula-uyum-izni-belge'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
@@ -41,7 +41,7 @@ export async function okulaUyumIzniEkle(formData: FormData): Promise<OkulaUyumIz
     return { hata: 'Başlayacağı sınıf Okul Öncesi, 1. Sınıf veya 5. Sınıf olmalıdır.' }
   }
 
-  const personel = await getBildirimFormPersonel(supabase, sicil)
+  const personel = await getBildirimFormTumPersonel(supabase, sicil)
   if (!personel) return { hata: 'Personel bulunamadı.' }
 
   const tckn = String(personel.tckn ?? '').trim()
@@ -136,7 +136,7 @@ export async function okulaUyumIzniGuncelle(
     return { hata: 'Başlayacağı sınıf Okul Öncesi, 1. Sınıf veya 5. Sınıf olmalıdır.' }
   }
 
-  const personel = await getBildirimFormPersonel(supabase, sicil)
+  const personel = await getBildirimFormTumPersonel(supabase, sicil)
   const unvan = String(personel?.unvan ?? mevcut.unvan ?? '').trim()
   const mudurluk = String(personel?.mudurluk ?? mevcut.mudurluk ?? '').trim()
   const adSoyad = String(personel?.ad_soyad ?? mevcut.ad_soyad ?? '').trim()

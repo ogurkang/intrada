@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import OkulaUyumIzniFormClient from '@/components/bildirim/OkulaUyumIzniFormClient'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import {
-  getBildirimFormPersonel,
-  listBildirimFormPersonel,
+  getBildirimFormTumPersonel,
+  listBildirimFormTumPersonel,
   type BildirimFormPersonel,
 } from '@/lib/bildirim-form-personel'
 import { okulaUyumIzniGuncelle } from '../../actions'
@@ -43,13 +43,13 @@ export default async function OkulaUyumIzniDuzenlePage({ params }: Props) {
   const sicil = String(kayit.sicil_no ?? '').trim()
   let personeller: BildirimFormPersonel[] = []
   if (isAdminLike(access)) {
-    personeller = await listBildirimFormPersonel(supabase)
+    personeller = await listBildirimFormTumPersonel(supabase)
     if (!personeller.some(p => p.sicil_no === sicil)) {
-      const kendi = await getBildirimFormPersonel(supabase, sicil)
+      const kendi = await getBildirimFormTumPersonel(supabase, sicil)
       if (kendi) personeller = [kendi, ...personeller]
     }
   } else {
-    const kendi = await getBildirimFormPersonel(supabase, sicil)
+    const kendi = await getBildirimFormTumPersonel(supabase, sicil)
     personeller = kendi ? [kendi] : []
   }
 
