@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation'
 import ExcelJS from 'exceljs'
 import type { KazancPuan, TerfiEttirOnizlemeSatir, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import {
+  parseKidemYili,
+  thKidemEksi5BandiMi,
+  unvanSinifiThMi,
+  YAN_ODEME_ARTI5_ETIKET,
+  YAN_ODEME_EKSI5_ETIKET,
+} from '@/lib/kazanc-yan-odeme'
+import {
   buildTerfiOgrenimOnizleme,
   kazancLookupFromEntries,
   TERFI_OGRENIM_OLAY_SECENEKLERI,
@@ -57,6 +64,12 @@ function fmtTarihGGAA(iso: string | null | undefined): string {
 
 function puanGoster(v: string | null | undefined) {
   return v ?? '—'
+}
+
+function thYanOdemeHucre(r: TerfiEttirOnizlemeSatir) {
+  const th = unvanSinifiThMi(r.unvan_sinif)
+  const eksi5Aktif = th && thKidemEksi5BandiMi(parseKidemYili(r.payload.kidem_yili))
+  return { th, eksi5Aktif }
 }
 
 function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
@@ -171,6 +184,12 @@ export default function TerfiEttirClient({
       prev.map((row) => {
         if (row.sicil_no !== sicil) return row
         const p = { ...row.payload, [alan]: deger || null }
+        if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif)) {
+          const secilen = thKidemEksi5BandiMi(parseKidemYili(p.kidem_yili))
+            ? p.yan_odeme_eksi5
+            : row.tanim_yan_odeme_arti5
+          if (String(secilen ?? '').trim()) p.yan_odeme = secilen
+        }
         return {
           ...row,
           dk_kha_yeni: `${p.kha_derece}/${p.kha_kademe}`,
@@ -179,6 +198,7 @@ export default function TerfiEttirClient({
           ek_odeme_yeni: puanGoster(p.ek_odeme),
           oht_yeni: puanGoster(p.oht),
           yan_odeme_yeni: puanGoster(p.yan_odeme),
+          yan_odeme_eksi5_yeni: puanGoster(p.yan_odeme_eksi5),
           sds_yeni: puanGoster(p.sds_orani),
           payload: p,
         }
@@ -335,7 +355,8 @@ export default function TerfiEttirClient({
       'Ek Gösterge (eski → yeni)',
       'Ek Ödeme (eski → yeni)',
       'ÖHT (eski → yeni)',
-      'Yan Ödeme (eski → yeni)',
+      `${YAN_ODEME_EKSI5_ETIKET} (eski → yeni)`,
+      `${YAN_ODEME_ARTI5_ETIKET} (eski → yeni)`,
       'SDS (eski → yeni)',
       'Durum / Uyarı',
     ]
@@ -385,12 +406,28 @@ export default function TerfiEttirClient({
         { v: richOk(r.ek_gosterge_eski, r.ek_gosterge_yeni) },
         { v: richOk(r.ek_odeme_eski, r.ek_odeme_yeni) },
         { v: richOk(r.oht_eski, r.oht_yeni) },
-        { v: richOk(r.yan_odeme_eski, r.yan_odeme_yeni) },
+        ...((): { v: ReturnType<typeof richOk> }[] => {
+          const { eksi5Aktif } = thYanOdemeHucre(r)
+          return [
+            {
+              v: richOk(
+                eksi5Aktif ? r.yan_odeme_eski : r.yan_odeme_eksi5_eski,
+                eksi5Aktif ? puanGoster(r.payload.yan_odeme) : r.yan_odeme_eksi5_yeni,
+              ),
+            },
+            {
+              v: richOk(
+                eksi5Aktif ? '—' : r.yan_odeme_eski,
+                eksi5Aktif ? puanGoster(r.tanim_yan_odeme_arti5) : r.yan_odeme_yeni,
+              ),
+            },
+          ]
+        })(),
         { v: richOk(r.sds_eski, r.sds_yeni) },
         { v: r.durum, style: durumExcelStyle(r.durum, r.ogrenim_terfi) },
       ]
 
-      const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+      const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
       cells.forEach((cell, i) => {
         const c = row.getCell(i + 1)
         c.value = cell.v
@@ -428,14 +465,15 @@ export default function TerfiEttirClient({
       13: excelWidth(9),  // M
       14: excelWidth(8),  // N
       15: excelWidth(8),  // O
-      16: excelWidth(8),  // P
-      17: excelWidth(8),  // Q
-      18: excelWidth(15), // R
+      16: excelWidth(10), // P -5 yan
+      17: excelWidth(10), // Q 5+ yan
+      18: excelWidth(8),  // R SDS
+      19: excelWidth(15), // S durum
     }
-    for (let i = 1; i <= 18; i++) {
+    for (let i = 1; i <= 19; i++) {
       ws.getColumn(i).width = colWidths[i] ?? 12
     }
-    const centerCols = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    const centerCols = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     for (const colIdx of centerCols) {
       ws.getColumn(colIdx).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     }
@@ -578,7 +616,7 @@ export default function TerfiEttirClient({
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[1480px]">
+        <table className="w-full text-sm min-w-[1580px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
               <th className="px-2 py-3 w-10" title="Seç">
@@ -595,7 +633,8 @@ export default function TerfiEttirClient({
               <th className="px-2 py-3 font-semibold text-slate-600">Ek Gösterge</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Ek Ödeme</th>
               <th className="px-2 py-3 font-semibold text-slate-600">ÖHT</th>
-              <th className="px-2 py-3 font-semibold text-slate-600">Yan Ödeme</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">{YAN_ODEME_EKSI5_ETIKET}</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">{YAN_ODEME_ARTI5_ETIKET}</th>
               <th className="px-2 py-3 font-semibold text-slate-600">SDS</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Durum / Uyarı</th>
               <th className="px-2 py-3 font-semibold text-slate-600 text-center">İşlem</th>
@@ -604,7 +643,7 @@ export default function TerfiEttirClient({
           <tbody className="divide-y divide-slate-100">
             {satirlar.length === 0 && (
               <tr>
-                <td colSpan={15} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={17} className="px-4 py-12 text-center text-slate-400">
                   Bu dönem penceresinde terfi tarihi (KHA/EKEA) bulunan memur yok.
                 </td>
               </tr>
@@ -712,13 +751,41 @@ export default function TerfiEttirClient({
                     onChange={(e) => guncelle(r.sicil_no, 'oht', e.target.value)}
                   />
                 </td>
-                <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400">{r.yan_odeme_eski}</div>
-                  <input
-                    className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
-                    value={r.payload.yan_odeme ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'yan_odeme', e.target.value)}
-                  />
+                <td className={`px-2 py-2 align-top${thYanOdemeHucre(r).eksi5Aktif ? ' bg-amber-50/80' : ''}`}>
+                  <div className="text-[11px] text-slate-400">
+                    {thYanOdemeHucre(r).eksi5Aktif ? r.yan_odeme_eski : r.yan_odeme_eksi5_eski}
+                  </div>
+                  {thYanOdemeHucre(r).eksi5Aktif ? (
+                    <input
+                      className="w-[4.5rem] border border-amber-300 rounded px-1 py-0.5 text-xs mt-0.5 bg-white"
+                      value={r.payload.yan_odeme ?? ''}
+                      onChange={(e) => guncelle(r.sicil_no, 'yan_odeme', e.target.value)}
+                      title="Kıdem 0–4: uygulanan yan ödeme −5 yıl sütunundan"
+                    />
+                  ) : (
+                    <input
+                      className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
+                      value={r.payload.yan_odeme_eksi5 ?? ''}
+                      onChange={(e) => guncelle(r.sicil_no, 'yan_odeme_eksi5', e.target.value)}
+                    />
+                  )}
+                </td>
+                <td className={`px-2 py-2 align-top${!thYanOdemeHucre(r).eksi5Aktif ? ' bg-amber-50/80' : ''}`}>
+                  <div className="text-[11px] text-slate-400">
+                    {thYanOdemeHucre(r).eksi5Aktif ? '—' : r.yan_odeme_eski}
+                  </div>
+                  {thYanOdemeHucre(r).eksi5Aktif ? (
+                    <div className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5 bg-slate-50 text-slate-600 tabular-nums">
+                      {r.tanim_yan_odeme_arti5 ?? '—'}
+                    </div>
+                  ) : (
+                    <input
+                      className="w-[4.5rem] border border-amber-300 rounded px-1 py-0.5 text-xs mt-0.5 bg-white"
+                      value={r.payload.yan_odeme ?? ''}
+                      onChange={(e) => guncelle(r.sicil_no, 'yan_odeme', e.target.value)}
+                      title="Kıdem 5+: uygulanan yan ödeme +5 yıl sütunundan"
+                    />
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top">
                   <div className="text-[11px] text-slate-400">{r.sds_eski}</div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 export type KazancOzetSatir = {
   unvan_id: number
@@ -82,7 +83,11 @@ export default function KazancBilgiOzetClient({ satirlar }: Props) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs leading-relaxed">{PUANLAR_ETIKET}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs leading-relaxed">
+                    {unvanSinifiThMi(s.sinif_adi)
+                      ? `Ek Gösterge, Ek Ödeme, ÖHT, ${YAN_ODEME_EKSI5_ETIKET}, ${YAN_ODEME_ARTI5_ETIKET}, SDS`
+                      : PUANLAR_ETIKET}
+                  </td>
                 </tr>
               ))}
             </tbody>

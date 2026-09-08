@@ -182,6 +182,18 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     if (sec) terfiMap[sicil] = sec
   }
 
+  const unvanIdList = [...new Set(unvanIdBySicil.values())]
+  const sinifByUnvanId = new Map<number, string | null>()
+  if (unvanIdList.length > 0) {
+    const { data: unvanSinifRaw } = await supabase
+      .from('tanim_unvan')
+      .select('id, sinif_adi')
+      .in('id', unvanIdList)
+    for (const u of unvanSinifRaw ?? []) {
+      sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
+    }
+  }
+
   const { data: kazancRaw } = await supabase.from('tanim_kazanc_bilgisi').select('*')
   const kazancMap = new Map<string, KazancPuan>()
   for (const row of kazancRaw ?? []) {
@@ -190,6 +202,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       ek_odeme: row.ek_odeme,
       oht: row.oht,
       yan_odeme: row.yan_odeme,
+      yan_odeme_eksi5: row.yan_odeme_eksi5,
       sds_orani: row.sds_orani,
     })
   }
@@ -207,6 +220,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       sicil_no,
       ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
       unvan_adi: kadroUnvaniBySicil.get(sicil_no) ?? k?.gorev_unvani ?? null,
+      unvan_sinif: unvanId != null ? (sinifByUnvanId.get(unvanId) ?? null) : null,
       kadro_derecesi: kadroDerecesiBySicil.get(sicil_no) ?? null,
       ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
       ogrenim_id: ogId,
@@ -224,6 +238,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       ek_odeme: t.ek_odeme,
       oht: t.oht,
       yan_odeme: t.yan_odeme,
+      yan_odeme_eksi5: t.yan_odeme_eksi5,
       sds_orani: t.sds_orani,
       terfi_id: t.id,
     })

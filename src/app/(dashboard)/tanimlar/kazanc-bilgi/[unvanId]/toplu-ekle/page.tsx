@@ -27,6 +27,7 @@ export default async function KazancBilgiTopluEkleTabPage({ params }: { params: 
       <KazancBilgiTopluEkleTabClient
         unvanId={unvanId}
         unvanAdi={unvanRow.unvan_adi}
+        sinifAdi={unvanRow.sinif_adi}
         ogrenimler={sortTanimOgrenimByIsim((ogrenimler ?? []) as { id: number; isim: string }[])}
         saltOkunur={saltOkunur}
       />

@@ -13,6 +13,7 @@ import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
 import { izinAuditDiffSatirlari, izinAuditDegerGoster } from '@/lib/izin-audit'
+import { YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -782,7 +783,8 @@ function KatsayiTab({
             <Alan etiket="Ek Gösterge" deger={son.ek_gosterge} />
             <Alan etiket="Ek Ödeme" deger={son.ek_odeme} />
             <Alan etiket="ÖHT" deger={son.oht} />
-            <Alan etiket="Yan Ödeme" deger={son.yan_odeme} />
+            <Alan etiket={YAN_ODEME_EKSI5_ETIKET} deger={son.yan_odeme_eksi5} />
+            <Alan etiket={YAN_ODEME_ARTI5_ETIKET} deger={son.yan_odeme} />
             <Alan etiket="SDS Oranı" deger={son.sds_orani} />
           </div>
           <div className="mt-5">

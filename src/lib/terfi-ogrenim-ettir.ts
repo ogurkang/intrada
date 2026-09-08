@@ -3,11 +3,13 @@ import {
   hesaplaDkIlerleme,
   kazancSatirToPuan,
   minDereceEgitim,
+  puanThYanOdemeIle,
   type KazancPuan,
   type TerfiEttirDurumEtiket,
   type TerfiEttirOnizlemeSatir,
   type TerfiKaynak,
 } from '@/lib/terfi-ettir-hesap'
+import { parseKidemYili, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
 
 export type TerfiOgrenimOlayTipi = 'hazirlik' | 'yuksek_lisans' | 'doktora'
 
@@ -109,12 +111,25 @@ export function buildTerfiOgrenimOnizleme(input: {
     puanSon = { ...puanSon, ...lookup(newEd, yeniOgrenimId) }
   }
 
+  const thMi = unvanSinifiThMi(kaynak.unvan_sinif)
+  const tanimYeni =
+    uId != null && yeniOgrenimId != null ? kazancLookup(uId, yeniOgrenimId, newKd) : null
+  const yanUyg = puanThYanOdemeIle(
+    puanSon,
+    tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
+    parseKidemYili(kaynak.kidem_yili),
+    thMi,
+  )
+  puanSon = yanUyg.puan
+
   const durumEtiket = ogrenimOlayEtiket(olay) as TerfiEttirDurumEtiket
 
   return {
     sicil_no: kaynak.sicil_no,
     ad_soyad: kaynak.ad_soyad,
     unvan_adi: kaynak.unvan_adi,
+    unvan_sinif: kaynak.unvan_sinif ?? null,
+    tanim_yan_odeme_arti5: yanUyg.tanimArti5,
     kadro_derecesi: kaynak.kadro_derecesi,
     ogrenim_turu: kaynak.ogrenim_turu,
     kha_tarihi: kaynak.kha_tarihi,
@@ -137,6 +152,8 @@ export function buildTerfiOgrenimOnizleme(input: {
     oht_yeni: puanSon.oht ?? '—',
     yan_odeme_eski: kaynak.yan_odeme ?? '—',
     yan_odeme_yeni: puanSon.yan_odeme ?? '—',
+    yan_odeme_eksi5_eski: kaynak.yan_odeme_eksi5 ?? '—',
+    yan_odeme_eksi5_yeni: puanSon.yan_odeme_eksi5 ?? '—',
     sds_eski: kaynak.sds_orani ?? '—',
     sds_yeni: puanSon.sds_orani ?? '—',
     durum: durumEtiket,
@@ -160,6 +177,7 @@ export function buildTerfiOgrenimOnizleme(input: {
       ek_odeme: puanSon.ek_odeme,
       oht: puanSon.oht,
       yan_odeme: puanSon.yan_odeme,
+      yan_odeme_eksi5: puanSon.yan_odeme_eksi5,
       sds_orani: puanSon.sds_orani,
     },
   }

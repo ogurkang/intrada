@@ -23,6 +23,7 @@ type LogSnap = {
   ek_odeme?: string | null
   oht?: string | null
   yan_odeme?: string | null
+  yan_odeme_eksi5?: string | null
   sds_orani?: string | null
 }
 
@@ -46,6 +47,8 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
     sicil_no: k.sicil_no,
     ad_soyad: k.ad_soyad,
     unvan_adi: k.unvan_adi,
+    unvan_sinif: k.unvan_sinif ?? null,
+    tanim_yan_odeme_arti5: k.yan_odeme ?? null,
     kadro_derecesi: k.kadro_derecesi,
     ogrenim_turu: k.ogrenim_turu,
     kha_tarihi: k.kha_tarihi,
@@ -68,6 +71,8 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
     oht_yeni: k.oht ?? '—',
     yan_odeme_eski: k.yan_odeme ?? '—',
     yan_odeme_yeni: k.yan_odeme ?? '—',
+    yan_odeme_eksi5_eski: k.yan_odeme_eksi5 ?? '—',
+    yan_odeme_eksi5_yeni: k.yan_odeme_eksi5 ?? '—',
     sds_eski: k.sds_orani ?? '—',
     sds_yeni: k.sds_orani ?? '—',
     durum: '—',
@@ -86,6 +91,7 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
       ek_odeme: k.ek_odeme,
       oht: k.oht,
       yan_odeme: k.yan_odeme,
+      yan_odeme_eksi5: k.yan_odeme_eksi5,
       sds_orani: k.sds_orani,
     },
   }
@@ -133,6 +139,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       ogrenim_turu: kaynak?.ogrenim_turu ?? null,
       ogrenim_id: kaynak?.ogrenim_id ?? null,
       unvan_id: kaynak?.unvan_id ?? null,
+      unvan_sinif: kaynak?.unvan_sinif ?? null,
       kha_derece: onc.kha_derece ?? null,
       kha_kademe: onc.kha_kademe ?? null,
       kha_tarihi: onc.kha_tarihi ?? null,
@@ -146,6 +153,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       ek_odeme: onc.ek_odeme ?? null,
       oht: onc.oht ?? null,
       yan_odeme: onc.yan_odeme ?? null,
+      yan_odeme_eksi5: onc.yan_odeme_eksi5 ?? null,
       sds_orani: onc.sds_orani ?? null,
       terfi_id: log.terfi_id ?? null,
     }
@@ -167,6 +175,8 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       sicil_no: log.sicil_no,
       ad_soyad: kaynak?.ad_soyad ?? log.sicil_no,
       unvan_adi: kaynak?.unvan_adi ?? null,
+      unvan_sinif: kaynak?.unvan_sinif ?? null,
+      tanim_yan_odeme_arti5: son.yan_odeme ?? null,
       kadro_derecesi: kaynak?.kadro_derecesi ?? null,
       ogrenim_turu: kaynak?.ogrenim_turu ?? null,
       kha_tarihi: onc.kha_tarihi ?? null,
@@ -189,6 +199,8 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       oht_yeni: ds(son.oht),
       yan_odeme_eski: ds(onc.yan_odeme),
       yan_odeme_yeni: ds(son.yan_odeme),
+      yan_odeme_eksi5_eski: ds(onc.yan_odeme_eksi5),
+      yan_odeme_eksi5_yeni: ds(son.yan_odeme_eksi5),
       sds_eski: ds(onc.sds_orani),
       sds_yeni: ds(son.sds_orani),
       durum,
@@ -209,6 +221,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
         ek_odeme: son.ek_odeme ?? null,
         oht: son.oht ?? null,
         yan_odeme: son.yan_odeme ?? null,
+        yan_odeme_eksi5: son.yan_odeme_eksi5 ?? null,
         sds_orani: son.sds_orani ?? null,
       },
     }

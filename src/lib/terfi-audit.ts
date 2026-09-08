@@ -5,6 +5,7 @@ import {
   degisiklikOzeti,
   degisiklikPayload,
 } from '@/lib/personel-audit'
+import { YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 export const TERFI_ALAN_ETIKETLERI: Record<string, string> = {
   ad_soyad: 'Ad Soyad',
@@ -26,7 +27,8 @@ export const TERFI_ALAN_ETIKETLERI: Record<string, string> = {
   ek_gosterge: 'Ek Gösterge',
   ek_odeme: 'Ek Ödeme',
   oht: 'ÖHT',
-  yan_odeme: 'Yan Ödeme',
+  yan_odeme_eksi5: YAN_ODEME_EKSI5_ETIKET,
+  yan_odeme: YAN_ODEME_ARTI5_ETIKET,
   sds_orani: 'SDS Oranı',
 }
 
@@ -35,7 +37,7 @@ export const TERFI_KATSAYI_ALAN_ETIKETLERI: Record<string, string> = Object.from
 )
 
 export const TERFI_AUDIT_SELECT =
-  'gorev_ayligi_derece, gorev_ayligi_kademe, kha_derece, kha_kademe, kha_tarihi, ekea_derece, ekea_kademe, ekea_tarihi, kidem_yili, kidem_tarihi, iyi_hal_terfi_tarihi, ek_gosterge, ek_odeme, oht, yan_odeme, sds_orani'
+  'gorev_ayligi_derece, gorev_ayligi_kademe, kha_derece, kha_kademe, kha_tarihi, ekea_derece, ekea_kademe, ekea_tarihi, kidem_yili, kidem_tarihi, iyi_hal_terfi_tarihi, ek_gosterge, ek_odeme, oht, yan_odeme_eksi5, yan_odeme, sds_orani'
 
 export const TERFI_AUDIT_SELECT_FULL =
   `ad_soyad, rol, kadro_sira_no, unvan, mudurluk, ${TERFI_AUDIT_SELECT}`

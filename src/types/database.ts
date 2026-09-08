@@ -351,6 +351,7 @@ export interface Database {
           ek_odeme: string | null
           oht: string | null
           yan_odeme: string | null
+          yan_odeme_eksi5: string | null
           sds_orani: string | null
           kazanc_grup_id: string | null
           created_at: string
@@ -366,6 +367,7 @@ export interface Database {
           ek_odeme?: string | null
           oht?: string | null
           yan_odeme?: string | null
+          yan_odeme_eksi5?: string | null
           sds_orani?: string | null
           kazanc_grup_id?: string | null
           created_at?: string
@@ -381,6 +383,7 @@ export interface Database {
           ek_odeme?: string | null
           oht?: string | null
           yan_odeme?: string | null
+          yan_odeme_eksi5?: string | null
           sds_orani?: string | null
           kazanc_grup_id?: string | null
           created_at?: string
@@ -1451,6 +1454,7 @@ export interface Database {
           kidem_yili: string | null; kidem_tarihi: string | null
           iyi_hal_terfi_tarihi: string | null; ek_gosterge: string | null
           ek_odeme: string | null; oht: string | null; yan_odeme: string | null
+          yan_odeme_eksi5: string | null
           sds_orani: string | null; kayit_zamani: string; kapsam_disi: boolean
         }
         Insert: {
@@ -1462,6 +1466,7 @@ export interface Database {
           kidem_yili?: string | null; kidem_tarihi?: string | null
           iyi_hal_terfi_tarihi?: string | null; ek_gosterge?: string | null
           ek_odeme?: string | null; oht?: string | null; yan_odeme?: string | null
+          yan_odeme_eksi5?: string | null
           sds_orani?: string | null; kayit_zamani?: string; kapsam_disi?: boolean
         }
         Update: {
@@ -1473,6 +1478,7 @@ export interface Database {
           kidem_yili?: string | null; kidem_tarihi?: string | null
           iyi_hal_terfi_tarihi?: string | null; ek_gosterge?: string | null
           ek_odeme?: string | null; oht?: string | null; yan_odeme?: string | null
+          yan_odeme_eksi5?: string | null
           sds_orani?: string | null; kayit_zamani?: string; kapsam_disi?: boolean
         }
         Relationships: [{ foreignKeyName: "terfi_hareketleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]

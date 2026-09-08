@@ -40,6 +40,7 @@ function payloadFromForm(fd: FormData) {
       ek_odeme: str(fd, 'ek_odeme'),
       oht: str(fd, 'oht'),
       yan_odeme: str(fd, 'yan_odeme'),
+      yan_odeme_eksi5: str(fd, 'yan_odeme_eksi5'),
       sds_orani: str(fd, 'sds_orani'),
     } as const,
   }
@@ -114,6 +115,7 @@ export type KazancTopluSatir = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
 }
 
@@ -127,6 +129,7 @@ export type KazancGrupAyar = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
 }
 
@@ -142,6 +145,7 @@ function kazancGrupInsertSatirlari(g: KazancGrupAyar, grupId: string, siraVal: n
     ek_odeme: g.ek_odeme,
     oht: g.oht,
     yan_odeme: g.yan_odeme,
+    yan_odeme_eksi5: g.yan_odeme_eksi5,
     sds_orani: g.sds_orani,
     sira_no: siraVal,
     kazanc_grup_id: grupId,
@@ -219,6 +223,7 @@ export async function kazancBilgiTopluEkle(satirlar: KazancTopluSatir[]): Promis
     ek_odeme: r.ek_odeme,
     oht: r.oht,
     yan_odeme: r.yan_odeme,
+    yan_odeme_eksi5: r.yan_odeme_eksi5,
     sds_orani: r.sds_orani,
   }))
   return kazancBilgiGruplariEkle(gruplar)
@@ -234,6 +239,7 @@ export type KazancTopluGuncelleme = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
 }
 

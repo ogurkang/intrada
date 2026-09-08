@@ -24,6 +24,7 @@ import {
   kazancBilgiTopluGrupGuncelle,
   kazancBilgiTopluSil,
 } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
+import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 const DERECE_SEC = Array.from({ length: 15 }, (_, i) => i + 1)
 
@@ -41,12 +42,14 @@ type TopluGrupForm = {
   ek_odeme: string
   oht: string
   yan_odeme: string
+  yan_odeme_eksi5: string
   sds_orani: string
 }
 
 interface Props {
   unvanId: number
   unvanAdi: string
+  sinifAdi: string | null
   data: KazancBilgiListeRow[]
   ogrenimler: { id: number; isim: string }[]
 }
@@ -64,10 +67,12 @@ function ogrenimDereceMusait(
   return true
 }
 
-export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogrenimler }: Props) {
+export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, data, ogrenimler }: Props) {
   const router = useRouter()
   useIntradaTabRefresh('kazanc', router)
   const saltOkunur = useTanimlarSaltOkunur()
+  const thSinifi = unvanSinifiThMi(sinifAdi)
+  const yanOdemeEtiket = thSinifi ? YAN_ODEME_ARTI5_ETIKET : 'Yan Ödeme'
   const [gorunum, setGorunum] = useState<'liste' | 'toplu'>('liste')
   const [ogrenimSekmesi, setOgrenimSekmesi] = useState<KazancOgrenimSekmesi>('lisans_onlisans')
 
@@ -79,6 +84,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
   const [editEkGosterge, setEditEkGosterge] = useState('')
   const [editEkOdeme, setEditEkOdeme] = useState('')
   const [editOht, setEditOht] = useState('')
+  const [editYanOdemeEksi5, setEditYanOdemeEksi5] = useState('')
   const [editYanOdeme, setEditYanOdeme] = useState('')
   const [editSds, setEditSds] = useState('')
 
@@ -110,6 +116,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
         ek_odeme: r0.ek_odeme ?? '',
         oht: r0.oht ?? '',
         yan_odeme: r0.yan_odeme ?? '',
+        yan_odeme_eksi5: r0.yan_odeme_eksi5 ?? '',
         sds_orani: r0.sds_orani ?? '',
       }
     }
@@ -133,6 +140,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
     setEditEkGosterge(g[0].ek_gosterge ?? '')
     setEditEkOdeme(g[0].ek_odeme ?? '')
     setEditOht(g[0].oht ?? '')
+    setEditYanOdemeEksi5(g[0].yan_odeme_eksi5 ?? '')
     setEditYanOdeme(g[0].yan_odeme ?? '')
     setEditSds(g[0].sds_orani ?? '')
     setHata(null)
@@ -207,6 +215,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
         ek_odeme: s.ek_odeme.trim() || null,
         oht: s.oht.trim() || null,
         yan_odeme: s.yan_odeme.trim() || null,
+        yan_odeme_eksi5: thSinifi ? s.yan_odeme_eksi5.trim() || null : null,
         sds_orani: s.sds_orani.trim() || null,
       })
     }
@@ -247,6 +256,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
           ek_odeme: editEkOdeme.trim() || null,
           oht: editOht.trim() || null,
           yan_odeme: editYanOdeme.trim() || null,
+          yan_odeme_eksi5: thSinifi ? editYanOdemeEksi5.trim() || null : null,
           sds_orani: editSds.trim() || null,
         },
         unvanId,
@@ -385,7 +395,14 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                   <th className="text-right px-2 py-3 font-semibold text-slate-600">Ek Gösterge</th>
                   <th className="text-right px-2 py-3 font-semibold text-slate-600">Ek Ödeme</th>
                   <th className="text-right px-2 py-3 font-semibold text-slate-600">ÖHT</th>
-                  <th className="text-right px-2 py-3 font-semibold text-slate-600">Yan Ödeme</th>
+                  {thSinifi && (
+                    <th className="text-right px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">
+                      {YAN_ODEME_EKSI5_ETIKET}
+                    </th>
+                  )}
+                  <th className="text-right px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">
+                    {yanOdemeEtiket}
+                  </th>
                   <th className="text-right px-2 py-3 font-semibold text-slate-600">SDS</th>
                   <th className="text-right px-3 py-3 font-semibold text-slate-600 w-28">İşlem</th>
                 </tr>
@@ -393,7 +410,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
               <tbody className="divide-y divide-slate-100">
                 {filtreliGruplar.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-slate-400">
+                    <td colSpan={thSinifi ? 10 : 9} className="text-center py-12 text-slate-400">
                       Bu öğrenim grubunda kayıt yok. «Kazanç Bilgisi Ekle» ile yeni sekmede toplu ekleyin.
                     </td>
                   </tr>
@@ -409,6 +426,9 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.ek_gosterge ?? '—'}</td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.ek_odeme ?? '—'}</td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.oht ?? '—'}</td>
+                      {thSinifi && (
+                        <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme_eksi5 ?? '—'}</td>
+                      )}
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme ?? '—'}</td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.sds_orani ?? '—'}</td>
                       <td className="px-3 py-2.5 text-right">
@@ -459,14 +479,15 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                   <th className="p-2">Ek Göst</th>
                   <th className="p-2">Ek Öd</th>
                   <th className="p-2">ÖHT</th>
-                  <th className="p-2">Yan Öd</th>
+                  {thSinifi && <th className="p-2 whitespace-nowrap">{YAN_ODEME_EKSI5_ETIKET}</th>}
+                  <th className="p-2 whitespace-nowrap">{yanOdemeEtiket}</th>
                   <th className="p-2">SDS</th>
                 </tr>
               </thead>
               <tbody>
                 {filtreliGruplar.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                    <td colSpan={thSinifi ? 9 : 8} className="text-center py-10 text-slate-400">
                       Bu öğrenim grubunda satır yok.
                     </td>
                   </tr>
@@ -559,6 +580,15 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                           onChange={(e) => topluGrupAlan(gkey, 'oht', e.target.value)}
                         />
                       </td>
+                      {thSinifi && (
+                        <td className="p-1">
+                          <input
+                            className="w-14 border rounded px-1"
+                            value={s.yan_odeme_eksi5}
+                            onChange={(e) => topluGrupAlan(gkey, 'yan_odeme_eksi5', e.target.value)}
+                          />
+                        </td>
+                      )}
                       <td className="p-1">
                         <input
                           className="w-12 border rounded px-1"
@@ -687,8 +717,18 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, data, ogreni
                   className="mt-1 w-full border rounded-lg px-2 py-1.5 tabular-nums"
                 />
               </label>
+              {thSinifi && (
+                <label className="text-sm">
+                  {YAN_ODEME_EKSI5_ETIKET}
+                  <input
+                    value={editYanOdemeEksi5}
+                    onChange={(e) => setEditYanOdemeEksi5(e.target.value)}
+                    className="mt-1 w-full border rounded-lg px-2 py-1.5 tabular-nums"
+                  />
+                </label>
+              )}
               <label className="text-sm">
-                Yan Ödeme
+                {yanOdemeEtiket}
                 <input
                   value={editYanOdeme}
                   onChange={(e) => setEditYanOdeme(e.target.value)}

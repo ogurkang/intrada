@@ -1,4 +1,5 @@
 import { tarihDahilAralikta, tarihGun } from '@/lib/terfi-donem-aralik'
+import { parseKidemYili, thYanOdemeTanimdan, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -117,19 +118,43 @@ export type KazancPuan = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
 }
 
 export function kazancSatirToPuan(row: KazancPuan | null | undefined): KazancPuan {
   if (!row) {
-    return { ek_gosterge: null, ek_odeme: null, oht: null, yan_odeme: null, sds_orani: null }
+    return { ek_gosterge: null, ek_odeme: null, oht: null, yan_odeme: null, yan_odeme_eksi5: null, sds_orani: null }
   }
   return {
     ek_gosterge: row.ek_gosterge ?? null,
     ek_odeme: row.ek_odeme ?? null,
     oht: row.oht ?? null,
     yan_odeme: row.yan_odeme ?? null,
+    yan_odeme_eksi5: row.yan_odeme_eksi5 ?? null,
     sds_orani: row.sds_orani ?? null,
+  }
+}
+
+/** TH’de `yan_odeme` kıdem yılına göre tanımdan seçilir; diğer puanlar olduğu gibi kalır. */
+export function puanThYanOdemeIle(
+  puanSon: KazancPuan,
+  tanim: KazancPuan | null,
+  kidem: number | null,
+  thMi: boolean,
+): { puan: KazancPuan; tanimArti5: string | null } {
+  if (!thMi || !tanim) {
+    return { puan: puanSon, tanimArti5: tanim?.yan_odeme ?? null }
+  }
+  const uygulanan = thYanOdemeTanimdan(tanim, kidem, true)
+  const uygulananDolu = String(uygulanan ?? '').trim() !== ''
+  return {
+    puan: {
+      ...puanSon,
+      yan_odeme_eksi5: tanim.yan_odeme_eksi5,
+      yan_odeme: uygulananDolu ? uygulanan : puanSon.yan_odeme,
+    },
+    tanimArti5: tanim.yan_odeme,
   }
 }
 
@@ -137,6 +162,8 @@ export type TerfiKaynak = {
   sicil_no: string
   ad_soyad: string | null
   unvan_adi: string | null
+  /** `tanim_unvan.sinif_adi` — TH’de yan ödeme kıdem yılına göre seçilir */
+  unvan_sinif: string | null
   /** `kadro_hareketleri.kadro_derecesi` (görev satırı) */
   kadro_derecesi: string | null
   ogrenim_turu: string | null
@@ -155,6 +182,7 @@ export type TerfiKaynak = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
   terfi_id: number | null
 }
@@ -163,6 +191,9 @@ export type TerfiEttirOnizlemeSatir = {
   sicil_no: string
   ad_soyad: string | null
   unvan_adi: string | null
+  unvan_sinif: string | null
+  /** Tanımdaki +5 yıl sütunu (uygulanan `yan_odeme` kıdeme göre −5 olabilir) */
+  tanim_yan_odeme_arti5: string | null
   kadro_derecesi: string | null
   ogrenim_turu: string | null
   kha_tarihi: string | null
@@ -185,6 +216,8 @@ export type TerfiEttirOnizlemeSatir = {
   oht_yeni: string
   yan_odeme_eski: string
   yan_odeme_yeni: string
+  yan_odeme_eksi5_eski: string
+  yan_odeme_eksi5_yeni: string
   sds_eski: string
   sds_yeni: string
   durum: TerfiEttirDurumEtiket
@@ -211,6 +244,7 @@ export type TerfiEttirOnizlemeSatir = {
     ek_odeme: string | null
     oht: string | null
     yan_odeme: string | null
+    yan_odeme_eksi5: string | null
     sds_orani: string | null
   }
 }
@@ -366,10 +400,22 @@ export function buildTerfiEttirOnizleme(
       durum = birlesDurum(durum, 'İyi Hal İlerlemesi')
     }
 
+    const thMi = unvanSinifiThMi(r.unvan_sinif)
+    const tanimYeni = uId != null && oId != null ? kazancLookup(uId, oId, newKd) : null
+    const yanUyg = puanThYanOdemeIle(
+      puanSon,
+      tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
+      parseKidemYili(newKidemYili),
+      thMi,
+    )
+    puanSon = yanUyg.puan
+
     out.push({
       sicil_no: r.sicil_no,
       ad_soyad: r.ad_soyad,
       unvan_adi: r.unvan_adi,
+      unvan_sinif: r.unvan_sinif ?? null,
+      tanim_yan_odeme_arti5: yanUyg.tanimArti5,
       kadro_derecesi: r.kadro_derecesi,
       ogrenim_turu: r.ogrenim_turu,
       kha_tarihi: r.kha_tarihi,
@@ -392,6 +438,8 @@ export function buildTerfiEttirOnizleme(
       oht_yeni: puanSon.oht ?? '—',
       yan_odeme_eski: r.yan_odeme ?? '—',
       yan_odeme_yeni: puanSon.yan_odeme ?? '—',
+      yan_odeme_eksi5_eski: r.yan_odeme_eksi5 ?? '—',
+      yan_odeme_eksi5_yeni: puanSon.yan_odeme_eksi5 ?? '—',
       sds_eski: r.sds_orani ?? '—',
       sds_yeni: puanSon.sds_orani ?? '—',
       durum,
@@ -412,6 +460,7 @@ export function buildTerfiEttirOnizleme(
         ek_odeme: puanSon.ek_odeme,
         oht: puanSon.oht,
         yan_odeme: puanSon.yan_odeme,
+        yan_odeme_eksi5: puanSon.yan_odeme_eksi5,
         sds_orani: puanSon.sds_orani,
       },
     })

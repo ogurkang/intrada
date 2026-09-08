@@ -60,6 +60,8 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
       'Ünvan',
       'Öğrenim',
       'KHA Derecesi',
+      'Kıdem Yılı',
+      'Yan Ödeme kuralı',
       ...KAZANC_ALANLARI.flatMap(a => [`${a.etiket} (personel)`, `${a.etiket} (tanım)`]),
     ]).font = { bold: true }
     for (const s of filtreli) {
@@ -69,6 +71,8 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
         s.unvan_adi ?? '',
         s.ogrenim_turu ?? '',
         s.derece,
+        s.kidem_yili ?? '',
+        s.yan_odeme_kural,
         ...KAZANC_ALANLARI.flatMap(a => [s.alanlar[a.key].mevcut ?? '—', s.alanlar[a.key].tanim ?? '—']),
       ])
     }
@@ -106,8 +110,10 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
           <h1 className="text-2xl font-bold text-slate-800 mt-1">Tanımdan Sapan Personel</h1>
           <p className="text-sm text-slate-500 mt-0.5 max-w-3xl">
             Aktif memurların terfi kayıtlarındaki kazanç değerleri, kadro ünvanı + öğrenim + KHA derecesi için tanımlı
-            satırla karşılaştırılır. Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme veya SDS farkı
-            olabileceği gibi tanımın kendisi de eskimiş olabilir.
+            satırla karşılaştırılır. TH sınıfında yan ödeme kıdem yılına göre kontrol edilir: 0–4 yıl{' '}
+            <span className="font-medium">−5 Yıl Yan Ödeme</span>, 5–25 yıl{' '}
+            <span className="font-medium">+5 Yıl Yan Ödeme</span>. Sapma tek başına hata anlamına gelmez: kişiye özel
+            yan ödeme veya SDS farkı olabileceği gibi tanımın kendisi de eskimiş olabilir.
           </p>
         </div>
         <button
@@ -175,6 +181,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                 title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
                 KHA Derecesi
               </th>
+              <th className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">Kıdem Yılı</th>
               {KAZANC_ALANLARI.map(a => (
                 <th key={a.key} className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">
                   {a.etiket}
@@ -185,7 +192,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={5 + KAZANC_ALANLARI.length} className="px-4 py-12 text-center text-slate-400">
                   Filtreye uyan kayıt yok.
                 </td>
               </tr>
@@ -207,6 +214,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                 </td>
                 <td className="px-3 py-2 text-slate-600">{s.ogrenim_turu ?? '—'}</td>
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.derece}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kidem_yili ?? '—'}</td>
                 {KAZANC_ALANLARI.map(a => {
                   const v = s.alanlar[a.key]
                   return (
@@ -214,12 +222,20 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                       {v.farkli ? (
                         <span
                           className="inline-block rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-xs leading-tight text-amber-900"
-                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}`}>
+                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${a.key === 'yan_odeme' ? ` (${s.yan_odeme_kural})` : ''}`}>
                           <span className="block font-semibold">{v.mevcut ?? '—'}</span>
                           <span className="block text-[11px] font-normal opacity-80">tanım: {v.tanim ?? '—'}</span>
+                          {a.key === 'yan_odeme' ? (
+                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">{s.yan_odeme_kural}</span>
+                          ) : null}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">{v.mevcut ?? '—'}</span>
+                        <span className="text-xs text-slate-400">
+                          {v.mevcut ?? '—'}
+                          {a.key === 'yan_odeme' ? (
+                            <span className="block text-[10px] opacity-70">{s.yan_odeme_kural}</span>
+                          ) : null}
+                        </span>
                       )}
                     </td>
                   )

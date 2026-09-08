@@ -10,6 +10,7 @@ import type { Tables } from '@/types/database'
 import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
 import TerfiGecmisPanel from '@/components/personel/TerfiGecmisPanel'
 import { terfiIslemNo } from '@/lib/terfi-islem-no'
+import { YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 type TH = Tables<'terfi_hareketleri'>
 
@@ -60,7 +61,7 @@ const INLINE_TERFI_ALANLARI = [
   'kha_derece', 'kha_kademe', 'kha_tarihi',
   'ekea_derece', 'ekea_kademe', 'ekea_tarihi',
   'kidem_yili', 'kidem_tarihi', 'iyi_hal_terfi_tarihi',
-  'ek_gosterge', 'ek_odeme', 'oht', 'yan_odeme', 'sds_orani',
+  'ek_gosterge', 'ek_odeme', 'oht', 'yan_odeme_eksi5', 'yan_odeme', 'sds_orani',
 ] as const
 
 function normInlineTerfiDeger(alan: string, deger: unknown): string {
@@ -116,7 +117,8 @@ const KOLON_GRUPLAR = [
       { key: 'ek_gosterge', label: 'Ek Gösterge', col: 1 },
       { key: 'ek_odeme',    label: 'Ek Ödeme',    col: 1 },
       { key: 'oht',         label: 'ÖHT',          col: 1 },
-      { key: 'yan_odeme',   label: 'Yan Ödeme',    col: 1 },
+      { key: 'yan_odeme_eksi5', label: YAN_ODEME_EKSI5_ETIKET, col: 1 },
+      { key: 'yan_odeme',   label: YAN_ODEME_ARTI5_ETIKET,    col: 1 },
       { key: 'sds_orani',   label: 'SDS Oranı',    col: 1 },
     ],
   },
@@ -136,7 +138,8 @@ const TOPLU_ALANLAR = [
   { key: 'ek_gosterge',         label: 'Ek Göst',  w: 48 },
   { key: 'ek_odeme',            label: 'Ek Öd',    w: 48 },
   { key: 'oht',                 label: 'ÖHT',      w: 48 },
-  { key: 'yan_odeme',           label: 'Yan Öd',   w: 48 },
+  { key: 'yan_odeme_eksi5',     label: '-5 Yıl YÖ', w: 56 },
+  { key: 'yan_odeme',           label: '+5 Yıl YÖ', w: 56 },
   { key: 'sds_orani',           label: 'SDS',      w: 48 },
 ] as const
 
@@ -159,7 +162,7 @@ export default function TerfiClient({
   const showMemurMeta = !sabitSicil && Array.isArray(memurlar) && memurlar.length > 0
   const showEslesmemis = !sabitSicil && eslesmemis.length > 0 && (!!onKadroyaBagla || !!onKapsamDisiYap)
   const listeKolonSayisi =
-    (sabitSicil ? 0 : 3 + (showMemurMeta ? 2 : 0)) + 11 + 1
+    (sabitSicil ? 0 : 3 + (showMemurMeta ? 2 : 0)) + 12 + 1
   const [sekme, setSekme]            = useState<'liste' | 'toplu'>('liste')
   const [arama, setArama]            = useState('')
   const [formAcik, setFormAcik]      = useState(false)
@@ -309,6 +312,7 @@ export default function TerfiClient({
         ek_gosterge: r.ek_gosterge ?? '',
         ek_odeme: r.ek_odeme ?? '',
         oht: r.oht ?? '',
+        yan_odeme_eksi5: r.yan_odeme_eksi5 ?? '',
         yan_odeme: r.yan_odeme ?? '',
         sds_orani: r.sds_orani ?? '',
       }})
@@ -323,7 +327,7 @@ export default function TerfiClient({
         kha_derece: '', kha_kademe: '', kha_tarihi: '',
         ekea_derece: '', ekea_kademe: '', ekea_tarihi: '',
         kidem_yili: '', kidem_tarihi: '', iyi_hal_terfi_tarihi: '',
-        ek_gosterge: '', ek_odeme: '', oht: '', yan_odeme: '', sds_orani: '',
+        ek_gosterge: '', ek_odeme: '', oht: '', yan_odeme_eksi5: '', yan_odeme: '', sds_orani: '',
       }})
       setFormAcik(false)
       return
@@ -460,6 +464,7 @@ export default function TerfiClient({
         ek_gosterge:          v('ek_gosterge',         mevcut?.ek_gosterge         ?? null),
         ek_odeme:             v('ek_odeme',            mevcut?.ek_odeme            ?? null),
         oht:                  v('oht',                 mevcut?.oht                 ?? null),
+        yan_odeme_eksi5:      v('yan_odeme_eksi5',     mevcut?.yan_odeme_eksi5     ?? null),
         yan_odeme:            v('yan_odeme',           mevcut?.yan_odeme           ?? null),
         sds_orani:            v('sds_orani',           mevcut?.sds_orani           ?? null),
       }
@@ -666,7 +671,8 @@ export default function TerfiClient({
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Ek G.</th>
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Ek Ö.</th>
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">ÖHT</th>
-              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">Yan Ö.</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs" title={YAN_ODEME_EKSI5_ETIKET}>-5 Yıl YÖ</th>
+              <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs" title={YAN_ODEME_ARTI5_ETIKET}>+5 Yıl YÖ</th>
               <th className="text-center px-0.5 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs">SDS</th>
               <th className="text-right px-1 py-2 font-semibold text-slate-600 text-[9px] sm:text-xs w-[4.5rem]">İşlem</th>
             </tr>
@@ -811,6 +817,14 @@ export default function TerfiClient({
                         className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                     ) : (
                       <span className="tabular-nums text-slate-600">{fmt(r?.oht ?? null)}</span>
+                    )}
+                  </td>
+                  <td className="px-0.5 py-1 text-center align-top">
+                    {duzenleniyor ? (
+                      <input type="text" value={inlineDeger(row, 'yan_odeme_eksi5')} onChange={e => inlineGuncelle(row, 'yan_odeme_eksi5', e.target.value)}
+                        className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
+                    ) : (
+                      <span className="tabular-nums text-slate-600">{fmt(r?.yan_odeme_eksi5 ?? null)}</span>
                     )}
                   </td>
                   <td className="px-0.5 py-1 text-center align-top">

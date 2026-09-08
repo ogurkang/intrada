@@ -182,6 +182,7 @@ export type TerfiEttirKayitSatir = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
   /** Öğrenim terfi modalından eklenen satır */
   ogrenim_terfi?: boolean
@@ -203,6 +204,7 @@ type TerfiAlanSnapshot = {
   ek_odeme: string | null
   oht: string | null
   yan_odeme: string | null
+  yan_odeme_eksi5: string | null
   sds_orani: string | null
 }
 
@@ -221,6 +223,7 @@ function terfiPayload(s: TerfiEttirKayitSatir): TerfiAlanSnapshot {
     ek_odeme: s.ek_odeme,
     oht: s.oht,
     yan_odeme: s.yan_odeme,
+    yan_odeme_eksi5: s.yan_odeme_eksi5,
     sds_orani: s.sds_orani,
   }
 }
@@ -240,6 +243,7 @@ function terfiSnapshotFromRow(row: Tables<'terfi_hareketleri'>): TerfiAlanSnapsh
     ek_odeme: row.ek_odeme,
     oht: row.oht,
     yan_odeme: row.yan_odeme,
+    yan_odeme_eksi5: row.yan_odeme_eksi5,
     sds_orani: row.sds_orani,
   }
 }

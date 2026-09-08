@@ -1,4 +1,10 @@
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import {
+  parseKidemYili,
+  thYanOdemeKuralEtiket,
+  thYanOdemeTanimdan,
+  unvanSinifiThMi,
+} from '@/lib/kazanc-yan-odeme'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -19,6 +25,9 @@ export type KazancSapmaSatir = {
   ogrenim_turu: string | null
   /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
+  kidem_yili: string | null
+  /** TH’de kıdem bandına göre hangi yan ödeme sütununun esas alındığı */
+  yan_odeme_kural: string
   /** Alan bazında personeldeki değer ve tanımdaki değer; eşitse `farkli: false` */
   alanlar: Record<KazancAlanKey, { mevcut: string | null; tanim: string | null; farkli: boolean }>
   /** Tanımdan ayrışan alan sayısı */
@@ -49,9 +58,22 @@ function norm(v: unknown): string {
   return String(v ?? '').trim()
 }
 
+function tanimAlanDegeri(
+  tanim: KazancPuan,
+  key: KazancAlanKey,
+  kidem: number | null,
+  thMi: boolean,
+): string | null {
+  if (key === 'yan_odeme') return thYanOdemeTanimdan(tanim, kidem, thMi)
+  return tanim[key] ?? null
+}
+
 /**
  * Aktif memurların `terfi_hareketleri`'ndeki kazanç değerlerini, kadro ünvanı +
  * öğrenim + KHA derecesi için tanımlı kazanç satırıyla karşılaştırır.
+ *
+ * TH sınıfında yan ödeme kıdem yılına göre seçilir: 0–4 → −5 yıl sütunu,
+ * 5–25 → +5 yıl sütunu. Personeldeki mevcut değer `yan_odeme` alanıdır.
  *
  * Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme/SDS farkları
  * olabileceği gibi tanımın kendisi de eskimiş olabilir. Rapor karar için veri üretir.
@@ -96,11 +118,13 @@ export function kazancSapmaHesapla(
     }
 
     kontrolEdilen++
+    const thMi = unvanSinifiThMi(r.unvan_sinif)
+    const kidem = parseKidemYili(r.kidem_yili)
     const alanlar = {} as KazancSapmaSatir['alanlar']
     let farkAdedi = 0
     for (const { key } of KAZANC_ALANLARI) {
       const mevcut = norm(r[key])
-      const tanimDeger = norm(tanim[key])
+      const tanimDeger = norm(tanimAlanDegeri(tanim, key, kidem, thMi))
       const farkli = mevcut !== tanimDeger
       if (farkli) farkAdedi++
       alanlar[key] = { mevcut: mevcut || null, tanim: tanimDeger || null, farkli }
@@ -114,6 +138,8 @@ export function kazancSapmaHesapla(
       unvan_adi: r.unvan_adi,
       ogrenim_turu: r.ogrenim_turu,
       derece,
+      kidem_yili: r.kidem_yili,
+      yan_odeme_kural: thYanOdemeKuralEtiket(kidem, thMi),
       alanlar,
       farkAdedi,
     })

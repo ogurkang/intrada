@@ -43,6 +43,7 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
     <KazancBilgiDetayClient
       unvanId={unvanId}
       unvanAdi={unvanRow.unvan_adi}
+      sinifAdi={unvanRow.sinif_adi}
       data={liste}
       ogrenimler={sortTanimOgrenimByIsim((ogrenimler ?? []) as { id: number; isim: string }[])}
     />
