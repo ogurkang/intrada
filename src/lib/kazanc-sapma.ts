@@ -17,6 +17,7 @@ export type KazancSapmaSatir = {
   unvan_id: number | null
   unvan_adi: string | null
   ogrenim_turu: string | null
+  /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
   /** Alan bazında personeldeki değer ve tanımdaki değer; eşitse `farkli: false` */
   alanlar: Record<KazancAlanKey, { mevcut: string | null; tanim: string | null; farkli: boolean }>
@@ -31,6 +32,7 @@ export type KazancTanimsizSatir = {
   unvan_id: number | null
   unvan_adi: string | null
   ogrenim_turu: string | null
+  /** `terfi_hareketleri.kha_derece` — okunamadıysa null */
   derece: number | null
   /** Tanımın neden aranamadığı: eksik ana veri mi, yoksa tanım mı yok */
   neden: 'unvan_yok' | 'ogrenim_yok' | 'derece_yok' | 'tanim_yok'

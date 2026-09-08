@@ -59,7 +59,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
       'Ad Soyad',
       'Ünvan',
       'Öğrenim',
-      'Derece',
+      'KHA Derecesi',
       ...KAZANC_ALANLARI.flatMap(a => [`${a.etiket} (personel)`, `${a.etiket} (tanım)`]),
     ]).font = { bold: true }
     for (const s of filtreli) {
@@ -78,7 +78,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
 
     if (tanimsizlar.length) {
       const ws2 = wb.addWorksheet('Tanımı Bulunamayanlar')
-      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'Derece', 'Neden']).font = { bold: true }
+      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'KHA Derecesi', 'Neden']).font = { bold: true }
       for (const t of tanimsizlar) {
         ws2.addRow([t.sicil_no, t.ad_soyad ?? '', t.unvan_adi ?? '', t.ogrenim_turu ?? '', t.derece ?? '', NEDEN_ETIKET[t.neden]])
       }
@@ -170,7 +170,11 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
               <th className="px-3 py-3 font-semibold text-slate-600 min-w-[12rem]">Sicil — Ad Soyad</th>
               <th className="px-3 py-3 font-semibold text-slate-600 min-w-[10rem]">Ünvan</th>
               <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
-              <th className="px-3 py-3 font-semibold text-slate-600 text-center">Derece</th>
+              <th
+                className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
+                KHA Derecesi
+              </th>
               {KAZANC_ALANLARI.map(a => (
                 <th key={a.key} className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">
                   {a.etiket}
@@ -240,7 +244,11 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                   <th className="px-3 py-3 font-semibold text-slate-600">Sicil — Ad Soyad</th>
                   <th className="px-3 py-3 font-semibold text-slate-600">Ünvan</th>
                   <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
-                  <th className="px-3 py-3 font-semibold text-slate-600 text-center">Derece</th>
+                  <th
+                    className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                    title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
+                    KHA Derecesi
+                  </th>
                   <th className="px-3 py-3 font-semibold text-slate-600">Neden</th>
                 </tr>
               </thead>
