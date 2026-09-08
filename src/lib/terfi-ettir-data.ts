@@ -66,6 +66,33 @@ function secilenKadroSatir(sicil: string, khRows: KadroEslestirmeSatir[]): Kadro
   return [...ilgili].sort((a, b) => b.id - a.id)[0] ?? null
 }
 
+function khaDereceDoluMu(kha: string | null | undefined): boolean {
+  return Number.isFinite(Number.parseInt(String(kha ?? '').trim(), 10))
+}
+
+/**
+ * Sicil başına terfi kaydı seçimi.
+ * En yeni kaydı körlemesine almak, kapsam dışı veya KHA’sı boş bir kopyayı
+ * asıl/vekil kadro kayıtlarının önüne geçirebiliyor (ör. sicil 246).
+ * Öncelik: kapsam içi → tercih edilen kadroya bağlı → KHA derecesi dolu → kayıt zamanı.
+ */
+function terfiKaydiSec(
+  kayitlar: Tables<'terfi_hareketleri'>[],
+  tercihKadroId?: number | null,
+): Tables<'terfi_hareketleri'> | null {
+  if (!kayitlar.length) return null
+  const kapsamIci = kayitlar.filter(k => !k.kapsam_disi)
+  const havuz = kapsamIci.length ? kapsamIci : kayitlar
+
+  const kadroId = tercihKadroId != null && tercihKadroId > 0 ? tercihKadroId : null
+  const kadroyaBagli = kadroId != null ? havuz.filter(k => k.kadro_id === kadroId) : []
+  const aday = kadroyaBagli.length ? kadroyaBagli : havuz
+
+  const khaDolu = aday.filter(k => khaDereceDoluMu(k.kha_derece))
+  const secim = khaDolu.length ? khaDolu : aday
+  return [...secim].sort((a, b) => b.kayit_zamani.localeCompare(a.kayit_zamani))[0] ?? null
+}
+
 function eslestirOgrenimId(
   ogrenimTuru: string | null | undefined,
   tanimlar: { id: number; isim: string }[],
@@ -110,11 +137,16 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   })
 
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
-  const terfiMap: Record<string, Tables<'terfi_hareketleri'>> = {}
+  const terfiBySicil = new Map<string, Tables<'terfi_hareketleri'>[]>()
   for (const k of kayitlar ?? []) {
-    if (!terfiMap[k.sicil_no] || k.kayit_zamani > terfiMap[k.sicil_no].kayit_zamani) {
-      terfiMap[k.sicil_no] = k
-    }
+    const list = terfiBySicil.get(k.sicil_no)
+    if (list) list.push(k)
+    else terfiBySicil.set(k.sicil_no, [k])
+  }
+  const terfiMap: Record<string, Tables<'terfi_hareketleri'>> = {}
+  for (const [sicil, list] of terfiBySicil) {
+    const sec = terfiKaydiSec(list)
+    if (sec) terfiMap[sicil] = sec
   }
 
   const memurSiciller = [...aktifSiciller].filter((sicil) => {
@@ -146,6 +178,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
     const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
     if (uid != null) unvanIdBySicil.set(sicil, uid)
+    const sec = terfiKaydiSec(terfiBySicil.get(sicil) ?? [], r.id)
+    if (sec) terfiMap[sicil] = sec
   }
 
   const { data: kazancRaw } = await supabase.from('tanim_kazanc_bilgisi').select('*')
