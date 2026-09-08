@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export type KazancOzetSatir = {
@@ -23,11 +24,18 @@ export default function KazancBilgiOzetClient({ satirlar }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Kazanç Bilgileri</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Kadroda personeli olan ünvanlar listelenir. Satıra tıklayarak puan tanımlarını düzenleyin.
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Kazanç Bilgileri</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Kadroda personeli olan ünvanlar listelenir. Satıra tıklayarak puan tanımlarını düzenleyin.
+          </p>
+        </div>
+        <Link
+          href="/tanimlar/kazanc-bilgi/sapma"
+          className="shrink-0 text-sm font-medium border border-amber-300 bg-amber-50 text-amber-900 px-4 py-2 rounded-lg hover:bg-amber-100 shadow-sm">
+          Tanımdan sapan personel
+        </Link>
       </div>
 
       {satirlar.length === 0 ? (

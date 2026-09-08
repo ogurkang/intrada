@@ -1,0 +1,305 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import ExcelJS from 'exceljs'
+import {
+  KAZANC_ALANLARI,
+  type KazancAlanKey,
+  type KazancSapmaSatir,
+  type KazancTanimsizSatir,
+} from '@/lib/kazanc-sapma'
+
+const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
+  unvan_yok: 'Kadro ünvanı eşleşmiyor',
+  ogrenim_yok: 'Aktif öğrenim kaydı yok',
+  derece_yok: 'KHA derecesi okunamadı',
+  tanim_yok: 'Kazanç tanımı girilmemiş',
+}
+
+interface Props {
+  sapanlar: KazancSapmaSatir[]
+  tanimsizlar: KazancTanimsizSatir[]
+  kontrolEdilen: number
+  toplamPersonel: number
+}
+
+export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen, toplamPersonel }: Props) {
+  const [arama, setArama] = useState('')
+  const [unvanFiltre, setUnvanFiltre] = useState('')
+  const [alanFiltre, setAlanFiltre] = useState<'' | KazancAlanKey>('')
+
+  const unvanSecenekleri = useMemo(
+    () =>
+      [...new Set(sapanlar.map(s => s.unvan_adi ?? '—'))].sort((a, b) => a.localeCompare(b, 'tr')),
+    [sapanlar],
+  )
+
+  const filtreli = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr')
+    return sapanlar.filter(s => {
+      if (unvanFiltre && (s.unvan_adi ?? '—') !== unvanFiltre) return false
+      if (alanFiltre && !s.alanlar[alanFiltre].farkli) return false
+      if (!q) return true
+      return `${s.sicil_no} ${s.ad_soyad ?? ''}`.toLocaleLowerCase('tr').includes(q)
+    })
+  }, [sapanlar, arama, unvanFiltre, alanFiltre])
+
+  const alanSayaclari = useMemo(() => {
+    const m = {} as Record<KazancAlanKey, number>
+    for (const { key } of KAZANC_ALANLARI) m[key] = sapanlar.filter(s => s.alanlar[key].farkli).length
+    return m
+  }, [sapanlar])
+
+  async function excelIndir() {
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Tanımdan Sapanlar')
+    ws.addRow([
+      'Sicil',
+      'Ad Soyad',
+      'Ünvan',
+      'Öğrenim',
+      'Derece',
+      ...KAZANC_ALANLARI.flatMap(a => [`${a.etiket} (personel)`, `${a.etiket} (tanım)`]),
+    ]).font = { bold: true }
+    for (const s of filtreli) {
+      ws.addRow([
+        s.sicil_no,
+        s.ad_soyad ?? '',
+        s.unvan_adi ?? '',
+        s.ogrenim_turu ?? '',
+        s.derece,
+        ...KAZANC_ALANLARI.flatMap(a => [s.alanlar[a.key].mevcut ?? '—', s.alanlar[a.key].tanim ?? '—']),
+      ])
+    }
+    ws.columns.forEach(c => {
+      c.width = 16
+    })
+
+    if (tanimsizlar.length) {
+      const ws2 = wb.addWorksheet('Tanımı Bulunamayanlar')
+      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'Derece', 'Neden']).font = { bold: true }
+      for (const t of tanimsizlar) {
+        ws2.addRow([t.sicil_no, t.ad_soyad ?? '', t.unvan_adi ?? '', t.ogrenim_turu ?? '', t.derece ?? '', NEDEN_ETIKET[t.neden]])
+      }
+      ws2.columns.forEach(c => {
+        c.width = 20
+      })
+    }
+
+    const buf = await wb.xlsx.writeBuffer()
+    const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'kazanc-tanim-sapma.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <Link href="/tanimlar/kazanc-bilgi" className="text-sm text-slate-500 hover:text-slate-700">
+            ← Kazanç Bilgileri
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-800 mt-1">Tanımdan Sapan Personel</h1>
+          <p className="text-sm text-slate-500 mt-0.5 max-w-3xl">
+            Aktif memurların terfi kayıtlarındaki kazanç değerleri, kadro ünvanı + öğrenim + KHA derecesi için tanımlı
+            satırla karşılaştırılır. Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme veya SDS farkı
+            olabileceği gibi tanımın kendisi de eskimiş olabilir.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void excelIndir()}
+          className="shrink-0 text-sm font-medium border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 shadow-sm">
+          Excel indir
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <Kutu baslik="Karşılaştırılan" deger={kontrolEdilen} alt={`${toplamPersonel} aktif memur`} />
+        <Kutu baslik="Tanımdan sapan" deger={sapanlar.length} vurgu="amber" />
+        <Kutu baslik="Tanımı bulunamayan" deger={tanimsizlar.length} vurgu={tanimsizlar.length ? 'red' : undefined} />
+        <Kutu
+          baslik="En çok sapan alan"
+          deger={
+            KAZANC_ALANLARI.reduce((en, a) => (alanSayaclari[a.key] > alanSayaclari[en.key] ? a : en), KAZANC_ALANLARI[0])
+              .etiket
+          }
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          value={arama}
+          onChange={e => setArama(e.target.value)}
+          placeholder="Sicil veya ad soyad ara…"
+          className="text-sm border border-slate-300 rounded-lg px-3 py-2 min-w-[16rem]"
+        />
+        <select
+          value={unvanFiltre}
+          onChange={e => setUnvanFiltre(e.target.value)}
+          className="text-sm border border-slate-300 rounded-lg px-3 py-2">
+          <option value="">Tüm ünvanlar</option>
+          {unvanSecenekleri.map(u => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+        <select
+          value={alanFiltre}
+          onChange={e => setAlanFiltre(e.target.value as '' | KazancAlanKey)}
+          className="text-sm border border-slate-300 rounded-lg px-3 py-2">
+          <option value="">Tüm alanlar</option>
+          {KAZANC_ALANLARI.map(a => (
+            <option key={a.key} value={a.key}>
+              {a.etiket} ({alanSayaclari[a.key]})
+            </option>
+          ))}
+        </select>
+        <span className="text-sm text-slate-500 self-center">{filtreli.length} kayıt</span>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
+        <table className="w-full text-sm min-w-[68rem]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200 text-left">
+              <th className="px-3 py-3 font-semibold text-slate-600 min-w-[12rem]">Sicil — Ad Soyad</th>
+              <th className="px-3 py-3 font-semibold text-slate-600 min-w-[10rem]">Ünvan</th>
+              <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
+              <th className="px-3 py-3 font-semibold text-slate-600 text-center">Derece</th>
+              {KAZANC_ALANLARI.map(a => (
+                <th key={a.key} className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">
+                  {a.etiket}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtreli.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
+                  Filtreye uyan kayıt yok.
+                </td>
+              </tr>
+            )}
+            {filtreli.map(s => (
+              <tr key={s.sicil_no} className="hover:bg-slate-50/80 align-top">
+                <td className="px-3 py-2">
+                  <span className="text-xs text-slate-400 tabular-nums">{s.sicil_no}</span>
+                  <p className="font-medium text-slate-800">{s.ad_soyad ?? '—'}</p>
+                </td>
+                <td className="px-3 py-2 text-slate-700">
+                  {s.unvan_id != null ? (
+                    <Link href={`/tanimlar/kazanc-bilgi/${s.unvan_id}`} className="hover:underline">
+                      {s.unvan_adi ?? '—'}
+                    </Link>
+                  ) : (
+                    (s.unvan_adi ?? '—')
+                  )}
+                </td>
+                <td className="px-3 py-2 text-slate-600">{s.ogrenim_turu ?? '—'}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.derece}</td>
+                {KAZANC_ALANLARI.map(a => {
+                  const v = s.alanlar[a.key]
+                  return (
+                    <td key={a.key} className="px-3 py-2 text-center whitespace-nowrap">
+                      {v.farkli ? (
+                        <span
+                          className="inline-block rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-xs leading-tight text-amber-900"
+                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}`}>
+                          <span className="block font-semibold">{v.mevcut ?? '—'}</span>
+                          <span className="block text-[11px] font-normal opacity-80">tanım: {v.tanim ?? '—'}</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">{v.mevcut ?? '—'}</span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {tanimsizlar.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold text-slate-800">Kazanç Tanımı Bulunamayan Personel</h2>
+          <p className="text-sm text-slate-500 mt-0.5 mb-4 max-w-3xl">
+            Bu personel için ünvan + öğrenim + derece üçlüsüne karşılık gelen tanım yok. Terfide dereceleri ilerlerse
+            kazanç değerleri eski derecede kalır; Terfi Ettir önizlemesi bu satırları uyarı rozetiyle işaretler.
+          </p>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                  <th className="px-3 py-3 font-semibold text-slate-600">Sicil — Ad Soyad</th>
+                  <th className="px-3 py-3 font-semibold text-slate-600">Ünvan</th>
+                  <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
+                  <th className="px-3 py-3 font-semibold text-slate-600 text-center">Derece</th>
+                  <th className="px-3 py-3 font-semibold text-slate-600">Neden</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tanimsizlar.map(t => (
+                  <tr key={t.sicil_no} className="hover:bg-slate-50/80">
+                    <td className="px-3 py-2">
+                      <span className="text-xs text-slate-400 tabular-nums">{t.sicil_no}</span>
+                      <p className="font-medium text-slate-800">{t.ad_soyad ?? '—'}</p>
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {t.unvan_id != null ? (
+                        <Link href={`/tanimlar/kazanc-bilgi/${t.unvan_id}`} className="hover:underline">
+                          {t.unvan_adi ?? '—'}
+                        </Link>
+                      ) : (
+                        (t.unvan_adi ?? '—')
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600">{t.ogrenim_turu ?? '—'}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-slate-700">{t.derece ?? '—'}</td>
+                    <td className="px-3 py-2">
+                      <span className="inline-flex rounded-full bg-red-50 border border-red-200 px-2 py-1 text-xs font-medium text-red-800">
+                        {NEDEN_ETIKET[t.neden]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+function Kutu({
+  baslik,
+  deger,
+  alt,
+  vurgu,
+}: {
+  baslik: string
+  deger: string | number
+  alt?: string
+  vurgu?: 'amber' | 'red'
+}) {
+  const renk =
+    vurgu === 'red'
+      ? 'border-red-200 bg-red-50 text-red-900'
+      : vurgu === 'amber'
+        ? 'border-amber-200 bg-amber-50 text-amber-900'
+        : 'border-slate-200 bg-white text-slate-800'
+  return (
+    <div className={`rounded-xl border px-4 py-3 shadow-sm ${renk}`}>
+      <p className="text-xs font-medium opacity-70">{baslik}</p>
+      <p className="text-xl font-bold mt-0.5 leading-tight">{deger}</p>
+      {alt && <p className="text-[11px] opacity-70 mt-0.5">{alt}</p>}
+    </div>
+  )
+}
