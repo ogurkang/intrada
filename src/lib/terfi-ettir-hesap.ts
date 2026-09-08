@@ -188,6 +188,10 @@ export type TerfiEttirOnizlemeSatir = {
   sds_eski: string
   sds_yeni: string
   durum: TerfiEttirDurumEtiket
+  /** Derece ilerledi ama unvan+öğrenim+derece için kazanç tanımı yok; puanlar eski değerde bırakıldı */
+  kazanc_tanimi_eksik?: boolean
+  /** Kazanç tanımı bulunamayan dereceler */
+  kazanc_eksik_dereceler?: number[]
   terfi_id: number | null
   /** Öğrenim terfi modalından eklenen satır */
   ogrenim_terfi?: boolean
@@ -286,10 +290,15 @@ export function buildTerfiEttirOnizleme(
     const uId = r.unvan_id
     const oId = r.ogrenim_id
 
+    const kazancEksik = new Set<number>()
+
     const lookup = (derece: number): KazancPuan => {
-      if (uId == null || oId == null) return puanEski
-      const row = kazancLookup(uId, oId, derece)
-      return row ? kazancSatirToPuan(row) : puanEski
+      const row = uId != null && oId != null ? kazancLookup(uId, oId, derece) : null
+      if (!row) {
+        kazancEksik.add(derece)
+        return puanEski
+      }
+      return kazancSatirToPuan(row)
     }
 
     let newKd = kd
@@ -386,6 +395,8 @@ export function buildTerfiEttirOnizleme(
       sds_eski: r.sds_orani ?? '—',
       sds_yeni: puanSon.sds_orani ?? '—',
       durum,
+      kazanc_tanimi_eksik: kazancEksik.size > 0,
+      kazanc_eksik_dereceler: kazancEksik.size > 0 ? [...kazancEksik].sort((a, b) => a - b) : undefined,
       terfi_id: r.terfi_id,
       payload: {
         kha_derece: String(newKd),

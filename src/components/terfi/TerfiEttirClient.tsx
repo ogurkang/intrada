@@ -70,6 +70,20 @@ function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
   return 'bg-slate-50 text-slate-600'
 }
 
+/** Kazanç tanımı bulunamayan satır için açıklama metni */
+function kazancEksikAciklama(r: TerfiEttirOnizlemeSatir): string {
+  const dereceler = r.kazanc_eksik_dereceler ?? []
+  const derecePart = dereceler.length
+    ? `${dereceler.join('. / ')}. derece`
+    : 'ilerlediği derece'
+  const ogrenim = r.yeni_ogrenim_turu ?? r.ogrenim_turu ?? 'öğrenim durumu'
+  return (
+    `${r.unvan_adi ?? 'Ünvan'} + ${ogrenim} için ${derecePart} kazanç bilgisi tanımlı değil. ` +
+    'Ek gösterge, ek ödeme, ÖHT, yan ödeme ve SDS eski değerinde bırakıldı. ' +
+    'Tanımlar › Kazanç Bilgileri ekranından tanımı girin veya değerleri elle düzeltin.'
+  )
+}
+
 function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS.Style> {
   if (ogrenimTerfi)
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }, font: { color: { argb: 'FF9333EA' } } }
@@ -125,6 +139,8 @@ export default function TerfiEttirClient({
 
   const kaynakBySicil = useMemo(() => new Map(kaynaklar.map(k => [k.sicil_no, k])), [kaynaklar])
   const kazancLookup = useMemo(() => kazancLookupFromEntries(kazancEntries), [kazancEntries])
+
+  const kazancEksikSatirlar = useMemo(() => satirlar.filter(r => r.kazanc_tanimi_eksik), [satirlar])
 
   const tumSecili = useMemo(() => {
     if (!satirlar.length) return false
@@ -546,6 +562,21 @@ export default function TerfiEttirClient({
         <p className="text-sm text-green-700 bg-green-50 border border-green-100 px-3 py-2 rounded-lg mb-4">{basari}</p>
       )}
 
+      {kazancEksikSatirlar.length > 0 && (
+        <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg mb-4">
+          <strong>{kazancEksikSatirlar.length} satırda</strong> derece ilerlediği halde ünvan + öğrenim + derece için
+          kazanç bilgisi tanımı bulunamadı. Bu satırlarda ek gösterge, ek ödeme, ÖHT, yan ödeme ve SDS{' '}
+          <strong>eski değerinde bırakıldı</strong>. Tanımlar › Kazanç Bilgileri ekranından eksik tanımları girip
+          sayfayı yenileyin ya da değerleri aşağıdan elle düzeltin.
+          <span className="block mt-1 text-xs">
+            Etkilenen:{' '}
+            {kazancEksikSatirlar
+              .map(r => `${r.sicil_no} ${r.ad_soyad ?? ''}`.trim())
+              .join(' · ')}
+          </span>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
         <table className="w-full text-sm min-w-[1480px]">
           <thead>
@@ -716,6 +747,15 @@ export default function TerfiEttirClient({
                       className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full ${durumHucreClass(r.durum)}`}>
                       <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-current opacity-60" />
                       {r.durum}
+                    </span>
+                  )}
+                  {r.kazanc_tanimi_eksik && (
+                    <span
+                      title={kazancEksikAciklama(r)}
+                      className="mt-1 flex items-start gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-[11px] font-medium leading-tight text-amber-900">
+                      <span aria-hidden className="shrink-0">⚠</span>
+                      Kazanç tanımı yok
+                      {(r.kazanc_eksik_dereceler?.length ?? 0) > 0 && ` (d${r.kazanc_eksik_dereceler!.join(', d')})`}
                     </span>
                   )}
                 </td>

@@ -83,10 +83,15 @@ export function buildTerfiOgrenimOnizleme(input: {
   const puanEski = kazancSatirToPuan(kaynak)
   const uId = kaynak.unvan_id
 
+  const kazancEksik = new Set<number>()
+
   const lookup = (derece: number, ogrenimId: number | null): KazancPuan => {
-    if (uId == null || ogrenimId == null) return puanEski
-    const row = kazancLookup(uId, ogrenimId, derece)
-    return row ? kazancSatirToPuan(row) : puanEski
+    const row = uId != null && ogrenimId != null ? kazancLookup(uId, ogrenimId, derece) : null
+    if (!row) {
+      kazancEksik.add(derece)
+      return puanEski
+    }
+    return kazancSatirToPuan(row)
   }
 
   const sonK = hesaplaOgrenimTerfiIlerleme(kd, kk, oldMinD, newMinD)
@@ -135,6 +140,8 @@ export function buildTerfiOgrenimOnizleme(input: {
     sds_eski: kaynak.sds_orani ?? '—',
     sds_yeni: puanSon.sds_orani ?? '—',
     durum: durumEtiket,
+    kazanc_tanimi_eksik: kazancEksik.size > 0,
+    kazanc_eksik_dereceler: kazancEksik.size > 0 ? [...kazancEksik].sort((a, b) => a - b) : undefined,
     terfi_id: kaynak.terfi_id,
     ogrenim_terfi: true,
     ogrenim_olay: olay,
