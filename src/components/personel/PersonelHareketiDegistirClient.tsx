@@ -669,7 +669,7 @@ export default function PersonelHareketiDegistirClient({
                     </label>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Kadro seçiminde statüsü Memur ve durumu Boş olan kadrolar listelenir. Asil veya vekil seçiminiz kayıt sonrası kadro hareketlerine yansır.
+                    Aynı ilişki tipi (asil veya vekil) zaten varsa kadro değişikliği olarak işlenir. Yoksa yeni atama yazılır; diğer tipteki kadro durur.
                   </p>
                   <input type="hidden" name="yeni_kadro_rol" value={yeniKadroRolState} />
                 </div>
@@ -820,17 +820,11 @@ export default function PersonelHareketiDegistirClient({
         <input type="hidden" name="eski_igz" value={eski.igz} />
         <input type="hidden" name="eski_ek_odeme" value={eski.ek_odeme} />
         <input type="hidden" name="eski_ek_gosterge" value={eski.ek_gosterge} />
-        <input type="hidden" name="onceki_kadro_id" value={seciliKadro?.id ?? terfiSonState?.kadro_id ?? ''} />
+        <input type="hidden" name="onceki_kadro_id" value={seciliKadro?.id ?? ''} />
         <input
           type="hidden"
           name="onceki_kadro_rol"
-          value={
-            seciliKadro
-              ? seciliKadroRol
-              : String(terfiSonState?.rol ?? '').toLocaleLowerCase('tr-TR') === 'vekil'
-                ? 'vekil'
-                : 'asil'
-          }
+          value={seciliKadro ? seciliKadroRol : 'asil'}
         />
         <input type="hidden" name="yeni_kadro_id" value={yeniKadroIdState ?? ''} />
 

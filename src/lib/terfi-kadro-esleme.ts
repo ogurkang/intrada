@@ -75,24 +75,24 @@ export async function terfiKaydiBul(
   supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,
   sicil_no: string,
   ctx: TerfiKadroBaglam,
+  opts?: { yalnizAyniRol?: boolean },
 ): Promise<TH | null> {
   const sicil = sicil_no.trim()
   if (!sicil) return null
 
+  const rolEtiket = terfiRolEtiketi(ctx.kadro_rol)
   const kadroId = Number(ctx.kadro_id ?? 0)
   if (Number.isFinite(kadroId) && kadroId > 0) {
-    const { data } = await supabase
+    let q = supabase
       .from('terfi_hareketleri')
       .select('*')
       .eq('kadro_id', kadroId)
       .eq('sicil_no', sicil)
-      .order('kayit_zamani', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    if (opts?.yalnizAyniRol && rolEtiket) q = q.eq('rol', rolEtiket)
+    const { data } = await q.order('kayit_zamani', { ascending: false }).limit(1).maybeSingle()
     if (data) return data as TH
   }
 
-  const rolEtiket = terfiRolEtiketi(ctx.kadro_rol)
   const sira = String(ctx.kadro_sira_no ?? '').trim()
 
   if (rolEtiket && sira) {
@@ -106,6 +106,18 @@ export async function terfiKaydiBul(
       .limit(1)
       .maybeSingle()
     if (data) return data as TH
+  }
+
+  if (opts?.yalnizAyniRol && rolEtiket) {
+    const { data } = await supabase
+      .from('terfi_hareketleri')
+      .select('*')
+      .eq('sicil_no', sicil)
+      .eq('rol', rolEtiket)
+      .order('kayit_zamani', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return (data ?? null) as TH | null
   }
 
   const { data: bySicil } = await supabase

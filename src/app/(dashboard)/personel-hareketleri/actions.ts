@@ -21,6 +21,7 @@ import {
   degisiklikPayload,
 } from '@/lib/personel-audit'
 import { personelHareketIslemNoUret } from '@/lib/personel-hareket-islem-no'
+import { aktifKadroAtamasiAyniTip } from '@/lib/personel-hareket-kadro'
 import {
   type PersonelHareketDegistirVeri,
   yuklePersonelHareketDegistirVeri,
@@ -88,7 +89,10 @@ async function terfiSenkronPersonelHareketinden(
   ctx: TerfiKadroBaglam,
 ): Promise<string | undefined> {
   const rolEtiket = terfiRolEtiketi(ctx.kadro_rol)
-  let sonTerfi = await terfiKaydiBul(supabase, sicil_no, ctx)
+  let sonTerfi = await terfiKaydiBul(supabase, sicil_no, ctx, { yalnizAyniRol: true })
+  if (sonTerfi && rolEtiket && terfiRolEtiketi(sonTerfi.rol) !== rolEtiket) {
+    sonTerfi = null
+  }
 
   if (!sonTerfi?.id) {
     const { data: calisan } = await supabase
@@ -343,19 +347,22 @@ export async function personelHareketiGuncelle(
   const yeni_sds_orani = str(formData, 'yeni_sds_orani')
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const yeni_gorev_yeri = str(formData, 'yeni_gorev_yeri')
-  const onceki_kadro_id = Number.parseInt(String(formData.get('onceki_kadro_id') ?? ''), 10)
-  const onceki_kadro_rol = String(formData.get('onceki_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
   const yeni_kadro_rol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
+  const ayniTipAtama = sicil_no
+    ? await aktifKadroAtamasiAyniTip(supabase, sicil_no, yeni_kadro_rol)
+    : null
+  const onceki_kadro_id = ayniTipAtama?.kadro_id ?? null
+  const onceki_kadro_rol = ayniTipAtama?.kadro_rol ?? yeni_kadro_rol
   const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
   const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
   const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
   if (ayrilisHata) return { hata: ayrilisHata }
 
   const kadroKaydi = hedefKadroKaydi({
-    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+    onceki_kadro_id,
     onceki_kadro_rol,
     yeni_kadro_id,
     yeni_kadro_rol,
@@ -429,7 +436,7 @@ export async function personelHareketiGuncelle(
   } else {
     const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
       sicil_no,
-      onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+      onceki_kadro_id,
       onceki_kadro_rol,
       yeni_kadro_id,
       yeni_kadro_rol,
@@ -497,19 +504,20 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   const yeni_sds_orani = str(formData, 'yeni_sds_orani')
   const kadro_sira_no = str(formData, 'kadro_sira_no')
   const yeni_gorev_yeri = str(formData, 'yeni_gorev_yeri')
-  const onceki_kadro_id = Number.parseInt(String(formData.get('onceki_kadro_id') ?? ''), 10)
-  const onceki_kadro_rol = String(formData.get('onceki_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
   const yeni_kadro_id_raw = String(formData.get('yeni_kadro_id') ?? '').trim()
   const yeni_kadro_id_parsed = yeni_kadro_id_raw ? Number.parseInt(yeni_kadro_id_raw, 10) : NaN
   const yeni_kadro_id = Number.isFinite(yeni_kadro_id_parsed) && yeni_kadro_id_parsed > 0 ? yeni_kadro_id_parsed : null
   const yeni_kadro_rol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
+  const ayniTipAtama = await aktifKadroAtamasiAyniTip(supabase, sicil_no, yeni_kadro_rol)
+  const onceki_kadro_id = ayniTipAtama?.kadro_id ?? null
+  const onceki_kadro_rol = ayniTipAtama?.kadro_rol ?? yeni_kadro_rol
   const ayrilis_tarihi = tarihStr(formData, 'ayrilis_tarihi')
   const ayrilis_nedeni = str(formData, 'ayrilis_nedeni')
   const ayrilisHata = dogrulaAyrilisAlanlari(ayrilis_tarihi, ayrilis_nedeni)
   if (ayrilisHata) return { hata: ayrilisHata }
 
   const kadroKaydi = hedefKadroKaydi({
-    onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+    onceki_kadro_id,
     onceki_kadro_rol,
     yeni_kadro_id,
     yeni_kadro_rol,
@@ -610,7 +618,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   } else {
     const kadroAtama = await kadroAtamasiniGuncelle(supabase, {
       sicil_no,
-      onceki_kadro_id: Number.isFinite(onceki_kadro_id) && onceki_kadro_id > 0 ? onceki_kadro_id : null,
+      onceki_kadro_id,
       onceki_kadro_rol,
       yeni_kadro_id,
       yeni_kadro_rol,

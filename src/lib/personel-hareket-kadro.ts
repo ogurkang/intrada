@@ -1,4 +1,5 @@
 import type { Tables } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 type KH = Tables<'kadro_hareketleri'>
 type PH = Tables<'personel_hareketleri'>
@@ -61,6 +62,28 @@ export function sentetikHareketKadrodan(
     dagitim_mudurlukleri: null,
     kayit_zamani: kadro.created_at ?? kadro.updated_at ?? now,
   }
+}
+
+/** Aktif kadroda bu sicilin seçilen ilişki tipindeki (asil/vekil) kaydı. */
+export async function aktifKadroAtamasiAyniTip(
+  supabase: SupabaseClient,
+  sicil_no: string,
+  rol: 'asil' | 'vekil',
+): Promise<{ kadro_id: number; kadro_rol: 'asil' | 'vekil' } | null> {
+  const sicil = sicil_no.trim()
+  if (!sicil) return null
+  const kolon = rol === 'vekil' ? 'vekil' : 'asil'
+  const { data } = await supabase
+    .from('kadro_hareketleri')
+    .select('id')
+    .eq(kolon, sicil)
+    .is('ayrilis_tarihi', null)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const id = Number((data as { id?: number } | null)?.id ?? 0)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return { kadro_id: id, kadro_rol: rol }
 }
 
 export function kadroRolDogrula(
