@@ -65,15 +65,42 @@ export function yanOdemeTasinirToplamGoster(
   const kadro = String(kadroYan ?? '').trim()
   const ek = tasinirTutarBul(tasinirGorevi, tutarByGorev)
   if (!ek) return { text: kadro || '—' }
-  // Terfideki yan_odeme kadro puanıdır; TKY her zaman ekranda eklenir.
-  // Bildirimdeki `tasinir_yan_odeme_uygulandi` bayrağına göre atlamak,
-  // kaydı hâlâ kadro puanında olan (ör. 264 / 2775) personelde toplamı düşürüyordu.
   void _puanTerfide
   const toplam = kazancPuanTopla(kadro, ek)
   return {
     text: toplam || kadro || ek || '—',
     title: `Kadro ${kadro || '—'} + Taşınır ${ek}`,
   }
+}
+
+/** Düzenleme kutusuna yazılan görünen toplam (kadro + TKY). */
+export function yanOdemeTasinirGosterimMetni(
+  kadroYan: string | null | undefined,
+  tasinirGorevi: string | null | undefined,
+  tutarByGorev: Record<string, string> | null | undefined,
+): string {
+  const kadro = String(kadroYan ?? '').trim()
+  const ek = tasinirTutarBul(tasinirGorevi, tutarByGorev)
+  if (!ek) return kadro
+  return kazancPuanTopla(kadro, ek) ?? kadro
+}
+
+/**
+ * Görünen toplamdan TKY puanını çıkarır; terfi kaydına kadro yan ödemesi yazılır.
+ * Sayı değilse girilen metin olduğu gibi döner.
+ */
+export function yanOdemeTasinirKayitDegeri(
+  gosterilen: string | null | undefined,
+  tasinirGorevi: string | null | undefined,
+  tutarByGorev: Record<string, string> | null | undefined,
+): string {
+  const g = String(gosterilen ?? '').trim()
+  const ek = tasinirTutarBul(tasinirGorevi, tutarByGorev)
+  if (!ek || !g) return g
+  const nG = parseKazancPuan(g)
+  const nE = parseKazancPuan(ek)
+  if (nG == null || nE == null) return g
+  return formatKazancPuan(nG - nE)
 }
 
 export function tasinirTanimSirala<T extends { gorev_adi: string }>(rows: T[]): T[] {

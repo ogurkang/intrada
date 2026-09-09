@@ -156,6 +156,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       yan_odeme_eksi5: onc.yan_odeme_eksi5 ?? null,
       sds_orani: onc.sds_orani ?? null,
       terfi_id: log.terfi_id ?? null,
+      bilgisayar_kullaniyor: kaynak?.bilgisayar_kullaniyor ?? null,
     }
   })
   const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup)

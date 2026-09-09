@@ -1,5 +1,5 @@
 import { tarihDahilAralikta, tarihGun } from '@/lib/terfi-donem-aralik'
-import { parseKidemYili, thYanOdemeTanimdan, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
+import { parseKidemYili, yanOdemeTanimdan, unvanSinifiThMi, unvanYanOdemeBilgisayarMi } from '@/lib/kazanc-yan-odeme'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -119,12 +119,21 @@ export type KazancPuan = {
   oht: string | null
   yan_odeme: string | null
   yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz?: string | null
   sds_orani: string | null
 }
 
 export function kazancSatirToPuan(row: KazancPuan | null | undefined): KazancPuan {
   if (!row) {
-    return { ek_gosterge: null, ek_odeme: null, oht: null, yan_odeme: null, yan_odeme_eksi5: null, sds_orani: null }
+    return {
+      ek_gosterge: null,
+      ek_odeme: null,
+      oht: null,
+      yan_odeme: null,
+      yan_odeme_eksi5: null,
+      yan_odeme_bilgisayarsiz: null,
+      sds_orani: null,
+    }
   }
   return {
     ek_gosterge: row.ek_gosterge ?? null,
@@ -132,26 +141,34 @@ export function kazancSatirToPuan(row: KazancPuan | null | undefined): KazancPua
     oht: row.oht ?? null,
     yan_odeme: row.yan_odeme ?? null,
     yan_odeme_eksi5: row.yan_odeme_eksi5 ?? null,
+    yan_odeme_bilgisayarsiz: row.yan_odeme_bilgisayarsiz ?? null,
     sds_orani: row.sds_orani ?? null,
   }
 }
 
-/** TH’de `yan_odeme` kıdem yılına göre tanımdan seçilir; diğer puanlar olduğu gibi kalır. */
+/** TH kıdem bandı veya V.H.K.İ. yetkinliğine göre `yan_odeme` tanımdan seçilir. */
 export function puanThYanOdemeIle(
   puanSon: KazancPuan,
   tanim: KazancPuan | null,
   kidem: number | null,
   thMi: boolean,
+  unvanAdi?: string | null,
+  bilgisayarKullaniyor?: boolean | null,
 ): { puan: KazancPuan; tanimArti5: string | null } {
-  if (!thMi || !tanim) {
-    return { puan: puanSon, tanimArti5: tanim?.yan_odeme ?? null }
+  if (!tanim) {
+    return { puan: puanSon, tanimArti5: null }
   }
-  const uygulanan = thYanOdemeTanimdan(tanim, kidem, true)
+  const uygulanan = yanOdemeTanimdan(tanim, kidem, thMi, unvanAdi, bilgisayarKullaniyor)
   const uygulananDolu = String(uygulanan ?? '').trim() !== ''
+  const ozel = thMi || unvanYanOdemeBilgisayarMi(unvanAdi)
+  if (!ozel) {
+    return { puan: puanSon, tanimArti5: tanim.yan_odeme ?? null }
+  }
   return {
     puan: {
       ...puanSon,
       yan_odeme_eksi5: tanim.yan_odeme_eksi5,
+      yan_odeme_bilgisayarsiz: tanim.yan_odeme_bilgisayarsiz,
       yan_odeme: uygulananDolu ? uygulanan : puanSon.yan_odeme,
     },
     tanimArti5: tanim.yan_odeme,
@@ -185,6 +202,8 @@ export type TerfiKaynak = {
   yan_odeme_eksi5: string | null
   sds_orani: string | null
   terfi_id: number | null
+  /** `calisan.bilgisayar_kullaniyor` — V.H.K.İ. / Bilgisayar İşletmeni yan ödemesi */
+  bilgisayar_kullaniyor: boolean | null
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -407,6 +426,8 @@ export function buildTerfiEttirOnizleme(
       tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
       parseKidemYili(newKidemYili),
       thMi,
+      r.unvan_adi,
+      r.bilgisayar_kullaniyor,
     )
     puanSon = yanUyg.puan
 

@@ -123,6 +123,37 @@ export async function ogrenimGuncelle(id: number, fd: FormData): Promise<{ hata?
   return {}
 }
 
+export type OgrenimTopluSatir = {
+  id: number
+  ogrenim_turu: string | null
+  okul_adi: string | null
+  bolum: string | null
+  meslegi: string | null
+  mezuniyet_tarihi: string | null
+  varsayilan: boolean
+  kadrosu_ile_ilgili: boolean
+}
+
+export async function ogrenimTopluGuncelle(
+  satirlar: OgrenimTopluSatir[],
+): Promise<{ hata?: string; kaydedilen?: number }> {
+  let kaydedilen = 0
+  for (const s of satirlar) {
+    const fd = new FormData()
+    fd.set('ogrenim_turu', s.ogrenim_turu ?? '')
+    fd.set('okul_adi', s.okul_adi ?? '')
+    fd.set('bolum', s.bolum ?? '')
+    fd.set('meslegi', s.meslegi ?? '')
+    fd.set('mezuniyet_tarihi', s.mezuniyet_tarihi ?? '')
+    if (s.varsayilan) fd.set('varsayilan', 'on')
+    if (s.kadrosu_ile_ilgili) fd.set('kadrosu_ile_ilgili', 'on')
+    const res = await ogrenimGuncelle(s.id, fd)
+    if (res.hata) return res
+    kaydedilen++
+  }
+  return { kaydedilen }
+}
+
 export async function ogrenimSil(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const { data: row } = await supabase

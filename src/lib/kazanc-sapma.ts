@@ -1,11 +1,17 @@
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import {
   parseKidemYili,
-  thYanOdemeKuralEtiket,
-  thYanOdemeTanimdan,
   unvanSinifiThMi,
+  yanOdemeKuralKisa,
+  yanOdemeNotlariBirlestir,
+  yanOdemeTanimdan,
 } from '@/lib/kazanc-yan-odeme'
-import { parseKazancPuan, formatKazancPuan, tasinirTutarBul } from '@/lib/kazanc-tasinir-yetkili'
+import {
+  parseKazancPuan,
+  formatKazancPuan,
+  tasinirTutarBul,
+  yanOdemeTasinirGosterimMetni,
+} from '@/lib/kazanc-tasinir-yetkili'
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
@@ -28,7 +34,7 @@ export type KazancSapmaSatir = {
   /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
   kidem_yili: string | null
-  /** TH’de kıdem bandına göre hangi yan ödeme sütununun esas alındığı */
+  /** Kısa kural: Bilgisayarlı / −5 Yıl / TKY Görevi … */
   yan_odeme_kural: string
   /** Alan bazında personeldeki değer ve tanımdaki değer; eşitse `farkli: false` */
   alanlar: Record<
@@ -54,6 +60,7 @@ export type KazancTanimsizSatir = {
 
 export type KazancSapmaSonuc = {
   sapanlar: KazancSapmaSatir[]
+  uyusanlar: KazancSapmaSatir[]
   tanimsizlar: KazancTanimsizSatir[]
   /** Tanımı bulunup karşılaştırılabilen personel sayısı */
   kontrolEdilen: number
@@ -68,8 +75,10 @@ function tanimAlanDegeri(
   key: KazancAlanKey,
   kidem: number | null,
   thMi: boolean,
+  unvanAdi: string | null,
+  bilgisayarKullaniyor: boolean | null,
 ): string | null {
-  if (key === 'yan_odeme') return thYanOdemeTanimdan(tanim, kidem, thMi)
+  if (key === 'yan_odeme') return yanOdemeTanimdan(tanim, kidem, thMi, unvanAdi, bilgisayarKullaniyor)
   return tanim[key] ?? null
 }
 
@@ -80,42 +89,46 @@ function puanEsit(a: string, b: string): boolean {
   return a === b
 }
 
+/** TKY görevi varken ekranda kadro + TKY toplamı; kayıt zaten toplam ise tekrar eklenmez. */
+function yanOdemeSapmaGosterim(
+  mevcut: string,
+  tanim: string,
+  tasinirGorevi: string | null | undefined,
+  tutarByGorev: Record<string, string> | null | undefined,
+): string | null {
+  const nM = parseKazancPuan(mevcut)
+  const nT = parseKazancPuan(tanim)
+  const nE = parseKazancPuan(tasinirTutarBul(tasinirGorevi, tutarByGorev))
+  if (nM != null && nE != null && nT != null && (nM === nT + nE || nM - nE === nT)) {
+    return formatKazancPuan(nM)
+  }
+  return yanOdemeTasinirGosterimMetni(mevcut, tasinirGorevi, tutarByGorev) || mevcut || null
+}
+
 function yanOdemeSapmaKarsilastir(
   mevcutHam: string,
   tanimHam: string,
   tasinirGorevi: string | null | undefined,
   tutarByGorev: Record<string, string> | null | undefined,
+  kuralKisa: string | null,
 ): { mevcut: string | null; tanim: string | null; farkli: boolean; aciklama?: string | null } {
   const mevcut = norm(mevcutHam)
   const tanim = norm(tanimHam)
   const gorev = tasinirGoreviNormalize(tasinirGorevi)
-  const ekStr = gorev ? tasinirTutarBul(gorev, tutarByGorev) : null
   const nM = parseKazancPuan(mevcut)
   const nT = parseKazancPuan(tanim)
-  const nE = parseKazancPuan(ekStr)
+  const nE = parseKazancPuan(gorev ? tasinirTutarBul(gorev, tutarByGorev) : null)
+  const gosterilen = yanOdemeSapmaGosterim(mevcut, tanim, tasinirGorevi, tutarByGorev)
+  const tkyEtiket = gorev && nE != null ? tasinirGoreviSapmaEtiket(gorev) : null
+  const aciklama = yanOdemeNotlariBirlestir(kuralKisa, tkyEtiket)
+  const kadroEsit = puanEsit(mevcut, tanim)
+  const tkyAciklar = gorev && nM != null && nT != null && nE != null && nM - nE === nT
 
-  if (puanEsit(mevcut, tanim)) {
-    if (gorev && nM != null && nE != null) {
-      return {
-        mevcut: formatKazancPuan(nM + nE),
-        tanim: tanim || null,
-        farkli: true,
-        aciklama: tasinirGoreviSapmaEtiket(gorev),
-      }
-    }
-    return { mevcut: mevcut || null, tanim: tanim || null, farkli: false }
+  if (kadroEsit || tkyAciklar) {
+    return { mevcut: gosterilen, tanim: tanim || null, farkli: false, aciklama }
   }
 
-  if (gorev && nM != null && nT != null && nE != null && nM - nE === nT) {
-    return {
-      mevcut: mevcut || null,
-      tanim: tanim || null,
-      farkli: true,
-      aciklama: tasinirGoreviSapmaEtiket(gorev),
-    }
-  }
-
-  return { mevcut: mevcut || null, tanim: tanim || null, farkli: true }
+  return { mevcut: gosterilen, tanim: tanim || null, farkli: true, aciklama }
 }
 
 export type KazancSapmaTasinirCtx = {
@@ -127,15 +140,11 @@ export type KazancSapmaTasinirCtx = {
  * Aktif memurların `terfi_hareketleri`'ndeki kazanç değerlerini, kadro ünvanı +
  * öğrenim + KHA derecesi için tanımlı kazanç satırıyla karşılaştırır.
  *
- * TH sınıfında yan ödeme kıdem yılına göre seçilir: 0–4 → −5 yıl sütunu,
- * 5–25 → +5 yıl sütunu. Personeldeki mevcut değer `yan_odeme` alanıdır.
+ * TH: kıdem 0–4 → −5 yıl, 5–25 → +5 yıl. V.H.K.İ. / Bilgisayar İşletmeni:
+ * yetkinliğe göre Bilgisayarlı veya Bilgisayarsız sütun.
  *
- * Taşınır görevi olanlarda: personel yan ödemesinden TKY puanı düşünce tanımla
- * eşitleniyorsa (veya kadro puanı tanıma eşitken görünen toplam TKY kadar büyükse)
- * amber çerçeve kalır; açıklama `TKY Görevi` (veya kontrol yetkilisi adı) olur.
- *
- * Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme/SDS farkları
- * olabileceği gibi tanımın kendisi de eskimiş olabilir. Rapor karar için veri üretir.
+ * TKY görevi tanımı açıklıyorsa (kadro puanı eşit veya kayıttan TKY düşünce eşit)
+ * sapma sayılmaz; uyum listesinde `TKY Görevi` etiketi durur.
  */
 export function kazancSapmaHesapla(
   kaynaklar: TerfiKaynak[],
@@ -143,6 +152,7 @@ export function kazancSapmaHesapla(
   tasinirCtx?: KazancSapmaTasinirCtx | null,
 ): KazancSapmaSonuc {
   const sapanlar: KazancSapmaSatir[] = []
+  const uyusanlar: KazancSapmaSatir[] = []
   const tanimsizlar: KazancTanimsizSatir[] = []
   let kontrolEdilen = 0
 
@@ -180,17 +190,21 @@ export function kazancSapmaHesapla(
     kontrolEdilen++
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = parseKidemYili(r.kidem_yili)
+    const kuralKisa = yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)
     const alanlar = {} as KazancSapmaSatir['alanlar']
     let farkAdedi = 0
     for (const { key } of KAZANC_ALANLARI) {
       const mevcut = norm(r[key])
-      const tanimDeger = norm(tanimAlanDegeri(tanim, key, kidem, thMi))
+      const tanimDeger = norm(
+        tanimAlanDegeri(tanim, key, kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor ?? null),
+      )
       if (key === 'yan_odeme') {
         const k = yanOdemeSapmaKarsilastir(
           mevcut,
           tanimDeger,
-          tasinirCtx?.tasinirGoreviBySicil.get(r.sicil_no),
+          tasinirCtx?.tasinirGoreviBySicil.get(String(r.sicil_no).trim()),
           tasinirCtx?.tasinirTutarByGorev,
+          kuralKisa,
         )
         if (k.farkli) farkAdedi++
         alanlar[key] = k
@@ -200,9 +214,8 @@ export function kazancSapmaHesapla(
       if (farkli) farkAdedi++
       alanlar[key] = { mevcut: mevcut || null, tanim: tanimDeger || null, farkli }
     }
-    if (farkAdedi === 0) continue
 
-    sapanlar.push({
+    const satir: KazancSapmaSatir = {
       sicil_no: r.sicil_no,
       ad_soyad: r.ad_soyad,
       unvan_id: r.unvan_id,
@@ -210,10 +223,13 @@ export function kazancSapmaHesapla(
       ogrenim_turu: r.ogrenim_turu,
       derece,
       kidem_yili: r.kidem_yili,
-      yan_odeme_kural: thYanOdemeKuralEtiket(kidem, thMi),
+      yan_odeme_kural: alanlar.yan_odeme.aciklama ?? kuralKisa ?? 'Yan Ödeme',
       alanlar,
       farkAdedi,
-    })
+    }
+
+    if (farkAdedi === 0) uyusanlar.push(satir)
+    else sapanlar.push(satir)
   }
 
   const sicilSirala = (a: { sicil_no: string }, b: { sicil_no: string }) =>
@@ -222,6 +238,7 @@ export function kazancSapmaHesapla(
 
   return {
     sapanlar: sapanlar.sort(sicilSirala),
+    uyusanlar: uyusanlar.sort(sicilSirala),
     tanimsizlar: tanimsizlar.sort(sicilSirala),
     kontrolEdilen,
   }

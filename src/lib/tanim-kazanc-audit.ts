@@ -1,5 +1,5 @@
 import { auditJsonKayit } from '@/lib/personel-audit'
-import { YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
+import { YAN_ODEME_EKSI5_ETIKET, YAN_ODEME_BILGISAYARSIZ_ETIKET } from '@/lib/kazanc-yan-odeme'
 import type { Tables } from '@/types/database'
 
 export const TANIM_KAZANC_REF_TABLE = 'tanim_kazanc_bilgisi'
@@ -13,6 +13,7 @@ export const TANIM_KAZANC_ALAN_ETIKETLERI: Record<string, string> = {
   oht: 'ÖHT',
   yan_odeme: 'Yan Ödeme',
   yan_odeme_eksi5: YAN_ODEME_EKSI5_ETIKET,
+  yan_odeme_bilgisayarsiz: YAN_ODEME_BILGISAYARSIZ_ETIKET,
   sds_orani: 'SDS',
 }
 
@@ -26,6 +27,7 @@ export type TanimKazancAuditSatir = {
   oht?: string | null
   yan_odeme?: string | null
   yan_odeme_eksi5?: string | null
+  yan_odeme_bilgisayarsiz?: string | null
   sds_orani?: string | null
   kazanc_grup_id?: string | null
 }
@@ -85,6 +87,7 @@ export function tanimKazancAuditSnapshot(
     oht: r0.oht ?? '',
     yan_odeme: r0.yan_odeme ?? '',
     yan_odeme_eksi5: r0.yan_odeme_eksi5 ?? '',
+    yan_odeme_bilgisayarsiz: r0.yan_odeme_bilgisayarsiz ?? '',
     sds_orani: r0.sds_orani ?? '',
   }
 }

@@ -7,7 +7,7 @@ import type { KazancGrupAyar } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/act
 import { kazancBilgiGruplariEkle } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 import { kazancOgrenimlerSekmeListesi, type KazancOgrenimSekmesi } from '@/lib/kazanc-ogrenim-grup'
-import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
+import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET, YAN_ODEME_BILGISAYARLI_ETIKET, YAN_ODEME_BILGISAYARSIZ_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 const DERECE_SEC = Array.from({ length: 15 }, (_, i) => i + 1)
 
@@ -24,6 +24,7 @@ type SatirModel = {
   oht: string | null
   yan_odeme: string | null
   yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz: string | null
   sds_orani: string | null
 }
 
@@ -36,6 +37,7 @@ function bosSatir(): SatirModel {
     oht: null,
     yan_odeme: null,
     yan_odeme_eksi5: null,
+    yan_odeme_bilgisayarsiz: null,
     sds_orani: null,
   }
 }
@@ -59,6 +61,7 @@ export default function KazancBilgiTopluEkleTabClient({
   saltOkunur = false,
 }: Props) {
   const thSinifi = unvanSinifiThMi(sinifAdi)
+  const pcUnvani = unvanYanOdemeBilgisayarMi(unvanAdi)
   const puanAlanlari = thSinifi
     ? ([
         ['ek_gosterge', 'Ek G.'],
@@ -68,13 +71,22 @@ export default function KazancBilgiTopluEkleTabClient({
         ['yan_odeme', YAN_ODEME_ARTI5_ETIKET],
         ['sds_orani', 'SDS'],
       ] as const)
-    : ([
-        ['ek_gosterge', 'Ek G.'],
-        ['ek_odeme', 'Ek Ö.'],
-        ['oht', 'ÖHT'],
-        ['yan_odeme', 'Yan Ö.'],
-        ['sds_orani', 'SDS'],
-      ] as const)
+    : pcUnvani
+      ? ([
+          ['ek_gosterge', 'Ek G.'],
+          ['ek_odeme', 'Ek Ö.'],
+          ['oht', 'ÖHT'],
+          ['yan_odeme_bilgisayarsiz', YAN_ODEME_BILGISAYARSIZ_ETIKET],
+          ['yan_odeme', YAN_ODEME_BILGISAYARLI_ETIKET],
+          ['sds_orani', 'SDS'],
+        ] as const)
+      : ([
+          ['ek_gosterge', 'Ek G.'],
+          ['ek_odeme', 'Ek Ö.'],
+          ['oht', 'ÖHT'],
+          ['yan_odeme', 'Yan Ö.'],
+          ['sds_orani', 'SDS'],
+        ] as const)
   const [satirlar, setSatirlar] = useState<SatirModel[]>(() => [bosSatir()])
   const [satirSekme, setSatirSekme] = useState<KazancOgrenimSekmesi[]>(() => ['lisans_onlisans'])
   const [hata, setHata] = useState<string | null>(null)
@@ -126,6 +138,7 @@ export default function KazancBilgiTopluEkleTabClient({
         oht: r.oht,
         yan_odeme: r.yan_odeme,
         yan_odeme_eksi5: thSinifi ? r.yan_odeme_eksi5 : null,
+        yan_odeme_bilgisayarsiz: pcUnvani ? r.yan_odeme_bilgisayarsiz : null,
         sds_orani: r.sds_orani,
       })
     }

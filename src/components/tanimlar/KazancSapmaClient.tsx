@@ -18,42 +18,53 @@ const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
 }
 
 interface Props {
-  sapanlar: KazancSapmaSatir[]
-  tanimsizlar: KazancTanimsizSatir[]
+  mod?: 'sapma' | 'uyusan'
+  sapanlar?: KazancSapmaSatir[]
+  uyusanlar?: KazancSapmaSatir[]
+  tanimsizlar?: KazancTanimsizSatir[]
   kontrolEdilen: number
   toplamPersonel: number
 }
 
-export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen, toplamPersonel }: Props) {
+export default function KazancSapmaClient({
+  mod = 'sapma',
+  sapanlar = [],
+  uyusanlar = [],
+  tanimsizlar = [],
+  kontrolEdilen,
+  toplamPersonel,
+}: Props) {
+  const satirlar = mod === 'uyusan' ? uyusanlar : sapanlar
+  const uyum = mod === 'uyusan'
   const [arama, setArama] = useState('')
   const [unvanFiltre, setUnvanFiltre] = useState('')
   const [alanFiltre, setAlanFiltre] = useState<'' | KazancAlanKey>('')
 
   const unvanSecenekleri = useMemo(
     () =>
-      [...new Set(sapanlar.map(s => s.unvan_adi ?? '—'))].sort((a, b) => a.localeCompare(b, 'tr')),
-    [sapanlar],
+      [...new Set(satirlar.map(s => s.unvan_adi ?? '—'))].sort((a, b) => a.localeCompare(b, 'tr')),
+    [satirlar],
   )
 
   const filtreli = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase('tr')
-    return sapanlar.filter(s => {
+    return satirlar.filter(s => {
       if (unvanFiltre && (s.unvan_adi ?? '—') !== unvanFiltre) return false
-      if (alanFiltre && !s.alanlar[alanFiltre].farkli) return false
+      if (alanFiltre && !uyum && !s.alanlar[alanFiltre].farkli) return false
       if (!q) return true
       return `${s.sicil_no} ${s.ad_soyad ?? ''}`.toLocaleLowerCase('tr').includes(q)
     })
-  }, [sapanlar, arama, unvanFiltre, alanFiltre])
+  }, [satirlar, arama, unvanFiltre, alanFiltre, uyum])
 
   const alanSayaclari = useMemo(() => {
     const m = {} as Record<KazancAlanKey, number>
-    for (const { key } of KAZANC_ALANLARI) m[key] = sapanlar.filter(s => s.alanlar[key].farkli).length
+    for (const { key } of KAZANC_ALANLARI) m[key] = satirlar.filter(s => s.alanlar[key].farkli).length
     return m
-  }, [sapanlar])
+  }, [satirlar])
 
   async function excelIndir() {
     const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Tanımdan Sapanlar')
+    const ws = wb.addWorksheet(uyum ? 'Tanımla Uyuşanlar' : 'Tanımdan Sapanlar')
     ws.addRow([
       'Sicil',
       'Ad Soyad',
@@ -95,7 +106,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
     const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = url
-    a.download = 'kazanc-tanim-sapma.xlsx'
+    a.download = uyum ? 'kazanc-tanim-uyusan.xlsx' : 'kazanc-tanim-sapma.xlsx'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -107,15 +118,27 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
           <Link href="/tanimlar/kazanc-bilgi" className="text-sm text-slate-500 hover:text-slate-700">
             ← Kazanç Bilgileri
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800 mt-1">Tanımdan Sapan Personel</h1>
+          <h1 className="text-2xl font-bold text-slate-800 mt-1">
+            {uyum ? 'Tanımla Uyuşan Personel' : 'Tanımdan Sapan Personel'}
+          </h1>
           <p className="text-sm text-slate-500 mt-0.5 max-w-3xl">
-            Aktif memurların terfi kayıtlarındaki kazanç değerleri, kadro ünvanı + öğrenim + KHA derecesi için tanımlı
-            satırla karşılaştırılır. TH sınıfında yan ödeme kıdem yılına göre kontrol edilir: 0–4 yıl{' '}
-            <span className="font-medium">−5 Yıl Yan Ödeme</span>, 5–25 yıl{' '}
-            <span className="font-medium">+5 Yıl Yan Ödeme</span>. Diğer sınıflarda tek yan ödeme sütunu vardır; satırda
-            ekstra kural yazılmaz. Taşınır görevi olanlarda yan ödemeden TKY puanı düşünce tanımla eşitleniyorsa amber
-            çerçeve <span className="font-medium">TKY Görevi</span> açıklamasıyla kalır. Sapma tek başına hata anlamına
-            gelmez: kişiye özel yan ödeme veya SDS farkı olabileceği gibi tanımın kendisi de eskimiş olabilir.
+            {uyum ? (
+              <>
+                Tanımı bulunan ve tüm kazanç alanları tanıma uyan aktif memurlar. Yan ödemede iki sütun veya TKY varsa
+                kural kısa etiketi görünür: <span className="font-medium">Bilgisayarlı</span>,{' '}
+                <span className="font-medium">Bilgisayarsız</span>, <span className="font-medium">−5 Yıl</span>,{' '}
+                <span className="font-medium">+5 Yıl</span>, <span className="font-medium">TKY Görevi</span>.
+              </>
+            ) : (
+              <>
+                Aktif memurların terfi kayıtlarındaki kazanç değerleri, kadro ünvanı + öğrenim + KHA derecesi için tanımlı
+                satırla karşılaştırılır. TH sınıfında yan ödeme kıdem yılına göre kontrol edilir: 0–4 yıl{' '}
+                <span className="font-medium">−5 Yıl</span>, 5–25 yıl <span className="font-medium">+5 Yıl</span>.
+                V.H.K.İ. ve Bilgisayar İşletmeni için Yetkinlik Bildirimi esas alınır:{' '}
+                <span className="font-medium">Bilgisayarlı</span> / <span className="font-medium">Bilgisayarsız</span>.
+                TKY görevi kadro puanını açıklıyorsa kişi sapmada yer almaz. Sapma tek başına hata anlamına gelmez.
+              </>
+            )}
           </p>
         </div>
         <button
@@ -128,15 +151,23 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <Kutu baslik="Karşılaştırılan" deger={kontrolEdilen} alt={`${toplamPersonel} aktif memur`} />
-        <Kutu baslik="Tanımdan sapan" deger={sapanlar.length} vurgu="amber" />
-        <Kutu baslik="Tanımı bulunamayan" deger={tanimsizlar.length} vurgu={tanimsizlar.length ? 'red' : undefined} />
-        <Kutu
-          baslik="En çok sapan alan"
-          deger={
-            KAZANC_ALANLARI.reduce((en, a) => (alanSayaclari[a.key] > alanSayaclari[en.key] ? a : en), KAZANC_ALANLARI[0])
-              .etiket
-          }
-        />
+        {uyum ? (
+          <Kutu baslik="Tanımla uyuşan" deger={satirlar.length} vurgu="green" />
+        ) : (
+          <Kutu baslik="Tanımdan sapan" deger={satirlar.length} vurgu="amber" />
+        )}
+        {!uyum && (
+          <Kutu baslik="Tanımı bulunamayan" deger={tanimsizlar.length} vurgu={tanimsizlar.length ? 'red' : undefined} />
+        )}
+        {!uyum && (
+          <Kutu
+            baslik="En çok sapan alan"
+            deger={
+              KAZANC_ALANLARI.reduce((en, a) => (alanSayaclari[a.key] > alanSayaclari[en.key] ? a : en), KAZANC_ALANLARI[0])
+                .etiket
+            }
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -157,17 +188,19 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
             </option>
           ))}
         </select>
-        <select
-          value={alanFiltre}
-          onChange={e => setAlanFiltre(e.target.value as '' | KazancAlanKey)}
-          className="text-sm border border-slate-300 rounded-lg px-3 py-2">
-          <option value="">Tüm alanlar</option>
-          {KAZANC_ALANLARI.map(a => (
-            <option key={a.key} value={a.key}>
-              {a.etiket} ({alanSayaclari[a.key]})
-            </option>
-          ))}
-        </select>
+        {!uyum && (
+          <select
+            value={alanFiltre}
+            onChange={e => setAlanFiltre(e.target.value as '' | KazancAlanKey)}
+            className="text-sm border border-slate-300 rounded-lg px-3 py-2">
+            <option value="">Tüm alanlar</option>
+            {KAZANC_ALANLARI.map(a => (
+              <option key={a.key} value={a.key}>
+                {a.etiket} ({alanSayaclari[a.key]})
+              </option>
+            ))}
+          </select>
+        )}
         <span className="text-sm text-slate-500 self-center">{filtreli.length} kayıt</span>
       </div>
 
@@ -236,11 +269,18 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                             <span className="block text-[10px] font-normal opacity-70 mt-0.5">{yanNot}</span>
                           ) : null}
                         </span>
+                      ) : uyum && (a.key === 'yan_odeme' ? yanNot : false) ? (
+                        <span className="inline-block rounded border border-emerald-300 bg-emerald-50 px-1.5 py-1 text-xs leading-tight text-emerald-900">
+                          <span className="block font-semibold">{v.mevcut ?? '—'}</span>
+                          {yanNot ? (
+                            <span className="block text-[10px] font-normal opacity-80 mt-0.5">{yanNot}</span>
+                          ) : null}
+                        </span>
                       ) : (
                         <span className="text-xs text-slate-400">
                           {v.mevcut ?? '—'}
-                          {a.key === 'yan_odeme' && s.yan_odeme_kural !== 'Yan Ödeme' ? (
-                            <span className="block text-[10px] opacity-70">{s.yan_odeme_kural}</span>
+                          {a.key === 'yan_odeme' && yanNot ? (
+                            <span className="block text-[10px] opacity-70">{yanNot}</span>
                           ) : null}
                         </span>
                       )}
@@ -253,7 +293,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
         </table>
       </div>
 
-      {tanimsizlar.length > 0 && (
+      {!uyum && tanimsizlar.length > 0 && (
         <section className="mt-10">
           <h2 className="text-lg font-semibold text-slate-800">Kazanç Tanımı Bulunamayan Personel</h2>
           <p className="text-sm text-slate-500 mt-0.5 mb-4 max-w-3xl">
@@ -318,13 +358,15 @@ function Kutu({
   baslik: string
   deger: string | number
   alt?: string
-  vurgu?: 'amber' | 'red'
+  vurgu?: 'amber' | 'red' | 'green'
 }) {
   const renk =
     vurgu === 'red'
       ? 'border-red-200 bg-red-50 text-red-900'
       : vurgu === 'amber'
         ? 'border-amber-200 bg-amber-50 text-amber-900'
+        : vurgu === 'green'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
         : 'border-slate-200 bg-white text-slate-800'
   return (
     <div className={`rounded-xl border px-4 py-3 shadow-sm ${renk}`}>

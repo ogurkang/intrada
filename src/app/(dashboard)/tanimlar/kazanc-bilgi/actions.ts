@@ -49,13 +49,14 @@ function payloadFromForm(fd: FormData) {
       oht: str(fd, 'oht'),
       yan_odeme: str(fd, 'yan_odeme'),
       yan_odeme_eksi5: str(fd, 'yan_odeme_eksi5'),
+      yan_odeme_bilgisayarsiz: str(fd, 'yan_odeme_bilgisayarsiz'),
       sds_orani: str(fd, 'sds_orani'),
     } as const,
   }
 }
 
 const KAZANC_AUDIT_SELECT =
-  'id, sira_no, unvan_id, ogrenim_id, derece, ek_gosterge, ek_odeme, oht, yan_odeme, yan_odeme_eksi5, sds_orani, kazanc_grup_id'
+  'id, sira_no, unvan_id, ogrenim_id, derece, ek_gosterge, ek_odeme, oht, yan_odeme, yan_odeme_eksi5, yan_odeme_bilgisayarsiz, sds_orani, kazanc_grup_id'
 
 async function ogrenimIsimHaritasi(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -224,6 +225,7 @@ export type KazancTopluSatir = {
   oht: string | null
   yan_odeme: string | null
   yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz: string | null
   sds_orani: string | null
 }
 
@@ -238,6 +240,7 @@ export type KazancGrupAyar = {
   oht: string | null
   yan_odeme: string | null
   yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz: string | null
   sds_orani: string | null
 }
 
@@ -254,6 +257,7 @@ function kazancGrupInsertSatirlari(g: KazancGrupAyar, grupId: string, siraVal: n
     oht: g.oht,
     yan_odeme: g.yan_odeme,
     yan_odeme_eksi5: g.yan_odeme_eksi5,
+    yan_odeme_bilgisayarsiz: g.yan_odeme_bilgisayarsiz,
     sds_orani: g.sds_orani,
     sira_no: siraVal,
     kazanc_grup_id: grupId,
@@ -324,6 +328,7 @@ export async function kazancBilgiGrupGuncelle(
     oht: ayar.oht,
     yan_odeme: ayar.yan_odeme,
     yan_odeme_eksi5: ayar.yan_odeme_eksi5,
+    yan_odeme_bilgisayarsiz: ayar.yan_odeme_bilgisayarsiz,
     sds_orani: ayar.sds_orani,
     kazanc_grup_id: grupId,
   }))
@@ -372,6 +377,7 @@ export async function kazancBilgiTopluEkle(satirlar: KazancTopluSatir[]): Promis
     oht: r.oht,
     yan_odeme: r.yan_odeme,
     yan_odeme_eksi5: r.yan_odeme_eksi5,
+    yan_odeme_bilgisayarsiz: r.yan_odeme_bilgisayarsiz,
     sds_orani: r.sds_orani,
   }))
   return kazancBilgiGruplariEkle(gruplar)
@@ -388,6 +394,7 @@ export type KazancTopluGuncelleme = {
   oht: string | null
   yan_odeme: string | null
   yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz: string | null
   sds_orani: string | null
 }
 

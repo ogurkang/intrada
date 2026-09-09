@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { personelDetayHref } from '@/lib/personel-link'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import type { Tables } from '@/types/database'
 
 interface Satir {
   sicil_no: string
@@ -11,6 +14,8 @@ interface Satir {
   ad_soyad: string
   tckn: string | null
   deger: string | null
+  kadro_unvani?: string | null
+  gorev_unvani?: string | null
 }
 
 interface Props {
@@ -26,6 +31,15 @@ interface Props {
   onTopluKaydet: (satirlar: { sicil_no: string; deger: string | null }[]) => Promise<{ hata?: string; kaydedilen?: number }>
   /** Bu değere sahip satırlar amber arka plan alır */
   vurguDeger?: string
+  /** TCKN yerine kadro ünvanı ve görev ünvanı sütunları */
+  unvanSutunlari?: boolean
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
+  auditBaslik?: string
+  auditDiffSatirlari?: (
+    onceki: unknown,
+    sonraki: unknown,
+  ) => { alan: string; etiket: string; onceki: unknown; sonraki: unknown }[]
+  auditDegerGoster?: (alan: string, deger: unknown) => string
 }
 
 export default function PersonelTekAlanTopluClient({
@@ -39,6 +53,11 @@ export default function PersonelTekAlanTopluClient({
   onSatirKaydet,
   onTopluKaydet,
   vurguDeger,
+  unvanSutunlari = false,
+  auditLoglarByRefId = {},
+  auditBaslik = 'Değişiklik Geçmişi',
+  auditDiffSatirlari,
+  auditDegerGoster,
 }: Props) {
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
@@ -48,7 +67,10 @@ export default function PersonelTekAlanTopluClient({
   const [toplu, setToplu] = useState<Record<string, string>>({})
   const [hata, setHata] = useState<string | null>(null)
   const [topluMesaj, setTopluMesaj] = useState<string | null>(null)
+  const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const auditAcik = Boolean(auditDiffSatirlari && auditDegerGoster)
 
   const sirali = useMemo(
     () =>
@@ -69,7 +91,9 @@ export default function PersonelTekAlanTopluClient({
       p =>
         p.ad_soyad.toLocaleLowerCase('tr-TR').includes(q) ||
         p.sicil_no.toLocaleLowerCase('tr-TR').includes(q) ||
-        String(p.tckn ?? '').includes(q),
+        String(p.tckn ?? '').includes(q) ||
+        String(p.kadro_unvani ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+        String(p.gorev_unvani ?? '').toLocaleLowerCase('tr-TR').includes(q),
     )
   }, [sirali, arama])
 
@@ -98,6 +122,15 @@ export default function PersonelTekAlanTopluClient({
         setInline({})
         router.refresh()
       }
+    })
+  }
+
+  function handleInlineVazgec(sicil: string) {
+    setDuzenlenenSicil(null)
+    setInline(prev => {
+      const n = { ...prev }
+      delete n[sicil]
+      return n
     })
   }
 
@@ -162,7 +195,7 @@ export default function PersonelTekAlanTopluClient({
           <input
             value={arama}
             onChange={e => setArama(e.target.value)}
-            placeholder="Ad, sicil, TCKN ara…"
+            placeholder={unvanSutunlari ? 'Ad, sicil, ünvan ara…' : 'Ad, sicil, TCKN ara…'}
             className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm"
           />
           {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
@@ -180,13 +213,20 @@ export default function PersonelTekAlanTopluClient({
       {topluMesaj && <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg">{topluMesaj}</p>}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
-        <table className="w-full text-sm min-w-[760px]">
+        <table className={`w-full text-sm ${unvanSutunlari ? 'min-w-[920px]' : 'min-w-[760px]'}`}>
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="px-3 py-3 text-center">#</th>
               <th className="px-3 py-3 text-left">Sicil No</th>
               <th className="px-3 py-3 text-left">Adı Soyadı</th>
-              <th className="px-3 py-3 text-left">TCKN</th>
+              {unvanSutunlari ? (
+                <>
+                  <th className="px-3 py-3 text-left">Kadro Ünvanı</th>
+                  <th className="px-3 py-3 text-left">Görev Ünvanı</th>
+                </>
+              ) : (
+                <th className="px-3 py-3 text-left">TCKN</th>
+              )}
               <th className="px-3 py-3 text-left">{alanEtiketi}</th>
               {sekme === 'liste' && <th className="px-3 py-3 text-right">İşlem</th>}
             </tr>
@@ -196,6 +236,7 @@ export default function PersonelTekAlanTopluClient({
               const duz = duzenlenenSicil === s.sicil_no
               const gosterilen = sekme === 'toplu' ? topluDeger(s) : duz ? inlineDeger(s) : mevcutDeger(s)
               const vurgu = !duz && vurguDeger && gosterilen === vurguDeger ? 'bg-amber-50' : ''
+              const auditLoglar = auditLoglarByRefId[s.sicil_no] ?? []
               return (
                 <tr
                   key={s.sicil_no}
@@ -206,7 +247,14 @@ export default function PersonelTekAlanTopluClient({
                   <td className="px-3 py-2">
                     <Link href={personelDetayHref(s)} className="hover:underline">{s.ad_soyad}</Link>
                   </td>
-                  <td className="px-3 py-2">{s.tckn ?? '—'}</td>
+                  {unvanSutunlari ? (
+                    <>
+                      <td className="px-3 py-2 text-slate-700">{s.kadro_unvani?.trim() || '—'}</td>
+                      <td className="px-3 py-2 text-slate-700">{s.gorev_unvani?.trim() || '—'}</td>
+                    </>
+                  ) : (
+                    <td className="px-3 py-2">{s.tckn ?? '—'}</td>
+                  )}
                   <td className="px-3 py-2">
                     {sekme === 'liste' ? (
                       duz ? (
@@ -219,13 +267,40 @@ export default function PersonelTekAlanTopluClient({
                     )}
                   </td>
                   {sekme === 'liste' && (
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2">
                       {duz ? (
-                        <button onClick={() => handleInlineKaydet(s)} disabled={isPending} className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded">
-                          Kaydet
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleInlineVazgec(s.sicil_no)}
+                            disabled={isPending}
+                            className="text-xs text-slate-600 px-2 py-1.5 rounded hover:bg-slate-100"
+                          >
+                            Vazgeç
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInlineKaydet(s)}
+                            disabled={isPending}
+                            className="text-xs bg-slate-800 text-white px-3 py-1.5 rounded"
+                          >
+                            Kaydet
+                          </button>
+                        </div>
                       ) : (
-                        <button onClick={() => setDuzenlenenSicil(s.sicil_no)} className="text-xs text-slate-700">Düzenle</button>
+                        <div className="flex items-center justify-end gap-1">
+                          {auditAcik && (
+                            <SaatGecmisDugmesi
+                              sayi={auditLoglar.length}
+                              onClick={() => setGecmisRefId(s.sicil_no)}
+                              title="Değişiklik geçmişi"
+                            />
+                          )}
+                          <KalemDuzenleDugmesi
+                            onClick={() => setDuzenlenenSicil(s.sicil_no)}
+                            title="Düzenle"
+                          />
+                        </div>
                       )}
                     </td>
                   )}
@@ -235,6 +310,17 @@ export default function PersonelTekAlanTopluClient({
           </tbody>
         </table>
       </div>
+
+      {auditAcik && auditDiffSatirlari && auditDegerGoster && (
+        <AuditGecmisPanel
+          acik={gecmisRefId != null}
+          onKapat={() => setGecmisRefId(null)}
+          auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
+          baslik={auditBaslik}
+          diffSatirlari={auditDiffSatirlari}
+          degerGoster={auditDegerGoster}
+        />
+      )}
     </div>
   )
 }

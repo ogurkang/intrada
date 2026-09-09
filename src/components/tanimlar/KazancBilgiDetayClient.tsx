@@ -26,7 +26,7 @@ import {
   kazancBilgiTopluGrupGuncelle,
   kazancBilgiTopluSil,
 } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
-import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
+import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET, YAN_ODEME_BILGISAYARLI_ETIKET, YAN_ODEME_BILGISAYARSIZ_ETIKET } from '@/lib/kazanc-yan-odeme'
 import {
   tanimKazancAuditDegerGoster,
   tanimKazancAuditDiffSatirlari,
@@ -51,6 +51,7 @@ type TopluGrupForm = {
   oht: string
   yan_odeme: string
   yan_odeme_eksi5: string
+  yan_odeme_bilgisayarsiz: string
   sds_orani: string
 }
 
@@ -88,7 +89,14 @@ export default function KazancBilgiDetayClient({
   useIntradaTabRefresh('kazanc', router)
   const saltOkunur = useTanimlarSaltOkunur()
   const thSinifi = unvanSinifiThMi(sinifAdi)
-  const yanOdemeEtiket = thSinifi ? YAN_ODEME_ARTI5_ETIKET : 'Yan Ödeme'
+  const pcUnvani = unvanYanOdemeBilgisayarMi(unvanAdi)
+  const yanOdemeEtiket = thSinifi
+    ? YAN_ODEME_ARTI5_ETIKET
+    : pcUnvani
+      ? YAN_ODEME_BILGISAYARLI_ETIKET
+      : 'Yan Ödeme'
+  const yanCiftSutun = thSinifi || pcUnvani
+  const kazancColSpan = yanCiftSutun ? 10 : 9
   const [gorunum, setGorunum] = useState<'liste' | 'toplu'>('liste')
   const [ogrenimSekmesi, setOgrenimSekmesi] = useState<KazancOgrenimSekmesi>('lisans_onlisans')
 
@@ -101,6 +109,7 @@ export default function KazancBilgiDetayClient({
   const [editEkOdeme, setEditEkOdeme] = useState('')
   const [editOht, setEditOht] = useState('')
   const [editYanOdemeEksi5, setEditYanOdemeEksi5] = useState('')
+  const [editYanOdemeBilgisayarsiz, setEditYanOdemeBilgisayarsiz] = useState('')
   const [editYanOdeme, setEditYanOdeme] = useState('')
   const [editSds, setEditSds] = useState('')
 
@@ -134,6 +143,7 @@ export default function KazancBilgiDetayClient({
         oht: r0.oht ?? '',
         yan_odeme: r0.yan_odeme ?? '',
         yan_odeme_eksi5: r0.yan_odeme_eksi5 ?? '',
+        yan_odeme_bilgisayarsiz: r0.yan_odeme_bilgisayarsiz ?? '',
         sds_orani: r0.sds_orani ?? '',
       }
     }
@@ -158,6 +168,7 @@ export default function KazancBilgiDetayClient({
     setEditEkOdeme(g[0].ek_odeme ?? '')
     setEditOht(g[0].oht ?? '')
     setEditYanOdemeEksi5(g[0].yan_odeme_eksi5 ?? '')
+    setEditYanOdemeBilgisayarsiz(g[0].yan_odeme_bilgisayarsiz ?? '')
     setEditYanOdeme(g[0].yan_odeme ?? '')
     setEditSds(g[0].sds_orani ?? '')
     setHata(null)
@@ -233,6 +244,7 @@ export default function KazancBilgiDetayClient({
         oht: s.oht.trim() || null,
         yan_odeme: s.yan_odeme.trim() || null,
         yan_odeme_eksi5: thSinifi ? s.yan_odeme_eksi5.trim() || null : null,
+        yan_odeme_bilgisayarsiz: pcUnvani ? s.yan_odeme_bilgisayarsiz.trim() || null : null,
         sds_orani: s.sds_orani.trim() || null,
       })
     }
@@ -274,6 +286,7 @@ export default function KazancBilgiDetayClient({
           oht: editOht.trim() || null,
           yan_odeme: editYanOdeme.trim() || null,
           yan_odeme_eksi5: thSinifi ? editYanOdemeEksi5.trim() || null : null,
+          yan_odeme_bilgisayarsiz: pcUnvani ? editYanOdemeBilgisayarsiz.trim() || null : null,
           sds_orani: editSds.trim() || null,
         },
         unvanId,
@@ -417,6 +430,11 @@ export default function KazancBilgiDetayClient({
                       {YAN_ODEME_EKSI5_ETIKET}
                     </th>
                   )}
+                  {pcUnvani && (
+                    <th className="text-right px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">
+                      {YAN_ODEME_BILGISAYARSIZ_ETIKET}
+                    </th>
+                  )}
                   <th className="text-right px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">
                     {yanOdemeEtiket}
                   </th>
@@ -427,7 +445,7 @@ export default function KazancBilgiDetayClient({
               <tbody className="divide-y divide-slate-100">
                 {filtreliGruplar.length === 0 && (
                   <tr>
-                    <td colSpan={thSinifi ? 10 : 9} className="text-center py-12 text-slate-400">
+                    <td colSpan={kazancColSpan} className="text-center py-12 text-slate-400">
                       Bu öğrenim grubunda kayıt yok. «Kazanç Bilgisi Ekle» ile yeni sekmede toplu ekleyin.
                     </td>
                   </tr>
@@ -445,6 +463,9 @@ export default function KazancBilgiDetayClient({
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.oht ?? '—'}</td>
                       {thSinifi && (
                         <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme_eksi5 ?? '—'}</td>
+                      )}
+                      {pcUnvani && (
+                        <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme_bilgisayarsiz ?? '—'}</td>
                       )}
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme ?? '—'}</td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.sds_orani ?? '—'}</td>
@@ -503,6 +524,7 @@ export default function KazancBilgiDetayClient({
                   <th className="p-2">Ek Öd</th>
                   <th className="p-2">ÖHT</th>
                   {thSinifi && <th className="p-2 whitespace-nowrap">{YAN_ODEME_EKSI5_ETIKET}</th>}
+                  {pcUnvani && <th className="p-2 whitespace-nowrap">{YAN_ODEME_BILGISAYARSIZ_ETIKET}</th>}
                   <th className="p-2 whitespace-nowrap">{yanOdemeEtiket}</th>
                   <th className="p-2">SDS</th>
                   <th className="p-2 w-10" title="Geçmiş" />
@@ -511,7 +533,7 @@ export default function KazancBilgiDetayClient({
               <tbody>
                 {filtreliGruplar.length === 0 && (
                   <tr>
-                    <td colSpan={thSinifi ? 10 : 9} className="text-center py-10 text-slate-400">
+                    <td colSpan={kazancColSpan} className="text-center py-10 text-slate-400">
                       Bu öğrenim grubunda satır yok.
                     </td>
                   </tr>
@@ -610,6 +632,15 @@ export default function KazancBilgiDetayClient({
                             className="w-14 border rounded px-1"
                             value={s.yan_odeme_eksi5}
                             onChange={(e) => topluGrupAlan(gkey, 'yan_odeme_eksi5', e.target.value)}
+                          />
+                        </td>
+                      )}
+                      {pcUnvani && (
+                        <td className="p-1">
+                          <input
+                            className="w-14 border rounded px-1"
+                            value={s.yan_odeme_bilgisayarsiz}
+                            onChange={(e) => topluGrupAlan(gkey, 'yan_odeme_bilgisayarsiz', e.target.value)}
                           />
                         </td>
                       )}
@@ -753,6 +784,16 @@ export default function KazancBilgiDetayClient({
                   <input
                     value={editYanOdemeEksi5}
                     onChange={(e) => setEditYanOdemeEksi5(e.target.value)}
+                    className="mt-1 w-full border rounded-lg px-2 py-1.5 tabular-nums"
+                  />
+                </label>
+              )}
+              {pcUnvani && (
+                <label className="text-sm">
+                  {YAN_ODEME_BILGISAYARSIZ_ETIKET}
+                  <input
+                    value={editYanOdemeBilgisayarsiz}
+                    onChange={(e) => setEditYanOdemeBilgisayarsiz(e.target.value)}
                     className="mt-1 w-full border rounded-lg px-2 py-1.5 tabular-nums"
                   />
                 </label>

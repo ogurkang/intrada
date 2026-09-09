@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
+import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET, YAN_ODEME_BILGISAYARLI_ETIKET, YAN_ODEME_BILGISAYARSIZ_ETIKET } from '@/lib/kazanc-yan-odeme'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import KazancTasinirYetkiliClient from '@/components/tanimlar/KazancTasinirYetkiliClient'
 import type { Tables } from '@/types/database'
@@ -49,12 +49,20 @@ export default function KazancBilgiOzetClient({
           </p>
         </div>
         {aktifSekme === 'kadro' ? (
-          <Link
-            href="/tanimlar/kazanc-bilgi/sapma"
-            className="shrink-0 text-sm font-medium border border-amber-300 bg-amber-50 text-amber-900 px-4 py-2 rounded-lg hover:bg-amber-100 shadow-sm"
-          >
-            Tanımdan sapan personel
-          </Link>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Link
+              href="/tanimlar/kazanc-bilgi/uyusan"
+              className="text-sm font-medium border border-emerald-300 bg-emerald-50 text-emerald-900 px-4 py-2 rounded-lg hover:bg-emerald-100 shadow-sm"
+            >
+              Tanımla uyuşan personel
+            </Link>
+            <Link
+              href="/tanimlar/kazanc-bilgi/sapma"
+              className="text-sm font-medium border border-amber-300 bg-amber-50 text-amber-900 px-4 py-2 rounded-lg hover:bg-amber-100 shadow-sm"
+            >
+              Tanımdan sapan personel
+            </Link>
+          </div>
         ) : (
           !saltOkunur && (
             <Link
@@ -150,7 +158,9 @@ export default function KazancBilgiOzetClient({
                     <td className="px-4 py-3 text-slate-600 text-xs leading-relaxed">
                       {unvanSinifiThMi(s.sinif_adi)
                         ? `Ek Gösterge, Ek Ödeme, ÖHT, ${YAN_ODEME_EKSI5_ETIKET}, ${YAN_ODEME_ARTI5_ETIKET}, SDS`
-                        : PUANLAR_ETIKET}
+                        : unvanYanOdemeBilgisayarMi(s.unvan_adi)
+                          ? `Ek Gösterge, Ek Ödeme, ÖHT, ${YAN_ODEME_BILGISAYARSIZ_ETIKET}, ${YAN_ODEME_BILGISAYARLI_ETIKET}, SDS`
+                          : PUANLAR_ETIKET}
                     </td>
                   </tr>
                 ))}

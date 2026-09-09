@@ -6,6 +6,7 @@ export async function loadAuditLoglarGroupedByRefId(
   supabase: SupabaseClient,
   refTable: string,
   refIds: string[],
+  modul?: string,
 ): Promise<Record<string, Tables<'personel_audit_log'>[]>> {
   const ids = [...new Set(refIds.map(id => String(id).trim()).filter(Boolean))]
   if (!ids.length) return {}
@@ -14,15 +15,15 @@ export async function loadAuditLoglarGroupedByRefId(
   const tumLoglar: Tables<'personel_audit_log'>[] = []
   for (let i = 0; i < ids.length; i += BATCH) {
     const chunk = ids.slice(i, i + BATCH)
-    const { data, error } = await fetchAllPaged<Tables<'personel_audit_log'>>((from, to) =>
-      supabase
+    const { data, error } = await fetchAllPaged<Tables<'personel_audit_log'>>((from, to) => {
+      let q = supabase
         .from('personel_audit_log')
         .select('*')
         .eq('ref_table', refTable)
         .in('ref_id', chunk)
-        .order('created_at', { ascending: false })
-        .range(from, to),
-    )
+      if (modul) q = q.eq('modul', modul)
+      return q.order('created_at', { ascending: false }).range(from, to)
+    })
     if (error) {
       console.error('AUDIT_LOAD_FAILED', refTable, error)
       continue

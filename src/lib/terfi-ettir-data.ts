@@ -1,4 +1,4 @@
-import { fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
+import { fetchAllCalisan, fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables } from '@/types/database'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
@@ -124,7 +124,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
     await Promise.all([
       supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
-      supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
+      fetchAllCalisan<{ sicil_no: string; ad_soyad: string | null; bilgisayar_kullaniyor: boolean | null }>(
+        supabase,
+        'sicil_no, ad_soyad, bilgisayar_kullaniyor',
+      ),
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, statu').order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ayrilis_nedeni').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
@@ -137,6 +140,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   })
 
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
+  const yetkinlikBySicil = new Map<string, boolean | null>()
+  for (const c of calisanlar ?? []) {
+    yetkinlikBySicil.set(c.sicil_no, c.bilgisayar_kullaniyor ?? null)
+  }
   const terfiBySicil = new Map<string, Tables<'terfi_hareketleri'>[]>()
   for (const k of kayitlar ?? []) {
     const list = terfiBySicil.get(k.sicil_no)
@@ -203,6 +210,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       oht: row.oht,
       yan_odeme: row.yan_odeme,
       yan_odeme_eksi5: row.yan_odeme_eksi5,
+      yan_odeme_bilgisayarsiz: row.yan_odeme_bilgisayarsiz,
       sds_orani: row.sds_orani,
     })
   }
@@ -241,6 +249,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       yan_odeme_eksi5: t.yan_odeme_eksi5,
       sds_orani: t.sds_orani,
       terfi_id: t.id,
+      bilgisayar_kullaniyor: yetkinlikBySicil.get(sicil_no) ?? null,
     })
   }
 

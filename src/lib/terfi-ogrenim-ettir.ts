@@ -119,6 +119,8 @@ export function buildTerfiOgrenimOnizleme(input: {
     tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
     parseKidemYili(kaynak.kidem_yili),
     thMi,
+    kaynak.unvan_adi,
+    kaynak.bilgisayar_kullaniyor,
   )
   puanSon = yanUyg.puan
 

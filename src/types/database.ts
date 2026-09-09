@@ -352,6 +352,7 @@ export interface Database {
           oht: string | null
           yan_odeme: string | null
           yan_odeme_eksi5: string | null
+          yan_odeme_bilgisayarsiz: string | null
           sds_orani: string | null
           kazanc_grup_id: string | null
           created_at: string
@@ -368,6 +369,7 @@ export interface Database {
           oht?: string | null
           yan_odeme?: string | null
           yan_odeme_eksi5?: string | null
+          yan_odeme_bilgisayarsiz?: string | null
           sds_orani?: string | null
           kazanc_grup_id?: string | null
           created_at?: string
@@ -384,6 +386,7 @@ export interface Database {
           oht?: string | null
           yan_odeme?: string | null
           yan_odeme_eksi5?: string | null
+          yan_odeme_bilgisayarsiz?: string | null
           sds_orani?: string | null
           kazanc_grup_id?: string | null
           created_at?: string

@@ -10,7 +10,12 @@ import type { Tables } from '@/types/database'
 import type { TerfiSatir } from '@/app/(dashboard)/terfi/actions'
 import TerfiGecmisPanel from '@/components/personel/TerfiGecmisPanel'
 import { terfiIslemNo } from '@/lib/terfi-islem-no'
-import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasinir-yetkili'
+import {
+  tasinirTutarBul,
+  yanOdemeTasinirGosterimMetni,
+  yanOdemeTasinirKayitDegeri,
+  yanOdemeTasinirToplamGoster,
+} from '@/lib/kazanc-tasinir-yetkili'
 
 type TH = Tables<'terfi_hareketleri'>
 
@@ -237,6 +242,9 @@ export default function TerfiClient({
     if (alan === 'dk_ga')   return [m.terfi?.gorev_ayligi_derece, m.terfi?.gorev_ayligi_kademe].filter(Boolean).join('/') 
     if (alan === 'dk_kha')  return [m.terfi?.kha_derece,  m.terfi?.kha_kademe ].filter(Boolean).join('/')
     if (alan === 'dk_ekea') return [m.terfi?.ekea_derece, m.terfi?.ekea_kademe].filter(Boolean).join('/')
+    if (alan === 'yan_odeme') {
+      return yanOdemeTasinirGosterimMetni(m.terfi?.yan_odeme, m.tasinir_gorevi, tasinirTutarByGorev)
+    }
     return (m.terfi as Record<string, unknown> | null)?.[alan] as string ?? ''
   }
 
@@ -333,7 +341,7 @@ export default function TerfiClient({
         ek_gosterge: r.ek_gosterge ?? '',
         ek_odeme: r.ek_odeme ?? '',
         oht: r.oht ?? '',
-        yan_odeme: r.yan_odeme ?? '',
+        yan_odeme: yanOdemeTasinirGosterimMetni(r.yan_odeme, row.tasinir_gorevi, tasinirTutarByGorev),
         sds_orani: r.sds_orani ?? '',
       }})
       setFormAcik(false)
@@ -371,7 +379,10 @@ export default function TerfiClient({
   async function handleInlineKaydet(row: ListRow) {
     const r = row.terfi
     if (r?.id) {
-      const v = inlineVeri[row.liste_satir_id] ?? {}
+      const v = { ...(inlineVeri[row.liste_satir_id] ?? {}) }
+      if ('yan_odeme' in v) {
+        v.yan_odeme = yanOdemeTasinirKayitDegeri(v.yan_odeme, row.tasinir_gorevi, tasinirTutarByGorev)
+      }
       if (!inlineTerfiDegisiklikVarMi(r, v)) {
         inlineIptal(row.liste_satir_id)
         return
@@ -388,7 +399,10 @@ export default function TerfiClient({
       return
     }
     const rowKey = row.liste_satir_id
-    const v = inlineVeri[rowKey] ?? {}
+    const v = { ...(inlineVeri[rowKey] ?? {}) }
+    if ('yan_odeme' in v) {
+      v.yan_odeme = yanOdemeTasinirKayitDegeri(v.yan_odeme, row.tasinir_gorevi, tasinirTutarByGorev)
+    }
     const fd = new FormData()
     fd.set('sicil_no', row.sicil_no)
     fd.set('ad_soyad', row.ad_soyad)
@@ -428,6 +442,9 @@ export default function TerfiClient({
     e.preventDefault(); setHata(null)
     const fd = new FormData(e.currentTarget)
     if (sabitSicil) fd.set('sicil_no', sabitSicil)
+    const sicil = String(fd.get('sicil_no') ?? sabitSicil ?? secili?.sicil_no ?? yeniSicilNo).trim()
+    const gorev = tasinirGoreviBySicil.get(sicil) ?? null
+    fd.set('yan_odeme', yanOdemeTasinirKayitDegeri(String(fd.get('yan_odeme') ?? ''), gorev, tasinirTutarByGorev))
     const editing = secili
     startTransition(async () => {
       if (editing?.id != null) {
@@ -484,7 +501,9 @@ export default function TerfiClient({
         ek_gosterge:          v('ek_gosterge',         mevcut?.ek_gosterge         ?? null),
         ek_odeme:             v('ek_odeme',            mevcut?.ek_odeme            ?? null),
         oht:                  v('oht',                 mevcut?.oht                 ?? null),
-        yan_odeme:            v('yan_odeme',           mevcut?.yan_odeme           ?? null),
+        yan_odeme:            ('yan_odeme' in lokal
+          ? yanOdemeTasinirKayitDegeri(lokal.yan_odeme, m.tasinir_gorevi, tasinirTutarByGorev)
+          : (mevcut?.yan_odeme ?? null)),
         sds_orani:            v('sds_orani',           mevcut?.sds_orani           ?? null),
       }
     })
@@ -619,6 +638,9 @@ export default function TerfiClient({
                         const isDate = 'tip' in a && a.tip === 'date'
                         const val = topluDegerAl(m, a.key)
                         const dateVal = isDate && val ? (ggAayyyyToIso(val) ?? (val.includes('-') ? val : new Date(val).toISOString().slice(0, 10))) : (isDate ? '' : val)
+                        const tasinirEkToplu = a.key === 'yan_odeme'
+                          ? tasinirTutarBul(m.tasinir_gorevi, tasinirTutarByGorev)
+                          : null
                         return (
                           <td key={a.key} className="px-1 py-1">
                             <input
@@ -628,6 +650,11 @@ export default function TerfiClient({
                               className={`w-full ${baseCls}`}
                               style={{ minWidth: a.w }}
                             />
+                            {tasinirEkToplu ? (
+                              <span className="block text-[9px] text-slate-400 leading-none mt-0.5 text-center">
+                                +{tasinirEkToplu} dahil
+                              </span>
+                            ) : null}
                           </td>
                         )
                       })}
@@ -850,8 +877,8 @@ export default function TerfiClient({
                         <input type="text" value={inlineDeger(row, 'yan_odeme')} onChange={e => inlineGuncelle(row, 'yan_odeme', e.target.value)}
                           className="w-9 min-w-0 px-0.5 py-0.5 border border-slate-300 rounded text-[10px]" />
                         {tasinirEk ? (
-                          <span className="text-[9px] text-slate-400 leading-none" title="Taşınır görevi puanı kadro yan ödemesine eklenir">
-                            +{tasinirEk}
+                          <span className="text-[9px] text-slate-400 leading-none" title="Taşınır görevi puanı yan ödemeye dahildir">
+                            +{tasinirEk} dahil
                           </span>
                         ) : null}
                       </div>
@@ -991,14 +1018,29 @@ export default function TerfiClient({
             <div key={g.baslik}>
               <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{g.baslik}</p>
               <div className="grid grid-cols-3 gap-3">
-                {g.alanlar.map(a => (
+                {g.alanlar.map(a => {
+                  const tasinirEkForm = a.key === 'yan_odeme'
+                    ? tasinirTutarBul(tasinirGoreviBySicil.get(formSicilNo) ?? null, tasinirTutarByGorev)
+                    : null
+                  const yanDefault = a.key === 'yan_odeme'
+                    ? yanOdemeTasinirGosterimMetni(
+                        (s as Record<string, unknown>)?.yan_odeme as string ?? '',
+                        tasinirGoreviBySicil.get(formSicilNo) ?? null,
+                        tasinirTutarByGorev,
+                      )
+                    : ((s as Record<string, unknown>)?.[a.key] as string ?? '')
+                  return (
                   <div key={a.key}>
                     <label className="block text-xs font-medium text-slate-600 mb-1">{a.label}</label>
                     <input name={a.key} type={a.tip ?? 'text'}
-                      defaultValue={(s as Record<string, unknown>)?.[a.key] as string ?? ''}
+                      defaultValue={yanDefault}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                    {tasinirEkForm ? (
+                      <p className="mt-0.5 text-[11px] text-slate-400">+{tasinirEkForm} dahil</p>
+                    ) : null}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}
