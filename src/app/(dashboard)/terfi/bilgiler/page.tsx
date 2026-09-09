@@ -3,6 +3,7 @@ import TerfiClient from '@/components/personel/TerfiClient'
 import { terfiEkle, terfiGuncelle, terfiSil, terfiTopluKaydet, terfiKadroyaBagla, terfiKapsamDisiYap } from '../actions'
 import { terfiKayitlariIndeksle, terfiKaydiEsle } from '@/lib/terfi-kadro-esleme'
 import { personelAktifMi } from '@/lib/personel-ayrilis'
+import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import type { Tables } from '@/types/database'
 
 export default async function TerfiBilgilerPage() {
@@ -316,6 +317,7 @@ export default async function TerfiBilgilerPage() {
         ad_soyad: c.ad_soyad ?? c.sicil_no,
         unvan: null,
         mudurluk: null,
+        tasinir_gorevi: c.tasinir_gorevi ?? null,
       }))}
       memurlar={memurlar}
       eslesmemis={eslesmemis}
@@ -329,8 +331,8 @@ export default async function TerfiBilgilerPage() {
       auditLoglarByTerfiId={auditLoglarByTerfiId}
       tasinirTutarByGorev={Object.fromEntries(
         (tasinirTanimRaw ?? [])
-          .filter(r => r.gorev_adi?.trim() && r.tutar?.trim())
-          .map(r => [r.gorev_adi, r.tutar!.trim()]),
+          .map(r => [tasinirGoreviNormalize(r.gorev_adi), String(r.tutar ?? '').trim()] as const)
+          .filter((e): e is [string, string] => Boolean(e[0] && e[1])),
       )}
     />
   )

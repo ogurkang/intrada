@@ -14,7 +14,13 @@ import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasin
 
 type TH = Tables<'terfi_hareketleri'>
 
-interface Calisan { sicil_no: string; ad_soyad: string; unvan: string | null; mudurluk: string | null }
+interface Calisan {
+  sicil_no: string
+  ad_soyad: string
+  unvan: string | null
+  mudurluk: string | null
+  tasinir_gorevi?: string | null
+}
 
 interface MemurSatir {
   liste_satir_id: string
@@ -262,6 +268,12 @@ export default function TerfiClient({
     tasinir_gorevi?: string | null
     tasinir_yan_odeme_uygulandi?: boolean
   }
+  const tasinirGoreviBySicil = useMemo(() => {
+    const m = new Map<string, string | null>()
+    for (const c of calisanlar) m.set(c.sicil_no, c.tasinir_gorevi ?? null)
+    return m
+  }, [calisanlar])
+
   const listRows = useMemo((): ListRow[] => {
     if (sabitSicil) {
       return filtreli.map(r => ({
@@ -269,6 +281,7 @@ export default function TerfiClient({
         sicil_no: r.sicil_no,
         ad_soyad: r.ad_soyad ?? '',
         terfi: r,
+        tasinir_gorevi: tasinirGoreviBySicil.get(r.sicil_no) ?? null,
       }))
     }
     if (memurlar?.length) {
@@ -295,8 +308,9 @@ export default function TerfiClient({
       sicil_no: r.sicil_no,
       ad_soyad: r.ad_soyad ?? '',
       terfi: r,
+      tasinir_gorevi: tasinirGoreviBySicil.get(r.sicil_no) ?? null,
     }))
-  }, [sabitSicil, filtreli, memurlar, arama])
+  }, [sabitSicil, filtreli, memurlar, arama, tasinirGoreviBySicil])
 
   function yeniAc()        { setSecili(null); setHata(null); setFormAcik(true) }
   const [yeniSicilNo, setYeniSicilNo] = useState('')

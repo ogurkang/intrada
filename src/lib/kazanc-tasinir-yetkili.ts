@@ -60,17 +60,15 @@ export function yanOdemeTasinirToplamGoster(
   kadroYan: string | null | undefined,
   tasinirGorevi: string | null | undefined,
   tutarByGorev: Record<string, string> | null | undefined,
-  puanTerfide = false,
+  _puanTerfide = false,
 ): { text: string; title?: string } {
   const kadro = String(kadroYan ?? '').trim()
   const ek = tasinirTutarBul(tasinirGorevi, tutarByGorev)
   if (!ek) return { text: kadro || '—' }
-  if (puanTerfide) {
-    return {
-      text: kadro || '—',
-      title: `Yan ödemeye taşınır puanı (${ek}) dahildir`,
-    }
-  }
+  // Terfideki yan_odeme kadro puanıdır; TKY her zaman ekranda eklenir.
+  // Bildirimdeki `tasinir_yan_odeme_uygulandi` bayrağına göre atlamak,
+  // kaydı hâlâ kadro puanında olan (ör. 264 / 2775) personelde toplamı düşürüyordu.
+  void _puanTerfide
   const toplam = kazancPuanTopla(kadro, ek)
   return {
     text: toplam || kadro || ek || '—',

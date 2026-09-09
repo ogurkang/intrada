@@ -129,8 +129,6 @@ export async function tasinirGorevAktiflestir(
   tutarByGorev: Record<string, string>,
   bugun: string,
 ): Promise<{ hata?: string; id?: number }> {
-  const ek = tasinirTutarBul(gorev, tutarByGorev)
-  const ekN = parseKazancPuan(ek) ?? 0
 
   const { data: kendiAktif } = await supabase
     .from('tasinir_gorev_bildirimleri')
@@ -150,7 +148,9 @@ export async function tasinirGorevAktiflestir(
       gorev_adi: gorev,
       gorev_mudurlugu: mudurluk,
       aktif: true,
-      yan_odeme_uygulandi: ekN > 0,
+      // Terfi kaydı kadro puanında kalır; TKY ekranda eklenir. Terfiye yazmak
+      // hem çifte saymaya hem (yazılamazsa) bayrak yüzünden 2775 görünmesine yol açıyordu.
+      yan_odeme_uygulandi: false,
       baslangic_tarihi: bugun,
       bitis_tarihi: null,
     })
@@ -160,19 +160,9 @@ export async function tasinirGorevAktiflestir(
 
   const { error: cErr } = await supabase
     .from('calisan')
-    .update({ tasinir_gorevi: gorev, tasinir_yan_odeme_uygulandi: ekN > 0 })
+    .update({ tasinir_gorevi: gorev, tasinir_yan_odeme_uygulandi: false })
     .eq('sicil_no', sicil_no)
   if (cErr) return { hata: cErr.message }
-
-  if (ekN) {
-    const res = await terfiYanOdemeUygula(
-      supabase,
-      sicil_no,
-      ekN,
-      `Taşınır görev (${gorev}) — yan ödeme puanı eklendi`,
-    )
-    if (res.hata) return res
-  }
 
   if (!inserted?.id) return {}
   return { id: inserted.id }

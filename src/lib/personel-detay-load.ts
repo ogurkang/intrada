@@ -4,6 +4,7 @@ import type { Tables } from '@/types/database'
 import { isUuidSegment } from '@/lib/personel-link'
 import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
 import { fetchAllPaged } from '@/lib/supabase-sayfala'
+import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 
 export type PersonelDetayMalRow = {
   id: number
@@ -285,7 +286,7 @@ export async function fetchPersonelDetayPageData(
 
   const tasinirTutarByGorev: Record<string, string> = {}
   for (const r of tasinirTanimRaw ?? []) {
-    const gorev = String(r.gorev_adi ?? '').trim()
+    const gorev = tasinirGoreviNormalize(r.gorev_adi)
     const puan = String(r.tutar ?? '').trim()
     if (gorev && puan) tasinirTutarByGorev[gorev] = puan
   }
