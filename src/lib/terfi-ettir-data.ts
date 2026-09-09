@@ -4,6 +4,11 @@ import type { Database, Tables } from '@/types/database'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+import {
+  ogrenimYuksekMi,
+  teknisyenEkGostergeBaglamKur,
+  type TeknisyenEkGostergeBaglam,
+} from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
@@ -119,6 +124,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
   kazancEntries: Array<{ key: string; puan: KazancPuan }>
   tanimOgList: { id: number; isim: string }[]
+  teknisyenEkGosterge: TeknisyenEkGostergeBaglam
   memurPersoneller: { sicil_no: string; ad_soyad: string; alt?: string }[]
 }> {
   const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
@@ -162,11 +168,24 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   })
 
   const ogrenimTuruBySicil = new Map<string, string>()
+  const yuksekOgrenimBySicil = new Map<string, boolean>()
+  const kadrosuIleIlgiliBySicil = new Map<string, boolean>()
   if (memurSiciller.length > 0) {
-    const { data: ogRes } = await fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, kayit_zamani', q => q.in('sicil_no', memurSiciller).eq('aktif', true))
+    const { data: ogRes } = await fetchAllCalisanOgrenim<{
+      sicil_no: string
+      ogrenim_turu: string | null
+      kadrosu_ile_ilgili: boolean | null
+      kayit_zamani: string | null
+    }>(supabase, 'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, kayit_zamani', q =>
+      q.in('sicil_no', memurSiciller).eq('aktif', true),
+    )
     ;(ogRes ?? []).sort((a, b) => String(b.kayit_zamani ?? '').localeCompare(String(a.kayit_zamani ?? '')))
     const seenOg = new Set<string>()
     for (const o of ogRes ?? []) {
+      if (ogrenimYuksekMi(o.ogrenim_turu)) {
+        yuksekOgrenimBySicil.set(o.sicil_no, true)
+        if (o.kadrosu_ile_ilgili) kadrosuIleIlgiliBySicil.set(o.sicil_no, true)
+      }
       if (seenOg.has(o.sicil_no)) continue
       seenOg.add(o.sicil_no)
       const tt = (o.ogrenim_turu ?? '').trim()
@@ -191,14 +210,9 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 
   const unvanIdList = [...new Set(unvanIdBySicil.values())]
   const sinifByUnvanId = new Map<number, string | null>()
-  if (unvanIdList.length > 0) {
-    const { data: unvanSinifRaw } = await supabase
-      .from('tanim_unvan')
-      .select('id, sinif_adi')
-      .in('id', unvanIdList)
-    for (const u of unvanSinifRaw ?? []) {
-      sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
-    }
+  const { data: unvanAdRaw } = await supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true)
+  for (const u of unvanAdRaw ?? []) {
+    if (unvanIdList.includes(u.id)) sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
   }
 
   const { data: kazancRaw } = await supabase.from('tanim_kazanc_bilgisi').select('*')
@@ -250,6 +264,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       sds_orani: t.sds_orani,
       terfi_id: t.id,
       bilgisayar_kullaniyor: yetkinlikBySicil.get(sicil_no) ?? null,
+      yuksek_ogrenim_var: yuksekOgrenimBySicil.get(sicil_no) === true,
+      kadrosu_ile_ilgili: kadrosuIleIlgiliBySicil.get(sicil_no) === true,
     })
   }
 
@@ -257,6 +273,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
 
   const kazancEntries = [...kazancMap.entries()].map(([key, puan]) => ({ key, puan }))
+  const teknisyenEkGosterge = teknisyenEkGostergeBaglamKur({
+    unvanlar: (unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi })),
+    tanimOgList,
+  })
 
   const memurPersoneller = memurSiciller
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
@@ -269,5 +289,5 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       }
     })
 
-  return { kaynaklar, kazancLookup, kazancEntries, tanimOgList, memurPersoneller }
+  return { kaynaklar, kazancLookup, kazancEntries, tanimOgList, teknisyenEkGosterge, memurPersoneller }
 }

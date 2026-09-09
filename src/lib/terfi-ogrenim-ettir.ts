@@ -10,6 +10,11 @@ import {
   type TerfiKaynak,
 } from '@/lib/terfi-ettir-hesap'
 import { parseKidemYili, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
+import {
+  ogrenimYuksekMi,
+  teknisyenEkGostergeUygula,
+  type TeknisyenEkGostergeBaglam,
+} from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 export type TerfiOgrenimOlayTipi = 'hazirlik' | 'yuksek_lisans' | 'doktora'
 
@@ -67,8 +72,9 @@ export function buildTerfiOgrenimOnizleme(input: {
   olay: TerfiOgrenimOlayTipi
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
   tanimOgList: { id: number; isim: string }[]
+  teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null
 }): TerfiEttirOnizlemeSatir | null {
-  const { kaynak, olay, kazancLookup, tanimOgList } = input
+  const { kaynak, olay, kazancLookup, tanimOgList, teknisyenEkGosterge } = input
   if (!kaynak.terfi_id) return null
 
   const kd = parseNum(kaynak.kha_derece)
@@ -123,6 +129,14 @@ export function buildTerfiOgrenimOnizleme(input: {
     kaynak.bilgisayar_kullaniyor,
   )
   puanSon = yanUyg.puan
+  puanSon = teknisyenEkGostergeUygula(puanSon, kazancLookup, {
+    unvanAdi: kaynak.unvan_adi,
+    kadroDerecesi: kaynak.kadro_derecesi,
+    khaDerece: newKd,
+    yuksekOgrenimVar: kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru),
+    kadrosuIleIlgili: kaynak.kadrosu_ile_ilgili,
+    baglam: teknisyenEkGosterge,
+  })
 
   const durumEtiket = ogrenimOlayEtiket(olay) as TerfiEttirDurumEtiket
 

@@ -13,6 +13,10 @@ import {
   yanOdemeTasinirGosterimMetni,
 } from '@/lib/kazanc-tasinir-yetkili'
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
+import {
+  teknisyenEkGostergeUygula,
+  type TeknisyenEkGostergeBaglam,
+} from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -150,6 +154,7 @@ export function kazancSapmaHesapla(
   kaynaklar: TerfiKaynak[],
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null,
   tasinirCtx?: KazancSapmaTasinirCtx | null,
+  teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null,
 ): KazancSapmaSonuc {
   const sapanlar: KazancSapmaSatir[] = []
   const uyusanlar: KazancSapmaSatir[] = []
@@ -173,8 +178,8 @@ export function kazancSapmaHesapla(
       continue
     }
 
-    const tanim = kazancLookup(r.unvan_id, r.ogrenim_id, derece)
-    if (!tanim) {
+    const tanimHam = kazancLookup(r.unvan_id, r.ogrenim_id, derece)
+    if (!tanimHam) {
       tanimsizlar.push({
         sicil_no: r.sicil_no,
         ad_soyad: r.ad_soyad,
@@ -188,6 +193,14 @@ export function kazancSapmaHesapla(
     }
 
     kontrolEdilen++
+    const tanim = teknisyenEkGostergeUygula(tanimHam, kazancLookup, {
+      unvanAdi: r.unvan_adi,
+      kadroDerecesi: r.kadro_derecesi,
+      khaDerece: derece,
+      yuksekOgrenimVar: r.yuksek_ogrenim_var,
+      kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+      baglam: teknisyenEkGosterge,
+    })
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = parseKidemYili(r.kidem_yili)
     const kuralKisa = yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)

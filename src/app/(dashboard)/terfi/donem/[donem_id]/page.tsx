@@ -109,9 +109,9 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
   const d = row as Tables<'terfi_donem'>
   const { bas, bit } = terfiTarihPenceresiOncekiDonem(d.baslangic_tarihi, d.bitis_tarihi)
 
-  const { kaynaklar, kazancLookup, kazancEntries, tanimOgList, memurPersoneller } =
+  const { kaynaklar, kazancLookup, kazancEntries, tanimOgList, teknisyenEkGosterge, memurPersoneller } =
     await yukleTerfiEttirKaynakVeKazanc(supabase)
-  const initialRows = buildTerfiEttirOnizleme(kaynaklar, bas, bit, kazancLookup)
+  const initialRows = buildTerfiEttirOnizleme(kaynaklar, bas, bit, kazancLookup, teknisyenEkGosterge)
   const { data: logRows } = await supabase
     .from('terfi_donem_islem_log')
     .select('id, sicil_no, islem_tarihi, geri_alindi, onceki, sonraki, terfi_id, ogrenim_terfi, ogrenim_olay')
@@ -157,9 +157,11 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       sds_orani: onc.sds_orani ?? null,
       terfi_id: log.terfi_id ?? null,
       bilgisayar_kullaniyor: kaynak?.bilgisayar_kullaniyor ?? null,
+      yuksek_ogrenim_var: kaynak?.yuksek_ogrenim_var ?? false,
+      kadrosu_ile_ilgili: kaynak?.kadrosu_ile_ilgili ?? false,
     }
   })
-  const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup)
+  const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup, teknisyenEkGosterge)
   const durumBySicil = new Map(oncekiOnizleme.map(r => [r.sicil_no, r.durum]))
 
   const terfiEttirilenSatirlar: TerfiEttirOnizlemeSatir[] = aktifLoglar.map(log => {
@@ -278,6 +280,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
         kaynaklar={kaynaklar}
         kazancEntries={kazancEntries}
         tanimOgList={tanimOgList}
+        teknisyenEkGosterge={teknisyenEkGosterge}
         memurPersoneller={memurPersoneller}
         islemLoglari={
           (logRows ?? []).map(x => ({

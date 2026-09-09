@@ -6,7 +6,7 @@ import { fetchAllCalisan, fetchAllPaged } from '@/lib/supabase-sayfala'
 
 export async function yukleKazancSapmaSonuc(): Promise<KazancSapmaSonuc & { toplamPersonel: number }> {
   const supabase = await createClient()
-  const [{ kaynaklar, kazancLookup }, { data: calisanTasinir }, { data: tasinirTanim }] = await Promise.all([
+  const [{ kaynaklar, kazancLookup, teknisyenEkGosterge }, { data: calisanTasinir }, { data: tasinirTanim }] = await Promise.all([
     yukleTerfiEttirKaynakVeKazanc(supabase),
     fetchAllCalisan<{ sicil_no: string; tasinir_gorevi: string | null }>(supabase, 'sicil_no, tasinir_gorevi'),
     fetchAllPaged<{ gorev_adi: string; tutar: string | null }>((from, to) =>
@@ -32,6 +32,6 @@ export async function yukleKazancSapmaSonuc(): Promise<KazancSapmaSonuc & { topl
   const sonuc = kazancSapmaHesapla(kaynaklar, kazancLookup, {
     tasinirGoreviBySicil,
     tasinirTutarByGorev,
-  })
+  }, teknisyenEkGosterge)
   return { ...sonuc, toplamPersonel: kaynaklar.length }
 }

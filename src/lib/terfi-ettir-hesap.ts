@@ -1,5 +1,9 @@
 import { tarihDahilAralikta, tarihGun } from '@/lib/terfi-donem-aralik'
 import { parseKidemYili, yanOdemeTanimdan, unvanSinifiThMi, unvanYanOdemeBilgisayarMi } from '@/lib/kazanc-yan-odeme'
+import {
+  teknisyenEkGostergeUygula,
+  type TeknisyenEkGostergeBaglam,
+} from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -204,6 +208,10 @@ export type TerfiKaynak = {
   terfi_id: number | null
   /** `calisan.bilgisayar_kullaniyor` — V.H.K.İ. / Bilgisayar İşletmeni yan ödemesi */
   bilgisayar_kullaniyor: boolean | null
+  /** Aktif öğrenimde önlisans / lisans / YL / doktora kaydı var. */
+  yuksek_ogrenim_var: boolean
+  /** Yüksek öğrenim kaydında kadrosu ile ilgili işaretli. */
+  kadrosu_ile_ilgili: boolean
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -307,6 +315,7 @@ export function buildTerfiEttirOnizleme(
   terfiBas: string,
   terfiBit: string,
   kazancLookup: KazancLookup,
+  teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null,
 ): TerfiEttirOnizlemeSatir[] {
   const out: TerfiEttirOnizlemeSatir[] = []
   const sonrakiYilBas = birYilIleri(terfiBas)
@@ -430,6 +439,14 @@ export function buildTerfiEttirOnizleme(
       r.bilgisayar_kullaniyor,
     )
     puanSon = yanUyg.puan
+    puanSon = teknisyenEkGostergeUygula(puanSon, kazancLookup, {
+      unvanAdi: r.unvan_adi,
+      kadroDerecesi: r.kadro_derecesi,
+      khaDerece: newKd,
+      yuksekOgrenimVar: r.yuksek_ogrenim_var,
+      kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+      baglam: teknisyenEkGosterge,
+    })
 
     out.push({
       sicil_no: r.sicil_no,

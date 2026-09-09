@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import ExcelJS from 'exceljs'
 import type { KazancPuan, TerfiEttirOnizlemeSatir, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import type { TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import {
   parseKidemYili,
   thKidemEksi5BandiMi,
@@ -32,6 +33,7 @@ interface Props {
   kaynaklar: TerfiKaynak[]
   kazancEntries: Array<{ key: string; puan: KazancPuan }>
   tanimOgList: { id: number; isim: string }[]
+  teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null
   memurPersoneller: PersonelAramaOge[]
   islemLoglari: { id: number; sicil_no: string; islem_tarihi: string; geri_alindi: boolean }[]
   onGeriAlTek: (donemId: number, logId: number) => Promise<{ hata?: string }>
@@ -134,6 +136,7 @@ export default function TerfiEttirClient({
   kaynaklar,
   kazancEntries,
   tanimOgList,
+  teknisyenEkGosterge,
   memurPersoneller,
   islemLoglari,
   onGeriAlTek,
@@ -233,7 +236,7 @@ export default function TerfiEttirClient({
   function ogrenimOlayDegistir(sicil: string, olay: TerfiOgrenimOlayTipi) {
     const kaynak = kaynakBySicil.get(sicil)
     if (!kaynak) return
-    const yeni = buildTerfiOgrenimOnizleme({ kaynak, olay, kazancLookup, tanimOgList })
+    const yeni = buildTerfiOgrenimOnizleme({ kaynak, olay, kazancLookup, tanimOgList, teknisyenEkGosterge })
     if (!yeni) return
     setSatirlar(prev => prev.map(r => (r.sicil_no === sicil ? yeni : r)))
   }
@@ -258,6 +261,7 @@ export default function TerfiEttirClient({
       olay: 'hazirlik',
       kazancLookup,
       tanimOgList,
+      teknisyenEkGosterge,
     })
     if (!yeni) {
       setOgrenimModalHata('Önizleme oluşturulamadı (derece/kademe bilgisi eksik olabilir).')
