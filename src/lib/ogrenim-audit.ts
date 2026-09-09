@@ -6,6 +6,7 @@ export const OGRENIM_ALAN_ETIKETLERI: Record<string, string> = {
   mezuniyet_yili: 'Mezuniyet Yılı',
   mezuniyet_tarihi: 'Mezuniyet Tarihi',
   varsayilan: 'Varsayılan',
+  kadrosu_ile_ilgili: 'Kadrosu İle İlgili',
   aktif: 'Aktif',
 }
 
@@ -20,7 +21,7 @@ function tarihGoster(v: unknown): string {
 
 export function ogrenimAuditDegerGoster(alan: string, deger: unknown): string {
   if (deger == null || deger === '') return '—'
-  if (alan === 'varsayilan' || alan === 'aktif') return deger ? 'Evet' : 'Hayır'
+  if (alan === 'varsayilan' || alan === 'aktif' || alan === 'kadrosu_ile_ilgili') return deger ? 'Evet' : 'Hayır'
   if (TARIH_ALANLARI.has(alan)) return tarihGoster(deger)
   return String(deger)
 }

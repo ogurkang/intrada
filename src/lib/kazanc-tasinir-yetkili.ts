@@ -45,14 +45,32 @@ export function tasinirTutarBul(
   return t || null
 }
 
+export function kazancPuanDelta(
+  mevcut: string | null | undefined,
+  delta: number,
+): string | null {
+  if (!delta) return String(mevcut ?? '').trim() || null
+  const cur = String(mevcut ?? '').trim()
+  const n = parseKazancPuan(cur)
+  if (n == null) return cur || formatKazancPuan(delta)
+  return formatKazancPuan(n + delta)
+}
+
 export function yanOdemeTasinirToplamGoster(
   kadroYan: string | null | undefined,
   tasinirGorevi: string | null | undefined,
   tutarByGorev: Record<string, string> | null | undefined,
+  puanTerfide = false,
 ): { text: string; title?: string } {
   const kadro = String(kadroYan ?? '').trim()
   const ek = tasinirTutarBul(tasinirGorevi, tutarByGorev)
   if (!ek) return { text: kadro || '—' }
+  if (puanTerfide) {
+    return {
+      text: kadro || '—',
+      title: `Yan ödemeye taşınır puanı (${ek}) dahildir`,
+    }
+  }
   const toplam = kazancPuanTopla(kadro, ek)
   return {
     text: toplam || kadro || ek || '—',

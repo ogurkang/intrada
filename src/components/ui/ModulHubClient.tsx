@@ -94,6 +94,34 @@ const AUDIT_TIP_MAP: Record<ModulHubAuditTip, { diffSatirlari: DiffFn; degerGost
     diffSatirlari: sendikaIstifaAuditDiffSatirlari,
     degerGoster: sendikaIstifaAuditDegerGoster,
   },
+  'tasinir-gorev': {
+    diffSatirlari: (onceki, sonraki) => {
+      const o = (onceki && typeof onceki === 'object' ? onceki : {}) as Record<string, unknown>
+      const s = (sonraki && typeof sonraki === 'object' ? sonraki : {}) as Record<string, unknown>
+      return [...new Set([...Object.keys(o), ...Object.keys(s)])]
+        .filter(a => String(o[a] ?? '') !== String(s[a] ?? ''))
+        .map(alan => ({ alan, etiket: alan, onceki: o[alan], sonraki: s[alan] }))
+    },
+    degerGoster: (_alan, deger) => (deger == null || deger === '' ? '—' : String(deger)),
+  },
+  yetkinlik: {
+    diffSatirlari: (onceki, sonraki) => {
+      const o = (onceki && typeof onceki === 'object' ? onceki : {}) as Record<string, unknown>
+      const s = (sonraki && typeof sonraki === 'object' ? sonraki : {}) as Record<string, unknown>
+      return [...new Set([...Object.keys(o), ...Object.keys(s)])]
+        .filter(a => String(o[a] ?? '') !== String(s[a] ?? ''))
+        .map(alan => ({
+          alan,
+          etiket: alan === 'bilgisayar_kullaniyor' ? 'Yetkinlik' : alan,
+          onceki: o[alan],
+          sonraki: s[alan],
+        }))
+    },
+    degerGoster: (alan, deger) => {
+      if (alan === 'bilgisayar_kullaniyor') return deger ? 'Bilgisayar Kullanıyor' : 'Bilgisayar Kullanmıyor'
+      return deger == null || deger === '' ? '—' : String(deger)
+    },
+  },
 }
 
 export interface ModulHubKart {

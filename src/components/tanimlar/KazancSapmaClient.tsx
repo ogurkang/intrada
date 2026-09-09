@@ -72,7 +72,7 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
         s.ogrenim_turu ?? '',
         s.derece,
         s.kidem_yili ?? '',
-        s.yan_odeme_kural,
+        s.alanlar.yan_odeme.aciklama ?? s.yan_odeme_kural,
         ...KAZANC_ALANLARI.flatMap(a => [s.alanlar[a.key].mevcut ?? '—', s.alanlar[a.key].tanim ?? '—']),
       ])
     }
@@ -113,8 +113,9 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
             satırla karşılaştırılır. TH sınıfında yan ödeme kıdem yılına göre kontrol edilir: 0–4 yıl{' '}
             <span className="font-medium">−5 Yıl Yan Ödeme</span>, 5–25 yıl{' '}
             <span className="font-medium">+5 Yıl Yan Ödeme</span>. Diğer sınıflarda tek yan ödeme sütunu vardır; satırda
-            ekstra kural yazılmaz. Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme veya SDS farkı
-            olabileceği gibi tanımın kendisi de eskimiş olabilir.
+            ekstra kural yazılmaz. Taşınır görevi olanlarda yan ödemeden TKY puanı düşünce tanımla eşitleniyorsa amber
+            çerçeve <span className="font-medium">TKY Görevi</span> açıklamasıyla kalır. Sapma tek başına hata anlamına
+            gelmez: kişiye özel yan ödeme veya SDS farkı olabileceği gibi tanımın kendisi de eskimiş olabilir.
           </p>
         </div>
         <button
@@ -218,16 +219,21 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kidem_yili ?? '—'}</td>
                 {KAZANC_ALANLARI.map(a => {
                   const v = s.alanlar[a.key]
+                  const yanNot =
+                    a.key === 'yan_odeme'
+                      ? (v.aciklama ??
+                          (s.yan_odeme_kural !== 'Yan Ödeme' ? s.yan_odeme_kural : null))
+                      : null
                   return (
                     <td key={a.key} className="px-3 py-2 text-center whitespace-nowrap">
                       {v.farkli ? (
                         <span
                           className="inline-block rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-xs leading-tight text-amber-900"
-                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${a.key === 'yan_odeme' ? ` (${s.yan_odeme_kural})` : ''}`}>
+                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${yanNot ? ` (${yanNot})` : ''}`}>
                           <span className="block font-semibold">{v.mevcut ?? '—'}</span>
                           <span className="block text-[11px] font-normal opacity-80">tanım: {v.tanim ?? '—'}</span>
-                          {a.key === 'yan_odeme' && s.yan_odeme_kural !== 'Yan Ödeme' ? (
-                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">{s.yan_odeme_kural}</span>
+                          {yanNot ? (
+                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">{yanNot}</span>
                           ) : null}
                         </span>
                       ) : (

@@ -29,6 +29,7 @@ interface MemurSatir {
   kadro_sira_no?: string | null
   kadro_id?: number | null
   tasinir_gorevi?: string | null
+  tasinir_yan_odeme_uygulandi?: boolean
 }
 
 interface KadroSecenek {
@@ -259,6 +260,7 @@ export default function TerfiClient({
     kadro_sira_no?: string | null
     kadro_id?: number | null
     tasinir_gorevi?: string | null
+    tasinir_yan_odeme_uygulandi?: boolean
   }
   const listRows = useMemo((): ListRow[] => {
     if (sabitSicil) {
@@ -285,6 +287,7 @@ export default function TerfiClient({
         kadro_sira_no: m.kadro_sira_no ?? null,
         kadro_id: m.kadro_id ?? null,
         tasinir_gorevi: m.tasinir_gorevi ?? null,
+        tasinir_yan_odeme_uygulandi: m.tasinir_yan_odeme_uygulandi ?? false,
       }))
     }
     return filtreli.map(r => ({
@@ -687,7 +690,12 @@ export default function TerfiClient({
               const rowKey = row.liste_satir_id
               const duzenleniyor = duzenlenenRowKey === rowKey
               const ogTxt = row.ogrenim_turu?.trim()
-              const yanGoster = yanOdemeTasinirToplamGoster(r?.yan_odeme, row.tasinir_gorevi, tasinirTutarByGorev)
+              const yanGoster = yanOdemeTasinirToplamGoster(
+                r?.yan_odeme,
+                row.tasinir_gorevi,
+                tasinirTutarByGorev,
+                row.tasinir_yan_odeme_uygulandi,
+              )
               const tasinirEk = tasinirTutarBul(row.tasinir_gorevi, tasinirTutarByGorev)
               return (
                 <tr key={row.liste_satir_id} className={duzenleniyor ? 'bg-blue-50' : 'hover:bg-slate-50'} style={{ transition: 'background 0.2s' }}>

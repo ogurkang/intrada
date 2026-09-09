@@ -258,7 +258,7 @@ async function ogrenimTerfiKaydet(
   const yeniTur = s.yeni_ogrenim_turu.trim()
   const { data: mevcut } = await supabase
     .from('calisan_ogrenim')
-    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, kadrosu_ile_ilgili, aktif')
     .eq('sicil_no', s.sicil_no)
     .eq('aktif', true)
     .order('kayit_zamani', { ascending: false })
@@ -279,6 +279,7 @@ async function ogrenimTerfiKaydet(
     mezuniyet_yili: mevcut?.mezuniyet_yili ?? null,
     mezuniyet_tarihi: mevcut?.mezuniyet_tarihi ?? null,
     varsayilan: true,
+    kadrosu_ile_ilgili: mevcut?.kadrosu_ile_ilgili ?? false,
     aktif: true,
   }
   const { data: inserted, error } = await supabase.from('calisan_ogrenim').insert(payload).select('id').single()

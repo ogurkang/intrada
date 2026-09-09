@@ -359,6 +359,7 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
                 <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Mesleği</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Mezuniyet Tarihi</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
+                <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Kadrosu İle İlgili</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -382,6 +383,12 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
                   <td className="px-4 py-3 text-center">
                     {def
                       ? <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Evet</span>
+                      : <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Hayır</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {o.kadrosu_ile_ilgili
+                      ? <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Evet</span>
                       : <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Hayır</span>
                     }
                   </td>
@@ -709,6 +716,7 @@ function KatsayiTab({
   terfiOncesiTarihce,
   tasinirGorevi,
   tasinirTutarByGorev,
+  tasinirPuanTerfide,
 }: {
   terfiKayitlari: TH[]
   kadrolar: KH[]
@@ -717,6 +725,7 @@ function KatsayiTab({
   terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
   tasinirGorevi?: string | null
   tasinirTutarByGorev?: Record<string, string>
+  tasinirPuanTerfide?: boolean
 }) {
   const isIscı = kadrolar.some(k => (k.statu ?? '').trim() === 'İşçi')
   const fmAylik = yevmiyeFazlaMesaiAylik ?? []
@@ -739,7 +748,7 @@ function KatsayiTab({
 
   const son = terfiKayitlari[0]
   const toplamFm = fmAylik.reduce((s, r) => s + r.saat, 0)
-  const yanGoster = yanOdemeTasinirToplamGoster(son.yan_odeme, tasinirGorevi, tasinirTutarByGorev)
+  const yanGoster = yanOdemeTasinirToplamGoster(son.yan_odeme, tasinirGorevi, tasinirTutarByGorev, tasinirPuanTerfide)
   const tkyPuaniVar = !!tasinirTutarBul(tasinirGorevi, tasinirTutarByGorev)
 
   return (
@@ -1631,6 +1640,7 @@ export default function PersonelDetayClient({
               terfiOncesiTarihce={terfiOncesiTarihce}
               tasinirGorevi={calisan.tasinir_gorevi}
               tasinirTutarByGorev={tasinirTutarByGorev}
+              tasinirPuanTerfide={calisan.tasinir_yan_odeme_uygulandi}
             />
           )}
           {aktif === 'Görevlendirme Bilgileri' && (

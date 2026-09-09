@@ -18,6 +18,8 @@ export type ModulHubAuditTip =
   | 'bes-iptal'
   | 'sendika'
   | 'sendika-istifa'
+  | 'tasinir-gorev'
+  | 'yetkinlik'
 
 export interface HubSonIslemOzet {
   tarih: string

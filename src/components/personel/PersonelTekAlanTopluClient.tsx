@@ -24,6 +24,8 @@ interface Props {
   sortBy?: 'ad_soyad' | 'sicil_no' | 'sicil_no_desc'
   onSatirKaydet: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   onTopluKaydet: (satirlar: { sicil_no: string; deger: string | null }[]) => Promise<{ hata?: string; kaydedilen?: number }>
+  /** Bu değere sahip satırlar amber arka plan alır */
+  vurguDeger?: string
 }
 
 export default function PersonelTekAlanTopluClient({
@@ -36,6 +38,7 @@ export default function PersonelTekAlanTopluClient({
   sortBy = 'ad_soyad',
   onSatirKaydet,
   onTopluKaydet,
+  vurguDeger,
 }: Props) {
   const router = useRouter()
   const [sekme, setSekme] = useState<'liste' | 'toplu'>('liste')
@@ -191,8 +194,13 @@ export default function PersonelTekAlanTopluClient({
           <tbody className="divide-y divide-slate-100">
             {(sekme === 'liste' ? filtreli : sirali).map((s, i) => {
               const duz = duzenlenenSicil === s.sicil_no
+              const gosterilen = sekme === 'toplu' ? topluDeger(s) : duz ? inlineDeger(s) : mevcutDeger(s)
+              const vurgu = !duz && vurguDeger && gosterilen === vurguDeger ? 'bg-amber-50' : ''
               return (
-                <tr key={s.sicil_no} className={duz ? 'bg-blue-50' : ''}>
+                <tr
+                  key={s.sicil_no}
+                  className={duz ? 'bg-blue-50' : vurgu}
+                >
                   <td className="px-3 py-2 text-center">{i + 1}</td>
                   <td className="px-3 py-2 font-mono text-xs">{s.sicil_no}</td>
                   <td className="px-3 py-2">

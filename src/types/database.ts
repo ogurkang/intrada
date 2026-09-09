@@ -1055,6 +1055,8 @@ export interface Database {
           gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_turu_aciklama: string | null; gorev_durumu: string | null
           yerleske_adresi_id: number | null
           tasinir_gorevi: string | null
+          tasinir_yan_odeme_uygulandi: boolean
+          bilgisayar_kullaniyor: boolean
           created_at: string; updated_at: string
         }
         Insert: {
@@ -1068,6 +1070,8 @@ export interface Database {
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
+          tasinir_yan_odeme_uygulandi?: boolean
+          bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string
         }
         Update: {
@@ -1081,6 +1085,8 @@ export interface Database {
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
+          tasinir_yan_odeme_uygulandi?: boolean
+          bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string
         }
         Relationships: []
@@ -1570,10 +1576,46 @@ export interface Database {
       }
       // ─────────────────── BİLDİRİM ───────────────────
       calisan_ogrenim: {
-        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; aktif: boolean; kayit_zamani: string }
-        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
-        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; aktif?: boolean; kayit_zamani?: string }
+        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; kadrosu_ile_ilgili: boolean; aktif: boolean; kayit_zamani: string }
+        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; aktif?: boolean; kayit_zamani?: string }
+        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; aktif?: boolean; kayit_zamani?: string }
         Relationships: [{ foreignKeyName: "calisan_ogrenim_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
+      }
+      tasinir_gorev_bildirimleri: {
+        Row: {
+          id: number
+          sicil_no: string
+          gorev_adi: string
+          gorev_mudurlugu: string | null
+          aktif: boolean
+          yan_odeme_uygulandi: boolean
+          baslangic_tarihi: string
+          bitis_tarihi: string | null
+          kayit_zamani: string
+        }
+        Insert: {
+          id?: number
+          sicil_no: string
+          gorev_adi: string
+          gorev_mudurlugu?: string | null
+          aktif?: boolean
+          yan_odeme_uygulandi?: boolean
+          baslangic_tarihi?: string
+          bitis_tarihi?: string | null
+          kayit_zamani?: string
+        }
+        Update: {
+          id?: number
+          sicil_no?: string
+          gorev_adi?: string
+          gorev_mudurlugu?: string | null
+          aktif?: boolean
+          yan_odeme_uygulandi?: boolean
+          baslangic_tarihi?: string
+          bitis_tarihi?: string | null
+          kayit_zamani?: string
+        }
+        Relationships: [{ foreignKeyName: "tasinir_gorev_bildirimleri_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
       personel_sendika: {
         Row: {

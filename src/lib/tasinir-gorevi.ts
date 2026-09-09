@@ -12,4 +12,9 @@ export function tasinirGoreviNormalize(v: string | null | undefined): TasinirGor
   return (TASINIR_GOREVI_OPTIONS as readonly string[]).includes(t) ? (t as TasinirGorevi) : null
 }
 
+/** Sapma raporunda yan ödeme farkının taşınır görevden geldiğini belirtir. */
+export function tasinirGoreviSapmaEtiket(gorev: TasinirGorevi): string {
+  return gorev === 'Taşınır Kayıt Yetkilisi' ? 'TKY Görevi' : gorev
+}
+
 export const TASINIR_GOREVLENDIRME_MENU_ANAHTAR = 'tasinir_gorevlendirme_menu'

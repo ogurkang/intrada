@@ -5,6 +5,8 @@ import {
   thYanOdemeTanimdan,
   unvanSinifiThMi,
 } from '@/lib/kazanc-yan-odeme'
+import { parseKazancPuan, formatKazancPuan, tasinirTutarBul } from '@/lib/kazanc-tasinir-yetkili'
+import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -29,7 +31,10 @@ export type KazancSapmaSatir = {
   /** TH’de kıdem bandına göre hangi yan ödeme sütununun esas alındığı */
   yan_odeme_kural: string
   /** Alan bazında personeldeki değer ve tanımdaki değer; eşitse `farkli: false` */
-  alanlar: Record<KazancAlanKey, { mevcut: string | null; tanim: string | null; farkli: boolean }>
+  alanlar: Record<
+    KazancAlanKey,
+    { mevcut: string | null; tanim: string | null; farkli: boolean; aciklama?: string | null }
+  >
   /** Tanımdan ayrışan alan sayısı */
   farkAdedi: number
 }
@@ -68,6 +73,56 @@ function tanimAlanDegeri(
   return tanim[key] ?? null
 }
 
+function puanEsit(a: string, b: string): boolean {
+  const na = parseKazancPuan(a)
+  const nb = parseKazancPuan(b)
+  if (na != null && nb != null) return na === nb
+  return a === b
+}
+
+function yanOdemeSapmaKarsilastir(
+  mevcutHam: string,
+  tanimHam: string,
+  tasinirGorevi: string | null | undefined,
+  tutarByGorev: Record<string, string> | null | undefined,
+): { mevcut: string | null; tanim: string | null; farkli: boolean; aciklama?: string | null } {
+  const mevcut = norm(mevcutHam)
+  const tanim = norm(tanimHam)
+  const gorev = tasinirGoreviNormalize(tasinirGorevi)
+  const ekStr = gorev ? tasinirTutarBul(gorev, tutarByGorev) : null
+  const nM = parseKazancPuan(mevcut)
+  const nT = parseKazancPuan(tanim)
+  const nE = parseKazancPuan(ekStr)
+
+  if (puanEsit(mevcut, tanim)) {
+    if (gorev && nM != null && nE != null) {
+      return {
+        mevcut: formatKazancPuan(nM + nE),
+        tanim: tanim || null,
+        farkli: true,
+        aciklama: tasinirGoreviSapmaEtiket(gorev),
+      }
+    }
+    return { mevcut: mevcut || null, tanim: tanim || null, farkli: false }
+  }
+
+  if (gorev && nM != null && nT != null && nE != null && nM - nE === nT) {
+    return {
+      mevcut: mevcut || null,
+      tanim: tanim || null,
+      farkli: true,
+      aciklama: tasinirGoreviSapmaEtiket(gorev),
+    }
+  }
+
+  return { mevcut: mevcut || null, tanim: tanim || null, farkli: true }
+}
+
+export type KazancSapmaTasinirCtx = {
+  tasinirGoreviBySicil: Map<string, string | null>
+  tasinirTutarByGorev: Record<string, string>
+}
+
 /**
  * Aktif memurların `terfi_hareketleri`'ndeki kazanç değerlerini, kadro ünvanı +
  * öğrenim + KHA derecesi için tanımlı kazanç satırıyla karşılaştırır.
@@ -75,12 +130,17 @@ function tanimAlanDegeri(
  * TH sınıfında yan ödeme kıdem yılına göre seçilir: 0–4 → −5 yıl sütunu,
  * 5–25 → +5 yıl sütunu. Personeldeki mevcut değer `yan_odeme` alanıdır.
  *
+ * Taşınır görevi olanlarda: personel yan ödemesinden TKY puanı düşünce tanımla
+ * eşitleniyorsa (veya kadro puanı tanıma eşitken görünen toplam TKY kadar büyükse)
+ * amber çerçeve kalır; açıklama `TKY Görevi` (veya kontrol yetkilisi adı) olur.
+ *
  * Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme/SDS farkları
  * olabileceği gibi tanımın kendisi de eskimiş olabilir. Rapor karar için veri üretir.
  */
 export function kazancSapmaHesapla(
   kaynaklar: TerfiKaynak[],
   kazancLookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null,
+  tasinirCtx?: KazancSapmaTasinirCtx | null,
 ): KazancSapmaSonuc {
   const sapanlar: KazancSapmaSatir[] = []
   const tanimsizlar: KazancTanimsizSatir[] = []
@@ -125,6 +185,17 @@ export function kazancSapmaHesapla(
     for (const { key } of KAZANC_ALANLARI) {
       const mevcut = norm(r[key])
       const tanimDeger = norm(tanimAlanDegeri(tanim, key, kidem, thMi))
+      if (key === 'yan_odeme') {
+        const k = yanOdemeSapmaKarsilastir(
+          mevcut,
+          tanimDeger,
+          tasinirCtx?.tasinirGoreviBySicil.get(r.sicil_no),
+          tasinirCtx?.tasinirTutarByGorev,
+        )
+        if (k.farkli) farkAdedi++
+        alanlar[key] = k
+        continue
+      }
       const farkli = mevcut !== tanimDeger
       if (farkli) farkAdedi++
       alanlar[key] = { mevcut: mevcut || null, tanim: tanimDeger || null, farkli }

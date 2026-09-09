@@ -38,6 +38,7 @@ export async function ogrenimEkle(fd: FormData): Promise<{ hata?: string }> {
   if (!sicil_no) return { hata: 'Sicil no zorunludur.' }
 
   const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
+  const kadrosu_ile_ilgili = fd.get('kadrosu_ile_ilgili') === 'true' || fd.get('kadrosu_ile_ilgili') === 'on'
   const supabase = await createClient()
 
   if (varsayilan) await digerVarsayilanlariKapat(supabase, sicil_no, null)
@@ -51,6 +52,7 @@ export async function ogrenimEkle(fd: FormData): Promise<{ hata?: string }> {
     mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
     mezuniyet_tarihi: mezuniyetFromForm(str(fd, 'mezuniyet_tarihi')),
     varsayilan,
+    kadrosu_ile_ilgili,
     aktif: varsayilan,
   }
 
@@ -80,11 +82,12 @@ export async function ogrenimGuncelle(id: number, fd: FormData): Promise<{ hata?
   }
 
   const varsayilan = fd.get('varsayilan') === 'true' || fd.get('varsayilan') === 'on'
+  const kadrosu_ile_ilgili = fd.get('kadrosu_ile_ilgili') === 'true' || fd.get('kadrosu_ile_ilgili') === 'on'
   if (varsayilan) await digerVarsayilanlariKapat(supabase, sicil_no, id)
 
   const { data: onceki } = await supabase
     .from('calisan_ogrenim')
-    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .select('ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, kadrosu_ile_ilgili, aktif')
     .eq('id', id)
     .maybeSingle()
 
@@ -96,6 +99,7 @@ export async function ogrenimGuncelle(id: number, fd: FormData): Promise<{ hata?
     mezuniyet_yili: str(fd, 'mezuniyet_yili') ? parseInt(String(fd.get('mezuniyet_yili')), 10) : null,
     mezuniyet_tarihi: mezuniyetFromForm(str(fd, 'mezuniyet_tarihi')),
     varsayilan,
+    kadrosu_ile_ilgili,
     aktif: varsayilan,
   }
 
@@ -123,7 +127,7 @@ export async function ogrenimSil(id: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const { data: row } = await supabase
     .from('calisan_ogrenim')
-    .select('sicil_no, ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, aktif')
+    .select('sicil_no, ogrenim_turu, okul_adi, bolum, meslegi, mezuniyet_yili, mezuniyet_tarihi, varsayilan, kadrosu_ile_ilgili, aktif')
     .eq('id', id)
     .single()
   if (row?.sicil_no && (await personelAyrilmisMi(supabase, row.sicil_no))) {
@@ -154,6 +158,7 @@ export type OgrenimSatirInput = {
   mezuniyet_tarihi: string | null
   meslegi: string | null
   varsayilan: boolean
+  kadrosu_ile_ilgili: boolean
 }
 
 export async function ogrenimSatirlariEkle(
@@ -174,6 +179,7 @@ export async function ogrenimSatirlariEkle(
       mezuniyet_yili: null,
       mezuniyet_tarihi: mezuniyetFromForm(s.mezuniyet_tarihi),
       varsayilan: s.varsayilan,
+      kadrosu_ile_ilgili: s.kadrosu_ile_ilgili,
       aktif: s.varsayilan,
     }
     const { data: inserted, error } = await supabase.from('calisan_ogrenim').insert(payload).select('id').single()

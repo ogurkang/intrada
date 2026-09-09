@@ -306,6 +306,8 @@ function buildMenuGroups(
     items: [
       { href: '/bildirim',         label: 'Genel Bakış'      },
       { href: '/bildirim/ogrenim', label: 'Öğrenim Bildirimi'},
+      { href: '/bildirim/tasinir-gorev', label: 'Taşınır Görev Bildirimi'},
+      { href: '/bildirim/yetkinlik', label: 'Yetkinlik Bildirimi'},
       { href: '/bildirim/sendika', label: 'Sendika Bildirimi'},
       { href: '/bildirim/aile',    label: 'Aile Bildirimi'   },
       { href: '/bildirim/mal',     label: 'Mal Bildirimi'    },

@@ -5,6 +5,7 @@ import { loadAuditLoglarByRefTables, hubSonIslemFromLogs, type ModulHubAuditTip 
 
 const BILDIRIM_REF_TABLES = [
   'calisan_ogrenim',
+  'tasinir_gorev_bildirimleri',
   'personel_sendika',
   'aile_bildirimi',
   'mal_bildirimi',
@@ -68,6 +69,8 @@ export default async function BildirimHubPage() {
 
   const [
     { count: ogrenimSayisi },
+    { count: tasinirGorevSayisi },
+    { count: yetkinlikSayisi },
     { count: aileSayisi },
     { count: malSayisi },
     { count: pasaportSayisi },
@@ -84,6 +87,8 @@ export default async function BildirimHubPage() {
     auditLoglarByRefTable,
   ] = await Promise.all([
     supabase.from('calisan_ogrenim').select('*', { count: 'exact', head: true }),
+    supabase.from('tasinir_gorev_bildirimleri').select('*', { count: 'exact', head: true }),
+    supabase.from('calisan').select('*', { count: 'exact', head: true }).eq('bilgisayar_kullaniyor', false),
     aileCountQ,
     malCountQ,
     pasaportCountQ,
@@ -115,6 +120,40 @@ export default async function BildirimHubPage() {
       ikon: (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+        </svg>
+      ),
+    },
+    {
+      key: 'tasinir-gorev',
+      baslik: 'Taşınır Görev Bildirimi',
+      aciklama: 'Taşınır kayıt ve kontrol yetkilisi görevlendirmeleri',
+      href: '/bildirim/tasinir-gorev',
+      refTable: 'tasinir_gorev_bildirimleri' as const,
+      sayi: tasinirGorevSayisi ?? 0,
+      birim: 'kayıt',
+      renk: 'border-teal-200 bg-teal-50',
+      ikonRenk: 'bg-teal-100 text-teal-600',
+      auditTip: 'tasinir-gorev' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'yetkinlik',
+      baslik: 'Yetkinlik Bildirimi',
+      aciklama: 'Memur personelin bilgisayar kullanım yetkinliği',
+      href: '/bildirim/yetkinlik',
+      refTable: 'calisan' as const,
+      sayi: yetkinlikSayisi ?? 0,
+      birim: 'kullanmıyor',
+      renk: 'border-amber-200 bg-amber-50',
+      ikonRenk: 'bg-amber-100 text-amber-700',
+      auditTip: 'yetkinlik' as ModulHubAuditTip,
+      ikon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
         </svg>
       ),
     },
@@ -344,7 +383,7 @@ export default async function BildirimHubPage() {
   return (
     <ModulHubClient
       baslik="Bildirim Modülü"
-      aciklama="Öğrenim, sendika, aile, mal bildirimleri, pasaport, hizmet birleştirme, mehil izni, aylıksız izin, yarı zamanlı çalışma, harcırah talep, çalışma belgesi, BES iptal ve sendika istifa işlemleri. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
+      aciklama="Öğrenim, taşınır görev, yetkinlik, sendika, aile, mal bildirimleri ve diğer işlemler. Kartlarda son işlem kaydı gösterilir; saat simgesiyle tüm geçmişe erişebilirsiniz."
       gridClassName="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
       kartlar={kartlar.map(k => {
         const auditLoglar = auditLoglarByRefTable[k.refTable] ?? []
