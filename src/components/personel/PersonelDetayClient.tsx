@@ -9,11 +9,11 @@ import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
+import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasinir-yetkili'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
 import { izinAuditDiffSatirlari, izinAuditDegerGoster } from '@/lib/izin-audit'
-import { YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -78,6 +78,7 @@ interface Props {
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
   tanimGostergeKha?: string | null
   terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
+  tasinirTutarByGorev?: Record<string, string>
   onKisiselGuncelle?: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
   saltOkunur?: boolean
@@ -706,12 +707,16 @@ function KatsayiTab({
   yevmiyeFazlaMesaiAylik,
   tanimGostergeKha,
   terfiOncesiTarihce,
+  tasinirGorevi,
+  tasinirTutarByGorev,
 }: {
   terfiKayitlari: TH[]
   kadrolar: KH[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
   tanimGostergeKha?: string | null
   terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
+  tasinirGorevi?: string | null
+  tasinirTutarByGorev?: Record<string, string>
 }) {
   const isIscı = kadrolar.some(k => (k.statu ?? '').trim() === 'İşçi')
   const fmAylik = yevmiyeFazlaMesaiAylik ?? []
@@ -734,6 +739,8 @@ function KatsayiTab({
 
   const son = terfiKayitlari[0]
   const toplamFm = fmAylik.reduce((s, r) => s + r.saat, 0)
+  const yanGoster = yanOdemeTasinirToplamGoster(son.yan_odeme, tasinirGorevi, tasinirTutarByGorev)
+  const tkyPuaniVar = !!tasinirTutarBul(tasinirGorevi, tasinirTutarByGorev)
 
   return (
     <div className="space-y-5">
@@ -783,9 +790,16 @@ function KatsayiTab({
             <Alan etiket="Ek Gösterge" deger={son.ek_gosterge} />
             <Alan etiket="Ek Ödeme" deger={son.ek_odeme} />
             <Alan etiket="ÖHT" deger={son.oht} />
-            <Alan etiket={YAN_ODEME_EKSI5_ETIKET} deger={son.yan_odeme_eksi5} />
-            <Alan etiket={YAN_ODEME_ARTI5_ETIKET} deger={son.yan_odeme} />
+            <Alan etiket="Yan Ödeme" deger={yanGoster.text} />
             <Alan etiket="SDS Oranı" deger={son.sds_orani} />
+            {tkyPuaniVar && (
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">&nbsp;</label>
+                <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 min-h-[36px] flex items-center">
+                  Yan Ödeme Puanına TKY puanı dahildir.
+                </div>
+              </div>
+            )}
           </div>
           <div className="mt-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tarihçe (Terfi Ettir Öncesi)</p>
@@ -1476,6 +1490,7 @@ export default function PersonelDetayClient({
   terfiKayitlari, ogrenimler, sendikalar = [], aileBildirimi, malKayitlari = [], egitimKatilimlari = [], yevmiyeFazlaMesaiAylik, onKisiselGuncelle,
   tanimGostergeKha = null,
   terfiOncesiTarihce = [],
+  tasinirTutarByGorev = {},
   saltOkunur = false,
   gecmisGoster = true,
   performansGoster = false,
@@ -1614,6 +1629,8 @@ export default function PersonelDetayClient({
               yevmiyeFazlaMesaiAylik={yevmiyeFazlaMesaiAylik}
               tanimGostergeKha={tanimGostergeKha}
               terfiOncesiTarihce={terfiOncesiTarihce}
+              tasinirGorevi={calisan.tasinir_gorevi}
+              tasinirTutarByGorev={tasinirTutarByGorev}
             />
           )}
           {aktif === 'Görevlendirme Bilgileri' && (

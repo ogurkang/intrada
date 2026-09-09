@@ -112,8 +112,9 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
             Aktif memurların terfi kayıtlarındaki kazanç değerleri, kadro ünvanı + öğrenim + KHA derecesi için tanımlı
             satırla karşılaştırılır. TH sınıfında yan ödeme kıdem yılına göre kontrol edilir: 0–4 yıl{' '}
             <span className="font-medium">−5 Yıl Yan Ödeme</span>, 5–25 yıl{' '}
-            <span className="font-medium">+5 Yıl Yan Ödeme</span>. Sapma tek başına hata anlamına gelmez: kişiye özel
-            yan ödeme veya SDS farkı olabileceği gibi tanımın kendisi de eskimiş olabilir.
+            <span className="font-medium">+5 Yıl Yan Ödeme</span>. Diğer sınıflarda tek yan ödeme sütunu vardır; satırda
+            ekstra kural yazılmaz. Sapma tek başına hata anlamına gelmez: kişiye özel yan ödeme veya SDS farkı
+            olabileceği gibi tanımın kendisi de eskimiş olabilir.
           </p>
         </div>
         <button
@@ -225,14 +226,14 @@ export default function KazancSapmaClient({ sapanlar, tanimsizlar, kontrolEdilen
                           title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${a.key === 'yan_odeme' ? ` (${s.yan_odeme_kural})` : ''}`}>
                           <span className="block font-semibold">{v.mevcut ?? '—'}</span>
                           <span className="block text-[11px] font-normal opacity-80">tanım: {v.tanim ?? '—'}</span>
-                          {a.key === 'yan_odeme' ? (
+                          {a.key === 'yan_odeme' && s.yan_odeme_kural !== 'Yan Ödeme' ? (
                             <span className="block text-[10px] font-normal opacity-70 mt-0.5">{s.yan_odeme_kural}</span>
                           ) : null}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">
                           {v.mevcut ?? '—'}
-                          {a.key === 'yan_odeme' ? (
+                          {a.key === 'yan_odeme' && s.yan_odeme_kural !== 'Yan Ödeme' ? (
                             <span className="block text-[10px] opacity-70">{s.yan_odeme_kural}</span>
                           ) : null}
                         </span>

@@ -131,6 +131,7 @@ export default async function Page({ params }: Props) {
           yevmiyeFazlaMesaiAylik={rest.yevmiyeFazlaMesaiAylik}
           tanimGostergeKha={rest.tanimGostergeKha}
           terfiOncesiTarihce={rest.terfiOncesiTarihce}
+          tasinirTutarByGorev={rest.tasinirTutarByGorev}
           onKisiselGuncelle={calisanGuncelle}
           gecmisGoster={gecmisGoster}
           performansGoster={performansGoster}

@@ -54,7 +54,6 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
     ek_gosterge:            str(fd, 'ek_gosterge'),
     ek_odeme:               str(fd, 'ek_odeme'),
     oht:                    str(fd, 'oht'),
-    yan_odeme_eksi5:        str(fd, 'yan_odeme_eksi5'),
     yan_odeme:              str(fd, 'yan_odeme'),
     sds_orani:              str(fd, 'sds_orani'),
   }
@@ -106,7 +105,6 @@ export async function terfiGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     ek_gosterge:            str(fd, 'ek_gosterge'),
     ek_odeme:               str(fd, 'ek_odeme'),
     oht:                    str(fd, 'oht'),
-    yan_odeme_eksi5:        str(fd, 'yan_odeme_eksi5'),
     yan_odeme:              str(fd, 'yan_odeme'),
     sds_orani:              str(fd, 'sds_orani'),
   }
@@ -194,7 +192,6 @@ export interface TerfiSatir {
   ek_gosterge:          string | null
   ek_odeme:             string | null
   oht:                  string | null
-  yan_odeme_eksi5:      string | null
   yan_odeme:            string | null
   sds_orani:            string | null
 }
@@ -215,7 +212,6 @@ function terfiKatsayiPayload(s: TerfiSatir) {
     ek_gosterge: s.ek_gosterge,
     ek_odeme: s.ek_odeme,
     oht: s.oht,
-    yan_odeme_eksi5: s.yan_odeme_eksi5,
     yan_odeme: s.yan_odeme,
     sds_orani: s.sds_orani,
     ad_soyad: s.ad_soyad,

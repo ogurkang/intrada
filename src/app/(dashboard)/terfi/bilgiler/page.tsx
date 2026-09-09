@@ -14,9 +14,9 @@ export default async function TerfiBilgilerPage() {
     return t > D
   }
 
-  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: auditRaw }] = await Promise.all([
+  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: auditRaw }, { data: tasinirTanimRaw }] = await Promise.all([
     supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
-    supabase.from('calisan').select('sicil_no, ad_soyad').order('sicil_no'),
+    supabase.from('calisan').select('sicil_no, ad_soyad, tasinir_gorevi').order('sicil_no'),
     supabase
       .from('personel_kadro_ozet')
       .select('sicil_no, ad_soyad, gorev_unvani, gorev_mudurlugu, statu')
@@ -27,6 +27,7 @@ export default async function TerfiBilgilerPage() {
       .select('*')
       .eq('ref_table', 'terfi_hareketleri')
       .order('created_at', { ascending: false }),
+    supabase.from('tanim_kazanc_tasinir_yetkili').select('gorev_adi, tutar'),
   ])
 
   const auditLoglarByTerfiId: Record<string, Tables<'personel_audit_log'>[]> = {}
@@ -220,6 +221,7 @@ export default async function TerfiBilgilerPage() {
     kadro_derecesi: string | null
     kadro_sira_no: string | null
     kadro_id: number | null
+    tasinir_gorevi: string | null
   }[] = []
 
   for (const sicil_no of [...memurSiciller].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))) {
@@ -231,6 +233,7 @@ export default async function TerfiBilgilerPage() {
       gorev_unvani: k?.gorev_unvani ?? null,
       gorev_mudurlugu: k?.gorev_mudurlugu ?? null,
       ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
+      tasinir_gorevi: c?.tasinir_gorevi ?? null,
     }
 
     const hits: { khId: number; rol: KadroRol; kadro_derecesi: string | null; kadro_sira_no: string | null }[] = []
@@ -322,6 +325,11 @@ export default async function TerfiBilgilerPage() {
       onKadroyaBagla={terfiKadroyaBagla}
       onKapsamDisiYap={terfiKapsamDisiYap}
       auditLoglarByTerfiId={auditLoglarByTerfiId}
+      tasinirTutarByGorev={Object.fromEntries(
+        (tasinirTanimRaw ?? [])
+          .filter(r => r.gorev_adi?.trim() && r.tutar?.trim())
+          .map(r => [r.gorev_adi, r.tutar!.trim()]),
+      )}
     />
   )
 }

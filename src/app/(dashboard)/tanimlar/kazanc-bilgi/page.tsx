@@ -1,13 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
 import KazancBilgiOzetClient from '@/components/tanimlar/KazancBilgiOzetClient'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { tasinirTanimSirala } from '@/lib/kazanc-tasinir-yetkili'
+import type { Tables } from '@/types/database'
 
-export default async function KazancBilgiPage() {
+export default async function KazancBilgiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sekme?: string }>
+}) {
+  const { sekme } = await searchParams
+  const aktifSekme = sekme === 'tasinir' ? 'tasinir' : 'kadro'
   const supabase = await createClient()
 
-  const [kadroUnvanlar, { data: kRows }] = await Promise.all([
+  const [kadroUnvanlar, { data: kRows }, { data: tasinirRaw }] = await Promise.all([
     fetchUnvanlarKadrodaPersonelAtanmis(supabase),
     supabase.from('tanim_kazanc_bilgisi').select('unvan_id, tanim_ogrenim(isim)'),
+    supabase.from('tanim_kazanc_tasinir_yetkili').select('*'),
   ])
 
   type J = { unvan_id: number; tanim_ogrenim: { isim: string } | null }
@@ -20,7 +30,7 @@ export default async function KazancBilgiPage() {
     ogrenimByUnvan.get(r.unvan_id)!.add(isim)
   }
 
-  const satirlar = kadroUnvanlar.map((u) => {
+  const satirlar = kadroUnvanlar.map(u => {
     const set = ogrenimByUnvan.get(u.id)
     const hasKayit = !!(set && set.size > 0)
     return {
@@ -32,5 +42,19 @@ export default async function KazancBilgiPage() {
     }
   })
 
-  return <KazancBilgiOzetClient satirlar={satirlar} />
+  const tasinirTanimlar = tasinirTanimSirala((tasinirRaw ?? []) as Tables<'tanim_kazanc_tasinir_yetkili'>[])
+  const tasinirAuditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    'tanim_kazanc_tasinir_yetkili',
+    tasinirTanimlar.map(r => String(r.id)),
+  )
+
+  return (
+    <KazancBilgiOzetClient
+      satirlar={satirlar}
+      tasinirTanimlar={tasinirTanimlar}
+      tasinirAuditLoglarByRefId={tasinirAuditLoglarByRefId}
+      aktifSekme={aktifSekme}
+    />
+  )
 }

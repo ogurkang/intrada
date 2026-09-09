@@ -46,6 +46,7 @@ export type PersonelDetayLoadResult = {
     ekea_dk: string
     kidem_yili: string
   }[]
+  tasinirTutarByGorev: Record<string, string>
 }
 
 /**
@@ -106,6 +107,7 @@ export async function fetchPersonelDetayPageData(
     { data: yevmiyeFmRaw },
     { data: gostergeRaw },
     { data: terfiLogRaw },
+    { data: tasinirTanimRaw },
   ] = await Promise.all([
     supabase.from('calisan').select('*').eq('sicil_no', sicil_no).single(),
     supabase
@@ -172,6 +174,7 @@ export async function fetchPersonelDetayPageData(
       .eq('sicil_no', sicil_no)
       .order('islem_tarihi', { ascending: false })
       .limit(100),
+    supabase.from('tanim_kazanc_tasinir_yetkili').select('gorev_adi, tutar'),
   ])
 
   if (error || !calisan) return null
@@ -280,6 +283,13 @@ export async function fetchPersonelDetayPageData(
     }
   })
 
+  const tasinirTutarByGorev: Record<string, string> = {}
+  for (const r of tasinirTanimRaw ?? []) {
+    const gorev = String(r.gorev_adi ?? '').trim()
+    const puan = String(r.tutar ?? '').trim()
+    if (gorev && puan) tasinirTutarByGorev[gorev] = puan
+  }
+
   return {
     calisan: calisan as Tables<'calisan'>,
     kaynak,
@@ -297,6 +307,7 @@ export async function fetchPersonelDetayPageData(
     yevmiyeFazlaMesaiAylik,
     tanimGostergeKha,
     terfiOncesiTarihce,
+    tasinirTutarByGorev,
   }
 }
 

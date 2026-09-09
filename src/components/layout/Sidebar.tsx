@@ -264,6 +264,7 @@ function buildMenuGroups(
       { href: '/rapor/yerleske-adresine-gore-personel-sayi', label: 'Yerleşke Adresine Göre Personel Sayısı' },
       { href: '/rapor/sendika-bilgilerine-gore-personel-liste', label: 'Sendika Bilgilerine Göre Personel Listesi' },
       { href: '/rapor/sendika-bilgilerine-gore-personel-sayi', label: 'Sendika Bilgilerine Göre Personel Sayısı' },
+      { href: '/rapor/tasinir-gorevi-olan-personel-liste', label: 'Taşınır Görevi Olan Personel Listesi' },
       { href: '/rapor/statuye-gore-ogrenim', label: 'Statüye Göre Öğrenim Durumu Raporu' },
       { href: '/rapor/statuye-gore-meslek', label: 'Statüye Göre Meslek Raporu' },
       { href: '/rapor/meslek-sahibi-liste', label: 'Meslek Sahibi Personel Listesi' },

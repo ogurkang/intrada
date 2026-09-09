@@ -394,6 +394,30 @@ export interface Database {
           { foreignKeyName: 'tanim_kazanc_bilgisi_unvan_id_fkey'; columns: ['unvan_id']; isOneToOne: false; referencedRelation: 'tanim_unvan'; referencedColumns: ['id'] },
         ]
       }
+      tanim_kazanc_tasinir_yetkili: {
+        Row: {
+          id: number
+          gorev_adi: string
+          tutar: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          gorev_adi: string
+          tutar?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          gorev_adi?: string
+          tutar?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tanim_unvan: {
         Row: {
           id: number; sira_no: number | null; unvan_kodu: string | null; unvan_adi: string
