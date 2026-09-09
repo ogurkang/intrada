@@ -361,6 +361,11 @@ export interface AyyHesapParams {
   prevPersonelIzOverflowBySicilNo?: Record<string, PrevPersonelIzOverflowInfo>
   /** Fark döneminde zabıta YG/K memur ile aynı hesaplanır; varsayılan normal. */
   donemTuru?: AyyDonemTuru
+  /**
+   * Açık dönemde yarı zamanlı kesilen gün = örtüşen gün / 2 (küsürat korunur).
+   * Kapalı dönemlerde eski kural: ceil(yz_gun / 2).
+   */
+  yariZamanliKusurat?: boolean
 }
 
 export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
@@ -375,6 +380,7 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     statuBazliPersonel = [],
     prevPersonelIzOverflowBySicilNo = {},
     donemTuru = 'normal',
+    yariZamanliKusurat = false,
   } = params
 
   const bas = parseDate(donemBas)!
@@ -534,13 +540,13 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
     })
   }
 
-  // 2b: Yarı Zamanlı — base_IZ = ceil(yz_gun / 2); regular izin_hareketleri de ayrıca işlenir.
+  // 2b: Yarı Zamanlı — açık dönem: yz_gun / 2 (küsürat); kapalı: ceil(yz_gun / 2).
   // Dönem içindeki yarı zamanlı süre base'i belirler (bitiş tarihi dönem içindeyse kısmi).
   for (const sp of statuBazliPersonel) {
     if (sp.gorev_turu !== 'Yarı Zamanlı') continue
     const yg = yemekliGunSayisi(sp.isZabita, donemAktifGun, donemTuru)
     const yzGun = statuOverlapGun(sp, basMs, bitMs, bas, bit, tatilRanges)
-    const baseIz = Math.ceil(yzGun / 2)
+    const baseIz = yariZamanliKusurat ? yzGun / 2 : Math.ceil(yzGun / 2)
     if (baseIz <= 0) continue
     satirlar.push({
       sira_no:   `SYN_YZM_${sp.sicil_no}`,

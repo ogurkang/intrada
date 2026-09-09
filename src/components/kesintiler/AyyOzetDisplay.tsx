@@ -33,6 +33,14 @@ function tarih(t: string | null) {
   return new Date(t).toLocaleDateString('tr-TR')
 }
 
+/** Tam gün tam sayı; küsüratlı gün (yarı zamanlı 10,5) bir ondalık. */
+function ayyGun(n: number): string {
+  if (!Number.isFinite(n)) return '—'
+  return Number.isInteger(n)
+    ? String(n)
+    : n.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
 function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; etiket: string }) {
   const toplamK  = satirlar.reduce((s, p) => s + p.K,  0)
   const toplamSD = satirlar.reduce((s, p) => s + p.SD, 0)
@@ -52,8 +60,8 @@ function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; et
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm text-slate-500">{satirlar.length} personel</p>
         <div className="flex items-center gap-4 text-xs text-slate-500">
-          <span>Toplam Yemek Alacağı Gün: <span className="font-semibold text-slate-700">{toplamK}</span></span>
-          <span>Toplam Sonraki Döneme: <span className="font-semibold text-amber-600">{toplamSD}</span></span>
+          <span>Toplam Yemek Alacağı Gün: <span className="font-semibold text-slate-700">{ayyGun(toplamK)}</span></span>
+          <span>Toplam Sonraki Döneme: <span className="font-semibold text-amber-600">{ayyGun(toplamSD)}</span></span>
         </div>
       </div>
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
@@ -82,24 +90,24 @@ function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; et
                   {p.isZabita && <span className="ml-1.5 text-[10px] text-violet-600 font-medium bg-violet-100 px-1.5 py-0.5 rounded">Z</span>}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-slate-500 hidden md:table-cell">{p.unvan || '—'}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-blue-700">{p.OD > 0 ? p.OD : '—'}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{p.hamIzin ?? 0}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-700">{p.IZ > 0 ? p.IZ : '—'}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{p.YG}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-semibold text-red-700">{p.K}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-amber-700">{p.SD > 0 ? p.SD : '—'}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-blue-700">{p.OD > 0 ? ayyGun(p.OD) : '—'}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{ayyGun(p.hamIzin ?? 0)}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-700">{p.IZ > 0 ? ayyGun(p.IZ) : '—'}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{ayyGun(p.YG)}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-semibold text-red-700">{ayyGun(p.K)}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-amber-700">{p.SD > 0 ? ayyGun(p.SD) : '—'}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-slate-50 border-t border-slate-200">
               <td colSpan={4} className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Toplam</td>
-              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-blue-700">{toplamOD > 0 ? toplamOD : '—'}</td>
-              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-slate-600">{satirlar.reduce((s, p) => s + (p.hamIzin ?? 0), 0)}</td>
-              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-orange-700">{toplamIZ > 0 ? toplamIZ : '—'}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-blue-700">{toplamOD > 0 ? ayyGun(toplamOD) : '—'}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-slate-600">{ayyGun(satirlar.reduce((s, p) => s + (p.hamIzin ?? 0), 0))}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-orange-700">{toplamIZ > 0 ? ayyGun(toplamIZ) : '—'}</td>
               <td className="px-3 py-2.5 text-center">—</td>
-              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-red-700">{toplamK}</td>
-              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-amber-700">{toplamSD > 0 ? toplamSD : '—'}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-red-700">{ayyGun(toplamK)}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-sm font-bold text-amber-700">{toplamSD > 0 ? ayyGun(toplamSD) : '—'}</td>
             </tr>
           </tfoot>
         </table>
@@ -184,7 +192,7 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi, statuBazliPe
         ].map(k => (
           <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-medium text-slate-500 mb-1">{k.label}</p>
-            <p className={`text-3xl font-bold text-${k.renk}-700`}>{k.deger}</p>
+            <p className={`text-3xl font-bold text-${k.renk}-700`}>{typeof k.deger === 'number' ? ayyGun(k.deger) : k.deger}</p>
             <p className="text-xs text-slate-400 mt-1">{k.aciklama}</p>
           </div>
         ))}

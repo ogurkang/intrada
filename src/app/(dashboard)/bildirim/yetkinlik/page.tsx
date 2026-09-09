@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import PersonelTekAlanTopluClient from '@/components/personel/PersonelTekAlanTopluClient'
+import YetkinlikBildirimClient from '@/components/bildirim/YetkinlikBildirimClient'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
-import { BILGISAYAR_KULLANMIYOR, BILGISAYAR_YETKINLIK_SECENEKLER, bilgisayarYetkinlikEtiket, yetkinlikAuditDegerGoster, yetkinlikAuditDiffSatirlari } from '@/lib/yetkinlik'
+import { bilgisayarYetkinlikEtiket } from '@/lib/yetkinlik'
 import { yetkinlikSatirKaydet, yetkinlikTopluKaydet } from './actions'
 import { fetchAllCalisan, fetchAllPaged } from '@/lib/supabase-sayfala'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
@@ -78,22 +78,11 @@ export default async function YetkinlikBildirimPage() {
   )
 
   return (
-    <PersonelTekAlanTopluClient
-      baslik="Yetkinlik Bildirimi"
-      alanEtiketi="Yetkinlik"
+    <YetkinlikBildirimClient
       data={data}
-      inputType="select"
-      secenekler={[...BILGISAYAR_YETKINLIK_SECENEKLER]}
-      bosSecenekEtiketi="Seçiniz"
-      sortBy="sicil_no"
+      auditLoglarByRefId={auditLoglarByRefId}
       onSatirKaydet={yetkinlikSatirKaydet}
       onTopluKaydet={yetkinlikTopluKaydet}
-      vurguDeger={BILGISAYAR_KULLANMIYOR}
-      unvanSutunlari
-      auditLoglarByRefId={auditLoglarByRefId}
-      auditBaslik="Yetkinlik Geçmişi"
-      auditDiffSatirlari={yetkinlikAuditDiffSatirlari}
-      auditDegerGoster={yetkinlikAuditDegerGoster}
     />
   )
 }

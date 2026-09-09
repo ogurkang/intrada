@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         }
       : undefined,
     statuBazliPersonel,
+    yariZamanliKusurat: donem.durum === 'Açık',
   })
 
   const headers = ['Sıra No', 'Sicil No', 'Ad Soyad', 'Unvan', 'Önceki Dönemden', 'Ham İzin', 'Kesilen İzin', 'Yemekli Gün', 'Yemek Alacağı Gün', 'Sonraki Döneme']

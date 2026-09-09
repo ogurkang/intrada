@@ -139,6 +139,7 @@ export async function ayyOzetHesapla(donem_id: number): Promise<
         }
       : undefined,
     statuBazliPersonel,
+    yariZamanliKusurat: donem.durum === 'Açık',
   })
 
   return {
