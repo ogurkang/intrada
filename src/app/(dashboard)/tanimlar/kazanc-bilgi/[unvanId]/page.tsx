@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
 import KazancBilgiDetayClient from '@/components/tanimlar/KazancBilgiDetayClient'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { tanimKazancAuditRefId, TANIM_KAZANC_REF_TABLE } from '@/lib/tanim-kazanc-audit'
 import type { Tables } from '@/types/database'
 
 export default async function KazancBilgiUnvanDetayPage({ params }: { params: Promise<{ unvanId: string }> }) {
@@ -39,6 +41,13 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
     }
   })
 
+  const auditRefIds = [...new Set(liste.flatMap(r => [tanimKazancAuditRefId(r), String(r.id)]))]
+  const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
+    supabase,
+    TANIM_KAZANC_REF_TABLE,
+    auditRefIds,
+  )
+
   return (
     <KazancBilgiDetayClient
       unvanId={unvanId}
@@ -46,6 +55,7 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
       sinifAdi={unvanRow.sinif_adi}
       data={liste}
       ogrenimler={sortTanimOgrenimByIsim((ogrenimler ?? []) as { id: number; isim: string }[])}
+      auditLoglarByRefId={auditLoglarByRefId}
     />
   )
 }

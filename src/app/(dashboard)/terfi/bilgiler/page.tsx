@@ -330,9 +330,11 @@ export default async function TerfiBilgilerPage() {
       onKapsamDisiYap={terfiKapsamDisiYap}
       auditLoglarByTerfiId={auditLoglarByTerfiId}
       tasinirTutarByGorev={Object.fromEntries(
-        (tasinirTanimRaw ?? [])
-          .map(r => [tasinirGoreviNormalize(r.gorev_adi), String(r.tutar ?? '').trim()] as const)
-          .filter((e): e is [string, string] => Boolean(e[0] && e[1])),
+        (tasinirTanimRaw ?? []).flatMap(r => {
+          const gorev = tasinirGoreviNormalize(r.gorev_adi)
+          const puan = String(r.tutar ?? '').trim()
+          return gorev && puan ? [[gorev, puan] as const] : []
+        }),
       )}
     />
   )

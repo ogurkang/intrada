@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { broadcastIntradaRefresh, useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import Modal from '@/components/ui/Modal'
+import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import { SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import {
@@ -25,6 +27,12 @@ import {
   kazancBilgiTopluSil,
 } from '@/app/(dashboard)/tanimlar/kazanc-bilgi/actions'
 import { unvanSinifiThMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
+import {
+  tanimKazancAuditDegerGoster,
+  tanimKazancAuditDiffSatirlari,
+  tanimKazancGrupAuditLoglari,
+} from '@/lib/tanim-kazanc-audit'
+import type { Tables } from '@/types/database'
 
 const DERECE_SEC = Array.from({ length: 15 }, (_, i) => i + 1)
 
@@ -52,6 +60,7 @@ interface Props {
   sinifAdi: string | null
   data: KazancBilgiListeRow[]
   ogrenimler: { id: number; isim: string }[]
+  auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
 function ogrenimDereceMusait(
@@ -67,7 +76,14 @@ function ogrenimDereceMusait(
   return true
 }
 
-export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, data, ogrenimler }: Props) {
+export default function KazancBilgiDetayClient({
+  unvanId,
+  unvanAdi,
+  sinifAdi,
+  data,
+  ogrenimler,
+  auditLoglarByRefId = {},
+}: Props) {
   const router = useRouter()
   useIntradaTabRefresh('kazanc', router)
   const saltOkunur = useTanimlarSaltOkunur()
@@ -91,6 +107,7 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, da
   const [hata, setHata] = useState<string | null>(null)
   const [topluHata, setTopluHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [gecmisGrup, setGecmisGrup] = useState<KazancBilgiListeRow[] | null>(null)
 
   const gruplarFull = useMemo(() => kazancSatirlariGrupla(data), [data])
 
@@ -432,28 +449,34 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, da
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.yan_odeme ?? '—'}</td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-xs">{r0.sds_orani ?? '—'}</td>
                       <td className="px-3 py-2.5 text-right">
-                        {!saltOkunur && (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setHata(null)
-                                setDuzenleGrup(grup)
-                              }}
-                              className="text-sky-600 hover:text-sky-800 text-xs font-medium"
-                            >
-                              Düzenle
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => grupSil(grup)}
-                              className="text-red-600 hover:text-red-800 text-xs font-medium"
-                            >
-                              Sil
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex justify-end items-center gap-1">
+                          <SaatGecmisDugmesi
+                            sayi={tanimKazancGrupAuditLoglari(grup, auditLoglarByRefId).length}
+                            onClick={() => setGecmisGrup(grup)}
+                          />
+                          {!saltOkunur && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHata(null)
+                                  setDuzenleGrup(grup)
+                                }}
+                                className="text-sky-600 hover:text-sky-800 text-xs font-medium px-1"
+                              >
+                                Düzenle
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() => grupSil(grup)}
+                                className="text-red-600 hover:text-red-800 text-xs font-medium px-1"
+                              >
+                                Sil
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -482,12 +505,13 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, da
                   {thSinifi && <th className="p-2 whitespace-nowrap">{YAN_ODEME_EKSI5_ETIKET}</th>}
                   <th className="p-2 whitespace-nowrap">{yanOdemeEtiket}</th>
                   <th className="p-2">SDS</th>
+                  <th className="p-2 w-10" title="Geçmiş" />
                 </tr>
               </thead>
               <tbody>
                 {filtreliGruplar.length === 0 && (
                   <tr>
-                    <td colSpan={thSinifi ? 9 : 8} className="text-center py-10 text-slate-400">
+                    <td colSpan={thSinifi ? 10 : 9} className="text-center py-10 text-slate-400">
                       Bu öğrenim grubunda satır yok.
                     </td>
                   </tr>
@@ -601,6 +625,12 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, da
                           className="w-12 border rounded px-1"
                           value={s.sds_orani}
                           onChange={(e) => topluGrupAlan(gkey, 'sds_orani', e.target.value)}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <SaatGecmisDugmesi
+                          sayi={tanimKazancGrupAuditLoglari(grup, auditLoglarByRefId).length}
+                          onClick={() => setGecmisGrup(grup)}
                         />
                       </td>
                     </tr>
@@ -765,6 +795,15 @@ export default function KazancBilgiDetayClient({ unvanId, unvanAdi, sinifAdi, da
           </div>
         )}
       </Modal>
+
+      <AuditGecmisPanel
+        acik={gecmisGrup != null}
+        onKapat={() => setGecmisGrup(null)}
+        auditLoglar={gecmisGrup ? tanimKazancGrupAuditLoglari(gecmisGrup, auditLoglarByRefId) : []}
+        baslik="Kazanç bilgisi — işlem geçmişi"
+        diffSatirlari={tanimKazancAuditDiffSatirlari}
+        degerGoster={tanimKazancAuditDegerGoster}
+      />
     </div>
   )
 }
