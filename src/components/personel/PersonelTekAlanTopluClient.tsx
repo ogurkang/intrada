@@ -209,29 +209,49 @@ export default function PersonelTekAlanTopluClient({
     else setToplu(prev => ({ ...prev, [sicil]: v }))
   }
 
+  const aramaPlaceholder = unvanSutunlari ? 'Ad, sicil veya ünvan ara…' : 'Ad, sicil no veya TCKN ara…'
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
-          <p className="text-sm text-slate-500">Satır bazlı veya toplu güncelleme yapabilirsiniz.</p>
+          <p className="text-sm text-slate-500">
+            Satır bazlı veya toplu güncelleme yapabilirsiniz.
+            {arama.trim() ? ` ${filtreli.length} / ${sirali.length} kayıt` : ` ${sirali.length} kayıt`}
+          </p>
         </div>
-        <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-          <button className={`px-4 py-1.5 text-sm rounded-md ${sekme === 'liste' ? 'bg-white shadow' : ''}`} onClick={() => setSekme('liste')}>Kayıt Listesi</button>
-          <button className={`px-4 py-1.5 text-sm rounded-md ${sekme === 'toplu' ? 'bg-white shadow' : ''}`} onClick={() => setSekme('toplu')}>Toplu Güncelle</button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="search"
+              value={arama}
+              onChange={e => setArama(e.target.value)}
+              placeholder={aramaPlaceholder}
+              aria-label="Personel ara"
+              className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-slate-500 w-full sm:w-72"
+            />
+          </div>
+          <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+            <button className={`px-4 py-1.5 text-sm rounded-md ${sekme === 'liste' ? 'bg-white shadow' : ''}`} onClick={() => setSekme('liste')}>Kayıt Listesi</button>
+            <button className={`px-4 py-1.5 text-sm rounded-md ${sekme === 'toplu' ? 'bg-white shadow' : ''}`} onClick={() => setSekme('toplu')}>Toplu Güncelle</button>
+          </div>
         </div>
       </div>
 
-      {sekme === 'liste' && (
-        <>
-          <input
-            value={arama}
-            onChange={e => setArama(e.target.value)}
-            placeholder={unvanSutunlari ? 'Ad, sicil, ünvan ara…' : 'Ad, sicil, TCKN ara…'}
-            className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-lg text-sm"
-          />
-          {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
-        </>
+      {sekme === 'liste' && hata && (
+        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>
       )}
 
       {sekme === 'toplu' && (
@@ -264,7 +284,16 @@ export default function PersonelTekAlanTopluClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {(sekme === 'liste' ? filtreli : sirali).map((s, i) => {
+            {filtreli.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5 + (unvanSutunlari ? 1 : 0) + (sekme === 'liste' ? 1 : 0)}
+                  className="px-4 py-12 text-center text-slate-400"
+                >
+                  {arama.trim() ? 'Aramaya uyan personel yok.' : 'Kayıt yok.'}
+                </td>
+              </tr>
+            ) : filtreli.map((s, i) => {
               const duz = duzenlenenSicil === s.sicil_no
               const gosterilen = sekme === 'toplu' ? topluDeger(s) : duz ? inlineDeger(s) : mevcutDeger(s)
               const vurgu = !duz && vurguDeger && gosterilen === vurguDeger ? 'bg-amber-50' : ''
