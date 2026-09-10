@@ -6,6 +6,7 @@ import {
   yanOdemeNotlariBirlestir,
   yanOdemeTanimdan,
 } from '@/lib/kazanc-yan-odeme'
+import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import {
   parseKazancPuan,
   formatKazancPuan,
@@ -148,7 +149,8 @@ export type KazancSapmaTasinirCtx = {
  * Aktif memurların `terfi_hareketleri`'ndeki kazanç değerlerini, kadro ünvanı +
  * öğrenim + KHA derecesi için tanımlı kazanç satırıyla karşılaştırır.
  *
- * TH: kıdem 0–4 → −5 yıl, 5–25 → +5 yıl. V.H.K.İ. / Bilgisayar İşletmeni:
+ * TH: hizmet yılı 0–4 → −5 yıl, 5. yıl dönümü ve sonrası → +5 yıl
+ * (tarih yoksa kıdem yılı). V.H.K.İ. / Bilgisayar İşletmeni:
  * yetkinliğe göre Bilgisayarlı veya Bilgisayarsız sütun.
  *
  * TKY görevi tanımı açıklıyorsa (kadro puanı eşit veya kayıttan TKY düşünce eşit)
@@ -206,7 +208,11 @@ export function kazancSapmaHesapla(
       baglam: teknisyenEkGosterge,
     })
     const thMi = unvanSinifiThMi(r.unvan_sinif)
-    const kidem = parseKidemYili(r.kidem_yili)
+    const kidem = thYanOdemeYilSec({
+      thMi,
+      thHizmetBaslangic: r.th_hizmet_baslangic,
+      kidemYili: parseKidemYili(r.kidem_yili),
+    })
     const kuralKisa = yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)
     const alanlar = {} as KazancSapmaSatir['alanlar']
     let farkAdedi = 0

@@ -76,6 +76,7 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
     sds_eski: k.sds_orani ?? '—',
     sds_yeni: k.sds_orani ?? '—',
     durum: '—',
+    th_hizmet_baslangic: k.th_hizmet_baslangic ?? null,
     terfi_id: k.terfi_id,
     payload: {
       kha_derece: k.kha_derece,
@@ -159,6 +160,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       bilgisayar_kullaniyor: kaynak?.bilgisayar_kullaniyor ?? null,
       yuksek_ogrenim_var: kaynak?.yuksek_ogrenim_var ?? false,
       kadrosu_ile_ilgili: kaynak?.kadrosu_ile_ilgili ?? false,
+      th_hizmet_baslangic: kaynak?.th_hizmet_baslangic ?? null,
     }
   })
   const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup, teknisyenEkGosterge)

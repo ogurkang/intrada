@@ -1058,6 +1058,7 @@ export interface Database {
           gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_turu_aciklama: string | null; gorev_durumu: string | null
           yerleske_adresi_id: number | null
           tasinir_gorevi: string | null
+          th_hizmet_baslangic: string | null
           tasinir_yan_odeme_uygulandi: boolean
           bilgisayar_kullaniyor: boolean
           created_at: string; updated_at: string
@@ -1073,6 +1074,7 @@ export interface Database {
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
+          th_hizmet_baslangic?: string | null
           tasinir_yan_odeme_uygulandi?: boolean
           bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string
@@ -1088,6 +1090,7 @@ export interface Database {
           gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
+          th_hizmet_baslangic?: string | null
           tasinir_yan_odeme_uygulandi?: boolean
           bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string

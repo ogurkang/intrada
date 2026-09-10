@@ -12,6 +12,7 @@ import {
   YAN_ODEME_ARTI5_ETIKET,
   YAN_ODEME_EKSI5_ETIKET,
 } from '@/lib/kazanc-yan-odeme'
+import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import {
   buildTerfiOgrenimOnizleme,
   kazancLookupFromEntries,
@@ -70,7 +71,12 @@ function puanGoster(v: string | null | undefined) {
 
 function thYanOdemeHucre(r: TerfiEttirOnizlemeSatir) {
   const th = unvanSinifiThMi(r.unvan_sinif)
-  const eksi5Aktif = th && thKidemEksi5BandiMi(parseKidemYili(r.payload.kidem_yili))
+  const yil = thYanOdemeYilSec({
+    thMi: th,
+    thHizmetBaslangic: r.th_hizmet_baslangic,
+    kidemYili: parseKidemYili(r.payload.kidem_yili),
+  })
+  const eksi5Aktif = th && thKidemEksi5BandiMi(yil)
   return { th, eksi5Aktif }
 }
 
@@ -79,6 +85,7 @@ function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
   if (durum.includes('Derece İlerledi')) return 'bg-green-100 text-green-800'
   if (durum.includes('Sadece Kademe')) return 'bg-slate-100 text-slate-700'
   if (durum.includes('Kıdem Yılı İlerledi')) return 'bg-blue-100 text-blue-700'
+  if (durum.includes('Sınıf Hizmet Süresi Arttı')) return 'bg-teal-100 text-teal-800'
   if (durum.includes('İyi Hal İlerlemesi')) return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
   if (durum.includes('Eğitim Sınırında')) return 'bg-red-100 text-red-800'
@@ -108,6 +115,8 @@ function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, font: { color: { argb: 'FF334155' } } }
   if (durum.includes('Kıdem Yılı İlerledi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }, font: { color: { argb: 'FF1D4ED8' } } }
+  if (durum.includes('Sınıf Hizmet Süresi Arttı'))
+    return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCFBF1' } }, font: { color: { argb: 'FF0F766E' } } }
   if (durum.includes('İyi Hal İlerlemesi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }, font: { color: { argb: 'FF4338CA' } } }
   if (durum.includes('Tavan'))
@@ -187,7 +196,7 @@ export default function TerfiEttirClient({
       prev.map((row) => {
         if (row.sicil_no !== sicil) return row
         const p = { ...row.payload, [alan]: deger || null }
-        if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif)) {
+        if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif) && !row.th_hizmet_baslangic) {
           const secilen = thKidemEksi5BandiMi(parseKidemYili(p.kidem_yili))
             ? p.yan_odeme_eksi5
             : row.tanim_yan_odeme_arti5
@@ -509,6 +518,7 @@ export default function TerfiEttirClient({
       ogrenim_terfi: r.ogrenim_terfi,
       ogrenim_olay: r.ogrenim_olay,
       yeni_ogrenim_turu: r.yeni_ogrenim_turu,
+      th_hizmet_notu: r.th_hizmet_notu ?? null,
     }))
     startTransition(async () => {
       const res = await terfiEttirKaydet(donemId, payload)

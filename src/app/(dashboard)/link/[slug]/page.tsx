@@ -21,6 +21,7 @@ import { personelHareketiGuncelle } from '@/app/(dashboard)/personel-hareketleri
 import PersonelHareketiDuzenleClient from '@/components/personel/PersonelHareketiDuzenleClient'
 import IzinHareketDetayView from '@/components/izin/IzinHareketDetayView'
 import { loadIzinHareketAuditLoglar } from '@/lib/izin-hareket-detay-load'
+import { asilKadroThMi } from '@/lib/th-hizmet-yili-data'
 import type { Tables } from '@/types/database'
 import { yukleGidisAyrilisNedenleri } from '@/lib/hareket-tanim-gidis'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
@@ -78,6 +79,8 @@ export default async function Page({ params }: Props) {
       yerleskeId: yId,
     })
     if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
+
+    const asilKadroTh = await asilKadroThMi(supabase, calisan.sicil_no)
 
     let performansKayitlari: { yil: number; ortalama: number | null }[] = []
     if (performansGoster) {
@@ -138,6 +141,7 @@ export default async function Page({ params }: Props) {
           performansKayitlari={performansKayitlari}
           yerleskeAdi={yerleskeAdi}
           konumMetni={konumMetni}
+          asilKadroTh={asilKadroTh}
         />
       </div>
     )

@@ -14,6 +14,8 @@ import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
 import { izinAuditDiffSatirlari, izinAuditDegerGoster } from '@/lib/izin-audit'
+import { thHizmetSuresiEtiket, thHizmetAlaniGosterMi } from '@/lib/th-hizmet-yili'
+import { toGgAayyyy } from '@/lib/tarih'
 
 type Calisan   = Tables<'calisan'>
 type KH        = Tables<'kadro_hareketleri'>
@@ -77,7 +79,7 @@ interface Props {
   egitimKatilimlari?: { egitim_adi: string; program: 'Evet' | 'Hayır'; donem_adi?: string }[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
   tanimGostergeKha?: string | null
-  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
+  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string; notu?: string | null }[]
   tasinirTutarByGorev?: Record<string, string>
   onKisiselGuncelle?: (sicil_no: string, fd: FormData) => Promise<{ hata?: string }>
   /** Kullanıcı rolü: kendi kartı salt okunur; düzenle/liste dönüş kapalı */
@@ -88,6 +90,7 @@ interface Props {
   performansGoster?: boolean
   yerleskeAdi?: string | null
   konumMetni?: string | null
+  asilKadroTh?: boolean
   performansKayitlari?: {
     yil: number
     ortalama: number | null
@@ -157,11 +160,13 @@ function GorevlendirmeTab({
   kadrolar,
   yerleskeAdi,
   konumMetni,
+  asilKadroTh = false,
 }: {
   calisan: Calisan
   kadrolar: KH[]
   yerleskeAdi?: string | null
   konumMetni?: string | null
+  asilKadroTh?: boolean
 }) {
   const sicil = (calisan.sicil_no ?? '').trim()
   const anaK = anaKadroSec(kadrolar, sicil)
@@ -254,6 +259,12 @@ function GorevlendirmeTab({
           <Alan etiket="Memuriyete giriş" deger={tarihFormatla(memuriyetGoster)} />
           <Alan etiket="Kuruma giriş" deger={tarihFormatla(kurumaGoster)} />
           <Alan etiket="Hizmet süresi (360 gün esası)" deger={hizmetSuresiEtiket360(hy, ha, hg)} />
+          {thHizmetAlaniGosterMi(asilKadroTh, calisan.th_hizmet_baslangic) && (
+            <Alan
+              etiket="Teknik Hizmet Yılı"
+              deger={toGgAayyyy(calisan.th_hizmet_baslangic) || null}
+            />
+          )}
         </div>
       </div>
       <div>
@@ -717,15 +728,19 @@ function KatsayiTab({
   tasinirGorevi,
   tasinirTutarByGorev,
   tasinirPuanTerfide,
+  thHizmetBaslangic,
+  asilKadroTh,
 }: {
   terfiKayitlari: TH[]
   kadrolar: KH[]
   yevmiyeFazlaMesaiAylik?: { ay: string; saat: number }[]
   tanimGostergeKha?: string | null
-  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string }[]
+  terfiOncesiTarihce?: { islem_tarihi: string; kha_dk: string; ekea_dk: string; kidem_yili: string; notu?: string | null }[]
   tasinirGorevi?: string | null
   tasinirTutarByGorev?: Record<string, string>
   tasinirPuanTerfide?: boolean
+  thHizmetBaslangic?: string | null
+  asilKadroTh?: boolean
 }) {
   const isIscı = kadrolar.some(k => (k.statu ?? '').trim() === 'İşçi')
   const fmAylik = yevmiyeFazlaMesaiAylik ?? []
@@ -795,6 +810,12 @@ function KatsayiTab({
             <Alan etiket="EKEA Tarihi" deger={tarihFormatla(son.ekea_tarihi)} />
             <Alan etiket="Kıdem Yılı" deger={son.kidem_yili} />
             <Alan etiket="Kıdem Tarihi" deger={tarihFormatla(son.kidem_tarihi)} />
+            {thHizmetAlaniGosterMi(!!asilKadroTh, thHizmetBaslangic) && (
+              <Alan
+                etiket="TH Hizmet Süresi"
+                deger={thHizmetSuresiEtiket(thHizmetBaslangic) ?? '—'}
+              />
+            )}
             <Alan etiket="İyi Hal Terfi Tarihi" deger={tarihFormatla(son.iyi_hal_terfi_tarihi)} />
             <Alan etiket="Ek Gösterge" deger={son.ek_gosterge} />
             <Alan etiket="Ek Ödeme" deger={son.ek_odeme} />
@@ -820,12 +841,13 @@ function KatsayiTab({
                     <th className="text-left px-3 py-2">Önceki KHA D/K</th>
                     <th className="text-left px-3 py-2">Önceki EKEA D/K</th>
                     <th className="text-left px-3 py-2">Önceki Kıdem Yılı</th>
+                    <th className="text-left px-3 py-2">Not</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {(terfiOncesiTarihce ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-4 text-slate-400">
+                      <td colSpan={5} className="px-3 py-4 text-slate-400">
                         Terfi öncesi tarihçe kaydı bulunamadı.
                       </td>
                     </tr>
@@ -836,6 +858,7 @@ function KatsayiTab({
                         <td className="px-3 py-2 text-slate-700">{t.kha_dk}</td>
                         <td className="px-3 py-2 text-slate-700">{t.ekea_dk}</td>
                         <td className="px-3 py-2 text-slate-700">{t.kidem_yili}</td>
+                        <td className="px-3 py-2 text-slate-700">{t.notu ?? '—'}</td>
                       </tr>
                     ))
                   )}
@@ -1506,6 +1529,7 @@ export default function PersonelDetayClient({
   yerleskeAdi = null,
   konumMetni = null,
   performansKayitlari = [],
+  asilKadroTh = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1641,6 +1665,8 @@ export default function PersonelDetayClient({
               tasinirGorevi={calisan.tasinir_gorevi}
               tasinirTutarByGorev={tasinirTutarByGorev}
               tasinirPuanTerfide={calisan.tasinir_yan_odeme_uygulandi}
+              thHizmetBaslangic={calisan.th_hizmet_baslangic}
+              asilKadroTh={asilKadroTh}
             />
           )}
           {aktif === 'Görevlendirme Bilgileri' && (
@@ -1649,6 +1675,7 @@ export default function PersonelDetayClient({
               kadrolar={kadrolar}
               yerleskeAdi={yerleskeAdi}
               konumMetni={konumMetni}
+              asilKadroTh={asilKadroTh}
             />
           )}
           {aktif === 'İzin Bilgileri'       && (

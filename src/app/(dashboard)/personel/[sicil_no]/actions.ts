@@ -17,6 +17,8 @@ import {
   mudurlukYerleskeHaritasi,
 } from '@/lib/yerleske-adresi'
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
+import { asilKadroThMi } from '@/lib/th-hizmet-yili-data'
+import { thHizmetTarihiKaydet } from '@/lib/th-hizmet-yili'
 import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
@@ -60,6 +62,7 @@ const CALISAN_ALAN_ETIKETLERI: Record<string, string> = {
   gorev_durumu:            'Görev Durumu',
   yerleske_adresi_id:      'Yerleşke Adresi',
   tasinir_gorevi:          'Taşınır Görevi',
+  th_hizmet_baslangic:     'Teknik Hizmet Yılı',
   hizmet_suresi_yil:       'Hizmet Süresi (Yıl)',
   hizmet_suresi_ay:        'Hizmet Süresi (Ay)',
   hizmet_suresi_gun:       'Hizmet Süresi (Gün)',
@@ -136,6 +139,18 @@ export async function calisanGuncelle(
       gorev_durumu: str(formData, 'gorev_durumu') ?? 'Diğer',
       yerleske_adresi_id,
       tasinir_gorevi: tasinirGoreviNormalize(str(formData, 'tasinir_gorevi')),
+    }
+    if (formData.has('th_hizmet_baslangic')) {
+      const hamTh = String(formData.get('th_hizmet_baslangic') ?? '').trim()
+      if (!hamTh) {
+        if (await asilKadroThMi(supabase, sicil_no)) {
+          return { hata: 'Teknik hizmet yılı tarihi girilmelidir.' }
+        }
+      } else {
+        const { iso, hata: thHata } = thHizmetTarihiKaydet(hamTh)
+        if (thHata || !iso) return { hata: thHata ?? 'Teknik hizmet yılı tarihi geçersiz.' }
+        temel.th_hizmet_baslangic = iso
+      }
     }
     if (!hizmetDondur) {
       temel.hizmet_suresi_yil = hs.yil
@@ -226,6 +241,8 @@ export async function calisanGuncelle(
 
   await revalidatePersonelDetayPaths(sicil_no)
   revalidatePath('/personel')
+  revalidatePath('/personel/teknik-hizmet-yili')
+  revalidatePath('/', 'layout')
   return {}
 }
 

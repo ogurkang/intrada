@@ -92,3 +92,11 @@ export function toGgAayyyy(s: string | null | undefined): string {
   if (!s || !String(s).trim()) return ''
   return metinToGgAayyyy(s)
 }
+
+/** Yazarken gg.aa.yyyy maskesi (yalnızca rakam). */
+export function tarihYazisiMaskele(raw: string): string {
+  const d = String(raw ?? '').replace(/\D/g, '').slice(0, 8)
+  if (d.length <= 2) return d
+  if (d.length <= 4) return `${d.slice(0, 2)}.${d.slice(2)}`
+  return `${d.slice(0, 2)}.${d.slice(2, 4)}.${d.slice(4)}`
+}

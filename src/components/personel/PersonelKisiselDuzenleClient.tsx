@@ -16,6 +16,8 @@ import {
   gorevTuruYemekHakkiGoster,
 } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
+import { tarihYazisiMaskele, toGgAayyyy } from '@/lib/tarih'
+import { thHizmetAlaniGosterMi } from '@/lib/th-hizmet-yili'
 
 type Calisan = Tables<'calisan'>
 type CalisanGenisletilmis = Calisan & {
@@ -42,6 +44,7 @@ interface Props {
   yerleskeSecenekleri?: { id: number; ad: string }[]
   seciliYerleskeId?: number | null
   mahalleKayitlari?: MahalleTanimSatir[]
+  asilKadroTh?: boolean
 }
 
 export default function PersonelKisiselDuzenleClient({
@@ -53,11 +56,14 @@ export default function PersonelKisiselDuzenleClient({
   yerleskeSecenekleri = [],
   seciliYerleskeId = null,
   mahalleKayitlari = [],
+  asilKadroTh = false,
 }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [gorevTuru, setGorevTuru] = useState(() => (calisan.gorev_turu?.trim() || 'Çalışan'))
+  const [thHizmetTarih, setThHizmetTarih] = useState(() => toGgAayyyy(calisan.th_hizmet_baslangic))
+  const thHizmetGoster = thHizmetAlaniGosterMi(asilKadroTh, calisan.th_hizmet_baslangic)
 
   const gorevlendirmeModu = modu === 'gorevlendirme'
   const detayLink = personelDetayHref(calisan, {
@@ -401,6 +407,27 @@ export default function PersonelKisiselDuzenleClient({
                 />
               </div>
             </div>
+            {thHizmetGoster && (
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Teknik Hizmet Yılı{asilKadroTh && <span className="text-red-500 ml-0.5">*</span>}
+                  </label>
+                  <input
+                    name="th_hizmet_baslangic"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="gg.aa.yyyy"
+                    value={thHizmetTarih}
+                    onChange={e => setThHizmetTarih(tarihYazisiMaskele(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Asil TH kadroya geçiş tarihi. Yan ödeme −5 / +5 bu tarihe göre hesaplanır.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-slate-100 pt-5 mt-2">

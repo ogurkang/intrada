@@ -18,6 +18,7 @@ import {
   etkinYerleskeId,
   yerleskeSecenekleri,
 } from '@/lib/yerleske-adresi'
+import { asilKadroThMi } from '@/lib/th-hizmet-yili-data'
 import type { Tables } from '@/types/database'
 
 interface Props {
@@ -100,6 +101,8 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
   })
   if ((calisan.gorev_turu ?? '') === 'Kurum Görevlendirme') konumMetni = 'Dış'
 
+  const asilKadroTh = await asilKadroThMi(supabase, calisan.sicil_no)
+
   // Tamamlanmış performans sonuçları — yalnızca admin personel kartında
   let performansKayitlari: { yil: number; ortalama: number | null }[] = []
   if (performansGoster) {
@@ -161,6 +164,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         yerleskeAdi={yerleskeAdi}
         konumMetni={konumMetni}
         performansKayitlari={performansKayitlari}
+        asilKadroTh={asilKadroTh}
       />
     </div>
   )

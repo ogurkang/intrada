@@ -39,7 +39,7 @@ export function parseKidemYili(v: string | number | null | undefined): number | 
   return Number.isFinite(n) ? n : null
 }
 
-/** TH: kıdem 0–4 → −5 yıl sütunu; 5 ve üzeri (25’e kadar) → +5 yıl sütunu */
+/** TH: hizmet yılı (tarih yoksa kıdem) 0–4 → −5 yıl sütunu; 5 ve üzeri → +5 yıl sütunu */
 export function thKidemEksi5BandiMi(kidem: number | null): boolean {
   return kidem != null && kidem >= 0 && kidem <= 4
 }
@@ -75,8 +75,8 @@ export type YanOdemeTanim = {
 }
 
 /**
- * TH personelde uygulanacak yan ödeme: kıdem 0–4 ise tanımdaki −5 yıl sütunu,
- * aksi halde +5 yıl sütunu (`yan_odeme`). Diğer sınıflarda hep `yan_odeme`.
+ * TH personelde uygulanacak yan ödeme: hizmet yılı (tarih yoksa kıdem) 0–4 ise
+ * tanımdaki −5 yıl sütunu, aksi halde +5 yıl sütunu (`yan_odeme`).
  */
 export function thYanOdemeTanimdan(
   tanim: YanOdemeTanim | null | undefined,

@@ -188,6 +188,7 @@ export type TerfiEttirKayitSatir = {
   ogrenim_terfi?: boolean
   ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora'
   yeni_ogrenim_turu?: string | null
+  th_hizmet_notu?: string | null
 }
 
 type TerfiAlanSnapshot = {
@@ -315,14 +316,17 @@ export async function terfiEttirKaydet(
     if (oncekiErr) return { hata: oncekiErr.message }
     if (!onceki) return { hata: `${s.sicil_no}: terfi kaydı bulunamadı.` }
 
-    const sonraki = terfiPayload(s)
+    const katsayi = terfiPayload(s)
     const { error } = await supabase
       .from('terfi_hareketleri')
-      .update(sonraki)
+      .update(katsayi)
       .eq('id', s.terfi_id)
     if (error) return { hata: error.message }
 
     const oncekiSnap = terfiSnapshotFromRow(onceki)
+    const sonraki = s.th_hizmet_notu?.trim()
+      ? { ...katsayi, aciklama: s.th_hizmet_notu.trim() }
+      : katsayi
     const { error: logErr } = await supabase.from('terfi_donem_islem_log').insert({
       donem_id: donemId,
       sicil_no: s.sicil_no,

@@ -215,17 +215,23 @@ function buildMenuGroups(
   denetimAgac: DenetimSidebarDonem[],
   kysAgac: KysSidebarMenu[],
   tasinirGorevlendirmeMenuAcik = false,
+  thHizmetYiliMenuAcik = false,
 ): MenuGroup[] {
+  const geciciAlt: MenuItem[] = [{ href: '/personel', label: 'Personel Listesi' }]
+  if (tasinirGorevlendirmeMenuAcik) {
+    geciciAlt.push({ href: '/personel/tasinir-gorevlendirme', label: 'Taşınır Görevlendirme' })
+  }
+  if (thHizmetYiliMenuAcik) {
+    geciciAlt.push({ href: '/personel/teknik-hizmet-yili', label: 'Teknik Hizmet Yılı' })
+  }
+
   const calisanlarItem: MenuItem =
     calisanlarHref === '/personel'
-      ? tasinirGorevlendirmeMenuAcik
+      ? geciciAlt.length > 1
         ? {
             href: '/personel',
             label: 'Çalışanlar',
-            children: [
-              { href: '/personel', label: 'Personel Listesi' },
-              { href: '/personel/tasinir-gorevlendirme', label: 'Taşınır Görevlendirme' },
-            ],
+            children: geciciAlt,
           }
         : { href: '/personel', label: 'Çalışanlar' }
       : { href: calisanlarHref, label: 'Personel Kartım' }
@@ -509,6 +515,8 @@ interface SidebarProps {
   kysAgac?: KysSidebarMenu[]
   /** Geçici: Taşınır Görevlendirme alt menüsü */
   tasinirGorevlendirmeMenuAcik?: boolean
+  /** Geçici: Teknik Hizmet Yılı alt menüsü */
+  thHizmetYiliMenuAcik?: boolean
   /** Amir/hayalet: güncel dönem; admin: dönem listesi */
   performansDegerlendirmeHref?: string
 }
@@ -528,6 +536,7 @@ export default function Sidebar({
   denetimAgac = [],
   kysAgac = [],
   tasinirGorevlendirmeMenuAcik = false,
+  thHizmetYiliMenuAcik = false,
   performansDegerlendirmeHref = '/performans/degerlendirme',
 }: SidebarProps) {
   const pathname = usePathname()
@@ -542,8 +551,8 @@ export default function Sidebar({
   }, [access, hayaletDurum, performansDegerlendirmeHref])
 
   const menuGroups = useMemo(
-    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik),
-    [terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik],
+    () => buildMenuGroups(terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik, thHizmetYiliMenuAcik),
+    [terfiMenuHref, calisanlarHref, denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik, thHizmetYiliMenuAcik],
   )
 
   const menuIzinleri = access.mode === 'kullanici' ? access.menuIzinleri : {}

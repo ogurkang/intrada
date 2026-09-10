@@ -11,6 +11,7 @@ import IlkKurulumGuard from '@/components/auth/IlkKurulumGuard'
 import { loadDenetimSidebarAgac } from '@/lib/denetim-menu'
 import { loadKysSidebarAgac } from '@/lib/kys-menu'
 import { tasinirGorevlendirmeMenuAcikMi } from '@/lib/uygulama-ayar'
+import { thHizmetYiliMenuAcikMi } from '@/lib/th-hizmet-yili-data'
 import { performansDegerlendirmeLandingHref } from '@/lib/performans-donem-coz'
 
 export default async function DashboardLayout({
@@ -78,11 +79,12 @@ export default async function DashboardLayout({
     process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
     'local-dev'
 
-  const [denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik, performansDegerlendirmeHref] =
+  const [denetimAgac, kysAgac, tasinirGorevlendirmeMenuAcik, thHizmetYiliMenuAcik, performansDegerlendirmeHref] =
     await Promise.all([
       loadDenetimSidebarAgac(supabase),
       loadKysSidebarAgac(supabase),
       tasinirGorevlendirmeMenuAcikMi(supabase),
+      thHizmetYiliMenuAcikMi(supabase),
       // Amir / hayalet: menü doğrudan güncel döneme gitsin (ara boş /degerlendirme sayfası olmasın)
       hayaletDurum?.aktif || !isAdminLike(access)
         ? performansDegerlendirmeLandingHref(supabase)
@@ -100,6 +102,7 @@ export default async function DashboardLayout({
         denetimAgac={denetimAgac}
         kysAgac={kysAgac}
         tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
+        thHizmetYiliMenuAcik={thHizmetYiliMenuAcik}
         performansDegerlendirmeHref={performansDegerlendirmeHref}
       >
         {children}

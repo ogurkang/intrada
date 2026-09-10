@@ -10,6 +10,7 @@ import {
   type TerfiKaynak,
 } from '@/lib/terfi-ettir-hesap'
 import { parseKidemYili, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
+import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import {
   ogrenimYuksekMi,
   teknisyenEkGostergeUygula,
@@ -123,7 +124,11 @@ export function buildTerfiOgrenimOnizleme(input: {
   const yanUyg = puanThYanOdemeIle(
     puanSon,
     tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
-    parseKidemYili(kaynak.kidem_yili),
+    thYanOdemeYilSec({
+      thMi,
+      thHizmetBaslangic: kaynak.th_hizmet_baslangic,
+      kidemYili: parseKidemYili(kaynak.kidem_yili),
+    }),
     thMi,
     kaynak.unvan_adi,
     kaynak.bilgisayar_kullaniyor,
@@ -173,6 +178,7 @@ export function buildTerfiOgrenimOnizleme(input: {
     sds_eski: kaynak.sds_orani ?? '—',
     sds_yeni: puanSon.sds_orani ?? '—',
     durum: durumEtiket,
+    th_hizmet_baslangic: kaynak.th_hizmet_baslangic ?? null,
     kazanc_tanimi_eksik: kazancEksik.size > 0,
     kazanc_eksik_dereceler: kazancEksik.size > 0 ? [...kazancEksik].sort((a, b) => a - b) : undefined,
     terfi_id: kaynak.terfi_id,

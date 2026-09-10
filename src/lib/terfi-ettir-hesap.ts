@@ -1,5 +1,17 @@
 import { tarihDahilAralikta, tarihGun } from '@/lib/terfi-donem-aralik'
-import { parseKidemYili, yanOdemeTanimdan, unvanSinifiThMi, unvanYanOdemeBilgisayarMi } from '@/lib/kazanc-yan-odeme'
+import {
+  parseKidemYili,
+  yanOdemeTanimdan,
+  unvanSinifiThMi,
+  unvanYanOdemeBilgisayarMi,
+  thKidemEksi5BandiMi,
+} from '@/lib/kazanc-yan-odeme'
+import {
+  TH_HIZMET_SURESI_5_YIL_NOTU,
+  TH_SINIF_HIZMET_DURUM,
+  thBesinciYilDonumuIso,
+  thYanOdemeYilSec,
+} from '@/lib/th-hizmet-yili'
 import {
   teknisyenEkGostergeUygula,
   type TeknisyenEkGostergeBaglam,
@@ -12,6 +24,7 @@ export type TerfiEttirDurumEtiket =
   | 'Tavan Kademe'
   | 'Eğitim Sınırında'
   | 'Kıdem Yılı İlerledi'
+  | 'Sınıf Hizmet Süresi Arttı'
   | 'İyi Hal İlerlemesi'
   | 'Hazırlık Okudu'
   | 'Yükseklisansını Tamamladı'
@@ -212,6 +225,8 @@ export type TerfiKaynak = {
   yuksek_ogrenim_var: boolean
   /** Yüksek öğrenim kaydında kadrosu ile ilgili işaretli. */
   kadrosu_ile_ilgili: boolean
+  /** `calisan.th_hizmet_baslangic` — TH −5/+5 bandı (yoksa kıdem yılı) */
+  th_hizmet_baslangic?: string | null
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -248,6 +263,9 @@ export type TerfiEttirOnizlemeSatir = {
   sds_eski: string
   sds_yeni: string
   durum: TerfiEttirDurumEtiket
+  /** Terfi log `sonraki.aciklama` — örn. hizmet süresi 5 yılı geçti */
+  th_hizmet_notu?: string | null
+  th_hizmet_baslangic?: string | null
   /** Derece ilerledi ama unvan+öğrenim+derece için kazanç tanımı yok; puanlar eski değerde bırakıldı */
   kazanc_tanimi_eksik?: boolean
   /** Kazanç tanımı bulunamayan dereceler */
@@ -307,6 +325,18 @@ function birYilIleri(t: string | null | undefined): string | null {
   return yilIleri(t, 1)
 }
 
+function thEksi5UygulaniyorMu(
+  mevcutYan: string | null | undefined,
+  tanim: KazancPuan | null,
+  thMi: boolean,
+): boolean {
+  if (!thMi || !tanim) return false
+  const eksi5 = String(tanim.yan_odeme_eksi5 ?? '').trim()
+  const arti5 = String(tanim.yan_odeme ?? '').trim()
+  const mevcut = String(mevcutYan ?? '').trim()
+  return !!eksi5 && mevcut === eksi5 && mevcut !== arti5
+}
+
 /**
  * Terfi tarih penceresi ve kazanç lookup ile önizleme satırları üretir.
  */
@@ -332,9 +362,28 @@ export function buildTerfiEttirOnizleme(
     const kidemInSonrakiYil = !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.kidem_tarihi, sonrakiYilBas, sonrakiYilBit)
     const iyiHalInSonrakiYil =
       !!sonrakiYilBas && !!sonrakiYilBit && tarihDahilAralikta(r.iyi_hal_terfi_tarihi, sonrakiYilBas, sonrakiYilBit)
+    const thMi = unvanSinifiThMi(r.unvan_sinif)
+    const thYilBit = thYanOdemeYilSec({
+      thMi,
+      thHizmetBaslangic: r.th_hizmet_baslangic,
+      kidemYili: parseKidemYili(r.kidem_yili),
+      referansTarih: terfiBit,
+    })
+    const besinci = thBesinciYilDonumuIso(r.th_hizmet_baslangic)
+    const besinciIn = !!besinci && tarihDahilAralikta(besinci, terfiBas, terfiBit)
+    const kdPeek = parseNum(r.kha_derece)
+    const tanimMevcutPeek =
+      thMi && r.unvan_id != null && r.ogrenim_id != null && kdPeek != null
+        ? kazancLookup(r.unvan_id, r.ogrenim_id, kdPeek)
+        : null
+    const thCatchUp =
+      thMi &&
+      !thKidemEksi5BandiMi(thYilBit) &&
+      thEksi5UygulaniyorMu(r.yan_odeme, tanimMevcutPeek ? kazancSatirToPuan(tanimMevcutPeek) : null, thMi)
+
     const donemKapsaminda =
       khaIn || ekeaIn || kidemIn || iyiHalIn || khaInSonrakiYil || ekeaInSonrakiYil || kidemInSonrakiYil || iyiHalInSonrakiYil
-    if (!donemKapsaminda) continue
+    if (!donemKapsaminda && !besinciIn && !thCatchUp) continue
 
     const kd = parseNum(r.kha_derece)
     const kk = parseNum(r.kha_kademe)
@@ -428,12 +477,18 @@ export function buildTerfiEttirOnizleme(
       durum = birlesDurum(durum, 'İyi Hal İlerlemesi')
     }
 
-    const thMi = unvanSinifiThMi(r.unvan_sinif)
     const tanimYeni = uId != null && oId != null ? kazancLookup(uId, oId, newKd) : null
+    const tanimYeniPuan = tanimYeni ? kazancSatirToPuan(tanimYeni) : null
+    const thYilUygula = thYanOdemeYilSec({
+      thMi,
+      thHizmetBaslangic: r.th_hizmet_baslangic,
+      kidemYili: parseKidemYili(newKidemYili),
+      referansTarih: terfiBit,
+    })
     const yanUyg = puanThYanOdemeIle(
       puanSon,
-      tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
-      parseKidemYili(newKidemYili),
+      tanimYeniPuan,
+      thYilUygula,
       thMi,
       r.unvan_adi,
       r.bilgisayar_kullaniyor,
@@ -447,6 +502,20 @@ export function buildTerfiEttirOnizleme(
       kadrosuIleIlgili: r.kadrosu_ile_ilgili,
       baglam: teknisyenEkGosterge,
     })
+
+    let thHizmetNotu: string | null = null
+    if (
+      thMi &&
+      !thKidemEksi5BandiMi(thYilUygula) &&
+      thEksi5UygulaniyorMu(
+        r.yan_odeme,
+        tanimMevcutPeek ? kazancSatirToPuan(tanimMevcutPeek) : null,
+        thMi,
+      )
+    ) {
+      durum = birlesDurum(durum, TH_SINIF_HIZMET_DURUM)
+      thHizmetNotu = TH_HIZMET_SURESI_5_YIL_NOTU
+    }
 
     out.push({
       sicil_no: r.sicil_no,
@@ -481,6 +550,8 @@ export function buildTerfiEttirOnizleme(
       sds_eski: r.sds_orani ?? '—',
       sds_yeni: puanSon.sds_orani ?? '—',
       durum,
+      th_hizmet_notu: thHizmetNotu,
+      th_hizmet_baslangic: r.th_hizmet_baslangic ?? null,
       kazanc_tanimi_eksik: kazancEksik.size > 0,
       kazanc_eksik_dereceler: kazancEksik.size > 0 ? [...kazancEksik].sort((a, b) => a - b) : undefined,
       terfi_id: r.terfi_id,

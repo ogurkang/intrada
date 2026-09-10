@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { tarihYazisiMaskele } from '@/lib/tarih'
 import { personelDetayHref } from '@/lib/personel-link'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
@@ -22,7 +23,7 @@ interface Props {
   baslik: string
   alanEtiketi: string
   data: Satir[]
-  inputType: 'text' | 'select'
+  inputType: 'text' | 'select' | 'tarih'
   secenekler?: string[]
   /** Select boş seçenek metni (varsayılan: —) */
   bosSecenekEtiketi?: string
@@ -154,6 +155,12 @@ export default function PersonelTekAlanTopluClient({
     })
   }
 
+  function handleInputChange(sicil: string, v: string, hedef: 'inline' | 'toplu') {
+    const deger = inputType === 'tarih' ? tarihYazisiMaskele(v) : v
+    if (hedef === 'inline') setInline(prev => ({ ...prev, [sicil]: deger }))
+    else setToplu(prev => ({ ...prev, [sicil]: deger }))
+  }
+
   const InputCell = (props: { value: string; onChange: (v: string) => void }) =>
     inputType === 'select' ? (
       <select
@@ -173,6 +180,8 @@ export default function PersonelTekAlanTopluClient({
         type="text"
         value={props.value}
         onChange={e => props.onChange(e.target.value)}
+        placeholder={inputType === 'tarih' ? 'gg.aa.yyyy' : undefined}
+        inputMode={inputType === 'tarih' ? 'numeric' : undefined}
         className="w-44 px-2 py-1 border border-slate-300 rounded text-sm"
       />
     )
@@ -258,12 +267,12 @@ export default function PersonelTekAlanTopluClient({
                   <td className="px-3 py-2">
                     {sekme === 'liste' ? (
                       duz ? (
-                        <InputCell value={inlineDeger(s)} onChange={v => setInline(prev => ({ ...prev, [s.sicil_no]: v }))} />
+                        <InputCell value={inlineDeger(s)} onChange={v => handleInputChange(s.sicil_no, v, 'inline')} />
                       ) : (
                         <span>{mevcutDeger(s) || '—'}</span>
                       )
                     ) : (
-                      <InputCell value={topluDeger(s)} onChange={v => setToplu(prev => ({ ...prev, [s.sicil_no]: v }))} />
+                      <InputCell value={topluDeger(s)} onChange={v => handleInputChange(s.sicil_no, v, 'toplu')} />
                     )}
                   </td>
                   {sekme === 'liste' && (

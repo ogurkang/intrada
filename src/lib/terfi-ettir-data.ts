@@ -130,9 +130,14 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
     await Promise.all([
       supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
-      fetchAllCalisan<{ sicil_no: string; ad_soyad: string | null; bilgisayar_kullaniyor: boolean | null }>(
+      fetchAllCalisan<{
+        sicil_no: string
+        ad_soyad: string | null
+        bilgisayar_kullaniyor: boolean | null
+        th_hizmet_baslangic: string | null
+      }>(
         supabase,
-        'sicil_no, ad_soyad, bilgisayar_kullaniyor',
+        'sicil_no, ad_soyad, bilgisayar_kullaniyor, th_hizmet_baslangic',
       ),
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, statu').order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ayrilis_nedeni').order('yururluk_tarihi', { ascending: false }),
@@ -147,8 +152,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
   const yetkinlikBySicil = new Map<string, boolean | null>()
+  const thHizmetBySicil = new Map<string, string | null>()
   for (const c of calisanlar ?? []) {
     yetkinlikBySicil.set(c.sicil_no, c.bilgisayar_kullaniyor ?? null)
+    thHizmetBySicil.set(c.sicil_no, c.th_hizmet_baslangic ?? null)
   }
   const terfiBySicil = new Map<string, Tables<'terfi_hareketleri'>[]>()
   for (const k of kayitlar ?? []) {
@@ -266,6 +273,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       bilgisayar_kullaniyor: yetkinlikBySicil.get(sicil_no) ?? null,
       yuksek_ogrenim_var: yuksekOgrenimBySicil.get(sicil_no) === true,
       kadrosu_ile_ilgili: kadrosuIleIlgiliBySicil.get(sicil_no) === true,
+      th_hizmet_baslangic: thHizmetBySicil.get(sicil_no) ?? null,
     })
   }
 

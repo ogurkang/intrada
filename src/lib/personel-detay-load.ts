@@ -46,6 +46,7 @@ export type PersonelDetayLoadResult = {
     kha_dk: string
     ekea_dk: string
     kidem_yili: string
+    notu: string | null
   }[]
   tasinirTutarByGorev: Record<string, string>
 }
@@ -171,7 +172,7 @@ export async function fetchPersonelDetayPageData(
     supabase.from('tanim_gosterge').select('derece, kademe, gosterge').eq('aktif', true),
     supabase
       .from('terfi_donem_islem_log')
-      .select('islem_tarihi, onceki')
+      .select('islem_tarihi, onceki, sonraki')
       .eq('sicil_no', sicil_no)
       .order('islem_tarihi', { ascending: false })
       .limit(100),
@@ -274,13 +275,19 @@ export async function fetchPersonelDetayPageData(
     if (hit?.gosterge != null) tanimGostergeKha = String(hit.gosterge)
   }
 
-  const terfiOncesiTarihce = (terfiLogRaw ?? []).map((r: { islem_tarihi: string; onceki: Record<string, string | null> }) => {
+  const terfiOncesiTarihce = (terfiLogRaw ?? []).map((r: {
+    islem_tarihi: string
+    onceki: Record<string, string | null>
+    sonraki: Record<string, string | null> | null
+  }) => {
     const o = r.onceki ?? {}
+    const notu = String(r.sonraki?.aciklama ?? '').trim()
     return {
       islem_tarihi: r.islem_tarihi,
       kha_dk: `${o.kha_derece ?? '—'}/${o.kha_kademe ?? '—'}`,
       ekea_dk: `${o.ekea_derece ?? '—'}/${o.ekea_kademe ?? '—'}`,
       kidem_yili: o.kidem_yili ?? '—',
+      notu: notu || null,
     }
   })
 

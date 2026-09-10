@@ -25,6 +25,7 @@ interface DashboardShellProps {
   denetimAgac?: import('@/lib/denetim-menu').DenetimSidebarDonem[]
   kysAgac?: import('@/lib/kys-menu').KysSidebarMenu[]
   tasinirGorevlendirmeMenuAcik?: boolean
+  thHizmetYiliMenuAcik?: boolean
   /** Amir/hayalet için güncel dönem URL’si; admin için dönem listesi. */
   performansDegerlendirmeHref?: string
 }
@@ -40,6 +41,7 @@ export default function DashboardShell({
   denetimAgac,
   kysAgac,
   tasinirGorevlendirmeMenuAcik = false,
+  thHizmetYiliMenuAcik = false,
   performansDegerlendirmeHref = '/performans/degerlendirme',
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -74,6 +76,7 @@ export default function DashboardShell({
           denetimAgac={denetimAgac}
           kysAgac={kysAgac}
           tasinirGorevlendirmeMenuAcik={tasinirGorevlendirmeMenuAcik}
+          thHizmetYiliMenuAcik={thHizmetYiliMenuAcik}
           performansDegerlendirmeHref={performansDegerlendirmeHref}
         />
       </aside>
