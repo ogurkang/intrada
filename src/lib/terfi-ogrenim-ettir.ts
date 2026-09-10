@@ -14,6 +14,7 @@ import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import {
   ogrenimYuksekMi,
   teknisyenEkGostergeUygula,
+  unvanTeknisyenMi,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
@@ -142,6 +143,26 @@ export function buildTerfiOgrenimOnizleme(input: {
     kadrosuIleIlgili: kaynak.kadrosu_ile_ilgili,
     baglam: teknisyenEkGosterge,
   })
+  if (
+    kaynak.kadrosu_ile_ilgili &&
+    unvanTeknisyenMi(kaynak.unvan_adi) &&
+    (kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru))
+  ) {
+    const overlayYan = puanThYanOdemeIle(
+      puanSon,
+      puanSon,
+      thYanOdemeYilSec({
+        thMi,
+        thHizmetBaslangic: kaynak.th_hizmet_baslangic,
+        kidemYili: parseKidemYili(kaynak.kidem_yili),
+      }),
+      thMi,
+      kaynak.unvan_adi,
+      kaynak.bilgisayar_kullaniyor,
+    )
+    puanSon = overlayYan.puan
+    yanUyg.tanimArti5 = overlayYan.tanimArti5
+  }
 
   const durumEtiket = ogrenimOlayEtiket(olay) as TerfiEttirDurumEtiket
 

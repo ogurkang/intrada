@@ -14,6 +14,7 @@ import {
 } from '@/lib/th-hizmet-yili'
 import {
   teknisyenEkGostergeUygula,
+  unvanTeknisyenMi,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
@@ -502,6 +503,18 @@ export function buildTerfiEttirOnizleme(
       kadrosuIleIlgili: r.kadrosu_ile_ilgili,
       baglam: teknisyenEkGosterge,
     })
+    if (r.kadrosu_ile_ilgili && unvanTeknisyenMi(r.unvan_adi) && r.yuksek_ogrenim_var) {
+      const overlayYan = puanThYanOdemeIle(
+        puanSon,
+        puanSon,
+        thYilUygula,
+        thMi,
+        r.unvan_adi,
+        r.bilgisayar_kullaniyor,
+      )
+      puanSon = overlayYan.puan
+      yanUyg.tanimArti5 = overlayYan.tanimArti5
+    }
 
     let thHizmetNotu: string | null = null
     if (

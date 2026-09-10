@@ -16,7 +16,6 @@ import {
   gorevTuruYemekHakkiGoster,
 } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
-import { tarihYazisiMaskele, toGgAayyyy } from '@/lib/tarih'
 import { thHizmetAlaniGosterMi } from '@/lib/th-hizmet-yili'
 
 type Calisan = Tables<'calisan'>
@@ -62,7 +61,6 @@ export default function PersonelKisiselDuzenleClient({
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [gorevTuru, setGorevTuru] = useState(() => (calisan.gorev_turu?.trim() || 'Çalışan'))
-  const [thHizmetTarih, setThHizmetTarih] = useState(() => toGgAayyyy(calisan.th_hizmet_baslangic))
   const thHizmetGoster = thHizmetAlaniGosterMi(asilKadroTh, calisan.th_hizmet_baslangic)
 
   const gorevlendirmeModu = modu === 'gorevlendirme'
@@ -415,11 +413,9 @@ export default function PersonelKisiselDuzenleClient({
                   </label>
                   <input
                     name="th_hizmet_baslangic"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="gg.aa.yyyy"
-                    value={thHizmetTarih}
-                    onChange={e => setThHizmetTarih(tarihYazisiMaskele(e.target.value))}
+                    type="date"
+                    defaultValue={(calisan.th_hizmet_baslangic ?? '').toString().slice(0, 10)}
+                    required={asilKadroTh}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">

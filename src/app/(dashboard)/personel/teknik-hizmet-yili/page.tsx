@@ -22,7 +22,7 @@ export default async function TeknikHizmetYiliPage() {
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 max-w-3xl mb-4">
         Geçici ekran. Asil kadrosu TH olan ve teknik hizmet yılı henüz girilmemiş personel listelenir.
-        Tarihi gg.aa.yyyy olarak kaydedince satır listeden düşer. Liste bitince menü kaybolur; yeni TH
+        Tarihi kaydedince satır listeden düşer. Liste bitince menü kaybolur; yeni TH
         atamalarda tarih personel kartı → Görevlendirme Bilgileri’nden girilir.
       </div>
 

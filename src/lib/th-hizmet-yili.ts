@@ -119,7 +119,7 @@ export function thHizmetTarihiKaydet(ham: string | null | undefined): { iso: str
   const t = String(ham ?? '').trim()
   if (!t) return { iso: null, hata: 'Teknik hizmet yılı tarihi girilmelidir.' }
   const iso = ggAayyyyToIso(t)
-  if (!iso) return { iso: null, hata: 'Tarih gg.aa.yyyy formatında olmalıdır (ör. 10.09.2019).' }
+  if (!iso) return { iso: null, hata: 'Geçerli bir tarih seçilmelidir.' }
   return { iso }
 }
 

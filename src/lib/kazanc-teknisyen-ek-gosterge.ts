@@ -9,7 +9,14 @@ export type KazancSatirLookup = (
   unvanId: number,
   ogrenimId: number,
   derece: number,
-) => { ek_gosterge: string | null } | null
+) => {
+  ek_gosterge: string | null
+  ek_odeme?: string | null
+  oht?: string | null
+  yan_odeme?: string | null
+  yan_odeme_eksi5?: string | null
+  sds_orani?: string | null
+} | null
 
 /** Tekniker / Bilgisayar İşletmeni satırlarını kazanç haritasından bulmak için id’ler. */
 export type TeknisyenEkGostergeBaglam = {
@@ -77,27 +84,40 @@ export function teknisyenEkGostergeBaglamKur(input: {
   }
 }
 
-function ekGostergeOku(
+function kazancSatirOku(
   lookup: KazancSatirLookup,
   unvanId: number | null,
   derece: number,
   ogrenimIds: number[],
-): string | null {
+): NonNullable<ReturnType<KazancSatirLookup>> | null {
   if (unvanId == null || !ogrenimIds.length) return null
   for (const ogId of ogrenimIds) {
     const row = lookup(unvanId, ogId, derece)
-    const v = String(row?.ek_gosterge ?? '').trim()
-    if (v) return row!.ek_gosterge ?? null
+    if (row) return row
   }
   return null
 }
 
+function doluMetin(v: string | null | undefined): string | null {
+  const t = String(v ?? '').trim()
+  return t ? (v ?? null) : null
+}
+
 /**
- * Teknisyen + önlisans/üstü öğrenimde yalnızca ek göstergeyi
- * Tekniker veya Bilgisayar İşletmeni tanımından yazar.
- * Diğer kazanç alanları olduğu gibi kalır.
+ * Teknisyen + önlisans/üstü öğrenim:
+ * kadrosu ile ilgili → Tekniker tanımından ek gösterge, ek ödeme, ÖHT, yan ödeme, SDS;
+ * değilse → yalnızca ek göstergeyi Bilgisayar İşletmeni tanımından alır.
  */
-export function teknisyenEkGostergeUygula<T extends { ek_gosterge: string | null }>(
+export function teknisyenEkGostergeUygula<
+  T extends {
+    ek_gosterge: string | null
+    ek_odeme?: string | null
+    oht?: string | null
+    yan_odeme?: string | null
+    yan_odeme_eksi5?: string | null
+    sds_orani?: string | null
+  },
+>(
   puan: T,
   lookup: KazancSatirLookup,
   opts: {
@@ -116,12 +136,28 @@ export function teknisyenEkGostergeUygula<T extends { ek_gosterge: string | null
   const derece = yuksekDerece657(parseDerece(opts.kadroDerecesi), parseDerece(opts.khaDerece))
   if (derece == null) return puan
 
-  const hedefUnvanId = opts.kadrosuIleIlgili
-    ? baglam.teknikerUnvanId
-    : baglam.bilgisayarIsletmeniUnvanId
-  const ek = ekGostergeOku(lookup, hedefUnvanId, derece, baglam.lisansOnlisansOgrenimIds)
-  if (ek == null) return puan
-  return { ...puan, ek_gosterge: ek }
+  if (!opts.kadrosuIleIlgili) {
+    const biId = baglam.bilgisayarIsletmeniUnvanId
+    if (biId == null) return puan
+    for (const ogId of baglam.lisansOnlisansOgrenimIds) {
+      const ek = doluMetin(lookup(biId, ogId, derece)?.ek_gosterge)
+      if (ek != null) return { ...puan, ek_gosterge: ek }
+    }
+    return puan
+  }
+
+  const hedef = kazancSatirOku(lookup, baglam.teknikerUnvanId, derece, baglam.lisansOnlisansOgrenimIds)
+  if (!hedef) return puan
+
+  return {
+    ...puan,
+    ek_gosterge: hedef.ek_gosterge ?? null,
+    ek_odeme: hedef.ek_odeme ?? null,
+    oht: hedef.oht ?? null,
+    yan_odeme: hedef.yan_odeme ?? null,
+    yan_odeme_eksi5: hedef.yan_odeme_eksi5 ?? null,
+    sds_orani: hedef.sds_orani ?? null,
+  }
 }
 
 export type TeknisyenOgrenimUyum = 'uyumlu' | 'uyumsuz'

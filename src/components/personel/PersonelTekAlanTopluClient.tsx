@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { tarihYazisiMaskele } from '@/lib/tarih'
+import { ggAayyyyToIso } from '@/lib/tarih'
 import { personelDetayHref } from '@/lib/personel-link'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
@@ -41,6 +41,55 @@ interface Props {
     sonraki: unknown,
   ) => { alan: string; etiket: string; onceki: unknown; sonraki: unknown }[]
   auditDegerGoster?: (alan: string, deger: unknown) => string
+}
+
+function TekAlanGiris({
+  inputType,
+  value,
+  onChange,
+  secenekler,
+  bosSecenekEtiketi,
+}: {
+  inputType: 'text' | 'select' | 'tarih'
+  value: string
+  onChange: (v: string) => void
+  secenekler: string[]
+  bosSecenekEtiketi: string
+}) {
+  if (inputType === 'select') {
+    return (
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-44 px-2 py-1 border border-slate-300 rounded text-sm bg-white"
+      >
+        <option value="">{bosSecenekEtiketi}</option>
+        {secenekler.map(o => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    )
+  }
+  if (inputType === 'tarih') {
+    return (
+      <input
+        type="date"
+        value={ggAayyyyToIso(value) ?? ''}
+        onChange={e => onChange(e.target.value)}
+        className="w-full max-w-[12.5rem] px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+      />
+    )
+  }
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-44 px-2 py-1 border border-slate-300 rounded text-sm"
+    />
+  )
 }
 
 export default function PersonelTekAlanTopluClient({
@@ -156,35 +205,9 @@ export default function PersonelTekAlanTopluClient({
   }
 
   function handleInputChange(sicil: string, v: string, hedef: 'inline' | 'toplu') {
-    const deger = inputType === 'tarih' ? tarihYazisiMaskele(v) : v
-    if (hedef === 'inline') setInline(prev => ({ ...prev, [sicil]: deger }))
-    else setToplu(prev => ({ ...prev, [sicil]: deger }))
+    if (hedef === 'inline') setInline(prev => ({ ...prev, [sicil]: v }))
+    else setToplu(prev => ({ ...prev, [sicil]: v }))
   }
-
-  const InputCell = (props: { value: string; onChange: (v: string) => void }) =>
-    inputType === 'select' ? (
-      <select
-        value={props.value}
-        onChange={e => props.onChange(e.target.value)}
-        className="w-44 px-2 py-1 border border-slate-300 rounded text-sm bg-white"
-      >
-        <option value="">{bosSecenekEtiketi}</option>
-        {secenekler.map(o => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <input
-        type="text"
-        value={props.value}
-        onChange={e => props.onChange(e.target.value)}
-        placeholder={inputType === 'tarih' ? 'gg.aa.yyyy' : undefined}
-        inputMode={inputType === 'tarih' ? 'numeric' : undefined}
-        className="w-44 px-2 py-1 border border-slate-300 rounded text-sm"
-      />
-    )
 
   return (
     <div className="space-y-4">
@@ -267,12 +290,24 @@ export default function PersonelTekAlanTopluClient({
                   <td className="px-3 py-2">
                     {sekme === 'liste' ? (
                       duz ? (
-                        <InputCell value={inlineDeger(s)} onChange={v => handleInputChange(s.sicil_no, v, 'inline')} />
+                        <TekAlanGiris
+                          inputType={inputType}
+                          value={inlineDeger(s)}
+                          onChange={v => handleInputChange(s.sicil_no, v, 'inline')}
+                          secenekler={secenekler}
+                          bosSecenekEtiketi={bosSecenekEtiketi}
+                        />
                       ) : (
                         <span>{mevcutDeger(s) || '—'}</span>
                       )
                     ) : (
-                      <InputCell value={topluDeger(s)} onChange={v => handleInputChange(s.sicil_no, v, 'toplu')} />
+                      <TekAlanGiris
+                        inputType={inputType}
+                        value={topluDeger(s)}
+                        onChange={v => handleInputChange(s.sicil_no, v, 'toplu')}
+                        secenekler={secenekler}
+                        bosSecenekEtiketi={bosSecenekEtiketi}
+                      />
                     )}
                   </td>
                   {sekme === 'liste' && (

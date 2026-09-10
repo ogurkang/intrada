@@ -131,7 +131,7 @@ export default function KazancSapmaClient({
                 kural kısa etiketi görünür: <span className="font-medium">Bilgisayarlı</span>,{' '}
                 <span className="font-medium">Bilgisayarsız</span>, <span className="font-medium">−5 Yıl</span>,{' '}
                 <span className="font-medium">+5 Yıl</span>, <span className="font-medium">TKY Görevi</span>.
-                Teknisyen kadrosunda yüksek öğrenimli personelde ek gösterge kaynağı yeşil çerçevede belirtilir:{' '}
+                Teknisyen kadrosunda yüksek öğrenimli personelde kazanç kaynağı yeşil çerçevede belirtilir:{' '}
                 <span className="font-medium">Öğrenim Uyumlu</span> (Tekniker),{' '}
                 <span className="font-medium">Öğrenim Uyumsuz</span> (Bilgisayar İşletmeni).
               </>
