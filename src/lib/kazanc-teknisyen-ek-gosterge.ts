@@ -123,3 +123,23 @@ export function teknisyenEkGostergeUygula<T extends { ek_gosterge: string | null
   if (ek == null) return puan
   return { ...puan, ek_gosterge: ek }
 }
+
+export type TeknisyenOgrenimUyum = 'uyumlu' | 'uyumsuz'
+
+/** Teknisyen + yüksek öğrenim kuralı varsa: ilgili → uyumlu (Tekniker), değilse uyumsuz (Bİ). */
+export function teknisyenOgrenimUyum(
+  opts: {
+    unvanAdi: string | null | undefined
+    yuksekOgrenimVar: boolean
+    kadrosuIleIlgili: boolean
+  },
+): TeknisyenOgrenimUyum | null {
+  if (!unvanTeknisyenMi(opts.unvanAdi) || !opts.yuksekOgrenimVar) return null
+  return opts.kadrosuIleIlgili ? 'uyumlu' : 'uyumsuz'
+}
+
+export function teknisyenOgrenimUyumEtiket(uyum: TeknisyenOgrenimUyum | null | undefined): string | null {
+  if (uyum === 'uyumlu') return 'Öğrenim Uyumlu'
+  if (uyum === 'uyumsuz') return 'Öğrenim Uyumsuz'
+  return null
+}

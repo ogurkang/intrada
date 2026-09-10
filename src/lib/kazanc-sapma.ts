@@ -15,7 +15,9 @@ import {
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 import {
   teknisyenEkGostergeUygula,
+  teknisyenOgrenimUyum,
   type TeknisyenEkGostergeBaglam,
+  type TeknisyenOgrenimUyum,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
@@ -47,6 +49,8 @@ export type KazancSapmaSatir = {
   >
   /** Tanımdan ayrışan alan sayısı */
   farkAdedi: number
+  /** Teknisyen yüksek öğrenim kuralı: Tekniker → uyumlu, Bilgisayar İşletmeni → uyumsuz */
+  ogrenim_uyum: TeknisyenOgrenimUyum | null
 }
 
 /** Kazanç tanımı hiç bulunamayan personel (ünvan/öğrenim/derece üçlüsü tabloda yok) */
@@ -239,6 +243,11 @@ export function kazancSapmaHesapla(
       yan_odeme_kural: alanlar.yan_odeme.aciklama ?? kuralKisa ?? 'Yan Ödeme',
       alanlar,
       farkAdedi,
+      ogrenim_uyum: teknisyenOgrenimUyum({
+        unvanAdi: r.unvan_adi,
+        yuksekOgrenimVar: r.yuksek_ogrenim_var,
+        kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+      }),
     }
 
     if (farkAdedi === 0) uyusanlar.push(satir)

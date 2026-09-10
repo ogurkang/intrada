@@ -9,6 +9,7 @@ import {
   type KazancSapmaSatir,
   type KazancTanimsizSatir,
 } from '@/lib/kazanc-sapma'
+import { teknisyenOgrenimUyumEtiket } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
   unvan_yok: 'Kadro ünvanı eşleşmiyor',
@@ -70,6 +71,7 @@ export default function KazancSapmaClient({
       'Ad Soyad',
       'Ünvan',
       'Öğrenim',
+      'Öğrenim uyumu',
       'KHA Derecesi',
       'Kıdem Yılı',
       'Yan Ödeme kuralı',
@@ -81,6 +83,7 @@ export default function KazancSapmaClient({
         s.ad_soyad ?? '',
         s.unvan_adi ?? '',
         s.ogrenim_turu ?? '',
+        teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) ?? '',
         s.derece,
         s.kidem_yili ?? '',
         s.alanlar.yan_odeme.aciklama ?? s.yan_odeme_kural,
@@ -128,6 +131,9 @@ export default function KazancSapmaClient({
                 kural kısa etiketi görünür: <span className="font-medium">Bilgisayarlı</span>,{' '}
                 <span className="font-medium">Bilgisayarsız</span>, <span className="font-medium">−5 Yıl</span>,{' '}
                 <span className="font-medium">+5 Yıl</span>, <span className="font-medium">TKY Görevi</span>.
+                Teknisyen kadrosunda yüksek öğrenimli personelde ek gösterge kaynağı yeşil çerçevede belirtilir:{' '}
+                <span className="font-medium">Öğrenim Uyumlu</span> (Tekniker),{' '}
+                <span className="font-medium">Öğrenim Uyumsuz</span> (Bilgisayar İşletmeni).
               </>
             ) : (
               <>
@@ -232,7 +238,9 @@ export default function KazancSapmaClient({
                 </td>
               </tr>
             )}
-            {filtreli.map(s => (
+            {filtreli.map(s => {
+              const ogrenimUyumYazi = uyum ? teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) : null
+              return (
               <tr key={s.sicil_no} className="hover:bg-slate-50/80 align-top">
                 <td className="px-3 py-2">
                   <span className="text-xs text-slate-400 tabular-nums">{s.sicil_no}</span>
@@ -247,7 +255,14 @@ export default function KazancSapmaClient({
                     (s.unvan_adi ?? '—')
                   )}
                 </td>
-                <td className="px-3 py-2 text-slate-600">{s.ogrenim_turu ?? '—'}</td>
+                <td className="px-3 py-2 text-slate-600">
+                  <p>{s.ogrenim_turu ?? '—'}</p>
+                  {ogrenimUyumYazi ? (
+                    <span className="mt-1 inline-block rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-emerald-900">
+                      {ogrenimUyumYazi}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.derece}</td>
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kidem_yili ?? '—'}</td>
                 {KAZANC_ALANLARI.map(a => {
@@ -288,7 +303,8 @@ export default function KazancSapmaClient({
                   )
                 })}
               </tr>
-            ))}
+            )
+            })}
           </tbody>
         </table>
       </div>
