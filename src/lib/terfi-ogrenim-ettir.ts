@@ -14,7 +14,9 @@ import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import {
   ogrenimYuksekMi,
   teknisyenEkGostergeUygula,
+  teknikerTeknikOgrenimUygula,
   unvanTeknisyenMi,
+  unvanTeknikerMi,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
@@ -143,10 +145,18 @@ export function buildTerfiOgrenimOnizleme(input: {
     kadrosuIleIlgili: kaynak.kadrosu_ile_ilgili,
     baglam: teknisyenEkGosterge,
   })
+  puanSon = teknikerTeknikOgrenimUygula(puanSon, kazancLookup, {
+    unvanAdi: kaynak.unvan_adi,
+    kadroDerecesi: kaynak.kadro_derecesi,
+    khaDerece: newKd,
+    teknikOgrenim: kaynak.teknik_ogrenim,
+    baglam: teknisyenEkGosterge,
+  })
   if (
-    kaynak.kadrosu_ile_ilgili &&
-    unvanTeknisyenMi(kaynak.unvan_adi) &&
-    (kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru))
+    (kaynak.kadrosu_ile_ilgili &&
+      unvanTeknisyenMi(kaynak.unvan_adi) &&
+      (kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru))) ||
+    (kaynak.teknik_ogrenim && unvanTeknikerMi(kaynak.unvan_adi))
   ) {
     const overlayYan = puanThYanOdemeIle(
       puanSon,

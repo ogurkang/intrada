@@ -18,16 +18,22 @@ export type KazancSatirLookup = (
   sds_orani?: string | null
 } | null
 
-/** Tekniker / Bilgisayar İşletmeni satırlarını kazanç haritasından bulmak için id’ler. */
+/** Tekniker / Bilgisayar İşletmeni / Kimyager / Kütüphaneci satırlarını kazanç haritasından bulmak için id’ler. */
 export type TeknisyenEkGostergeBaglam = {
   teknikerUnvanId: number | null
   bilgisayarIsletmeniUnvanId: number | null
+  kimyagerUnvanId: number | null
+  kutuphaneciUnvanId: number | null
   /** Lisans ve Önlisans `tanim_ogrenim.id` — tanımlar aynı, sırayla denenir. */
   lisansOnlisansOgrenimIds: number[]
 }
 
 export function unvanTeknisyenMi(unvanAdi: string | null | undefined): boolean {
   return unvanAdiNorm(unvanAdi) === 'TEKNISYEN'
+}
+
+export function unvanTeknikerMi(unvanAdi: string | null | undefined): boolean {
+  return unvanAdiNorm(unvanAdi) === 'TEKNIKER'
 }
 
 /** Önlisans ve üzeri (lisans, yüksek lisans, doktora). */
@@ -80,6 +86,8 @@ export function teknisyenEkGostergeBaglamKur(input: {
   return {
     teknikerUnvanId: unvanIdAdindanBul(input.unvanlar, 'Tekniker'),
     bilgisayarIsletmeniUnvanId: unvanIdAdindanBul(input.unvanlar, 'Bilgisayar İşletmeni'),
+    kimyagerUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kimyager'),
+    kutuphaneciUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kütüphaneci'),
     lisansOnlisansOgrenimIds: lisansOnlisansOgrenimIdsBul(input.tanimOgList),
   }
 }
@@ -158,6 +166,58 @@ export function teknisyenEkGostergeUygula<
     yan_odeme_eksi5: hedef.yan_odeme_eksi5 ?? null,
     sds_orani: hedef.sds_orani ?? null,
   }
+}
+
+/**
+ * Tekniker + varsayılan öğrenimde Teknik Öğrenim tiki:
+ * ek gösterge Kimyager, yan ödeme (−5 / +5 sütunları) Kütüphaneci lisans/önlisans tanımından.
+ * Ek ödeme, ÖHT, SDS Tekniker tanımında kalır.
+ */
+export function teknikerTeknikOgrenimUygula<
+  T extends {
+    ek_gosterge: string | null
+    yan_odeme?: string | null
+    yan_odeme_eksi5?: string | null
+  },
+>(
+  puan: T,
+  lookup: KazancSatirLookup,
+  opts: {
+    unvanAdi: string | null | undefined
+    kadroDerecesi: string | null | undefined
+    khaDerece: number | null | undefined
+    teknikOgrenim: boolean
+    baglam: TeknisyenEkGostergeBaglam | null | undefined
+  },
+): T {
+  const baglam = opts.baglam
+  if (!baglam) return puan
+  if (!unvanTeknikerMi(opts.unvanAdi) || !opts.teknikOgrenim) return puan
+
+  const derece = yuksekDerece657(parseDerece(opts.kadroDerecesi), parseDerece(opts.khaDerece))
+  if (derece == null) return puan
+
+  let sonraki: T = puan
+  const kimyagerId = baglam.kimyagerUnvanId
+  if (kimyagerId != null) {
+    for (const ogId of baglam.lisansOnlisansOgrenimIds) {
+      const ek = doluMetin(lookup(kimyagerId, ogId, derece)?.ek_gosterge)
+      if (ek != null) {
+        sonraki = { ...sonraki, ek_gosterge: ek }
+        break
+      }
+    }
+  }
+
+  const kutup = kazancSatirOku(lookup, baglam.kutuphaneciUnvanId, derece, baglam.lisansOnlisansOgrenimIds)
+  if (kutup) {
+    sonraki = {
+      ...sonraki,
+      yan_odeme: kutup.yan_odeme ?? sonraki.yan_odeme ?? null,
+      yan_odeme_eksi5: kutup.yan_odeme_eksi5 ?? sonraki.yan_odeme_eksi5 ?? null,
+    }
+  }
+  return sonraki
 }
 
 export type TeknisyenOgrenimUyum = 'uyumlu' | 'uyumsuz'

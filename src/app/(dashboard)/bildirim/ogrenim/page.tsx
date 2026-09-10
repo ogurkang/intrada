@@ -43,6 +43,7 @@ export default async function OgrenimPage() {
           meslegi: r.meslegi ?? null,
           varsayilan: r.varsayilan ?? false,
           kadrosu_ile_ilgili: r.kadrosu_ile_ilgili ?? false,
+          teknik_ogrenim: r.teknik_ogrenim ?? false,
           aktif: r.aktif,
           kayit_zamani: r.kayit_zamani,
           ad_soyad: (r.calisan as { ad_soyad: string | null; tckn: string | null } | null)?.ad_soyad ?? null,

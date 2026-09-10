@@ -1582,9 +1582,9 @@ export interface Database {
       }
       // ─────────────────── BİLDİRİM ───────────────────
       calisan_ogrenim: {
-        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; kadrosu_ile_ilgili: boolean; aktif: boolean; kayit_zamani: string }
-        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; aktif?: boolean; kayit_zamani?: string }
-        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; aktif?: boolean; kayit_zamani?: string }
+        Row:    { id: number; sicil_no: string; ogrenim_turu: string | null; okul_adi: string | null; bolum: string | null; mezuniyet_yili: number | null; mezuniyet_tarihi: string | null; meslegi: string | null; varsayilan: boolean; kadrosu_ile_ilgili: boolean; teknik_ogrenim: boolean; aktif: boolean; kayit_zamani: string }
+        Insert: { id?: number; sicil_no: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; teknik_ogrenim?: boolean; aktif?: boolean; kayit_zamani?: string }
+        Update: { id?: number; sicil_no?: string; ogrenim_turu?: string | null; okul_adi?: string | null; bolum?: string | null; mezuniyet_yili?: number | null; mezuniyet_tarihi?: string | null; meslegi?: string | null; varsayilan?: boolean; kadrosu_ile_ilgili?: boolean; teknik_ogrenim?: boolean; aktif?: boolean; kayit_zamani?: string }
         Relationships: [{ foreignKeyName: "calisan_ogrenim_sicil_no_fkey"; columns: ["sicil_no"]; isOneToOne: false; referencedRelation: "calisan"; referencedColumns: ["sicil_no"] }]
       }
       tasinir_gorev_bildirimleri: {

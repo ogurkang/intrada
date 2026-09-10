@@ -7,14 +7,16 @@ import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import {
   TASINIR_GOREV_TAMAM_MESAJI,
-  ayniMudurlukteAktifGorevli,
+  ayniMudurlukteAktifGorevliler,
   gorevMudurluguBul,
   tasinirGorevAktiflestir,
-  tasinirGorevAyrilisUyari,
+  tasinirGorevCakismaUyari,
   tasinirGorevPasiflestir,
   tasinirTutarHaritasi,
+  type TasinirGorevCakisan,
 } from '@/lib/tasinir-gorev-bildirim'
-import type { Tables } from '@/types/database'
+import type { Database, Tables } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 function revalidateTasinirBildirim(sicil_no?: string) {
     revalidatePath('/bildirim/tasinir-gorev')
@@ -34,10 +36,42 @@ export type TasinirGorevKaydetSonuc = {
   tamam?: string
 }
 
+export type TasinirGorevCakismaSecim = 'evet' | 'devret'
+
+async function cakisanlariPasiflestir(
+  supabase: SupabaseClient<Database>,
+  cakisanlar: TasinirGorevCakisan[],
+  tutarByGorev: Record<string, string>,
+  bugun: string,
+): Promise<{ hata?: string }> {
+  for (const cakisan of cakisanlar) {
+    const { data: eski } = await supabase
+      .from('tasinir_gorev_bildirimleri')
+      .select('*')
+      .eq('id', cakisan.id)
+      .maybeSingle()
+    if (!eski) continue
+    const p = await tasinirGorevPasiflestir(supabase, eski as Tables<'tasinir_gorev_bildirimleri'>, tutarByGorev, bugun)
+    if (p.hata) return { hata: p.hata }
+    await writePersonelAuditLogSafe(supabase, {
+      sicil_no: cakisan.sicil_no,
+      modul: 'taşınır görev',
+      islem: 'Güncelle',
+      ozet: `${cakisan.gorev_adi} görevi pasifleştirildi.`,
+      ref_table: 'tasinir_gorev_bildirimleri',
+      ref_id: String(cakisan.id),
+      onceki: { aktif: true },
+      sonraki: { aktif: false },
+    })
+    revalidateTasinirBildirim(cakisan.sicil_no)
+  }
+  return {}
+}
+
 export async function tasinirGorevEkle(
   sicil_no: string,
   gorevAdi: string,
-  onayli = false,
+  secim?: TasinirGorevCakismaSecim,
 ): Promise<TasinirGorevKaydetSonuc> {
   const gorev = tasinirGoreviNormalize(gorevAdi)
   const sicil = sicil_no.trim()
@@ -57,35 +91,17 @@ export async function tasinirGorevEkle(
   }
 
   const mudurluk = await gorevMudurluguBul(supabase, sicil)
-  const cakisan = await ayniMudurlukteAktifGorevli(supabase, gorev, mudurluk, sicil)
-  if (cakisan && !onayli) {
-    return { uyari: tasinirGorevAyrilisUyari(cakisan.sicil_no, cakisan.ad_soyad, cakisan.gorev_adi) }
+  const cakisanlar = await ayniMudurlukteAktifGorevliler(supabase, gorev, mudurluk, sicil)
+  if (cakisanlar.length && !secim) {
+    return { uyari: tasinirGorevCakismaUyari(cakisanlar) }
   }
 
   const tutarByGorev = await tasinirTutarHaritasi(supabase)
   const bugun = new Date().toISOString().slice(0, 10)
 
-  if (cakisan) {
-    const { data: eski } = await supabase
-      .from('tasinir_gorev_bildirimleri')
-      .select('*')
-      .eq('id', cakisan.id)
-      .maybeSingle()
-    if (eski) {
-      const p = await tasinirGorevPasiflestir(supabase, eski as Tables<'tasinir_gorev_bildirimleri'>, tutarByGorev, bugun)
-      if (p.hata) return { hata: p.hata }
-      await writePersonelAuditLogSafe(supabase, {
-        sicil_no: cakisan.sicil_no,
-        modul: 'taşınır görev',
-        islem: 'Güncelle',
-        ozet: `${cakisan.gorev_adi} görevi pasifleştirildi.`,
-        ref_table: 'tasinir_gorev_bildirimleri',
-        ref_id: String(cakisan.id),
-        onceki: { aktif: true },
-        sonraki: { aktif: false },
-      })
-      revalidateTasinirBildirim(cakisan.sicil_no)
-    }
+  if (cakisanlar.length && secim === 'devret') {
+    const p = await cakisanlariPasiflestir(supabase, cakisanlar, tutarByGorev, bugun)
+    if (p.hata) return { hata: p.hata }
   }
 
   const a = await tasinirGorevAktiflestir(supabase, sicil, gorev, mudurluk, tutarByGorev, bugun)
@@ -107,7 +123,7 @@ export async function tasinirGorevEkle(
 export async function tasinirGorevDurumGuncelle(
   id: number,
   aktif: boolean,
-  onayli = false,
+  secim?: TasinirGorevCakismaSecim,
 ): Promise<TasinirGorevKaydetSonuc> {
   const supabase = await createClient()
   const { data: kayit } = await supabase.from('tasinir_gorev_bildirimleri').select('*').eq('id', id).maybeSingle()
@@ -137,21 +153,13 @@ export async function tasinirGorevDurumGuncelle(
   }
 
   const mudurluk = (kayit.gorev_mudurlugu ?? '').trim() || (await gorevMudurluguBul(supabase, kayit.sicil_no))
-  const cakisan = await ayniMudurlukteAktifGorevli(supabase, gorev, mudurluk, kayit.sicil_no)
-  if (cakisan && !onayli) {
-    return { uyari: tasinirGorevAyrilisUyari(cakisan.sicil_no, cakisan.ad_soyad, cakisan.gorev_adi) }
+  const cakisanlar = await ayniMudurlukteAktifGorevliler(supabase, gorev, mudurluk, kayit.sicil_no)
+  if (cakisanlar.length && !secim) {
+    return { uyari: tasinirGorevCakismaUyari(cakisanlar) }
   }
-  if (cakisan) {
-    const { data: eski } = await supabase
-      .from('tasinir_gorev_bildirimleri')
-      .select('*')
-      .eq('id', cakisan.id)
-      .maybeSingle()
-    if (eski) {
-      const p = await tasinirGorevPasiflestir(supabase, eski as Tables<'tasinir_gorev_bildirimleri'>, tutarByGorev, bugun)
-      if (p.hata) return { hata: p.hata }
-      revalidateTasinirBildirim(cakisan.sicil_no)
-    }
+  if (cakisanlar.length && secim === 'devret') {
+    const p = await cakisanlariPasiflestir(supabase, cakisanlar, tutarByGorev, bugun)
+    if (p.hata) return { hata: p.hata }
   }
 
   const { data: kendiAktif } = await supabase

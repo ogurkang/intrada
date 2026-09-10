@@ -16,6 +16,7 @@ function bosSatir(ogrenimTurleri: { isim: string }[]): Satir {
     meslegi: null,
     varsayilan: false,
     kadrosu_ile_ilgili: false,
+    teknik_ogrenim: false,
   }
 }
 
@@ -226,6 +227,14 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
                 onChange={(e) => satirDegistir(idx, { kadrosu_ile_ilgili: e.target.checked })}
               />
               Kadrosu ile ilgili
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700 mt-6 md:col-span-2 xl:col-span-1">
+              <input
+                type="checkbox"
+                checked={row.teknik_ogrenim}
+                onChange={(e) => satirDegistir(idx, { teknik_ogrenim: e.target.checked })}
+              />
+              Teknik Öğrenim
             </label>
             <div className="flex items-end justify-end md:col-span-2 xl:col-span-3">
               <button type="button" onClick={() => satirSil(idx)} className="text-sm text-red-600" disabled={satirlar.length <= 1}>

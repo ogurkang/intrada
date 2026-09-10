@@ -7,15 +7,19 @@ import { writeTerfiAuditLogSafe } from '@/lib/terfi-audit'
 export const TASINIR_GOREV_TAMAM_MESAJI =
   'Görevlendirilen personele göreve tanımlanmış yan ödeme puanı eklenmiştir. Lütfen kontrol ediniz.'
 
-export function tasinirGorevAyrilisUyari(sicil_no: string, ad_soyad: string, gorev: string): string {
-  return `${sicil_no} sicil numaralı ${ad_soyad} "${gorev}" görevinden ayrılacak ve yan ödeme puanı değişecektir.`
-}
-
 export type TasinirGorevCakisan = {
   id: number
   sicil_no: string
   ad_soyad: string
   gorev_adi: string
+}
+
+export function tasinirGorevCakismaUyari(kisiler: TasinirGorevCakisan[]): string {
+  const parcalar = kisiler.map(k => `${k.sicil_no} sicil numaralı ${k.ad_soyad}`)
+  let kim = parcalar[0] ?? ''
+  if (parcalar.length === 2) kim = `${parcalar[0]} ve ${parcalar[1]}`
+  else if (parcalar.length > 2) kim = `${parcalar.slice(0, -1).join(', ')} ve ${parcalar[parcalar.length - 1]}`
+  return `Bu müdürlükte ${kim} isimli personel de aynı görevi yürütüyor. İlerlemek istiyor musunuz?`
 }
 
 function terfiKaydiSec(kayitlar: Tables<'terfi_hareketleri'>[]): Tables<'terfi_hareketleri'> | null {
@@ -168,12 +172,12 @@ export async function tasinirGorevAktiflestir(
   return { id: inserted.id }
 }
 
-export async function ayniMudurlukteAktifGorevli(
+export async function ayniMudurlukteAktifGorevliler(
   supabase: SupabaseClient<Database>,
   gorev: TasinirGorevi,
   mudurluk: string | null,
   haricSicil?: string,
-): Promise<TasinirGorevCakisan | null> {
+): Promise<TasinirGorevCakisan[]> {
   const { data: aktifler } = await supabase
     .from('tasinir_gorev_bildirimleri')
     .select('id, sicil_no, gorev_adi, gorev_mudurlugu')
@@ -181,18 +185,23 @@ export async function ayniMudurlukteAktifGorevli(
     .eq('aktif', true)
 
   const hedef = String(mudurluk ?? '').trim().toLocaleLowerCase('tr-TR')
+  const adaylar: { id: number; sicil_no: string; gorev_adi: string }[] = []
   for (const a of aktifler ?? []) {
     if (haricSicil && a.sicil_no === haricSicil) continue
     let mud = String(a.gorev_mudurlugu ?? '').trim()
     if (!mud) mud = (await gorevMudurluguBul(supabase, a.sicil_no)) ?? ''
     if (hedef && mud && mud.toLocaleLowerCase('tr-TR') !== hedef) continue
-    const { data: c } = await supabase.from('calisan').select('ad_soyad').eq('sicil_no', a.sicil_no).maybeSingle()
-    return {
-      id: a.id,
-      sicil_no: a.sicil_no,
-      ad_soyad: c?.ad_soyad ?? a.sicil_no,
-      gorev_adi: a.gorev_adi,
-    }
+    adaylar.push({ id: a.id, sicil_no: a.sicil_no, gorev_adi: a.gorev_adi })
   }
-  return null
+  if (!adaylar.length) return []
+
+  const siciller = [...new Set(adaylar.map(a => a.sicil_no))]
+  const { data: calisanlar } = await supabase.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
+  const adBySicil = new Map((calisanlar ?? []).map(c => [c.sicil_no, c.ad_soyad]))
+  return adaylar.map(a => ({
+    id: a.id,
+    sicil_no: a.sicil_no,
+    ad_soyad: adBySicil.get(a.sicil_no) ?? a.sicil_no,
+    gorev_adi: a.gorev_adi,
+  }))
 }

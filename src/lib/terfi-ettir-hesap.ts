@@ -14,7 +14,9 @@ import {
 } from '@/lib/th-hizmet-yili'
 import {
   teknisyenEkGostergeUygula,
+  teknikerTeknikOgrenimUygula,
   unvanTeknisyenMi,
+  unvanTeknikerMi,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
@@ -226,6 +228,8 @@ export type TerfiKaynak = {
   yuksek_ogrenim_var: boolean
   /** Yüksek öğrenim kaydında kadrosu ile ilgili işaretli. */
   kadrosu_ile_ilgili: boolean
+  /** Varsayılan öğrenimde Teknik Öğrenim tiki — Tekniker kazanç overlay. */
+  teknik_ogrenim: boolean
   /** `calisan.th_hizmet_baslangic` — TH −5/+5 bandı (yoksa kıdem yılı) */
   th_hizmet_baslangic?: string | null
 }
@@ -503,7 +507,17 @@ export function buildTerfiEttirOnizleme(
       kadrosuIleIlgili: r.kadrosu_ile_ilgili,
       baglam: teknisyenEkGosterge,
     })
-    if (r.kadrosu_ile_ilgili && unvanTeknisyenMi(r.unvan_adi) && r.yuksek_ogrenim_var) {
+    puanSon = teknikerTeknikOgrenimUygula(puanSon, kazancLookup, {
+      unvanAdi: r.unvan_adi,
+      kadroDerecesi: r.kadro_derecesi,
+      khaDerece: newKd,
+      teknikOgrenim: r.teknik_ogrenim,
+      baglam: teknisyenEkGosterge,
+    })
+    if (
+      (r.kadrosu_ile_ilgili && unvanTeknisyenMi(r.unvan_adi) && r.yuksek_ogrenim_var) ||
+      (r.teknik_ogrenim && unvanTeknikerMi(r.unvan_adi))
+    ) {
       const overlayYan = puanThYanOdemeIle(
         puanSon,
         puanSon,

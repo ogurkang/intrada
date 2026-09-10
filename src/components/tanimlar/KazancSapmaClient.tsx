@@ -72,6 +72,7 @@ export default function KazancSapmaClient({
       'Ünvan',
       'Öğrenim',
       'Öğrenim uyumu',
+      'Teknik Öğrenim',
       'KHA Derecesi',
       'Kıdem Yılı',
       'Yan Ödeme kuralı',
@@ -84,6 +85,7 @@ export default function KazancSapmaClient({
         s.unvan_adi ?? '',
         s.ogrenim_turu ?? '',
         teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) ?? '',
+        s.teknik_ogrenim ? 'Evet' : '',
         s.derece,
         s.kidem_yili ?? '',
         s.alanlar.yan_odeme.aciklama ?? s.yan_odeme_kural,
@@ -134,6 +136,8 @@ export default function KazancSapmaClient({
                 Teknisyen kadrosunda yüksek öğrenimli personelde kazanç kaynağı yeşil çerçevede belirtilir:{' '}
                 <span className="font-medium">Öğrenim Uyumlu</span> (Tekniker),{' '}
                 <span className="font-medium">Öğrenim Uyumsuz</span> (Bilgisayar İşletmeni).
+                Tekniker kadrosunda varsayılan öğrenimde <span className="font-medium">Teknik Öğrenim</span> tiki varsa
+                ek gösterge Kimyager, yan ödeme Kütüphaneci tanımından alınır.
               </>
             ) : (
               <>
@@ -240,6 +244,7 @@ export default function KazancSapmaClient({
             )}
             {filtreli.map(s => {
               const ogrenimUyumYazi = uyum ? teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) : null
+              const teknikOgrenimYazi = s.teknik_ogrenim ? 'Teknik Öğrenim' : null
               return (
               <tr key={s.sicil_no} className="hover:bg-slate-50/80 align-top">
                 <td className="px-3 py-2">
@@ -260,6 +265,11 @@ export default function KazancSapmaClient({
                   {ogrenimUyumYazi ? (
                     <span className="mt-1 inline-block rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-emerald-900">
                       {ogrenimUyumYazi}
+                    </span>
+                  ) : null}
+                  {teknikOgrenimYazi ? (
+                    <span className="mt-1 ml-1 inline-block rounded border border-teal-300 bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-teal-900">
+                      {teknikOgrenimYazi}
                     </span>
                   ) : null}
                 </td>

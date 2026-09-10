@@ -371,6 +371,7 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Mezuniyet Tarihi</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
                 <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Kadrosu İle İlgili</th>
+                <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Teknik Öğrenim</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -400,6 +401,12 @@ function OgrenimTab({ ogrenimler }: { ogrenimler: Ogrenim[] }) {
                   <td className="px-4 py-3 text-center">
                     {o.kadrosu_ile_ilgili
                       ? <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Evet</span>
+                      : <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Hayır</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {o.teknik_ogrenim
+                      ? <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">Evet</span>
                       : <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Hayır</span>
                     }
                   </td>

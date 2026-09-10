@@ -16,6 +16,7 @@ import {
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 import {
   teknisyenEkGostergeUygula,
+  teknikerTeknikOgrenimUygula,
   teknisyenOgrenimUyum,
   type TeknisyenEkGostergeBaglam,
   type TeknisyenOgrenimUyum,
@@ -52,6 +53,8 @@ export type KazancSapmaSatir = {
   farkAdedi: number
   /** Teknisyen yüksek öğrenim kuralı: Tekniker → uyumlu, Bilgisayar İşletmeni → uyumsuz */
   ogrenim_uyum: TeknisyenOgrenimUyum | null
+  /** Tekniker + varsayılan Teknik Öğrenim tiki */
+  teknik_ogrenim: boolean
 }
 
 /** Kazanç tanımı hiç bulunamayan personel (ünvan/öğrenim/derece üçlüsü tabloda yok) */
@@ -199,12 +202,19 @@ export function kazancSapmaHesapla(
     }
 
     kontrolEdilen++
-    const tanim = teknisyenEkGostergeUygula(tanimHam, kazancLookup, {
+    const tanimTeknisyen = teknisyenEkGostergeUygula(tanimHam, kazancLookup, {
       unvanAdi: r.unvan_adi,
       kadroDerecesi: r.kadro_derecesi,
       khaDerece: derece,
       yuksekOgrenimVar: r.yuksek_ogrenim_var,
       kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+      baglam: teknisyenEkGosterge,
+    })
+    const tanim = teknikerTeknikOgrenimUygula(tanimTeknisyen, kazancLookup, {
+      unvanAdi: r.unvan_adi,
+      kadroDerecesi: r.kadro_derecesi,
+      khaDerece: derece,
+      teknikOgrenim: r.teknik_ogrenim,
       baglam: teknisyenEkGosterge,
     })
     const thMi = unvanSinifiThMi(r.unvan_sinif)
@@ -254,6 +264,7 @@ export function kazancSapmaHesapla(
         yuksekOgrenimVar: r.yuksek_ogrenim_var,
         kadrosuIleIlgili: r.kadrosu_ile_ilgili,
       }),
+      teknik_ogrenim: r.teknik_ogrenim === true,
     }
 
     if (farkAdedi === 0) uyusanlar.push(satir)

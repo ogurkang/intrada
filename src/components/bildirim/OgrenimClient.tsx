@@ -46,6 +46,7 @@ type TopluForm = {
   mezuniyet_tarihi: string
   varsayilan: boolean
   kadrosu_ile_ilgili: boolean
+  teknik_ogrenim: boolean
 }
 
 function topluBaslangic(kayitlar: Ogrenim[]): Record<number, TopluForm> {
@@ -59,6 +60,7 @@ function topluBaslangic(kayitlar: Ogrenim[]): Record<number, TopluForm> {
       mezuniyet_tarihi: mezuniyetInput(k),
       varsayilan: !!(k.varsayilan ?? k.aktif),
       kadrosu_ile_ilgili: !!k.kadrosu_ile_ilgili,
+      teknik_ogrenim: !!k.teknik_ogrenim,
     }
   }
   return m
@@ -174,7 +176,8 @@ export default function OgrenimClient({
         (t.meslegi || '') === (k.meslegi ?? '') &&
         t.mezuniyet_tarihi === mezuniyetInput(k) &&
         t.varsayilan === !!(k.varsayilan ?? k.aktif) &&
-        t.kadrosu_ile_ilgili === !!k.kadrosu_ile_ilgili
+        t.kadrosu_ile_ilgili === !!k.kadrosu_ile_ilgili &&
+        t.teknik_ogrenim === !!k.teknik_ogrenim
       if (ayni) continue
       degisen.push({
         id: k.id,
@@ -185,6 +188,7 @@ export default function OgrenimClient({
         mezuniyet_tarihi: t.mezuniyet_tarihi || null,
         varsayilan: t.varsayilan,
         kadrosu_ile_ilgili: t.kadrosu_ile_ilgili,
+        teknik_ogrenim: t.teknik_ogrenim,
       })
     }
     if (!degisen.length) {
@@ -270,7 +274,7 @@ export default function OgrenimClient({
       {topluMesaj && <p className="mb-4 text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg">{topluMesaj}</p>}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm min-w-[1080px]">
+        <table className="w-full text-sm min-w-[1180px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sıra No</th>
@@ -284,6 +288,7 @@ export default function OgrenimClient({
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Mezuniyet Tarihi</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Varsayılan</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Kadrosu İle İlgili</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Teknik Öğrenim</th>
               {sekme === 'liste' && (
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               )}
@@ -292,7 +297,7 @@ export default function OgrenimClient({
           <tbody className="divide-y divide-slate-100">
             {(sekme === 'liste' ? filtreli : kayitlar).length === 0 && (
               <tr>
-                <td colSpan={sekme === 'liste' ? 12 : 11} className="text-center py-14 text-slate-400">
+                <td colSpan={sekme === 'liste' ? 13 : 12} className="text-center py-14 text-slate-400">
                   Kayıt bulunamadı.
                 </td>
               </tr>
@@ -370,6 +375,14 @@ export default function OgrenimClient({
                           className="w-4 h-4 rounded border-slate-300"
                         />
                       </td>
+                      <td className="px-2 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={t.teknik_ogrenim}
+                          onChange={e => setToplu(prev => ({ ...prev, [row.id]: { ...t, teknik_ogrenim: e.target.checked } }))}
+                          className="w-4 h-4 rounded border-slate-300"
+                        />
+                      </td>
                     </>
                   ) : (
                     <>
@@ -400,6 +413,15 @@ export default function OgrenimClient({
                           }`}
                         >
                           {row.kadrosu_ile_ilgili ? 'Evet' : 'Hayır'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            row.teknik_ogrenim ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {row.teknik_ogrenim ? 'Evet' : 'Hayır'}
                         </span>
                       </td>
                     </>
@@ -505,6 +527,18 @@ export default function OgrenimClient({
               />
               <label htmlFor="kadrosu_ile_ilgili_cb" className="text-sm text-slate-700">
                 Kadrosu ile ilgili
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                name="teknik_ogrenim"
+                type="checkbox"
+                id="teknik_ogrenim_cb"
+                defaultChecked={k.teknik_ogrenim ?? false}
+                className="w-4 h-4 rounded border-slate-300"
+              />
+              <label htmlFor="teknik_ogrenim_cb" className="text-sm text-slate-700">
+                Teknik Öğrenim
               </label>
             </div>
             {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}

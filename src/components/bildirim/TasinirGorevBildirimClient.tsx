@@ -7,7 +7,11 @@ import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
-import { tasinirGorevDurumGuncelle, tasinirGorevEkle } from '@/app/(dashboard)/bildirim/tasinir-gorev/actions'
+import {
+  tasinirGorevDurumGuncelle,
+  tasinirGorevEkle,
+  type TasinirGorevCakismaSecim,
+} from '@/app/(dashboard)/bildirim/tasinir-gorev/actions'
 import type { Tables } from '@/types/database'
 
 function tasinirAuditDiff(onceki: unknown, sonraki: unknown) {
@@ -127,7 +131,7 @@ export default function TasinirGorevBildirimClient({
   function handleEkle() {
     setHata(null)
     startTransition(async () => {
-      const res = await tasinirGorevEkle(secilenSicil, gorev, false)
+      const res = await tasinirGorevEkle(secilenSicil, gorev)
       if (res.hata) setHata(res.hata)
       else if (res.uyari) {
         setBekleyen('ekle')
@@ -144,7 +148,7 @@ export default function TasinirGorevBildirimClient({
     if (!duzenle) return
     setHata(null)
     startTransition(async () => {
-      const res = await tasinirGorevDurumGuncelle(duzenle.id, duzenleAktif, false)
+      const res = await tasinirGorevDurumGuncelle(duzenle.id, duzenleAktif)
       if (res.hata) setHata(res.hata)
       else if (res.uyari) {
         setBekleyen('durum')
@@ -157,13 +161,18 @@ export default function TasinirGorevBildirimClient({
     })
   }
 
-  function uyariOnayla() {
+  function uyariHayir() {
+    setUyari(null)
+    setBekleyen(null)
+  }
+
+  function uyariSec(secim: TasinirGorevCakismaSecim) {
     const u = uyari
     setUyari(null)
     if (!u) return
     startTransition(async () => {
       if (bekleyen === 'ekle') {
-        const res = await tasinirGorevEkle(secilenSicil, gorev, true)
+        const res = await tasinirGorevEkle(secilenSicil, gorev, secim)
         setBekleyen(null)
         if (res.hata) setHata(res.hata)
         else {
@@ -172,7 +181,7 @@ export default function TasinirGorevBildirimClient({
           router.refresh()
         }
       } else if (bekleyen === 'durum' && duzenle) {
-        const res = await tasinirGorevDurumGuncelle(duzenle.id, duzenleAktif, true)
+        const res = await tasinirGorevDurumGuncelle(duzenle.id, duzenleAktif, secim)
         setBekleyen(null)
         if (res.hata) setHata(res.hata)
         else {
@@ -404,27 +413,32 @@ export default function TasinirGorevBildirimClient({
         )}
       </Modal>
 
-      <Modal open={!!uyari} onClose={() => { setUyari(null); setBekleyen(null) }} title="Uyarı" size="md">
+      <Modal open={!!uyari} onClose={uyariHayir} title="Uyarı" size="md">
         <div className="space-y-4">
           <p className="text-sm text-slate-700">{uyari}</p>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() => {
-                setUyari(null)
-                setBekleyen(null)
-              }}
-              className="px-4 py-2 text-sm border border-slate-300 rounded-lg"
+              onClick={uyariHayir}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-500 rounded-lg hover:bg-slate-600"
             >
-              Vazgeç
+              Hayır
             </button>
             <button
               type="button"
               disabled={isPending}
-              onClick={uyariOnayla}
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg disabled:opacity-50"
+              onClick={() => uyariSec('devret')}
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50"
             >
-              Tamam
+              {isPending ? 'Kaydediliyor…' : 'Görevi Devret'}
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => uyariSec('evet')}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {isPending ? 'Kaydediliyor…' : 'Evet'}
             </button>
           </div>
         </div>

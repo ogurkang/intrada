@@ -177,13 +177,16 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const ogrenimTuruBySicil = new Map<string, string>()
   const yuksekOgrenimBySicil = new Map<string, boolean>()
   const kadrosuIleIlgiliBySicil = new Map<string, boolean>()
+  const teknikOgrenimBySicil = new Map<string, boolean>()
   if (memurSiciller.length > 0) {
     const { data: ogRes } = await fetchAllCalisanOgrenim<{
       sicil_no: string
       ogrenim_turu: string | null
       kadrosu_ile_ilgili: boolean | null
+      teknik_ogrenim: boolean | null
+      varsayilan: boolean | null
       kayit_zamani: string | null
-    }>(supabase, 'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, kayit_zamani', q =>
+    }>(supabase, 'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani', q =>
       q.in('sicil_no', memurSiciller).eq('aktif', true),
     )
     ;(ogRes ?? []).sort((a, b) => String(b.kayit_zamani ?? '').localeCompare(String(a.kayit_zamani ?? '')))
@@ -193,6 +196,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
         yuksekOgrenimBySicil.set(o.sicil_no, true)
         if (o.kadrosu_ile_ilgili) kadrosuIleIlgiliBySicil.set(o.sicil_no, true)
       }
+      if (o.varsayilan && o.teknik_ogrenim) teknikOgrenimBySicil.set(o.sicil_no, true)
       if (seenOg.has(o.sicil_no)) continue
       seenOg.add(o.sicil_no)
       const tt = (o.ogrenim_turu ?? '').trim()
@@ -273,6 +277,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       bilgisayar_kullaniyor: yetkinlikBySicil.get(sicil_no) ?? null,
       yuksek_ogrenim_var: yuksekOgrenimBySicil.get(sicil_no) === true,
       kadrosu_ile_ilgili: kadrosuIleIlgiliBySicil.get(sicil_no) === true,
+      teknik_ogrenim: teknikOgrenimBySicil.get(sicil_no) === true,
       th_hizmet_baslangic: thHizmetBySicil.get(sicil_no) ?? null,
     })
   }
