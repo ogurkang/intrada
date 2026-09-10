@@ -19,6 +19,7 @@ export const TANIM_KAZANC_ALAN_ETIKETLERI: Record<string, string> = {
 
 export type TanimKazancAuditSatir = {
   id: number
+  unvan_id?: number | null
   sira_no?: number | null
   ogrenim_id?: number | null
   derece?: number | null
@@ -48,8 +49,9 @@ export function tanimKazancAuditDiffSatirlari(onceki: unknown, sonraki: unknown)
   const alanlar = new Set([...Object.keys(o), ...Object.keys(s)])
   const out: { alan: string; etiket: string; onceki: unknown; sonraki: unknown }[] = []
   const norm = (v: unknown) => (v == null ? '' : String(v).trim())
-  const oBos = !Object.keys(o).some(k => norm(o[k]))
+  const oBos = !Object.keys(o).some(k => k !== 'unvan_id' && k !== 'kazanc_grup_id' && norm(o[k]))
   for (const alan of alanlar) {
+    if (alan === 'unvan_id' || alan === 'kazanc_grup_id') continue
     const etiket = TANIM_KAZANC_ALAN_ETIKETLERI[alan] ?? alan
     const eski = o[alan] ?? null
     const yeni = s[alan] ?? null
@@ -79,6 +81,7 @@ export function tanimKazancAuditSnapshot(
     .map(r => ogrenimIsimById.get(r.ogrenim_id ?? 0) ?? String(r.ogrenim_id ?? '—'))
     .join(', ')
   return {
+    unvan_id: r0.unvan_id ?? '',
     derece: r0.derece ?? '',
     sira_no: r0.sira_no ?? '',
     ogrenim,

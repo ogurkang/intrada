@@ -71,6 +71,14 @@ export async function writePersonelAuditLogSafe(
   }
 }
 
+/** Personel sicili olmayan tanım / kazanç kayıtları. `sicil_no: '—'` calisan FK yüzünden sessizce düşer. */
+export async function writeTanimAuditLogSafe(
+  supabase: SupabaseClient,
+  input: Omit<PersonelAuditWriteInput, 'sicil_no'>,
+): Promise<void> {
+  await writePersonelAuditLogSafe(supabase, { ...input, sicil_no: null })
+}
+
 export interface AlanDegisiklik {
   alan: string
   etiket: string

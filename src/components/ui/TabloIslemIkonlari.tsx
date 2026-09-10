@@ -16,7 +16,10 @@ export function SaatGecmisDugmesi({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={e => {
+        e.stopPropagation()
+        onClick()
+      }}
       className={`relative ${IKON_BTN} text-slate-500 hover:text-amber-600 hover:bg-amber-50`}
       title={title}
       aria-label={title}>

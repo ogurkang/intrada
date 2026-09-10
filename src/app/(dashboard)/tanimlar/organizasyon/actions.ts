@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 import {
-  writePersonelAuditLogSafe,
+  writeTanimAuditLogSafe,
   alanDegisiklikleriHesapla,
   degisiklikPayload,
 } from '@/lib/personel-audit'
@@ -25,8 +25,7 @@ async function auditYaz(
   onceki: unknown,
   sonraki: unknown,
 ) {
-  await writePersonelAuditLogSafe(supabase, {
-    sicil_no: '—',
+  await writeTanimAuditLogSafe(supabase, {
     modul: MODUL,
     islem,
     ozet,

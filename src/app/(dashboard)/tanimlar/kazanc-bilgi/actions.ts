@@ -3,7 +3,7 @@
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { writeTanimAuditLogSafe } from '@/lib/personel-audit'
 import {
   TANIM_KAZANC_REF_TABLE,
   tanimKazancAuditOzet,
@@ -75,8 +75,7 @@ async function kazancAuditYaz(
   sonraki: unknown,
   ozet: string,
 ) {
-  await writePersonelAuditLogSafe(supabase, {
-    sicil_no: '—',
+  await writeTanimAuditLogSafe(supabase, {
     modul: TANIM_KAZANC_REF_TABLE,
     islem,
     ozet,
@@ -320,6 +319,7 @@ export async function kazancBilgiGrupGuncelle(
   const oncekiSnap = tanimKazancAuditSnapshot(existing, isimMap)
   const sonrakiTaslak: TanimKazancAuditSatir[] = dedup.map((ogrenim_id, i) => ({
     id: existing[i]?.id ?? 0,
+    unvan_id: ayar.unvan_id,
     sira_no: siraVal,
     ogrenim_id,
     derece: ayar.derece,

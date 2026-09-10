@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 import { ilGecerliMi, ilceGecerliMi } from '@/lib/turkiye-adres'
-import { writePersonelAuditLogSafe, degisiklikPayload, alanDegisiklikleriHesapla } from '@/lib/personel-audit'
+import { writeTanimAuditLogSafe, degisiklikPayload, alanDegisiklikleriHesapla } from '@/lib/personel-audit'
 import { tanimAdresAuditSnapshot } from '@/lib/tanim-adres-audit'
 import { TANIM_ADRES_ALAN_ETIKETLERI } from '@/lib/tanim-adres-audit'
 import { adresMahalleAnahtari } from '@/lib/turkiye-adres'
@@ -42,8 +42,7 @@ async function auditYaz(
   onceki: unknown,
   sonraki: unknown,
 ) {
-  await writePersonelAuditLogSafe(supabase, {
-    sicil_no: '—',
+  await writeTanimAuditLogSafe(supabase, {
     modul: 'tanim_adres',
     islem,
     ozet,
