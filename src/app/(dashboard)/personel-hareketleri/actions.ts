@@ -34,6 +34,7 @@ import {
   personelHareketKazancKiyasHesapla,
   type PersonelHareketKazancKiyasSonuc,
 } from '@/lib/personel-hareket-kazanc-kiyas'
+import { kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -683,9 +684,8 @@ export async function personelHareketKazancKiyasla(
   ] = await Promise.all([
     supabase
       .from('calisan_ogrenim')
-      .select('ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum')
-      .eq('sicil_no', sicil_no)
-      .eq('aktif', true),
+      .select('ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum, aktif')
+      .eq('sicil_no', sicil_no),
     supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
     supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi, destek_yardimci_birim').eq('aktif', true),
     supabase.from('tanim_kazanc_bilgisi').select('*'),
@@ -719,8 +719,7 @@ export async function personelHareketKazancKiyasla(
   const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
     const row = kazancLookupHam(unvanId, ogrenimId, derece)
     if (row) return row
-    if (!lisansGrupIds.includes(ogrenimId)) return null
-    for (const ogId of lisansGrupIds) {
+    for (const ogId of kazancLookupYedekOgrenimIds(ogrenimId, tanimOgList, lisansGrupIds)) {
       if (ogId === ogrenimId) continue
       const alt = kazancLookupHam(unvanId, ogId, derece)
       if (alt) return alt

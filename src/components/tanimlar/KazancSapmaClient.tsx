@@ -73,6 +73,7 @@ export default function KazancSapmaClient({
       'Öğrenim',
       'Öğrenim uyumu',
       'Teknik Öğrenim',
+      'Kadro Derecesi',
       'KHA Derecesi',
       'Kıdem Yılı',
       'Yan Ödeme kuralı',
@@ -86,6 +87,7 @@ export default function KazancSapmaClient({
         s.ogrenim_turu ?? '',
         teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) ?? '',
         s.teknik_ogrenim ? 'Evet' : '',
+        s.kadro_derecesi ?? '',
         s.derece,
         s.kidem_yili ?? '',
         s.alanlar.yan_odeme.aciklama ?? s.yan_odeme_kural,
@@ -98,9 +100,9 @@ export default function KazancSapmaClient({
 
     if (tanimsizlar.length) {
       const ws2 = wb.addWorksheet('Tanımı Bulunamayanlar')
-      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'KHA Derecesi', 'Neden']).font = { bold: true }
+      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'Kadro Derecesi', 'KHA Derecesi', 'Neden']).font = { bold: true }
       for (const t of tanimsizlar) {
-        ws2.addRow([t.sicil_no, t.ad_soyad ?? '', t.unvan_adi ?? '', t.ogrenim_turu ?? '', t.derece ?? '', NEDEN_ETIKET[t.neden]])
+        ws2.addRow([t.sicil_no, t.ad_soyad ?? '', t.unvan_adi ?? '', t.ogrenim_turu ?? '', t.kadro_derecesi ?? '', t.derece ?? '', NEDEN_ETIKET[t.neden]])
       }
       ws2.columns.forEach(c => {
         c.width = 20
@@ -223,6 +225,11 @@ export default function KazancSapmaClient({
               <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
               <th
                 className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                title="Kadro hareketlerindeki kadro derecesi">
+                Kadro Derecesi
+              </th>
+              <th
+                className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
                 title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
                 KHA Derecesi
               </th>
@@ -237,7 +244,7 @@ export default function KazancSapmaClient({
           <tbody className="divide-y divide-slate-100">
             {filtreli.length === 0 && (
               <tr>
-                <td colSpan={5 + KAZANC_ALANLARI.length} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={6 + KAZANC_ALANLARI.length} className="px-4 py-12 text-center text-slate-400">
                   Filtreye uyan kayıt yok.
                 </td>
               </tr>
@@ -273,6 +280,7 @@ export default function KazancSapmaClient({
                     </span>
                   ) : null}
                 </td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kadro_derecesi?.trim() || '—'}</td>
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.derece}</td>
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kidem_yili ?? '—'}</td>
                 {KAZANC_ALANLARI.map(a => {
@@ -335,6 +343,11 @@ export default function KazancSapmaClient({
                   <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
                   <th
                     className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                    title="Kadro hareketlerindeki kadro derecesi">
+                    Kadro Derecesi
+                  </th>
+                  <th
+                    className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
                     title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
                     KHA Derecesi
                   </th>
@@ -358,6 +371,7 @@ export default function KazancSapmaClient({
                       )}
                     </td>
                     <td className="px-3 py-2 text-slate-600">{t.ogrenim_turu ?? '—'}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-slate-700">{t.kadro_derecesi?.trim() || '—'}</td>
                     <td className="px-3 py-2 text-center tabular-nums text-slate-700">{t.derece ?? '—'}</td>
                     <td className="px-3 py-2">
                       <span className="inline-flex rounded-full bg-red-50 border border-red-200 px-2 py-1 text-xs font-medium text-red-800">

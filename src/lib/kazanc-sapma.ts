@@ -34,6 +34,8 @@ export type KazancSapmaSatir = {
   unvan_id: number | null
   unvan_adi: string | null
   ogrenim_turu: string | null
+  /** `kadro_hareketleri.kadro_derecesi` */
+  kadro_derecesi: string | null
   /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
   kidem_yili: string | null
@@ -59,6 +61,8 @@ export type KazancTanimsizSatir = {
   unvan_id: number | null
   unvan_adi: string | null
   ogrenim_turu: string | null
+  /** `kadro_hareketleri.kadro_derecesi` */
+  kadro_derecesi: string | null
   /** `terfi_hareketleri.kha_derece` — okunamadıysa null */
   derece: number | null
   /** Tanımın neden aranamadığı: eksik ana veri mi, yoksa tanım mı yok */
@@ -176,6 +180,7 @@ export function kazancSapmaHesapla(
         unvan_id: r.unvan_id,
         unvan_adi: r.unvan_adi,
         ogrenim_turu: r.ogrenim_turu,
+        kadro_derecesi: r.kadro_derecesi ?? null,
         derece: dereceGecerli ? derece : null,
         neden: r.unvan_id == null ? 'unvan_yok' : r.ogrenim_id == null ? 'ogrenim_yok' : 'derece_yok',
       })
@@ -190,6 +195,7 @@ export function kazancSapmaHesapla(
         unvan_id: r.unvan_id,
         unvan_adi: r.unvan_adi,
         ogrenim_turu: r.ogrenim_turu,
+        kadro_derecesi: r.kadro_derecesi ?? null,
         derece,
         neden: 'tanim_yok',
       })
@@ -235,6 +241,7 @@ export function kazancSapmaHesapla(
       unvan_id: r.unvan_id,
       unvan_adi: r.unvan_adi,
       ogrenim_turu: r.ogrenim_turu,
+      kadro_derecesi: r.kadro_derecesi ?? null,
       derece,
       kidem_yili: r.kidem_yili,
       yan_odeme_kural: alanlar.yan_odeme.aciklama ?? kuralKisa ?? 'Yan Ödeme',

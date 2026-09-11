@@ -9,7 +9,7 @@ import {
   teknisyenEkGostergeBaglamKur,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
-import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-sec'
+import { eslestirOgrenimId, kazancIcinOgrenimSec, kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
@@ -167,7 +167,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const kadrosuIleIlgiliBySicil = new Map<string, boolean>()
   const teknikOgrenimBySicil = new Map<string, boolean>()
   if (memurSiciller.length > 0) {
-    const { data: ogRes } = await fetchAllCalisanOgrenim<{
+    const ogRes: Array<{
       sicil_no: string
       ogrenim_turu: string | null
       kadrosu_ile_ilgili: boolean | null
@@ -176,13 +176,20 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       kayit_zamani: string | null
       meslegi: string | null
       bolum: string | null
-    }>(
-      supabase,
-      'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum',
-      q => q.in('sicil_no', memurSiciller).eq('aktif', true),
-    )
-    const ogBySicil = new Map<string, NonNullable<typeof ogRes>>()
-    for (const o of ogRes ?? []) {
+      aktif: boolean | null
+    }> = []
+    const OG_CHUNK = 80
+    for (let i = 0; i < memurSiciller.length; i += OG_CHUNK) {
+      const chunk = memurSiciller.slice(i, i + OG_CHUNK)
+      const { data } = await fetchAllCalisanOgrenim<(typeof ogRes)[number]>(
+        supabase,
+        'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum, aktif',
+        q => q.in('sicil_no', chunk),
+      )
+      ogRes.push(...(data ?? []))
+    }
+    const ogBySicil = new Map<string, typeof ogRes>()
+    for (const o of ogRes) {
       const list = ogBySicil.get(o.sicil_no)
       if (list) list.push(o)
       else ogBySicil.set(o.sicil_no, [o])
@@ -307,8 +314,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
     const row = kazancLookupHam(unvanId, ogrenimId, derece)
     if (row) return row
-    if (!lisansGrupIds.includes(ogrenimId)) return null
-    for (const ogId of lisansGrupIds) {
+    for (const ogId of kazancLookupYedekOgrenimIds(ogrenimId, tanimOgList, lisansGrupIds)) {
       if (ogId === ogrenimId) continue
       const alt = kazancLookupHam(unvanId, ogId, derece)
       if (alt) return alt
