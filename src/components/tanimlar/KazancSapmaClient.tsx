@@ -272,6 +272,11 @@ export default function KazancSapmaClient({
                   ) : (
                     (s.unvan_adi ?? '—')
                   )}
+                  {s.kazanc_derece_kural ? (
+                    <span className="mt-1 block rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-indigo-900 w-fit">
+                      {s.kazanc_derece_kural}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-2 text-slate-600">
                   <p>{s.ogrenim_turu ?? '—'}</p>

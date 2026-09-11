@@ -16,6 +16,7 @@ import {
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 import { teknisyenOgrenimUyum, type TeknisyenEkGostergeBaglam, type TeknisyenOgrenimUyum } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
+import { OZEL_KALEM_KAZANC_DERECE, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -38,6 +39,8 @@ export type KazancSapmaSatir = {
   kadro_derecesi: string | null
   /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
+  /** Özel Kalem Müdürü: kazanç 1. derece tanımından */
+  kazanc_derece_kural: string | null
   kidem_yili: string | null
   /** Kısa kural: Bilgisayarlı / −5 Yıl / TKY Görevi … */
   yan_odeme_kural: string
@@ -170,8 +173,12 @@ export function kazancSapmaHesapla(
   let kontrolEdilen = 0
 
   for (const r of kaynaklar) {
-    const derece = Number.parseInt(norm(r.kha_derece), 10)
-    const dereceGecerli = Number.isFinite(derece)
+    const kha = Number.parseInt(norm(r.kha_derece), 10)
+    const khaGecerli = Number.isFinite(kha)
+    const ozelKalem = unvanOzelKalemMuduruMi(r.unvan_adi)
+    const dereceGecerli = ozelKalem || khaGecerli
+    const derece = ozelKalem ? OZEL_KALEM_KAZANC_DERECE : kha
+    const kazancDereceKural = ozelKalem ? 'Kazanç: 1. derece' : null
 
     if (r.unvan_id == null || r.ogrenim_id == null || !dereceGecerli) {
       tanimsizlar.push({
@@ -181,7 +188,7 @@ export function kazancSapmaHesapla(
         unvan_adi: r.unvan_adi,
         ogrenim_turu: r.ogrenim_turu,
         kadro_derecesi: r.kadro_derecesi ?? null,
-        derece: dereceGecerli ? derece : null,
+        derece: khaGecerli ? kha : null,
         neden: r.unvan_id == null ? 'unvan_yok' : r.ogrenim_id == null ? 'ogrenim_yok' : 'derece_yok',
       })
       continue
@@ -196,14 +203,18 @@ export function kazancSapmaHesapla(
         unvan_adi: r.unvan_adi,
         ogrenim_turu: r.ogrenim_turu,
         kadro_derecesi: r.kadro_derecesi ?? null,
-        derece,
+        derece: khaGecerli ? kha : derece,
         neden: 'tanim_yok',
       })
       continue
     }
 
     kontrolEdilen++
-    const tanim = kazancTaniminiKuralla(tanimHam, kazancLookup, terfiKaynaktanKuralOpts(r, derece, teknisyenEkGosterge))
+    const tanim = kazancTaniminiKuralla(
+      tanimHam,
+      kazancLookup,
+      terfiKaynaktanKuralOpts(r, khaGecerli ? kha : derece, teknisyenEkGosterge),
+    )
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = thYanOdemeYilSec({
       thMi,
@@ -242,7 +253,8 @@ export function kazancSapmaHesapla(
       unvan_adi: r.unvan_adi,
       ogrenim_turu: r.ogrenim_turu,
       kadro_derecesi: r.kadro_derecesi ?? null,
-      derece,
+      derece: khaGecerli ? kha : derece,
+      kazanc_derece_kural: kazancDereceKural,
       kidem_yili: r.kidem_yili,
       yan_odeme_kural: alanlar.yan_odeme.aciklama ?? kuralKisa ?? 'Yan Ödeme',
       alanlar,

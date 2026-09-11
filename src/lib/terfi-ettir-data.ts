@@ -10,6 +10,7 @@ import {
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec, kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
+import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
@@ -311,7 +312,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     tanimOgList,
   })
   const lisansGrupIds = teknisyenEkGosterge.lisansOnlisansOgrenimIds
-  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
+  const kazancLookupYedek = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
     const row = kazancLookupHam(unvanId, ogrenimId, derece)
     if (row) return row
     for (const ogId of kazancLookupYedekOgrenimIds(ogrenimId, tanimOgList, lisansGrupIds)) {
@@ -321,6 +322,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     }
     return null
   }
+  const kazancLookup = kazancLookupOzelKalemIle(
+    kazancLookupYedek,
+    ozelKalemUnvanIdleri((unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi }))),
+  )
 
   const memurPersoneller = memurSiciller
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))

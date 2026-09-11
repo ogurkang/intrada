@@ -1,4 +1,5 @@
 import { mudurThKariyerUygula } from '@/lib/kazanc-mudur-th-overlay'
+import { unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import {
   parseDerece,
   teknikerTeknikOgrenimUygula,
@@ -58,6 +59,7 @@ export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string 
  * 2) teknisyen overlay
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür + TH kariyer overlay
+ * Özel Kalem Müdürü: 1. derece satırı olduğu gibi kalır (KHA yok sayılır).
  */
 export function kazancTaniminiKuralla<
   T extends {
@@ -69,6 +71,7 @@ export function kazancTaniminiKuralla<
     sds_orani?: string | null
   },
 >(puan: T, lookup: KazancSatirLookup, opts: KazancKuralOpts): T {
+  if (unvanOzelKalemMuduruMi(opts.unvanAdi)) return puan
   let sonraki = ekGostergeYuksekDerecedenUygula(puan, lookup, {
     unvanId: opts.unvanId,
     ogrenimId: opts.ogrenimId,

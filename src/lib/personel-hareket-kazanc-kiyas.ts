@@ -4,6 +4,7 @@ import { parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import { kazancTaniminiKuralla } from '@/lib/kazanc-kural-uygula'
 import { ogrenimYuksekMi, type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-sec'
+import { OZEL_KALEM_KAZANC_DERECE, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 
 export type PersonelHareketKazancKiyasSatir = {
@@ -92,7 +93,9 @@ export function personelHareketKazancKiyasHesapla(input: {
   const kazancOg = kazancIcinOgrenimSec(ogrenimRows)
   const ogrenimId = eslestirOgrenimId(kazancOg?.ogrenim_turu, tanimOgList)
   const khaDerece = Number.parseInt(String(giris.khaDerece ?? '').trim(), 10)
-  const dereceGecerli = Number.isFinite(khaDerece)
+  const ozelKalem = unvanOzelKalemMuduruMi(unvan?.unvan_adi)
+  const derece = ozelKalem ? OZEL_KALEM_KAZANC_DERECE : khaDerece
+  const dereceGecerli = ozelKalem || Number.isFinite(khaDerece)
 
   if (!unvan) {
     return {
@@ -116,10 +119,10 @@ export function personelHareketKazancKiyasHesapla(input: {
     }
   }
 
-  const tanimHam = kazancLookup(unvan.id, ogrenimId, khaDerece)
+  const tanimHam = kazancLookup(unvan.id, ogrenimId, derece)
   if (!tanimHam) {
     return {
-      aciklama: `Kazanç tanımı yok (unvan + öğrenim + ${khaDerece}. derece).`,
+      aciklama: `Kazanç tanımı yok (unvan + öğrenim + ${derece}. derece).`,
       satirlar: [],
       tumuUygun: false,
     }
@@ -130,7 +133,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     ogrenimId,
     unvanAdi: unvan.unvan_adi,
     kadroDerecesi: giris.kadroDerecesi,
-    khaDerece,
+    khaDerece: ozelKalem ? OZEL_KALEM_KAZANC_DERECE : khaDerece,
     yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
     kadrosuIleIlgili: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu) && r.kadrosu_ile_ilgili),
     teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
@@ -171,7 +174,9 @@ export function personelHareketKazancKiyasHesapla(input: {
   })
 
   return {
-    aciklama: null,
+    aciklama: ozelKalem
+      ? 'Özel Kalem Müdürü kazancı 1. derece tanımından alınır; KHA dikkate alınmaz.'
+      : null,
     satirlar,
     tumuUygun: satirlar.every(s => s.uygun),
   }

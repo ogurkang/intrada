@@ -35,6 +35,7 @@ import {
   type PersonelHareketKazancKiyasSonuc,
 } from '@/lib/personel-hareket-kazanc-kiyas'
 import { kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
+import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -716,7 +717,7 @@ export async function personelHareketKazancKiyasla(
   const kazancLookupHam = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
     kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
   const lisansGrupIds = baglam.lisansOnlisansOgrenimIds
-  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
+  const kazancLookupYedek = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
     const row = kazancLookupHam(unvanId, ogrenimId, derece)
     if (row) return row
     for (const ogId of kazancLookupYedekOgrenimIds(ogrenimId, tanimOgList, lisansGrupIds)) {
@@ -726,6 +727,10 @@ export async function personelHareketKazancKiyasla(
     }
     return null
   }
+  const kazancLookup = kazancLookupOzelKalemIle(
+    kazancLookupYedek,
+    ozelKalemUnvanIdleri((unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi }))),
+  )
 
   const kadroRol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
   const sonuc = personelHareketKazancKiyasHesapla({
