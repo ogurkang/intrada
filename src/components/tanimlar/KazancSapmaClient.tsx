@@ -18,6 +18,9 @@ const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
   tanim_yok: 'Kazanç tanımı girilmemiş',
 }
 
+const TH_CLASS =
+  'sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-slate-600 shadow-[0_1px_0_0_rgb(226,232,240)]'
+
 interface Props {
   mod?: 'sapma' | 'uyusan'
   sapanlar?: KazancSapmaSatir[]
@@ -216,26 +219,26 @@ export default function KazancSapmaClient({
         <span className="text-sm text-slate-500 self-center">{filtreli.length} kayıt</span>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[68rem]">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <table className="w-full text-sm min-w-[68rem] border-separate border-spacing-0">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-left">
-              <th className="px-3 py-3 font-semibold text-slate-600 min-w-[12rem]">Sicil — Ad Soyad</th>
-              <th className="px-3 py-3 font-semibold text-slate-600 min-w-[10rem]">Ünvan</th>
-              <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
+            <tr className="text-left">
+              <th className={`${TH_CLASS} min-w-[12rem]`}>Sicil — Ad Soyad</th>
+              <th className={`${TH_CLASS} min-w-[10rem]`}>Ünvan</th>
+              <th className={TH_CLASS}>Öğrenim</th>
               <th
-                className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                className={`${TH_CLASS} text-center whitespace-nowrap`}
                 title="Kadro hareketlerindeki kadro derecesi">
                 Kadro Derecesi
               </th>
               <th
-                className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                className={`${TH_CLASS} text-center whitespace-nowrap`}
                 title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
                 KHA Derecesi
               </th>
-              <th className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">Kıdem Yılı</th>
+              <th className={`${TH_CLASS} text-center whitespace-nowrap`}>Kıdem Yılı</th>
               {KAZANC_ALANLARI.map(a => (
-                <th key={a.key} className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap">
+                <th key={a.key} className={`${TH_CLASS} text-center whitespace-nowrap`}>
                   {a.etiket}
                 </th>
               ))}
@@ -334,24 +337,24 @@ export default function KazancSapmaClient({
             Bu personel için ünvan + öğrenim + derece üçlüsüne karşılık gelen tanım yok. Terfide dereceleri ilerlerse
             kazanç değerleri eski derecede kalır; Terfi Ettir önizlemesi bu satırları uyarı rozetiyle işaretler.
           </p>
-          <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <table className="w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                  <th className="px-3 py-3 font-semibold text-slate-600">Sicil — Ad Soyad</th>
-                  <th className="px-3 py-3 font-semibold text-slate-600">Ünvan</th>
-                  <th className="px-3 py-3 font-semibold text-slate-600">Öğrenim</th>
+                <tr className="text-left">
+                  <th className={TH_CLASS}>Sicil — Ad Soyad</th>
+                  <th className={TH_CLASS}>Ünvan</th>
+                  <th className={TH_CLASS}>Öğrenim</th>
                   <th
-                    className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                    className={`${TH_CLASS} text-center whitespace-nowrap`}
                     title="Kadro hareketlerindeki kadro derecesi">
                     Kadro Derecesi
                   </th>
                   <th
-                    className="px-3 py-3 font-semibold text-slate-600 text-center whitespace-nowrap"
+                    className={`${TH_CLASS} text-center whitespace-nowrap`}
                     title="Kazanılmış hak aylığı derecesi (terfi hareketleri)">
                     KHA Derecesi
                   </th>
-                  <th className="px-3 py-3 font-semibold text-slate-600">Neden</th>
+                  <th className={TH_CLASS}>Neden</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
