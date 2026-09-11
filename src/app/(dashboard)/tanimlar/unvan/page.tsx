@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import UnvanClient from '@/components/tanimlar/UnvanClient'
-import { unvanEkle, unvanGuncelle, unvanToggleAktif } from './actions'
+import { unvanEkle, unvanGuncelle, unvanToggleAktif, unvanTopluGuncelle } from './actions'
 import type { Tables } from '@/types/database'
 
 type Unvan = Tables<'tanim_unvan'>
@@ -27,6 +27,7 @@ export default async function UnvanPage() {
         onAdd={unvanEkle}
         onUpdate={unvanGuncelle}
         onToggle={unvanToggleAktif}
+        onTopluKaydet={unvanTopluGuncelle}
       />
     </>
   )

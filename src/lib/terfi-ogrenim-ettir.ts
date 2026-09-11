@@ -11,14 +11,8 @@ import {
 } from '@/lib/terfi-ettir-hesap'
 import { parseKidemYili, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
-import {
-  ogrenimYuksekMi,
-  teknisyenEkGostergeUygula,
-  teknikerTeknikOgrenimUygula,
-  unvanTeknisyenMi,
-  unvanTeknikerMi,
-  type TeknisyenEkGostergeBaglam,
-} from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { ogrenimYuksekMi, type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 
 export type TerfiOgrenimOlayTipi = 'hazirlik' | 'yuksek_lisans' | 'doktora'
 
@@ -50,19 +44,6 @@ function parseNum(s: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function eslestirOgrenimId(ogrenimTuru: string, tanimlar: { id: number; isim: string }[]): number | null {
-  const t = ogrenimTuru.trim().toLowerCase()
-  if (!t) return null
-  for (const o of tanimlar) {
-    if (o.isim.trim().toLowerCase() === t) return o.id
-  }
-  for (const o of tanimlar) {
-    const n = o.isim.trim().toLowerCase()
-    if (t.includes(n) || n.includes(t)) return o.id
-  }
-  return null
-}
-
 /** Eğitim seviyesi yükselince derece/kademe ilerlemesi */
 function hesaplaOgrenimTerfiIlerleme(d: number, k: number, oldMinD: number, newMinD: number) {
   if (newMinD < oldMinD && d > newMinD) {
@@ -78,7 +59,7 @@ export function buildTerfiOgrenimOnizleme(input: {
   tanimOgList: { id: number; isim: string }[]
   teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null
 }): TerfiEttirOnizlemeSatir | null {
-  const { kaynak, olay, kazancLookup, tanimOgList, teknisyenEkGosterge } = input
+  const { kaynak, olay, kazancLookup, teknisyenEkGosterge } = input
   if (!kaynak.terfi_id) return null
 
   const kd = parseNum(kaynak.kha_derece)
@@ -88,7 +69,7 @@ export function buildTerfiOgrenimOnizleme(input: {
   if (kd == null || kk == null || ed == null || ek == null) return null
 
   const yeniOgrenimTuru = hedefOgrenimTuru(olay, kaynak.ogrenim_turu)
-  const yeniOgrenimId = eslestirOgrenimId(yeniOgrenimTuru, tanimOgList) ?? kaynak.ogrenim_id
+  const kazancOgrenimId = kaynak.ogrenim_id
   const oldMinD = minDereceEgitim(kaynak.ogrenim_turu)
   const newMinD = minDereceEgitim(yeniOgrenimTuru)
 
@@ -115,64 +96,42 @@ export function buildTerfiOgrenimOnizleme(input: {
   let newEk = sonE.yeniKademe
 
   let puanSon = { ...puanEski }
-  if (sonK.dereceDegisti) puanSon = { ...puanSon, ...lookup(newKd, yeniOgrenimId) }
-  else if (yeniOgrenimId !== kaynak.ogrenim_id) puanSon = { ...puanSon, ...lookup(newKd, yeniOgrenimId) }
+  if (sonK.dereceDegisti) puanSon = { ...puanSon, ...lookup(newKd, kazancOgrenimId) }
   if (sonE.dereceDegisti && sonE.yeniDerece !== sonK.yeniDerece) {
-    puanSon = { ...puanSon, ...lookup(newEd, yeniOgrenimId) }
+    puanSon = { ...puanSon, ...lookup(newEd, kazancOgrenimId) }
   }
 
   const thMi = unvanSinifiThMi(kaynak.unvan_sinif)
   const tanimYeni =
-    uId != null && yeniOgrenimId != null ? kazancLookup(uId, yeniOgrenimId, newKd) : null
+    uId != null && kazancOgrenimId != null ? kazancLookup(uId, kazancOgrenimId, newKd) : null
+  const thYilUygula = thYanOdemeYilSec({
+    thMi,
+    thHizmetBaslangic: kaynak.th_hizmet_baslangic,
+    kidemYili: parseKidemYili(kaynak.kidem_yili),
+  })
   const yanUyg = puanThYanOdemeIle(
     puanSon,
     tanimYeni ? kazancSatirToPuan(tanimYeni) : null,
-    thYanOdemeYilSec({
-      thMi,
-      thHizmetBaslangic: kaynak.th_hizmet_baslangic,
-      kidemYili: parseKidemYili(kaynak.kidem_yili),
-    }),
+    thYilUygula,
     thMi,
     kaynak.unvan_adi,
     kaynak.bilgisayar_kullaniyor,
   )
   puanSon = yanUyg.puan
-  puanSon = teknisyenEkGostergeUygula(puanSon, kazancLookup, {
-    unvanAdi: kaynak.unvan_adi,
-    kadroDerecesi: kaynak.kadro_derecesi,
-    khaDerece: newKd,
+  puanSon = kazancTaniminiKuralla(puanSon, kazancLookup, {
+    ...terfiKaynaktanKuralOpts(kaynak, newKd, teknisyenEkGosterge),
     yuksekOgrenimVar: kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru),
-    kadrosuIleIlgili: kaynak.kadrosu_ile_ilgili,
-    baglam: teknisyenEkGosterge,
   })
-  puanSon = teknikerTeknikOgrenimUygula(puanSon, kazancLookup, {
-    unvanAdi: kaynak.unvan_adi,
-    kadroDerecesi: kaynak.kadro_derecesi,
-    khaDerece: newKd,
-    teknikOgrenim: kaynak.teknik_ogrenim,
-    baglam: teknisyenEkGosterge,
-  })
-  if (
-    (kaynak.kadrosu_ile_ilgili &&
-      unvanTeknisyenMi(kaynak.unvan_adi) &&
-      (kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru))) ||
-    (kaynak.teknik_ogrenim && unvanTeknikerMi(kaynak.unvan_adi))
-  ) {
-    const overlayYan = puanThYanOdemeIle(
-      puanSon,
-      puanSon,
-      thYanOdemeYilSec({
-        thMi,
-        thHizmetBaslangic: kaynak.th_hizmet_baslangic,
-        kidemYili: parseKidemYili(kaynak.kidem_yili),
-      }),
-      thMi,
-      kaynak.unvan_adi,
-      kaynak.bilgisayar_kullaniyor,
-    )
-    puanSon = overlayYan.puan
-    yanUyg.tanimArti5 = overlayYan.tanimArti5
-  }
+  const overlayYan = puanThYanOdemeIle(
+    puanSon,
+    puanSon,
+    thYilUygula,
+    thMi,
+    kaynak.unvan_adi,
+    kaynak.bilgisayar_kullaniyor,
+  )
+  puanSon = overlayYan.puan
+  yanUyg.tanimArti5 = overlayYan.tanimArti5
 
   const durumEtiket = ogrenimOlayEtiket(olay) as TerfiEttirDurumEtiket
 

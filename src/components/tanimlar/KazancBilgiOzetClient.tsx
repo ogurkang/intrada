@@ -1,10 +1,12 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi, YAN_ODEME_ARTI5_ETIKET, YAN_ODEME_EKSI5_ETIKET, YAN_ODEME_BILGISAYARLI_ETIKET, YAN_ODEME_BILGISAYARSIZ_ETIKET } from '@/lib/kazanc-yan-odeme'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import KazancTasinirYetkiliClient from '@/components/tanimlar/KazancTasinirYetkiliClient'
+import { trNormalize } from '@/lib/turkce-search'
 import type { Tables } from '@/types/database'
 
 export type KazancOzetSatir = {
@@ -36,6 +38,15 @@ export default function KazancBilgiOzetClient({
 }: Props) {
   const router = useRouter()
   const saltOkunur = useTanimlarSaltOkunur()
+  const [arama, setArama] = useState('')
+
+  const filtreli = useMemo(() => {
+    const q = trNormalize(arama)
+    if (!q) return satirlar
+    return satirlar.filter(s =>
+      trNormalize(`${s.unvan_adi} ${s.sinif_adi ?? ''} ${s.egitimEtiket ?? ''}`).includes(q),
+    )
+  }, [satirlar, arama])
 
   return (
     <div>
@@ -116,6 +127,17 @@ export default function KazancBilgiOzetClient({
               Kadro hareketlerinde asil veya vekil atanmış ve Tanımlar ünvanlarıyla eşleşen kayıt bulunmuyor.
             </p>
           ) : (
+            <>
+            <div className="px-4 py-3 border-b border-slate-100">
+              <input
+                type="search"
+                value={arama}
+                onChange={e => setArama(e.target.value)}
+                placeholder="Unvan, sınıf veya eğitim ara…"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />
+            </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -127,7 +149,14 @@ export default function KazancBilgiOzetClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {satirlar.map((s, i) => (
+                {filtreli.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="text-center py-10 text-slate-400">
+                      Aramaya uyan unvan yok.
+                    </td>
+                  </tr>
+                )}
+                {filtreli.map((s, i) => (
                   <tr
                     key={s.unvan_id}
                     role="button"
@@ -166,6 +195,7 @@ export default function KazancBilgiOzetClient({
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>

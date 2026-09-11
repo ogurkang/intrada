@@ -18,12 +18,13 @@ export type KazancSatirLookup = (
   sds_orani?: string | null
 } | null
 
-/** Tekniker / Bilgisayar İşletmeni / Kimyager / Kütüphaneci satırlarını kazanç haritasından bulmak için id’ler. */
+/** Tekniker / Bilgisayar İşletmeni / Kimyager / Kütüphaneci / Mühendis satırlarını kazanç haritasından bulmak için id’ler. */
 export type TeknisyenEkGostergeBaglam = {
   teknikerUnvanId: number | null
   bilgisayarIsletmeniUnvanId: number | null
   kimyagerUnvanId: number | null
   kutuphaneciUnvanId: number | null
+  muhendisUnvanId: number | null
   /** Lisans ve Önlisans `tanim_ogrenim.id` — tanımlar aynı, sırayla denenir. */
   lisansOnlisansOgrenimIds: number[]
 }
@@ -88,6 +89,7 @@ export function teknisyenEkGostergeBaglamKur(input: {
     bilgisayarIsletmeniUnvanId: unvanIdAdindanBul(input.unvanlar, 'Bilgisayar İşletmeni'),
     kimyagerUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kimyager'),
     kutuphaneciUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kütüphaneci'),
+    muhendisUnvanId: unvanIdAdindanBul(input.unvanlar, 'Mühendis'),
     lisansOnlisansOgrenimIds: lisansOnlisansOgrenimIdsBul(input.tanimOgList),
   }
 }

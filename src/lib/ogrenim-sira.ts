@@ -33,12 +33,21 @@ export function ogrenimTuruSiraIndex(ogrenimTuru: string | null | undefined): nu
   const raw = (ogrenimTuru ?? '').trim()
   if (!raw) return 9999
   const n = normalizeForCompare(raw)
-  let idx = OGRENIM_TURU_SIRA.findIndex((x) => x.toLowerCase() === n.toLowerCase())
+  const nLower = n.toLowerCase()
+  let idx = OGRENIM_TURU_SIRA.findIndex((x) => x.toLowerCase() === nLower)
   if (idx >= 0) return idx
-  idx = OGRENIM_TURU_SIRA.findIndex(
-    (x) => n.toLowerCase().includes(x.toLowerCase()) || x.toLowerCase().includes(n.toLowerCase())
-  )
-  if (idx >= 0) return idx
+  let best = -1
+  let bestLen = -1
+  OGRENIM_TURU_SIRA.forEach((x, i) => {
+    const xl = x.toLowerCase()
+    if (nLower.includes(xl) || xl.includes(nLower)) {
+      if (xl.length > bestLen) {
+        best = i
+        bestLen = xl.length
+      }
+    }
+  })
+  if (best >= 0) return best
   return 9000
 }
 

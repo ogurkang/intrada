@@ -424,17 +424,17 @@ export interface Database {
       tanim_unvan: {
         Row: {
           id: number; sira_no: number | null; unvan_kodu: string | null; unvan_adi: string
-          sinif_adi: string | null; arazi: boolean | null; kat_sayi: number | null
+          sinif_adi: string | null; arazi: boolean | null; destek_yardimci_birim: boolean; kat_sayi: number | null
           aktif: boolean; created_at: string
         }
         Insert: {
           id?: number; sira_no?: number | null; unvan_kodu?: string | null; unvan_adi: string
-          sinif_adi?: string | null; arazi?: boolean | null; kat_sayi?: number | null
+          sinif_adi?: string | null; arazi?: boolean | null; destek_yardimci_birim?: boolean; kat_sayi?: number | null
           aktif?: boolean; created_at?: string
         }
         Update: {
           id?: number; sira_no?: number | null; unvan_kodu?: string | null; unvan_adi?: string
-          sinif_adi?: string | null; arazi?: boolean | null; kat_sayi?: number | null
+          sinif_adi?: string | null; arazi?: boolean | null; destek_yardimci_birim?: boolean; kat_sayi?: number | null
           aktif?: boolean; created_at?: string
         }
         Relationships: []

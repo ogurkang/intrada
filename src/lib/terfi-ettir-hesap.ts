@@ -12,13 +12,8 @@ import {
   thBesinciYilDonumuIso,
   thYanOdemeYilSec,
 } from '@/lib/th-hizmet-yili'
-import {
-  teknisyenEkGostergeUygula,
-  teknikerTeknikOgrenimUygula,
-  unvanTeknisyenMi,
-  unvanTeknikerMi,
-  type TeknisyenEkGostergeBaglam,
-} from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -230,6 +225,13 @@ export type TerfiKaynak = {
   kadrosu_ile_ilgili: boolean
   /** Varsayılan öğrenimde Teknik Öğrenim tiki — Tekniker kazanç overlay. */
   teknik_ogrenim: boolean
+  /** Kazanç için seçilen öğrenim kaydının mesleği / bölümü (müdür TH kariyer). */
+  ogrenim_meslegi?: string | null
+  ogrenim_bolum?: string | null
+  /** Seçilen kadro satırında asil. Vekil müdür overlay’ine girmez. */
+  asil_mi?: boolean
+  /** `tanim_unvan.destek_yardimci_birim` — işaretliyse müdür kariyer +1300 uygulanmaz. */
+  destek_yardimci_birim?: boolean
   /** `calisan.th_hizmet_baslangic` — TH −5/+5 bandı (yoksa kıdem yılı) */
   th_hizmet_baslangic?: string | null
 }
@@ -499,36 +501,17 @@ export function buildTerfiEttirOnizleme(
       r.bilgisayar_kullaniyor,
     )
     puanSon = yanUyg.puan
-    puanSon = teknisyenEkGostergeUygula(puanSon, kazancLookup, {
-      unvanAdi: r.unvan_adi,
-      kadroDerecesi: r.kadro_derecesi,
-      khaDerece: newKd,
-      yuksekOgrenimVar: r.yuksek_ogrenim_var,
-      kadrosuIleIlgili: r.kadrosu_ile_ilgili,
-      baglam: teknisyenEkGosterge,
-    })
-    puanSon = teknikerTeknikOgrenimUygula(puanSon, kazancLookup, {
-      unvanAdi: r.unvan_adi,
-      kadroDerecesi: r.kadro_derecesi,
-      khaDerece: newKd,
-      teknikOgrenim: r.teknik_ogrenim,
-      baglam: teknisyenEkGosterge,
-    })
-    if (
-      (r.kadrosu_ile_ilgili && unvanTeknisyenMi(r.unvan_adi) && r.yuksek_ogrenim_var) ||
-      (r.teknik_ogrenim && unvanTeknikerMi(r.unvan_adi))
-    ) {
-      const overlayYan = puanThYanOdemeIle(
-        puanSon,
-        puanSon,
-        thYilUygula,
-        thMi,
-        r.unvan_adi,
-        r.bilgisayar_kullaniyor,
-      )
-      puanSon = overlayYan.puan
-      yanUyg.tanimArti5 = overlayYan.tanimArti5
-    }
+    puanSon = kazancTaniminiKuralla(puanSon, kazancLookup, terfiKaynaktanKuralOpts(r, newKd, teknisyenEkGosterge))
+    const overlayYan = puanThYanOdemeIle(
+      puanSon,
+      puanSon,
+      thYilUygula,
+      thMi,
+      r.unvan_adi,
+      r.bilgisayar_kullaniyor,
+    )
+    puanSon = overlayYan.puan
+    yanUyg.tanimArti5 = overlayYan.tanimArti5
 
     let thHizmetNotu: string | null = null
     if (

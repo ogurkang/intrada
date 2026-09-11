@@ -161,6 +161,10 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       yuksek_ogrenim_var: kaynak?.yuksek_ogrenim_var ?? false,
       kadrosu_ile_ilgili: kaynak?.kadrosu_ile_ilgili ?? false,
       teknik_ogrenim: kaynak?.teknik_ogrenim ?? false,
+      ogrenim_meslegi: kaynak?.ogrenim_meslegi ?? null,
+      ogrenim_bolum: kaynak?.ogrenim_bolum ?? null,
+      asil_mi: kaynak?.asil_mi ?? false,
+      destek_yardimci_birim: kaynak?.destek_yardimci_birim ?? false,
       th_hizmet_baslangic: kaynak?.th_hizmet_baslangic ?? null,
     }
   })

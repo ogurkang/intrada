@@ -14,8 +14,10 @@ import {
   personelHareketWordBelgesi,
   type GostergeKayit,
 } from '@/lib/personel-hareket-belge'
-import { personelHareketPersonelYukle } from '@/app/(dashboard)/personel-hareketleri/actions'
+import { personelHareketPersonelYukle, personelHareketKazancKiyasla } from '@/app/(dashboard)/personel-hareketleri/actions'
 import type { BosKadroSecenek } from '@/lib/personel-hareket-degistir-yukle'
+import Modal from '@/components/ui/Modal'
+import type { PersonelHareketKazancKiyasSonuc } from '@/lib/personel-hareket-kazanc-kiyas'
 
 type Calisan = Tables<'calisan'>
 type KH = Tables<'kadro_hareketleri'>
@@ -146,6 +148,9 @@ export default function PersonelHareketiDegistirClient({
   const [terfiSonState, setTerfiSonState] = useState<TH | null>(terfiSon)
   const [hareketTipiState, setHareketTipiState] = useState(initialHareketTipi)
   const [personelYukleniyor, setPersonelYukleniyor] = useState(false)
+  const bekleyenFdRef = useRef<FormData | null>(null)
+  const [kiyasAcik, setKiyasAcik] = useState(false)
+  const [kiyasSonuc, setKiyasSonuc] = useState<PersonelHareketKazancKiyasSonuc | null>(null)
 
   const personelAktif = personelState
 
@@ -330,6 +335,26 @@ export default function PersonelHareketiDegistirClient({
     setKadroSecModalAcik(false)
   }
 
+  function kaydetGonder(fd: FormData) {
+    setIsPending(true)
+    onKaydet(fd).then(res => {
+      setIsPending(false)
+      if (res.hata) setHata(res.hata)
+      else {
+        setKaydedildi(true)
+        try {
+          if (typeof window !== 'undefined' && window.opener) {
+            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, window.location.origin)
+          }
+        } catch {
+          if (typeof window !== 'undefined' && window.opener) {
+            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, '*')
+          }
+        }
+      }
+    })
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (saltOkunur) return
@@ -355,22 +380,36 @@ export default function PersonelHareketiDegistirClient({
     setIsPending(true)
     fd.set('sicil_no', personelAktif.sicil_no)
     fd.set('kadro_sira_no', yeniKadroSiraNoState)
-    onKaydet(fd).then(res => {
-      setIsPending(false)
-      if (res.hata) setHata(res.hata)
-      else {
-        setKaydedildi(true)
-        try {
-          if (typeof window !== 'undefined' && window.opener) {
-            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, window.location.origin)
-          }
-        } catch {
-          if (typeof window !== 'undefined' && window.opener) {
-            window.opener.postMessage({ source: 'intrada-personel-hareketleri', type: 'refresh' }, '*')
-          }
-        }
+    personelHareketKazancKiyasla(fd).then(res => {
+      if (res.hata) {
+        setIsPending(false)
+        setHata(res.hata)
+        return
       }
+      setKiyasSonuc({
+        aciklama: res.aciklama ?? null,
+        satirlar: res.satirlar ?? [],
+        tumuUygun: res.tumuUygun === true,
+      })
+      bekleyenFdRef.current = fd
+      setKiyasAcik(true)
+      setIsPending(false)
+    }).catch(() => {
+      setIsPending(false)
+      setHata('Kazanç kural karşılaştırması yapılamadı.')
     })
+  }
+
+  function kiyasEvet() {
+    const fd = bekleyenFdRef.current
+    setKiyasAcik(false)
+    bekleyenFdRef.current = null
+    if (fd) kaydetGonder(fd)
+  }
+
+  function kiyasHayir() {
+    setKiyasAcik(false)
+    bekleyenFdRef.current = null
   }
 
   function handleKapat() {
@@ -1030,6 +1069,71 @@ export default function PersonelHareketiDegistirClient({
           </div>
         </div>
       )}
+
+      <Modal
+        open={kiyasAcik}
+        onClose={kiyasHayir}
+        title="Kazanç kural karşılaştırması"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Girilen kazanç değerleri kural sonucu ile karşılaştırıldı. Kaydı işlemek için Evet, vazgeçmek için Hayır.
+          </p>
+          {kiyasSonuc?.aciklama && (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {kiyasSonuc.aciklama}
+            </p>
+          )}
+          {kiyasSonuc && kiyasSonuc.satirlar.length > 0 && (
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-3 py-2 font-semibold text-slate-600">Alan</th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-600">Giriş</th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-600">Kural</th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-600">Sonuç</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {kiyasSonuc.satirlar.map(s => (
+                    <tr key={s.alan}>
+                      <td className="px-3 py-2 text-slate-700">{s.alan}</td>
+                      <td className="px-3 py-2 font-mono text-slate-800">{s.giris}</td>
+                      <td className="px-3 py-2 font-mono text-slate-800">{s.kural}</td>
+                      <td className="px-3 py-2">
+                        {s.uygun ? (
+                          <span className="text-green-700 font-medium">Uygun</span>
+                        ) : (
+                          <span className="text-red-700 font-medium">Değil</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              type="button"
+              onClick={kiyasHayir}
+              className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+            >
+              Hayır
+            </button>
+            <button
+              type="button"
+              onClick={kiyasEvet}
+              disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-700 rounded-lg hover:bg-emerald-600 disabled:opacity-50"
+            >
+              Evet
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

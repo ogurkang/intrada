@@ -9,6 +9,7 @@ import {
   teknisyenEkGostergeBaglamKur,
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-sec'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
@@ -98,22 +99,6 @@ function terfiKaydiSec(
   return [...secim].sort((a, b) => b.kayit_zamani.localeCompare(a.kayit_zamani))[0] ?? null
 }
 
-function eslestirOgrenimId(
-  ogrenimTuru: string | null | undefined,
-  tanimlar: { id: number; isim: string }[],
-): number | null {
-  const t = (ogrenimTuru ?? '').trim().toLowerCase()
-  if (!t) return null
-  for (const o of tanimlar) {
-    if (o.isim.trim().toLowerCase() === t) return o.id
-  }
-  for (const o of tanimlar) {
-    const n = o.isim.trim().toLowerCase()
-    if (t.includes(n) || n.includes(t)) return o.id
-  }
-  return null
-}
-
 /**
  * Terfi Ettir önizlemesi için memur kaynakları + kazanç lookup haritası.
  */
@@ -175,6 +160,9 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   })
 
   const ogrenimTuruBySicil = new Map<string, string>()
+  const kazancOgrenimTuruBySicil = new Map<string, string>()
+  const ogrenimMeslekBySicil = new Map<string, string | null>()
+  const ogrenimBolumBySicil = new Map<string, string | null>()
   const yuksekOgrenimBySicil = new Map<string, boolean>()
   const kadrosuIleIlgiliBySicil = new Map<string, boolean>()
   const teknikOgrenimBySicil = new Map<string, boolean>()
@@ -186,21 +174,35 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       teknik_ogrenim: boolean | null
       varsayilan: boolean | null
       kayit_zamani: string | null
-    }>(supabase, 'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani', q =>
-      q.in('sicil_no', memurSiciller).eq('aktif', true),
+      meslegi: string | null
+      bolum: string | null
+    }>(
+      supabase,
+      'sicil_no, ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum',
+      q => q.in('sicil_no', memurSiciller).eq('aktif', true),
     )
-    ;(ogRes ?? []).sort((a, b) => String(b.kayit_zamani ?? '').localeCompare(String(a.kayit_zamani ?? '')))
-    const seenOg = new Set<string>()
+    const ogBySicil = new Map<string, NonNullable<typeof ogRes>>()
     for (const o of ogRes ?? []) {
+      const list = ogBySicil.get(o.sicil_no)
+      if (list) list.push(o)
+      else ogBySicil.set(o.sicil_no, [o])
       if (ogrenimYuksekMi(o.ogrenim_turu)) {
         yuksekOgrenimBySicil.set(o.sicil_no, true)
         if (o.kadrosu_ile_ilgili) kadrosuIleIlgiliBySicil.set(o.sicil_no, true)
       }
       if (o.varsayilan && o.teknik_ogrenim) teknikOgrenimBySicil.set(o.sicil_no, true)
-      if (seenOg.has(o.sicil_no)) continue
-      seenOg.add(o.sicil_no)
-      const tt = (o.ogrenim_turu ?? '').trim()
-      if (tt) ogrenimTuruBySicil.set(o.sicil_no, tt)
+    }
+    for (const [sicil, rows] of ogBySicil) {
+      const varsayilan = rows.find(r => r.varsayilan)
+      const gosterim = (varsayilan?.ogrenim_turu ?? kazancIcinOgrenimSec(rows)?.ogrenim_turu ?? '').trim()
+      if (gosterim) ogrenimTuruBySicil.set(sicil, gosterim)
+      const kazancOg = kazancIcinOgrenimSec(rows)
+      if (kazancOg) {
+        const kt = (kazancOg.ogrenim_turu ?? '').trim()
+        if (kt) kazancOgrenimTuruBySicil.set(sicil, kt)
+        ogrenimMeslekBySicil.set(sicil, kazancOg.meslegi ?? null)
+        ogrenimBolumBySicil.set(sicil, kazancOg.bolum ?? null)
+      }
     }
   }
 
@@ -208,11 +210,13 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const unvanIdBySicil = new Map<string, number>()
   const kadroUnvaniBySicil = new Map<string, string | null>()
   const kadroDerecesiBySicil = new Map<string, string | null>()
+  const asilMiBySicil = new Map<string, boolean>()
   for (const sicil of memurSiciller) {
     const r = secilenKadroSatir(sicil, khRows)
     if (!r) continue
     kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
     kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
+    asilMiBySicil.set(sicil, sicilEsit(r.asil, sicil))
     const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
     if (uid != null) unvanIdBySicil.set(sicil, uid)
     const sec = terfiKaydiSec(terfiBySicil.get(sicil) ?? [], r.id)
@@ -221,8 +225,13 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 
   const unvanIdList = [...new Set(unvanIdBySicil.values())]
   const sinifByUnvanId = new Map<number, string | null>()
-  const { data: unvanAdRaw } = await supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true)
+  const destekByUnvanId = new Map<number, boolean>()
+  const { data: unvanAdRaw } = await supabase
+    .from('tanim_unvan')
+    .select('id, unvan_adi, sinif_adi, destek_yardimci_birim')
+    .eq('aktif', true)
   for (const u of unvanAdRaw ?? []) {
+    destekByUnvanId.set(u.id, u.destek_yardimci_birim === true)
     if (unvanIdList.includes(u.id)) sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
   }
 
@@ -247,7 +256,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     const t = terfiMap[sicil_no]
     if (!t) continue
     const k = kadroMap.get(sicil_no)
-    const ogId = eslestirOgrenimId(ogrenimTuruBySicil.get(sicil_no), tanimOgList)
+    const ogId = eslestirOgrenimId(kazancOgrenimTuruBySicil.get(sicil_no) ?? ogrenimTuruBySicil.get(sicil_no), tanimOgList)
     const unvanId = unvanIdBySicil.get(sicil_no) ?? null
     kaynaklar.push({
       sicil_no,
@@ -255,7 +264,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       unvan_adi: kadroUnvaniBySicil.get(sicil_no) ?? k?.gorev_unvani ?? null,
       unvan_sinif: unvanId != null ? (sinifByUnvanId.get(unvanId) ?? null) : null,
       kadro_derecesi: kadroDerecesiBySicil.get(sicil_no) ?? null,
-      ogrenim_turu: ogrenimTuruBySicil.get(sicil_no) ?? null,
+      ogrenim_turu: kazancOgrenimTuruBySicil.get(sicil_no) ?? ogrenimTuruBySicil.get(sicil_no) ?? null,
       ogrenim_id: ogId,
       unvan_id: unvanId,
       kha_derece: t.kha_derece,
@@ -278,11 +287,15 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       yuksek_ogrenim_var: yuksekOgrenimBySicil.get(sicil_no) === true,
       kadrosu_ile_ilgili: kadrosuIleIlgiliBySicil.get(sicil_no) === true,
       teknik_ogrenim: teknikOgrenimBySicil.get(sicil_no) === true,
+      ogrenim_meslegi: ogrenimMeslekBySicil.get(sicil_no) ?? null,
+      ogrenim_bolum: ogrenimBolumBySicil.get(sicil_no) ?? null,
+      asil_mi: asilMiBySicil.get(sicil_no) === true,
+      destek_yardimci_birim: unvanId != null ? destekByUnvanId.get(unvanId) === true : false,
       th_hizmet_baslangic: thHizmetBySicil.get(sicil_no) ?? null,
     })
   }
 
-  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
+  const kazancLookupHam = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
     kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
 
   const kazancEntries = [...kazancMap.entries()].map(([key, puan]) => ({ key, puan }))
@@ -290,6 +303,18 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     unvanlar: (unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi })),
     tanimOgList,
   })
+  const lisansGrupIds = teknisyenEkGosterge.lisansOnlisansOgrenimIds
+  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
+    const row = kazancLookupHam(unvanId, ogrenimId, derece)
+    if (row) return row
+    if (!lisansGrupIds.includes(ogrenimId)) return null
+    for (const ogId of lisansGrupIds) {
+      if (ogId === ogrenimId) continue
+      const alt = kazancLookupHam(unvanId, ogId, derece)
+      if (alt) return alt
+    }
+    return null
+  }
 
   const memurPersoneller = memurSiciller
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))

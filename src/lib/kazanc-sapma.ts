@@ -14,13 +14,8 @@ import {
   yanOdemeTasinirGosterimMetni,
 } from '@/lib/kazanc-tasinir-yetkili'
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
-import {
-  teknisyenEkGostergeUygula,
-  teknikerTeknikOgrenimUygula,
-  teknisyenOgrenimUyum,
-  type TeknisyenEkGostergeBaglam,
-  type TeknisyenOgrenimUyum,
-} from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { teknisyenOgrenimUyum, type TeknisyenEkGostergeBaglam, type TeknisyenOgrenimUyum } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -202,21 +197,7 @@ export function kazancSapmaHesapla(
     }
 
     kontrolEdilen++
-    const tanimTeknisyen = teknisyenEkGostergeUygula(tanimHam, kazancLookup, {
-      unvanAdi: r.unvan_adi,
-      kadroDerecesi: r.kadro_derecesi,
-      khaDerece: derece,
-      yuksekOgrenimVar: r.yuksek_ogrenim_var,
-      kadrosuIleIlgili: r.kadrosu_ile_ilgili,
-      baglam: teknisyenEkGosterge,
-    })
-    const tanim = teknikerTeknikOgrenimUygula(tanimTeknisyen, kazancLookup, {
-      unvanAdi: r.unvan_adi,
-      kadroDerecesi: r.kadro_derecesi,
-      khaDerece: derece,
-      teknikOgrenim: r.teknik_ogrenim,
-      baglam: teknisyenEkGosterge,
-    })
+    const tanim = kazancTaniminiKuralla(tanimHam, kazancLookup, terfiKaynaktanKuralOpts(r, derece, teknisyenEkGosterge))
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = thYanOdemeYilSec({
       thMi,

@@ -27,6 +27,13 @@ import {
   yuklePersonelHareketDegistirVeri,
 } from '@/lib/personel-hareket-degistir-yukle'
 import { terfiKaydiBul, terfiRolEtiketi, type TerfiKadroBaglam } from '@/lib/terfi-kadro-esleme'
+import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
+import { teknisyenEkGostergeBaglamKur } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
+import {
+  personelHareketKazancKiyasHesapla,
+  type PersonelHareketKazancKiyasSonuc,
+} from '@/lib/personel-hareket-kazanc-kiyas'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -658,4 +665,95 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
+}
+
+export async function personelHareketKazancKiyasla(
+  formData: FormData,
+): Promise<{ hata?: string } & Partial<PersonelHareketKazancKiyasSonuc>> {
+  const sicil_no = str(formData, 'sicil_no')
+  if (!sicil_no) return { hata: 'Personel seçilmedi.' }
+
+  const supabase = await createClient()
+  const [
+    { data: ogRes },
+    { data: tanimOg },
+    { data: unvanAdRaw },
+    { data: kazancRaw },
+    { data: calisan },
+  ] = await Promise.all([
+    supabase
+      .from('calisan_ogrenim')
+      .select('ogrenim_turu, kadrosu_ile_ilgili, teknik_ogrenim, varsayilan, kayit_zamani, meslegi, bolum')
+      .eq('sicil_no', sicil_no)
+      .eq('aktif', true),
+    supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
+    supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi, destek_yardimci_birim').eq('aktif', true),
+    supabase.from('tanim_kazanc_bilgisi').select('*'),
+    supabase
+      .from('calisan')
+      .select('th_hizmet_baslangic, bilgisayar_kullaniyor')
+      .eq('sicil_no', sicil_no)
+      .maybeSingle(),
+  ])
+
+  const tanimOgList = sortTanimOgrenimByIsim((tanimOg ?? []).map(o => ({ id: o.id, isim: o.isim })))
+  const baglam = teknisyenEkGostergeBaglamKur({
+    unvanlar: (unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi })),
+    tanimOgList,
+  })
+  const kazancMap = new Map<string, KazancPuan>()
+  for (const row of kazancRaw ?? []) {
+    kazancMap.set(`${row.unvan_id}-${row.ogrenim_id}-${row.derece}`, {
+      ek_gosterge: row.ek_gosterge,
+      ek_odeme: row.ek_odeme,
+      oht: row.oht,
+      yan_odeme: row.yan_odeme,
+      yan_odeme_eksi5: row.yan_odeme_eksi5,
+      yan_odeme_bilgisayarsiz: row.yan_odeme_bilgisayarsiz,
+      sds_orani: row.sds_orani,
+    })
+  }
+  const kazancLookupHam = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
+    kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null
+  const lisansGrupIds = baglam.lisansOnlisansOgrenimIds
+  const kazancLookup = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null => {
+    const row = kazancLookupHam(unvanId, ogrenimId, derece)
+    if (row) return row
+    if (!lisansGrupIds.includes(ogrenimId)) return null
+    for (const ogId of lisansGrupIds) {
+      if (ogId === ogrenimId) continue
+      const alt = kazancLookupHam(unvanId, ogId, derece)
+      if (alt) return alt
+    }
+    return null
+  }
+
+  const kadroRol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
+  const sonuc = personelHareketKazancKiyasHesapla({
+    giris: {
+      unvanAdi: str(formData, 'yeni_unvan') ?? str(formData, 'eski_unvan'),
+      kadroDerecesi: str(formData, 'yeni_kadro_derecesi') ?? str(formData, 'eski_kadro_derecesi'),
+      khaDerece: str(formData, 'yeni_kha_derece'),
+      asilMi: kadroRol === 'asil',
+      kidemYili: str(formData, 'yeni_kidem_yili'),
+      ekGosterge: str(formData, 'yeni_ek_gosterge'),
+      ekOdeme: str(formData, 'yeni_ek_odeme'),
+      oht: str(formData, 'yeni_oht'),
+      yanOdeme: str(formData, 'yeni_igz'),
+      sdsOrani: str(formData, 'yeni_sds_orani'),
+    },
+    ogrenimRows: ogRes ?? [],
+    tanimOgList,
+    unvanlar: (unvanAdRaw ?? []).map(u => ({
+      id: u.id,
+      unvan_adi: u.unvan_adi,
+      sinif_adi: u.sinif_adi,
+      destek_yardimci_birim: u.destek_yardimci_birim,
+    })),
+    kazancLookup,
+    baglam,
+    thHizmetBaslangic: calisan?.th_hizmet_baslangic ?? null,
+    bilgisayarKullaniyor: calisan?.bilgisayar_kullaniyor ?? null,
+  })
+  return sonuc
 }
