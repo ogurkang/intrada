@@ -21,6 +21,9 @@ const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
 const TH_CLASS =
   'sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-slate-600 shadow-[0_1px_0_0_rgb(226,232,240)]'
 
+const TABLO_KUTU =
+  'bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[min(70vh,40rem)]'
+
 interface Props {
   mod?: 'sapma' | 'uyusan'
   sapanlar?: KazancSapmaSatir[]
@@ -122,8 +125,7 @@ export default function KazancSapmaClient({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-9.5rem)] min-h-[28rem]">
-      <div className="shrink-0">
+    <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <Link href="/tanimlar/kazanc-bilgi" className="text-sm text-slate-500 hover:text-slate-700">
@@ -219,9 +221,8 @@ export default function KazancSapmaClient({
         )}
         <span className="text-sm text-slate-500 self-center">{filtreli.length} kayıt</span>
       </div>
-      </div>
 
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className={TABLO_KUTU}>
         <table className="w-full text-sm min-w-[68rem] border-separate border-spacing-0">
           <thead className="sticky top-0 z-20">
             <tr className="text-left">
@@ -330,16 +331,16 @@ export default function KazancSapmaClient({
             })}
           </tbody>
         </table>
+      </div>
 
       {!uyum && tanimsizlar.length > 0 && (
-        <section className="border-t border-slate-200">
-          <div className="px-3 pt-6 pb-4">
+        <section className="mt-10">
           <h2 className="text-lg font-semibold text-slate-800">Kazanç Tanımı Bulunamayan Personel</h2>
-          <p className="text-sm text-slate-500 mt-0.5 max-w-3xl">
+          <p className="text-sm text-slate-500 mt-0.5 mb-4 max-w-3xl">
             Bu personel için ünvan + öğrenim + derece üçlüsüne karşılık gelen tanım yok. Terfide dereceleri ilerlerse
             kazanç değerleri eski derecede kalır; Terfi Ettir önizlemesi bu satırları uyarı rozetiyle işaretler.
           </p>
-          </div>
+          <div className={TABLO_KUTU}>
             <table className="w-full text-sm border-separate border-spacing-0">
               <thead className="sticky top-0 z-20">
                 <tr className="text-left">
@@ -387,9 +388,9 @@ export default function KazancSapmaClient({
                 ))}
               </tbody>
             </table>
+          </div>
         </section>
       )}
-      </div>
     </div>
   )
 }
