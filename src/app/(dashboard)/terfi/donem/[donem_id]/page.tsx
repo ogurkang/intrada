@@ -160,6 +160,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       bilgisayar_kullaniyor: kaynak?.bilgisayar_kullaniyor ?? null,
       yuksek_ogrenim_var: kaynak?.yuksek_ogrenim_var ?? false,
       kadrosu_ile_ilgili: kaynak?.kadrosu_ile_ilgili ?? false,
+      teknisyen_kariyer: kaynak?.teknisyen_kariyer ?? null,
       teknik_ogrenim: kaynak?.teknik_ogrenim ?? false,
       ogrenim_meslegi: kaynak?.ogrenim_meslegi ?? null,
       ogrenim_bolum: kaynak?.ogrenim_bolum ?? null,

@@ -2,7 +2,11 @@ import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
 import { parseKidemYili, unvanAdiNorm, unvanSinifiThMi, yanOdemeTanimdan } from '@/lib/kazanc-yan-odeme'
 import { parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import { kazancTaniminiKuralla } from '@/lib/kazanc-kural-uygula'
-import { ogrenimYuksekMi, type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import {
+  ogrenimYuksekMi,
+  teknisyenKariyerUnvanFromOgrenimRows,
+  type TeknisyenEkGostergeBaglam,
+} from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-sec'
 import { OZEL_KALEM_KAZANC_DERECE, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
@@ -128,6 +132,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     }
   }
 
+  const teknisyenKariyer = teknisyenKariyerUnvanFromOgrenimRows(ogrenimRows)
   const tanim = kazancTaniminiKuralla(tanimHam, kazancLookup, {
     unvanId: unvan.id,
     ogrenimId,
@@ -135,7 +140,8 @@ export function personelHareketKazancKiyasHesapla(input: {
     kadroDerecesi: giris.kadroDerecesi,
     khaDerece: ozelKalem ? OZEL_KALEM_KAZANC_DERECE : khaDerece,
     yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
-    kadrosuIleIlgili: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu) && r.kadrosu_ile_ilgili),
+    kadrosuIleIlgili: teknisyenKariyer != null,
+    teknisyenKariyer,
     teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
     asilMi: giris.asilMi,
     destekYardimciBirim: unvan.destek_yardimci_birim === true,

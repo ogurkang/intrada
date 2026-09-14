@@ -142,8 +142,11 @@ export default function KazancSapmaClient({
                 <span className="font-medium">Bilgisayarsız</span>, <span className="font-medium">−5 Yıl</span>,{' '}
                 <span className="font-medium">+5 Yıl</span>, <span className="font-medium">TKY Görevi</span>.
                 Teknisyen kadrosunda yüksek öğrenimli personelde kazanç kaynağı yeşil çerçevede belirtilir:{' '}
-                <span className="font-medium">Öğrenim Uyumlu</span> (Tekniker),{' '}
-                <span className="font-medium">Öğrenim Uyumsuz</span> (Bilgisayar İşletmeni).
+                <span className="font-medium">Öğrenim Uyumlu (Tekniker)</span> veya{' '}
+                <span className="font-medium">Öğrenim Uyumlu (Mühendis)</span> — ÖHT ve yan ödeme kariyer
+                unvanından; ek gösterge, ek ödeme ve SDS teknisyende kalır.{' '}
+                <span className="font-medium">Öğrenim Uyumsuz</span> — yalnızca ek gösterge Bilgisayar
+                İşletmeni tanımından.
                 Tekniker kadrosunda varsayılan öğrenimde <span className="font-medium">Teknik Öğrenim</span> tiki varsa
                 ek gösterge Kimyager, yan ödeme Kütüphaneci tanımından alınır.
               </>

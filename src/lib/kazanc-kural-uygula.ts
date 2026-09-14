@@ -7,6 +7,7 @@ import {
   yuksekDerece657,
   type KazancSatirLookup,
   type TeknisyenEkGostergeBaglam,
+  type TeknisyenKariyerUnvan,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 
 export type KazancKuralOpts = {
@@ -17,6 +18,7 @@ export type KazancKuralOpts = {
   khaDerece: number | null | undefined
   yuksekOgrenimVar: boolean
   kadrosuIleIlgili: boolean
+  teknisyenKariyer?: TeknisyenKariyerUnvan | null
   teknikOgrenim: boolean
   asilMi: boolean
   destekYardimciBirim: boolean
@@ -56,7 +58,7 @@ export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string 
 /**
  * KHA derecesindeki kazanç tanımına sıra ile:
  * 1) ek göstergeyi yüksek 657 derecesinden al
- * 2) teknisyen overlay
+ * 2) teknisyen overlay (uyumlu: ÖHT/yan ödeme kariyer; uyumsuz: ek gösterge Bİ)
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür + TH kariyer overlay
  * Özel Kalem Müdürü: 1. derece satırı olduğu gibi kalır (KHA yok sayılır).
@@ -84,6 +86,7 @@ export function kazancTaniminiKuralla<
     khaDerece: opts.khaDerece,
     yuksekOgrenimVar: opts.yuksekOgrenimVar,
     kadrosuIleIlgili: opts.kadrosuIleIlgili,
+    teknisyenKariyer: opts.teknisyenKariyer ?? null,
     baglam: opts.baglam,
   })
   sonraki = teknikerTeknikOgrenimUygula(sonraki, lookup, {
@@ -114,6 +117,7 @@ export function terfiKaynaktanKuralOpts(r: {
   kha_derece?: string | null
   yuksek_ogrenim_var: boolean
   kadrosu_ile_ilgili: boolean
+  teknisyen_kariyer?: TeknisyenKariyerUnvan | null
   teknik_ogrenim: boolean
   asil_mi?: boolean
   destek_yardimci_birim?: boolean
@@ -128,6 +132,7 @@ export function terfiKaynaktanKuralOpts(r: {
     khaDerece,
     yuksekOgrenimVar: r.yuksek_ogrenim_var,
     kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+    teknisyenKariyer: r.teknisyen_kariyer ?? null,
     teknikOgrenim: r.teknik_ogrenim,
     asilMi: r.asil_mi === true,
     destekYardimciBirim: r.destek_yardimci_birim === true,

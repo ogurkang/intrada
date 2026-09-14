@@ -51,7 +51,7 @@ export type KazancSapmaSatir = {
   >
   /** Tanımdan ayrışan alan sayısı */
   farkAdedi: number
-  /** Teknisyen yüksek öğrenim kuralı: Tekniker → uyumlu, Bilgisayar İşletmeni → uyumsuz */
+  /** Teknisyen yüksek öğrenim kuralı: kariyer ÖHT/yan ödeme → uyumlu, Bilgisayar İşletmeni ek gösterge → uyumsuz */
   ogrenim_uyum: TeknisyenOgrenimUyum | null
   /** Tekniker + varsayılan Teknik Öğrenim tiki */
   teknik_ogrenim: boolean
@@ -263,6 +263,7 @@ export function kazancSapmaHesapla(
         unvanAdi: r.unvan_adi,
         yuksekOgrenimVar: r.yuksek_ogrenim_var,
         kadrosuIleIlgili: r.kadrosu_ile_ilgili,
+        teknisyenKariyer: r.teknisyen_kariyer ?? null,
       }),
       teknik_ogrenim: r.teknik_ogrenim === true,
     }

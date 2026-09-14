@@ -223,6 +223,8 @@ export type TerfiKaynak = {
   yuksek_ogrenim_var: boolean
   /** Yüksek öğrenim kaydında kadrosu ile ilgili işaretli. */
   kadrosu_ile_ilgili: boolean
+  /** İşaretli öğrenim türüne göre kariyer: önlisans → tekniker, lisans+ → mühendis. */
+  teknisyen_kariyer?: 'tekniker' | 'muhendis' | null
   /** Varsayılan öğrenimde Teknik Öğrenim tiki — Tekniker kazanç overlay. */
   teknik_ogrenim: boolean
   /** Kazanç için seçilen öğrenim kaydının mesleği / bölümü (müdür TH kariyer). */

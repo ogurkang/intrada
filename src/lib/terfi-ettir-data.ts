@@ -7,7 +7,9 @@ import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import {
   ogrenimYuksekMi,
   teknisyenEkGostergeBaglamKur,
+  teknisyenKariyerUnvanFromOgrenimRows,
   type TeknisyenEkGostergeBaglam,
+  type TeknisyenKariyerUnvan,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec, kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
@@ -166,6 +168,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const ogrenimBolumBySicil = new Map<string, string | null>()
   const yuksekOgrenimBySicil = new Map<string, boolean>()
   const kadrosuIleIlgiliBySicil = new Map<string, boolean>()
+  const teknisyenKariyerBySicil = new Map<string, TeknisyenKariyerUnvan>()
   const teknikOgrenimBySicil = new Map<string, boolean>()
   if (memurSiciller.length > 0) {
     const ogRes: Array<{
@@ -196,11 +199,15 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       else ogBySicil.set(o.sicil_no, [o])
       if (ogrenimYuksekMi(o.ogrenim_turu)) {
         yuksekOgrenimBySicil.set(o.sicil_no, true)
-        if (o.kadrosu_ile_ilgili) kadrosuIleIlgiliBySicil.set(o.sicil_no, true)
       }
       if (o.varsayilan && o.teknik_ogrenim) teknikOgrenimBySicil.set(o.sicil_no, true)
     }
     for (const [sicil, rows] of ogBySicil) {
+      const kariyer = teknisyenKariyerUnvanFromOgrenimRows(rows)
+      if (kariyer) {
+        teknisyenKariyerBySicil.set(sicil, kariyer)
+        kadrosuIleIlgiliBySicil.set(sicil, true)
+      }
       const varsayilan = rows.find(r => r.varsayilan)
       const gosterim = (varsayilan?.ogrenim_turu ?? kazancIcinOgrenimSec(rows)?.ogrenim_turu ?? '').trim()
       if (gosterim) ogrenimTuruBySicil.set(sicil, gosterim)
@@ -294,6 +301,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       bilgisayar_kullaniyor: yetkinlikBySicil.get(sicil_no) ?? null,
       yuksek_ogrenim_var: yuksekOgrenimBySicil.get(sicil_no) === true,
       kadrosu_ile_ilgili: kadrosuIleIlgiliBySicil.get(sicil_no) === true,
+      teknisyen_kariyer: teknisyenKariyerBySicil.get(sicil_no) ?? null,
       teknik_ogrenim: teknikOgrenimBySicil.get(sicil_no) === true,
       ogrenim_meslegi: ogrenimMeslekBySicil.get(sicil_no) ?? null,
       ogrenim_bolum: ogrenimBolumBySicil.get(sicil_no) ?? null,
