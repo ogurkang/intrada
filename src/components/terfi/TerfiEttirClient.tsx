@@ -85,7 +85,8 @@ function durumHucreClass(durum: string, ogrenimTerfi?: boolean): string {
   if (durum.includes('Derece İlerledi')) return 'bg-green-100 text-green-800'
   if (durum.includes('Sadece Kademe')) return 'bg-slate-100 text-slate-700'
   if (durum.includes('Kıdem Yılı İlerledi')) return 'bg-blue-100 text-blue-700'
-  if (durum.includes('Sınıf Hizmet Süresi Arttı')) return 'bg-teal-100 text-teal-800'
+  if (durum.includes('TH Sınıfında 5 Yıl Geçti') || durum.includes('Sınıf Hizmet Süresi Arttı'))
+    return 'bg-teal-100 text-teal-800'
   if (durum.includes('İyi Hal İlerlemesi')) return 'bg-indigo-100 text-indigo-700'
   if (durum.includes('Tavan')) return 'bg-amber-100 text-amber-900'
   if (durum.includes('Eğitim Sınırında')) return 'bg-red-100 text-red-800'
@@ -115,7 +116,7 @@ function durumExcelStyle(durum: string, ogrenimTerfi?: boolean): Partial<ExcelJS
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, font: { color: { argb: 'FF334155' } } }
   if (durum.includes('Kıdem Yılı İlerledi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }, font: { color: { argb: 'FF1D4ED8' } } }
-  if (durum.includes('Sınıf Hizmet Süresi Arttı'))
+  if (durum.includes('TH Sınıfında 5 Yıl Geçti') || durum.includes('Sınıf Hizmet Süresi Arttı'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCFBF1' } }, font: { color: { argb: 'FF0F766E' } } }
   if (durum.includes('İyi Hal İlerlemesi'))
     return { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }, font: { color: { argb: 'FF4338CA' } } }

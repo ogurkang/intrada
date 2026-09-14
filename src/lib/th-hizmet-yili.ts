@@ -1,7 +1,7 @@
 import { ggAayyyyToIso } from '@/lib/tarih'
 
-export const TH_HIZMET_SURESI_5_YIL_NOTU = 'Hizmet süresi 5 Yılı geçti'
-export const TH_SINIF_HIZMET_DURUM = 'Sınıf Hizmet Süresi Arttı'
+export const TH_SINIF_HIZMET_DURUM = 'TH Sınıfında 5 Yıl Geçti'
+export const TH_HIZMET_SURESI_5_YIL_NOTU = TH_SINIF_HIZMET_DURUM
 
 function isoGun(v: string | Date | null | undefined): string | null {
   if (v instanceof Date && !isNaN(v.getTime())) {

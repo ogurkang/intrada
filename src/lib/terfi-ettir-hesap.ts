@@ -22,7 +22,7 @@ export type TerfiEttirDurumEtiket =
   | 'Tavan Kademe'
   | 'Eğitim Sınırında'
   | 'Kıdem Yılı İlerledi'
-  | 'Sınıf Hizmet Süresi Arttı'
+  | 'TH Sınıfında 5 Yıl Geçti'
   | 'İyi Hal İlerlemesi'
   | 'Hazırlık Okudu'
   | 'Yükseklisansını Tamamladı'
@@ -272,7 +272,7 @@ export type TerfiEttirOnizlemeSatir = {
   sds_eski: string
   sds_yeni: string
   durum: TerfiEttirDurumEtiket
-  /** Terfi log `sonraki.aciklama` — örn. hizmet süresi 5 yılı geçti */
+  /** Terfi log `sonraki.aciklama` — örn. TH Sınıfında 5 Yıl Geçti */
   th_hizmet_notu?: string | null
   th_hizmet_baslangic?: string | null
   /** Derece ilerledi ama unvan+öğrenim+derece için kazanç tanımı yok; puanlar eski değerde bırakıldı */
