@@ -25,6 +25,8 @@ export type TeknisyenEkGostergeBaglam = {
   kimyagerUnvanId: number | null
   kutuphaneciUnvanId: number | null
   muhendisUnvanId: number | null
+  icMimarUnvanId: number | null
+  peyzajMimarUnvanId: number | null
   /** Lisans ve Önlisans `tanim_ogrenim.id` — tanımlar aynı, sırayla denenir. */
   lisansOnlisansOgrenimIds: number[]
 }
@@ -90,6 +92,8 @@ export function teknisyenEkGostergeBaglamKur(input: {
     kimyagerUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kimyager'),
     kutuphaneciUnvanId: unvanIdAdindanBul(input.unvanlar, 'Kütüphaneci'),
     muhendisUnvanId: unvanIdAdindanBul(input.unvanlar, 'Mühendis'),
+    icMimarUnvanId: unvanIdAdindanBul(input.unvanlar, 'İç Mimar'),
+    peyzajMimarUnvanId: unvanIdAdindanBul(input.unvanlar, 'Peyzaj Mimarı'),
     lisansOnlisansOgrenimIds: lisansOnlisansOgrenimIdsBul(input.tanimOgList),
   }
 }
