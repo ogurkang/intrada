@@ -9,6 +9,9 @@ import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import TerfiEttirClient from '@/components/terfi/TerfiEttirClient'
 import { terfiGeriAlTek, terfiGeriAlToplu } from '@/app/(dashboard)/terfi/donem/actions'
 
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
 type LogSnap = {
   kha_derece?: string | null
   kha_kademe?: string | null
@@ -104,8 +107,11 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
   if (Number.isNaN(id)) notFound()
 
   const supabase = await createClient()
-  const { data: row, error } = await supabase.from('terfi_donem').select('*').eq('id', id).single()
-  if (error || !row) notFound()
+  const { data: row, error } = await supabase.from('terfi_donem').select('*').eq('id', id).maybeSingle()
+  if (error) {
+    throw new Error(`Terfi dönemi okunamadı: ${error.message}`)
+  }
+  if (!row) notFound()
 
   const d = row as Tables<'terfi_donem'>
   const { bas, bit } = terfiTarihPenceresiOncekiDonem(d.baslangic_tarihi, d.bitis_tarihi)
