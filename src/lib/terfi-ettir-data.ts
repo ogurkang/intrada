@@ -232,7 +232,9 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kadroDerecesiBySicil.set(sicil, r.kadro_derecesi ?? null)
     kadroUnvaniBySicil.set(sicil, r.kadro_unvani ?? null)
     asilMiBySicil.set(sicil, sicilEsit(r.asil, sicil))
-    const uid = r.gorev_unvan_id ?? r.kadro_unvan_id
+    // Kazanç / sapma kadro ünvanına bakılır. Vekalette gorev_unvan_id müdür kadrosuna
+    // işaret eder; onu öne almak sicil 246 gibi asıl mühendisleri yanlış tanıma götürür.
+    const uid = r.kadro_unvan_id ?? r.gorev_unvan_id
     if (uid != null) unvanIdBySicil.set(sicil, uid)
     const sec = terfiKaydiSec(terfiBySicil.get(sicil) ?? [], r.id)
     if (sec) terfiMap[sicil] = sec
@@ -240,12 +242,14 @@ export async function yukleTerfiEttirKaynakVeKazanc(
 
   const unvanIdList = [...new Set(unvanIdBySicil.values())]
   const sinifByUnvanId = new Map<number, string | null>()
+  const unvanAdiById = new Map<number, string>()
   const destekByUnvanId = new Map<number, boolean>()
   const { data: unvanAdRaw } = await supabase
     .from('tanim_unvan')
     .select('id, unvan_adi, sinif_adi, destek_yardimci_birim')
     .eq('aktif', true)
   for (const u of unvanAdRaw ?? []) {
+    unvanAdiById.set(u.id, u.unvan_adi)
     destekByUnvanId.set(u.id, u.destek_yardimci_birim === true)
     if (unvanIdList.includes(u.id)) sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
   }
@@ -276,7 +280,11 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kaynaklar.push({
       sicil_no,
       ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
-      unvan_adi: kadroUnvaniBySicil.get(sicil_no) ?? k?.gorev_unvani ?? null,
+      unvan_adi:
+        (unvanId != null ? unvanAdiById.get(unvanId) : undefined) ??
+        kadroUnvaniBySicil.get(sicil_no) ??
+        k?.gorev_unvani ??
+        null,
       unvan_sinif: unvanId != null ? (sinifByUnvanId.get(unvanId) ?? null) : null,
       kadro_derecesi: kadroDerecesiBySicil.get(sicil_no) ?? null,
       ogrenim_turu: kazancOgrenimTuruBySicil.get(sicil_no) ?? ogrenimTuruBySicil.get(sicil_no) ?? null,

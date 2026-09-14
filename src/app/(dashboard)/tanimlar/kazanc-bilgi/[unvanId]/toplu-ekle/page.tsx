@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
+import { fetchKazancUnvanById } from '@/lib/kazanc-unvan-kadro'
 import { getAppAccess } from '@/lib/app-access'
 import KazancBilgiTopluEkleTabClient from '@/components/tanimlar/KazancBilgiTopluEkleTabClient'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
@@ -11,8 +11,7 @@ export default async function KazancBilgiTopluEkleTabPage({ params }: { params: 
   if (!Number.isFinite(unvanId)) notFound()
 
   const supabase = await createClient()
-  const kadroUnvanlar = await fetchUnvanlarKadrodaPersonelAtanmis(supabase)
-  const unvanRow = kadroUnvanlar.find((u) => u.id === unvanId)
+  const unvanRow = await fetchKazancUnvanById(supabase, unvanId)
   if (!unvanRow) notFound()
 
   const {

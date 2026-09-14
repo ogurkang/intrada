@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { fetchUnvanlarKadrodaPersonelAtanmis } from '@/lib/kazanc-unvan-kadro'
+import { fetchKazancUnvanById } from '@/lib/kazanc-unvan-kadro'
 import KazancBilgiDetayClient from '@/components/tanimlar/KazancBilgiDetayClient'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
@@ -13,8 +13,7 @@ export default async function KazancBilgiUnvanDetayPage({ params }: { params: Pr
   if (!Number.isFinite(unvanId)) notFound()
 
   const supabase = await createClient()
-  const kadroUnvanlar = await fetchUnvanlarKadrodaPersonelAtanmis(supabase)
-  const unvanRow = kadroUnvanlar.find((u) => u.id === unvanId)
+  const unvanRow = await fetchKazancUnvanById(supabase, unvanId)
   if (!unvanRow) notFound()
 
   const [{ data: rows }, { data: ogrenimler }] = await Promise.all([
