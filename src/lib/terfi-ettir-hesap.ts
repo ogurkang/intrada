@@ -516,15 +516,8 @@ export function buildTerfiEttirOnizleme(
     yanUyg.tanimArti5 = overlayYan.tanimArti5
 
     let thHizmetNotu: string | null = null
-    if (
-      thMi &&
-      !thKidemEksi5BandiMi(thYilUygula) &&
-      thEksi5UygulaniyorMu(
-        r.yan_odeme,
-        tanimMevcutPeek ? kazancSatirToPuan(tanimMevcutPeek) : null,
-        thMi,
-      )
-    ) {
+    // Listeye 5. yıl dönümü ile girenlerde yan ödeme zaten +5 olsa da açıklama yazılsın.
+    if (thMi && (besinciIn || thCatchUp)) {
       durum = birlesDurum(durum, TH_SINIF_HIZMET_DURUM)
       thHizmetNotu = TH_HIZMET_SURESI_5_YIL_NOTU
     }
