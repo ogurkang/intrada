@@ -76,6 +76,14 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
   const seciliYerleskeId = etkinYerleskeId(yerleskeHarita, gorevMudurlugu, kayitliYerleskeId)
   const mahalleKayitlari = await fetchAktifMahalleTanimlari(supabase)
   const asilKadroTh = await asilKadroThMi(supabase, sicil_no)
+  const { data: unvanRaw } = await supabase
+    .from('tanim_unvan')
+    .select('id, unvan_adi')
+    .eq('aktif', true)
+    .order('unvan_adi')
+  const unvanSecenekleri = (unvanRaw ?? [])
+    .filter(u => u.unvan_adi?.trim())
+    .map(u => ({ id: u.id, unvan_adi: u.unvan_adi as string }))
 
   return (
     <div>
@@ -106,6 +114,7 @@ export default async function PersonelDuzenlePage({ params, searchParams }: Prop
         seciliYerleskeId={seciliYerleskeId}
         mahalleKayitlari={mahalleKayitlari}
         asilKadroTh={asilKadroTh}
+        unvanSecenekleri={unvanSecenekleri}
       />
     </div>
   )

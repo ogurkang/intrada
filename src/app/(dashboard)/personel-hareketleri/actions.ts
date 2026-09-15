@@ -36,6 +36,7 @@ import {
 } from '@/lib/personel-hareket-kazanc-kiyas'
 import { kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
+import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -681,7 +682,7 @@ export async function personelHareketKazancKiyasla(
     { data: tanimOg },
     { data: unvanAdRaw },
     { data: kazancRaw },
-    { data: calisan },
+    calisanIlk,
   ] = await Promise.all([
     supabase
       .from('calisan_ogrenim')
@@ -692,10 +693,17 @@ export async function personelHareketKazancKiyasla(
     supabase.from('tanim_kazanc_bilgisi').select('*'),
     supabase
       .from('calisan')
-      .select('th_hizmet_baslangic, bilgisayar_kullaniyor')
+      .select('th_hizmet_baslangic, bilgisayar_kullaniyor, yuruttugu_unvan_id')
       .eq('sicil_no', sicil_no)
       .maybeSingle(),
   ])
+  const calisan = yuruttuguUnvanKolonuYokMu(calisanIlk.error?.message)
+    ? (await supabase
+        .from('calisan')
+        .select('th_hizmet_baslangic, bilgisayar_kullaniyor')
+        .eq('sicil_no', sicil_no)
+        .maybeSingle()).data
+    : calisanIlk.data
 
   const tanimOgList = sortTanimOgrenimByIsim((tanimOg ?? []).map(o => ({ id: o.id, isim: o.isim })))
   const baglam = teknisyenEkGostergeBaglamKur({
@@ -758,6 +766,7 @@ export async function personelHareketKazancKiyasla(
     baglam,
     thHizmetBaslangic: calisan?.th_hizmet_baslangic ?? null,
     bilgisayarKullaniyor: calisan?.bilgisayar_kullaniyor ?? null,
+    yuruttuguUnvanId: (calisan as { yuruttugu_unvan_id?: number | null } | null)?.yuruttugu_unvan_id ?? null,
   })
   return sonuc
 }

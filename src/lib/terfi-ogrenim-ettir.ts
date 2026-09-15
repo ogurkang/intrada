@@ -13,6 +13,7 @@ import { parseKidemYili, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import { ogrenimYuksekMi, type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
+import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
 
 export type TerfiOgrenimOlayTipi = 'hazirlik' | 'yuksek_lisans' | 'doktora'
 
@@ -122,6 +123,14 @@ export function buildTerfiOgrenimOnizleme(input: {
     ...terfiKaynaktanKuralOpts(kaynak, newKd, teknisyenEkGosterge),
     yuksekOgrenimVar: kaynak.yuksek_ogrenim_var || ogrenimYuksekMi(yeniOgrenimTuru),
   })
+  puanSon = puanSdsYuruttuguUnvanIle(
+    puanSon,
+    yuruttuguUnvanSdsAl(kazancLookup, {
+      yuruttuguUnvanId: kaynak.yuruttugu_unvan_id,
+      ogrenimId: kazancOgrenimId,
+      derece: newKd,
+    }),
+  )
   const overlayYan = puanThYanOdemeIle(
     puanSon,
     puanSon,

@@ -299,35 +299,35 @@ export default function KazancSapmaClient({
                 <td className="px-3 py-2 text-center tabular-nums text-slate-700">{s.kidem_yili ?? '—'}</td>
                 {KAZANC_ALANLARI.map(a => {
                   const v = s.alanlar[a.key]
-                  const yanNot =
+                  const alanNot =
                     a.key === 'yan_odeme'
                       ? (v.aciklama ??
                           (s.yan_odeme_kural !== 'Yan Ödeme' ? s.yan_odeme_kural : null))
-                      : null
+                      : a.key === 'sds_orani'
+                        ? (v.aciklama ?? null)
+                        : null
                   return (
                     <td key={a.key} className="px-3 py-2 text-center whitespace-nowrap">
                       {v.farkli ? (
                         <span
                           className="inline-block rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-xs leading-tight text-amber-900"
-                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${yanNot ? ` (${yanNot})` : ''}`}>
+                          title={`Personelde ${v.mevcut ?? '—'}, tanımda ${v.tanim ?? '—'}${alanNot ? ` (${alanNot})` : ''}`}>
                           <span className="block font-semibold">{v.mevcut ?? '—'}</span>
                           <span className="block text-[11px] font-normal opacity-80">tanım: {v.tanim ?? '—'}</span>
-                          {yanNot ? (
-                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">{yanNot}</span>
+                          {alanNot ? (
+                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">{alanNot}</span>
                           ) : null}
                         </span>
-                      ) : uyum && (a.key === 'yan_odeme' ? yanNot : false) ? (
+                      ) : uyum && alanNot ? (
                         <span className="inline-block rounded border border-emerald-300 bg-emerald-50 px-1.5 py-1 text-xs leading-tight text-emerald-900">
                           <span className="block font-semibold">{v.mevcut ?? '—'}</span>
-                          {yanNot ? (
-                            <span className="block text-[10px] font-normal opacity-80 mt-0.5">{yanNot}</span>
-                          ) : null}
+                          <span className="block text-[10px] font-normal opacity-80 mt-0.5">{alanNot}</span>
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">
                           {v.mevcut ?? '—'}
-                          {a.key === 'yan_odeme' && yanNot ? (
-                            <span className="block text-[10px] opacity-70">{yanNot}</span>
+                          {alanNot ? (
+                            <span className="block text-[10px] opacity-70">{alanNot}</span>
                           ) : null}
                         </span>
                       )}

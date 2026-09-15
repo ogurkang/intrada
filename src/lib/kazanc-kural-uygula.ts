@@ -95,7 +95,7 @@ export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür ÖHT’yi yüksek 657 derecesinden al
  * 5) asil müdür + TH kariyer overlay
- * Özel Kalem Müdürü: 1. derece satırı olduğu gibi kalır (KHA yok sayılır).
+ * Özel Kalem Müdürü / Belediye Başkan Yardımcısı: 1. derece satırı olduğu gibi kalır (KHA yok sayılır).
  */
 export function kazancTaniminiKuralla<
   T extends {

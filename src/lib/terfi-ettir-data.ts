@@ -15,6 +15,7 @@ import { eslestirOgrenimId, kazancIcinOgrenimSec, kazancLookupYedekOgrenimIds } 
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
 import { mudurKariyerOgrenimKaynagi } from '@/lib/kazanc-mudur-th-overlay'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
+import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
 
 type KadroEslestirmeSatir = Pick<
   Tables<'kadro_hareketleri'>,
@@ -116,22 +117,28 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   teknisyenEkGosterge: TeknisyenEkGostergeBaglam
   memurPersoneller: { sicil_no: string; ad_soyad: string; alt?: string }[]
 }> {
-  const [{ data: kayitlar }, { data: calisanlar }, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
+  type CalisanYurutSatir = {
+    sicil_no: string
+    ad_soyad: string | null
+    bilgisayar_kullaniyor: boolean | null
+    th_hizmet_baslangic: string | null
+    yuruttugu_unvan_id?: number | null
+  }
+  const calisanSelectYurut =
+    'sicil_no, ad_soyad, bilgisayar_kullaniyor, th_hizmet_baslangic, yuruttugu_unvan_id'
+  const calisanSelectTemel = 'sicil_no, ad_soyad, bilgisayar_kullaniyor, th_hizmet_baslangic'
+  const [{ data: kayitlar }, calisanlarIlk, { data: kadroOzet }, { data: phRaw }, { data: tanimOg }] =
     await Promise.all([
       supabase.from('terfi_hareketleri').select('*').order('sicil_no'),
-      fetchAllCalisan<{
-        sicil_no: string
-        ad_soyad: string | null
-        bilgisayar_kullaniyor: boolean | null
-        th_hizmet_baslangic: string | null
-      }>(
-        supabase,
-        'sicil_no, ad_soyad, bilgisayar_kullaniyor, th_hizmet_baslangic',
-      ),
+      fetchAllCalisan<CalisanYurutSatir>(supabase, calisanSelectYurut),
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, gorev_unvani, statu').order('sicil_no'),
       supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi, ayrilis_nedeni').order('yururluk_tarihi', { ascending: false }),
       supabase.from('tanim_ogrenim').select('id, isim').eq('aktif', true),
     ])
+  const calisanlarSonuc = yuruttuguUnvanKolonuYokMu(calisanlarIlk.error)
+    ? await fetchAllCalisan<CalisanYurutSatir>(supabase, calisanSelectTemel)
+    : calisanlarIlk
+  const calisanlar = calisanlarSonuc.data
 
   const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRaw ?? [])
   const aktifSiciller = new Set<string>()
@@ -142,9 +149,11 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
   const yetkinlikBySicil = new Map<string, boolean | null>()
   const thHizmetBySicil = new Map<string, string | null>()
+  const yuruttuguUnvanIdBySicil = new Map<string, number | null>()
   for (const c of calisanlar ?? []) {
     yetkinlikBySicil.set(c.sicil_no, c.bilgisayar_kullaniyor ?? null)
     thHizmetBySicil.set(c.sicil_no, c.th_hizmet_baslangic ?? null)
+    yuruttuguUnvanIdBySicil.set(c.sicil_no, c.yuruttugu_unvan_id ?? null)
   }
   const terfiBySicil = new Map<string, Tables<'terfi_hareketleri'>[]>()
   for (const k of kayitlar ?? []) {
@@ -279,6 +288,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     const k = kadroMap.get(sicil_no)
     const ogId = eslestirOgrenimId(kazancOgrenimTuruBySicil.get(sicil_no) ?? ogrenimTuruBySicil.get(sicil_no), tanimOgList)
     const unvanId = unvanIdBySicil.get(sicil_no) ?? null
+    const yurutId = yuruttuguUnvanIdBySicil.get(sicil_no) ?? null
     kaynaklar.push({
       sicil_no,
       ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
@@ -318,6 +328,8 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       asil_mi: asilMiBySicil.get(sicil_no) === true,
       destek_yardimci_birim: unvanId != null ? destekByUnvanId.get(unvanId) === true : false,
       th_hizmet_baslangic: thHizmetBySicil.get(sicil_no) ?? null,
+      yuruttugu_unvan_id: yurutId,
+      yuruttugu_unvan_adi: yurutId != null ? unvanAdiById.get(yurutId) ?? null : null,
     })
   }
 

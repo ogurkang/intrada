@@ -29,7 +29,7 @@ export async function fetchKazancUnvanById(
 /**
  * Kadro hareketlerinde: durumu Dolu/Vekil, statüsü Memur ve asil/vekil sicili `calisan`da doğrulanan
  * satırlardaki `kadro_unvan_id` / `gorev_unvan_id`. Id yoksa ada göre tek aktif `tanim_unvan` eşlemesi.
- * Ayrıca kazanç tanımı girilmiş ünvanlar ve Özel Kalem Müdürü her zaman listede durur
+ * Ayrıca kazanç tanımı girilmiş ünvanlar, Özel Kalem Müdürü ve Belediye Başkan Yardımcısı listede durur
  * (kadro tablosu 1000+ satır; ilk sayfada kalırsa sapmadan 404 oluşuyordu).
  */
 export async function fetchUnvanlarKadrodaPersonelAtanmis(

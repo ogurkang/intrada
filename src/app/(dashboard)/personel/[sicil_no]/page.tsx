@@ -165,6 +165,7 @@ export default async function PersonelDetayPage({ params, searchParams }: Props)
         konumMetni={konumMetni}
         performansKayitlari={performansKayitlari}
         asilKadroTh={asilKadroTh}
+        yuruttuguUnvanAdi={rest.yuruttuguUnvanAdi}
       />
     </div>
   )

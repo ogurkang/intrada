@@ -91,6 +91,7 @@ interface Props {
   yerleskeAdi?: string | null
   konumMetni?: string | null
   asilKadroTh?: boolean
+  yuruttuguUnvanAdi?: string | null
   performansKayitlari?: {
     yil: number
     ortalama: number | null
@@ -161,12 +162,14 @@ function GorevlendirmeTab({
   yerleskeAdi,
   konumMetni,
   asilKadroTh = false,
+  yuruttuguUnvanAdi = null,
 }: {
   calisan: Calisan
   kadrolar: KH[]
   yerleskeAdi?: string | null
   konumMetni?: string | null
   asilKadroTh?: boolean
+  yuruttuguUnvanAdi?: string | null
 }) {
   const sicil = (calisan.sicil_no ?? '').trim()
   const anaK = anaKadroSec(kadrolar, sicil)
@@ -235,6 +238,7 @@ function GorevlendirmeTab({
               : '—'
           } />
           <Alan etiket="Görev durumu" deger={calisan.gorev_durumu ?? 'Diğer'} />
+          <Alan etiket="Yürüttüğü unvan" deger={yuruttuguUnvanAdi} />
         </div>
       </div>
       <div>
@@ -1537,6 +1541,7 @@ export default function PersonelDetayClient({
   konumMetni = null,
   performansKayitlari = [],
   asilKadroTh = false,
+  yuruttuguUnvanAdi = null,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1683,6 +1688,7 @@ export default function PersonelDetayClient({
               yerleskeAdi={yerleskeAdi}
               konumMetni={konumMetni}
               asilKadroTh={asilKadroTh}
+              yuruttuguUnvanAdi={yuruttuguUnvanAdi}
             />
           )}
           {aktif === 'İzin Bilgileri'       && (

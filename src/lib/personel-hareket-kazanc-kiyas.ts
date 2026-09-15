@@ -9,7 +9,8 @@ import {
   type TeknisyenEkGostergeBaglam,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-sec'
-import { OZEL_KALEM_KAZANC_DERECE, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
+import { OZEL_KALEM_KAZANC_DERECE, kazancBirinciDereceAciklama, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
+import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 
 export type PersonelHareketKazancKiyasSatir = {
@@ -92,15 +93,16 @@ export function personelHareketKazancKiyasHesapla(input: {
   baglam: TeknisyenEkGostergeBaglam
   thHizmetBaslangic: string | null
   bilgisayarKullaniyor: boolean | null
+  yuruttuguUnvanId?: number | null
 }): PersonelHareketKazancKiyasSonuc {
   const { giris, ogrenimRows, tanimOgList, unvanlar, kazancLookup, baglam } = input
   const unvan = unvanKaydiBul(unvanlar, giris.unvanAdi)
   const kazancOg = kazancIcinOgrenimSec(ogrenimRows)
   const ogrenimId = eslestirOgrenimId(kazancOg?.ogrenim_turu, tanimOgList)
   const khaDerece = Number.parseInt(String(giris.khaDerece ?? '').trim(), 10)
-  const ozelKalem = unvanOzelKalemMuduruMi(unvan?.unvan_adi)
-  const derece = ozelKalem ? OZEL_KALEM_KAZANC_DERECE : khaDerece
-  const dereceGecerli = ozelKalem || Number.isFinite(khaDerece)
+  const birinciDerece = unvanKazancBirinciDereceMi(unvan?.unvan_adi)
+  const derece = birinciDerece ? OZEL_KALEM_KAZANC_DERECE : khaDerece
+  const dereceGecerli = birinciDerece || Number.isFinite(khaDerece)
 
   if (!unvan) {
     return {
@@ -143,7 +145,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     ogrenimId,
     unvanAdi: unvan.unvan_adi,
     kadroDerecesi: giris.kadroDerecesi,
-    khaDerece: ozelKalem ? OZEL_KALEM_KAZANC_DERECE : khaDerece,
+    khaDerece: birinciDerece ? OZEL_KALEM_KAZANC_DERECE : khaDerece,
     yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
     kadrosuIleIlgili: teknisyenKariyer != null,
     teknisyenKariyer,
@@ -162,6 +164,12 @@ export function personelHareketKazancKiyasHesapla(input: {
     kidemYili: parseKidemYili(giris.kidemYili),
   })
   const yanKural = yanOdemeTanimdan(tanim, kidem, thMi, unvan.unvan_adi, input.bilgisayarKullaniyor)
+  const yurutSds = yuruttuguUnvanSdsAl(kazancLookup, {
+    yuruttuguUnvanId: input.yuruttuguUnvanId,
+    ogrenimId,
+    derece: Number.isFinite(khaDerece) ? khaDerece : derece,
+  })
+  const tanimSds = puanSdsYuruttuguUnvanIle(tanim, yurutSds)
 
   const girisMap: Record<(typeof KIYAS_ALANLARI)[number]['key'], string | null> = {
     ek_gosterge: giris.ekGosterge,
@@ -175,7 +183,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     ek_odeme: tanim.ek_odeme,
     oht: tanim.oht,
     yan_odeme: yanKural,
-    sds_orani: tanim.sds_orani,
+    sds_orani: tanimSds.sds_orani,
   }
 
   const satirlar = KIYAS_ALANLARI.map(({ key, etiket }) => {
@@ -185,9 +193,7 @@ export function personelHareketKazancKiyasHesapla(input: {
   })
 
   return {
-    aciklama: ozelKalem
-      ? 'Özel Kalem Müdürü kazancı 1. derece tanımından alınır; KHA dikkate alınmaz.'
-      : null,
+    aciklama: kazancBirinciDereceAciklama(unvan.unvan_adi),
     satirlar,
     tumuUygun: satirlar.every(s => s.uygun),
   }

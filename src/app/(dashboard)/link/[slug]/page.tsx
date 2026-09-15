@@ -142,6 +142,7 @@ export default async function Page({ params }: Props) {
           yerleskeAdi={yerleskeAdi}
           konumMetni={konumMetni}
           asilKadroTh={asilKadroTh}
+          yuruttuguUnvanAdi={rest.yuruttuguUnvanAdi}
         />
       </div>
     )

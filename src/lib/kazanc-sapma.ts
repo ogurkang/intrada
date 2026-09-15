@@ -16,7 +16,8 @@ import {
 import { tasinirGoreviNormalize, tasinirGoreviSapmaEtiket } from '@/lib/tasinir-gorevi'
 import { teknisyenOgrenimUyum, type TeknisyenEkGostergeBaglam, type TeknisyenOgrenimUyum } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
-import { OZEL_KALEM_KAZANC_DERECE, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
+import { OZEL_KALEM_KAZANC_DERECE, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
+import { yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -39,7 +40,7 @@ export type KazancSapmaSatir = {
   kadro_derecesi: string | null
   /** `terfi_hareketleri.kha_derece` — kazanılmış hak aylığı derecesi */
   derece: number
-  /** Özel Kalem Müdürü: kazanç 1. derece tanımından */
+  /** Özel Kalem / Başkan Yardımcısı: kazanç 1. derece tanımından */
   kazanc_derece_kural: string | null
   kidem_yili: string | null
   /** Kısa kural: Bilgisayarlı / −5 Yıl / TKY Görevi … */
@@ -175,10 +176,10 @@ export function kazancSapmaHesapla(
   for (const r of kaynaklar) {
     const kha = Number.parseInt(norm(r.kha_derece), 10)
     const khaGecerli = Number.isFinite(kha)
-    const ozelKalem = unvanOzelKalemMuduruMi(r.unvan_adi)
-    const dereceGecerli = ozelKalem || khaGecerli
-    const derece = ozelKalem ? OZEL_KALEM_KAZANC_DERECE : kha
-    const kazancDereceKural = ozelKalem ? 'Kazanç: 1. derece' : null
+    const birinciDerece = unvanKazancBirinciDereceMi(r.unvan_adi)
+    const dereceGecerli = birinciDerece || khaGecerli
+    const derece = birinciDerece ? OZEL_KALEM_KAZANC_DERECE : kha
+    const kazancDereceKural = birinciDerece ? 'Kazanç: 1. derece' : null
 
     if (r.unvan_id == null || r.ogrenim_id == null || !dereceGecerli) {
       tanimsizlar.push({
@@ -222,6 +223,12 @@ export function kazancSapmaHesapla(
       kidemYili: parseKidemYili(r.kidem_yili),
     })
     const kuralKisa = yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)
+    const yurutSds = yuruttuguUnvanSdsAl(kazancLookup, {
+      yuruttuguUnvanId: r.yuruttugu_unvan_id,
+      ogrenimId: r.ogrenim_id,
+      derece: khaGecerli ? kha : derece,
+    })
+    const yurutAd = String(r.yuruttugu_unvan_adi ?? '').trim() || null
     const alanlar = {} as KazancSapmaSatir['alanlar']
     let farkAdedi = 0
     for (const { key } of KAZANC_ALANLARI) {
@@ -239,6 +246,18 @@ export function kazancSapmaHesapla(
         )
         if (k.farkli) farkAdedi++
         alanlar[key] = k
+        continue
+      }
+      if (key === 'sds_orani') {
+        const hedef = r.yuruttugu_unvan_id != null ? (yurutSds ?? '') : tanimDeger
+        const farkli = !puanEsit(mevcut.replace(/%/g, ''), (hedef ?? '').replace(/%/g, ''))
+        if (farkli) farkAdedi++
+        alanlar[key] = {
+          mevcut: mevcut || null,
+          tanim: hedef || null,
+          farkli,
+          aciklama: yurutAd,
+        }
         continue
       }
       const farkli = mevcut !== tanimDeger

@@ -49,6 +49,7 @@ export type PersonelDetayLoadResult = {
     notu: string | null
   }[]
   tasinirTutarByGorev: Record<string, string>
+  yuruttuguUnvanAdi: string | null
 }
 
 /**
@@ -298,6 +299,17 @@ export async function fetchPersonelDetayPageData(
     if (gorev && puan) tasinirTutarByGorev[gorev] = puan
   }
 
+  let yuruttuguUnvanAdi: string | null = null
+  const yurutId = (calisan as { yuruttugu_unvan_id?: number | null }).yuruttugu_unvan_id
+  if (yurutId != null) {
+    const { data: yurutUnvan } = await supabase
+      .from('tanim_unvan')
+      .select('unvan_adi')
+      .eq('id', yurutId)
+      .maybeSingle()
+    yuruttuguUnvanAdi = yurutUnvan?.unvan_adi ?? null
+  }
+
   return {
     calisan: calisan as Tables<'calisan'>,
     kaynak,
@@ -316,6 +328,7 @@ export async function fetchPersonelDetayPageData(
     tanimGostergeKha,
     terfiOncesiTarihce,
     tasinirTutarByGorev,
+    yuruttuguUnvanAdi,
   }
 }
 

@@ -44,6 +44,7 @@ interface Props {
   seciliYerleskeId?: number | null
   mahalleKayitlari?: MahalleTanimSatir[]
   asilKadroTh?: boolean
+  unvanSecenekleri?: { id: number; unvan_adi: string }[]
 }
 
 export default function PersonelKisiselDuzenleClient({
@@ -56,6 +57,7 @@ export default function PersonelKisiselDuzenleClient({
   seciliYerleskeId = null,
   mahalleKayitlari = [],
   asilKadroTh = false,
+  unvanSecenekleri = [],
 }: Props) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
@@ -333,6 +335,22 @@ export default function PersonelKisiselDuzenleClient({
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Yürüttüğü unvan</label>
+                <select
+                  name="yuruttugu_unvan_id"
+                  defaultValue={calisan.yuruttugu_unvan_id ?? ''}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="">Seçiniz</option>
+                  {unvanSecenekleri.map(u => (
+                    <option key={u.id} value={u.id}>{u.unvan_adi}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Seçilirse SDS, bu unvanın kazanç tanımıyla kıyaslanır.
+                </p>
               </div>
             </div>
           </div>

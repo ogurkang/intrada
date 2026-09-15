@@ -14,6 +14,7 @@ import {
 } from '@/lib/th-hizmet-yili'
 import { type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
+import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -236,6 +237,9 @@ export type TerfiKaynak = {
   destek_yardimci_birim?: boolean
   /** `calisan.th_hizmet_baslangic` — TH −5/+5 bandı (yoksa kıdem yılı) */
   th_hizmet_baslangic?: string | null
+  /** Görevlendirmede yürütülen unvan — SDS bu tanımdan alınır */
+  yuruttugu_unvan_id?: number | null
+  yuruttugu_unvan_adi?: string | null
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -504,6 +508,12 @@ export function buildTerfiEttirOnizleme(
     )
     puanSon = yanUyg.puan
     puanSon = kazancTaniminiKuralla(puanSon, kazancLookup, terfiKaynaktanKuralOpts(r, newKd, teknisyenEkGosterge))
+    const yurutSds = yuruttuguUnvanSdsAl(kazancLookup, {
+      yuruttuguUnvanId: r.yuruttugu_unvan_id,
+      ogrenimId: r.ogrenim_id,
+      derece: newKd,
+    })
+    puanSon = puanSdsYuruttuguUnvanIle(puanSon, yurutSds)
     const overlayYan = puanThYanOdemeIle(
       puanSon,
       puanSon,

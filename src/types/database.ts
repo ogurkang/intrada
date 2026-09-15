@@ -1059,6 +1059,7 @@ export interface Database {
           yerleske_adresi_id: number | null
           tasinir_gorevi: string | null
           th_hizmet_baslangic: string | null
+          yuruttugu_unvan_id: number | null
           tasinir_yan_odeme_uygulandi: boolean
           bilgisayar_kullaniyor: boolean
           created_at: string; updated_at: string
@@ -1075,6 +1076,7 @@ export interface Database {
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
           th_hizmet_baslangic?: string | null
+          yuruttugu_unvan_id?: number | null
           tasinir_yan_odeme_uygulandi?: boolean
           bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string
@@ -1091,6 +1093,7 @@ export interface Database {
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
           th_hizmet_baslangic?: string | null
+          yuruttugu_unvan_id?: number | null
           tasinir_yan_odeme_uygulandi?: boolean
           bilgisayar_kullaniyor?: boolean
           created_at?: string; updated_at?: string

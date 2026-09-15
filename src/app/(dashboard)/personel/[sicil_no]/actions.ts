@@ -19,6 +19,7 @@ import {
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import { asilKadroThMi } from '@/lib/th-hizmet-yili-data'
 import { thHizmetTarihiKaydet } from '@/lib/th-hizmet-yili'
+import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
 import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
@@ -62,6 +63,7 @@ const CALISAN_ALAN_ETIKETLERI: Record<string, string> = {
   gorev_durumu:            'Görev Durumu',
   yerleske_adresi_id:      'Yerleşke Adresi',
   tasinir_gorevi:          'Taşınır Görevi',
+  yuruttugu_unvan_id:      'Yürüttüğü Unvan',
   th_hizmet_baslangic:     'Teknik Hizmet Yılı',
   hizmet_suresi_yil:       'Hizmet Süresi (Yıl)',
   hizmet_suresi_ay:        'Hizmet Süresi (Ay)',
@@ -140,6 +142,23 @@ export async function calisanGuncelle(
       yerleske_adresi_id,
       tasinir_gorevi: tasinirGoreviNormalize(str(formData, 'tasinir_gorevi')),
     }
+    const yurutRaw = str(formData, 'yuruttugu_unvan_id')
+    if (!yurutRaw) {
+      temel.yuruttugu_unvan_id = null
+    } else {
+      const yurutId = Number.parseInt(yurutRaw, 10)
+      if (!Number.isInteger(yurutId) || yurutId <= 0) {
+        return { hata: 'Geçersiz yürütülen unvan seçimi.' }
+      }
+      const { data: yurutUnvan } = await supabase
+        .from('tanim_unvan')
+        .select('id')
+        .eq('id', yurutId)
+        .eq('aktif', true)
+        .maybeSingle()
+      if (!yurutUnvan) return { hata: 'Seçilen yürütülen unvan tanımlarda yok.' }
+      temel.yuruttugu_unvan_id = yurutId
+    }
     if (formData.has('th_hizmet_baslangic')) {
       const hamTh = String(formData.get('th_hizmet_baslangic') ?? '').trim()
       if (!hamTh) {
@@ -189,13 +208,34 @@ export async function calisanGuncelle(
     auditOzet = 'Kişisel bilgiler güncellendi'
   }
 
-  const { data: oncekiCalisan } = await supabase
+  const tumAlanlar = Object.keys(CALISAN_ALAN_ETIKETLERI).join(', ')
+  const alanlarYurutsuz = Object.keys(CALISAN_ALAN_ETIKETLERI)
+    .filter(k => k !== 'yuruttugu_unvan_id')
+    .join(', ')
+  let { data: oncekiCalisan, error: oncekiErr } = await supabase
     .from('calisan')
-    .select(Object.keys(CALISAN_ALAN_ETIKETLERI).join(', '))
+    .select(tumAlanlar)
     .eq('sicil_no', sicil_no)
     .maybeSingle()
+  if (yuruttuguUnvanKolonuYokMu(oncekiErr?.message)) {
+    const tekrar = await supabase
+      .from('calisan')
+      .select(alanlarYurutsuz)
+      .eq('sicil_no', sicil_no)
+      .maybeSingle()
+    oncekiCalisan = tekrar.data
+  }
 
-  const { error } = await supabase.from('calisan').update(temel).eq('sicil_no', sicil_no)
+  let { error } = await supabase.from('calisan').update(temel).eq('sicil_no', sicil_no)
+  if (yuruttuguUnvanKolonuYokMu(error?.message)) {
+    if (gorevlendirmeModu && temel.yuruttugu_unvan_id != null) {
+      return { hata: 'Yürüttüğü unvan kaydı için veritabanı sütunu henüz yok. SQL Editor’de yuruttugu_unvan_id migration’ını çalıştırın.' }
+    }
+    const temelYurutsuz = { ...temel }
+    delete temelYurutsuz.yuruttugu_unvan_id
+    const tekrar = await supabase.from('calisan').update(temelYurutsuz).eq('sicil_no', sicil_no)
+    error = tekrar.error
+  }
 
   if (error) return { hata: error.message }
 
