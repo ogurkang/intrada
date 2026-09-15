@@ -63,6 +63,7 @@ export interface IzinArtisAdayi {
   kidem_yili: number
   mevcut_hak: number
   onerilen_hak: number
+  on_yil_artisi?: boolean
 }
 
 interface Props {
@@ -350,6 +351,7 @@ export default function DashboardClient({
                       </Link>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Kıdem: {p.kidem_yili} · {p.mevcut_hak} → {p.onerilen_hak} gün
+                        {p.on_yil_artisi ? ' (+10)' : ''}
                         {p.kidem_tarihi ? ` · Terfi: ${tarihFormatla(p.kidem_tarihi)}` : ''}
                       </p>
                     </div>

@@ -16,6 +16,9 @@ interface Props {
   returnTo: string
   canEdit: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
+  kidemYili?: number | null
+  onerilenHak?: number | null
+  onYilArtisi?: boolean
 }
 
 function renkBg(kalan: number) {
@@ -34,17 +37,23 @@ export default function IzinHakTekSatirDuzenleClient({
   returnTo,
   canEdit,
   onKaydet,
+  kidemYili = null,
+  onerilenHak = null,
+  onYilArtisi = false,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
 
   const devreden = hak?.devreden_gun ?? 0
-  const hakEdilen = hak?.hak_edilen_gun ?? 0
+  const mevcutHakEdilen = hak?.hak_edilen_gun ?? 0
+  const hakEdilen =
+    onerilenHak != null && onerilenHak !== mevcutHakEdilen ? onerilenHak : mevcutHakEdilen
+  const onerilenFarkli = onerilenHak != null && onerilenHak !== mevcutHakEdilen
   const kullanilan = hak?.kullanilan_gun ?? 0
   const kalan =
     hak != null
-      ? hak.kalan_gun ?? devreden + hakEdilen - kullanilan
+      ? hak.kalan_gun ?? devreden + mevcutHakEdilen - kullanilan
       : null
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -70,6 +79,13 @@ export default function IzinHakTekSatirDuzenleClient({
       {!canEdit && (
         <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-amber-50 border-amber-200 text-amber-700">
           Bu işlem için admin yetkisi gerekir.
+        </div>
+      )}
+      {onerilenFarkli && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm border bg-blue-50 border-blue-200 text-blue-800">
+          {onYilArtisi
+            ? `10. yıl doldu. Mevcut hakka +10 gün eklenir (${mevcutHakEdilen} → ${onerilenHak}). Kaydedince listeden çıkar.`
+            : `Kıdem ${kidemYili ?? '—'} yıl. Kayıtlı hak ${mevcutHakEdilen} gün, önerilen hak ${onerilenHak} gün. Form önerilen güne dolduruldu; kaydedince listeden çıkar.`}
         </div>
       )}
 
@@ -115,7 +131,9 @@ export default function IzinHakTekSatirDuzenleClient({
               min={0}
               defaultValue={hakEdilen}
               disabled={!canEdit}
-              className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100"
+              className={`w-full px-2 py-1.5 border rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-slate-100 ${
+                onerilenFarkli ? 'border-blue-400 bg-blue-50' : 'border-slate-300'
+              }`}
             />
           </div>
           <div className="w-full sm:w-24 xl:w-20">

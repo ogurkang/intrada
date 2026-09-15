@@ -6,7 +6,15 @@ import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
 import { dashboardStatuSayilariHesapla, dashboardKadroSatirlariYukle } from '@/lib/dashboard-statu-sayilari'
 import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { izinDurumDegistir } from './izin/actions'
+import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
+import {
+  izinHakArtisGecmisi,
+  izinHakkiOnerilenHesapla,
+  type IzinHakArtisGecmis,
+  type IzinHakKural,
+} from '@/lib/izin-hakki-artis'
 import type {
   KadroDoluluk, IzinIstatistik, BekleyenIzin,
   YaklaşanTatil, IzindekiPersonel, IzinArtisAdayi,
@@ -229,46 +237,38 @@ export default async function DashboardPage() {
   // Yıllık izni artacak/eklenecek adaylar (yalnızca dashboard içinde hesaplanır)
   let izinArtisAdaylari: IzinArtisAdayi[] = []
   if (user && access?.mode === 'admin') {
-    const [{ data: personelOzet }, { data: terfiRaw }, { data: hakRaw }, { data: hakKuralRaw }] = await Promise.all([
+    const [{ data: personelOzet }, { data: terfiRaw }, { data: hakRaw }, { data: hakOncekiRaw }, { data: hakKuralRaw }, hakAuditRes] = await Promise.all([
       supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, statu, kuruma_giris_tarihi'),
       supabase
         .from('terfi_hareketleri')
         .select('sicil_no, kidem_yili, kidem_tarihi, kayit_zamani')
         .order('kayit_zamani', { ascending: false }),
       supabase.from('izin_haklari').select('sicil_no, hak_edilen_gun').eq('yil', buYil),
+      supabase.from('izin_haklari').select('sicil_no, hak_edilen_gun').eq('yil', buYil - 1),
       supabase
         .from('tanim_izin_hak')
         .select('statu, en_az, en_cok, hak_edilen_gun, sira_no')
         .eq('durum', true)
         .order('sira_no', { nullsFirst: false }),
+      fetchAllPaged<{ sicil_no: string | null; ref_id: string | null; onceki: unknown; sonraki: unknown }>((from, to) =>
+        supabase
+          .from('personel_audit_log')
+          .select('sicil_no, ref_id, onceki, sonraki')
+          .eq('modul', 'izin hakkı')
+          .eq('ref_table', 'izin_haklari')
+          .like('ref_id', `%-${buYil}`)
+          .order('created_at', { ascending: false })
+          .range(from, to),
+      ),
     ])
 
-    type HakKural = { statu: string; en_az: number | null; en_cok: number | null; hak_edilen_gun: number; sira_no: number | null }
-    const kurallar: HakKural[] = (hakKuralRaw ?? []).map((h) => ({
+    const kurallar: IzinHakKural[] = (hakKuralRaw ?? []).map((h) => ({
       statu: h.statu ?? '',
       en_az: h.en_az != null ? Number(h.en_az) : null,
       en_cok: h.en_cok != null ? Number(h.en_cok) : null,
       hak_edilen_gun: h.hak_edilen_gun ?? 0,
       sira_no: h.sira_no != null ? Number(h.sira_no) : null,
     }))
-    const norm = (s: string | null | undefined) => String(s ?? '').trim().toLocaleLowerCase('tr-TR')
-    const hakKuralBul = (statu: string, kidemYili: number): number => {
-      const statuNorm = norm(statu)
-      const aday = kurallar.filter((k) => {
-        if (norm(k.statu) !== statuNorm) return false
-        if (k.en_az != null && kidemYili < k.en_az) return false
-        if (k.en_cok != null && kidemYili > k.en_cok) return false
-        return true
-      })
-      if (!aday.length) return 0
-      aday.sort((a, b) => {
-        const aralikA = (a.en_cok ?? 999) - (a.en_az ?? 0)
-        const aralikB = (b.en_cok ?? 999) - (b.en_az ?? 0)
-        if (aralikA !== aralikB) return aralikA - aralikB
-        return (a.sira_no ?? 999) - (b.sira_no ?? 999)
-      })
-      return aday[0].hak_edilen_gun ?? 0
-    }
 
     const sonTerfiMap = new Map<string, { kidemYili: number; kidemTarihi: string | null }>()
     for (const t of terfiRaw ?? []) {
@@ -279,38 +279,23 @@ export default async function DashboardPage() {
       })
     }
     const hakMap = new Map((hakRaw ?? []).map((h) => [h.sicil_no, h.hak_edilen_gun ?? 0]))
+    const hakOncekiMap = new Map((hakOncekiRaw ?? []).map((h) => [h.sicil_no, h.hak_edilen_gun ?? 0]))
+    const gecmisBySicil = new Map<string, IzinHakArtisGecmis[]>()
+    for (const log of hakAuditRes.data ?? []) {
+      const sicil = String(log.sicil_no ?? '').trim()
+        || String(log.ref_id ?? '').replace(/-\d+$/, '')
+      if (!sicil) continue
+      const refYil = izinHakkiAuditRefId(sicil, buYil)
+      if (String(log.ref_id ?? '').trim() && String(log.ref_id).trim() !== refYil) continue
+      const list = gecmisBySicil.get(sicil) ?? []
+      list.push(...izinHakArtisGecmisi([log]))
+      gecmisBySicil.set(sicil, list)
+    }
     const adMapAdmin = new Map((personelOzet ?? []).map((p) => [p.sicil_no ?? '', {
       ad: p.ad_soyad,
       statu: p.statu ?? '',
       kurumaGirisTarihi: p.kuruma_giris_tarihi ?? null,
     }]))
-
-    const isIsciStatu = (statu: string | null | undefined) => norm(statu).includes('işçi')
-    const parseTarih = (raw: string | null): Date | null => {
-      if (!raw) return null
-      const s = String(raw).trim()
-      if (!s) return null
-      const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
-      const iso = m ? `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}` : s.slice(0, 10)
-      const d = new Date(iso + 'T12:00:00')
-      return Number.isNaN(d.getTime()) ? null : d
-    }
-    const kidemYiliKurumaGiris = (kurumaGiris: string | null): number => {
-      const d = parseTarih(kurumaGiris)
-      if (!d) return 0
-      const t = new Date(bugun + 'T12:00:00')
-      let yilFark = t.getFullYear() - d.getFullYear()
-      const ayFark = t.getMonth() - d.getMonth()
-      const gunFark = t.getDate() - d.getDate()
-      if (ayFark < 0 || (ayFark === 0 && gunFark < 0)) yilFark--
-      return Math.max(0, yilFark)
-    }
-    const yilDonumuBuYil = (kurumaGiris: string | null): string | null => {
-      const d = parseTarih(kurumaGiris)
-      if (!d) return null
-      const pad = (n: number) => String(n).padStart(2, '0')
-      return `${buYil}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    }
 
     const adaylar: IzinArtisAdayi[] = []
     for (const p of personelOzet ?? []) {
@@ -318,35 +303,31 @@ export default async function DashboardPage() {
       if (!sicil) continue
       const personel = adMapAdmin.get(sicil)
       if (!personel) continue
-      const statu = personel.statu ?? ''
       const terfi = sonTerfiMap.get(sicil)
-      const isIsci = isIsciStatu(statu)
-      const kidemYili = isIsci ? kidemYiliKurumaGiris(personel.kurumaGirisTarihi) : (terfi?.kidemYili ?? 0)
-      const kidemTarihi = isIsci ? yilDonumuBuYil(personel.kurumaGirisTarihi) : (terfi?.kidemTarihi ?? null)
-      const mevcutHak = hakMap.get(sicil) ?? 0
-
-      if (!isIsci && !terfi) continue
-
-      const kidemTarihBuYil =
-        !!kidemTarihi &&
-        kidemTarihi.slice(0, 4) === String(buYil) &&
-        kidemTarihi <= bugun
-      const kapsamaGiriyor = isIsci
-        ? Boolean(kidemTarihBuYil)
-        : Boolean(kidemYili >= 10 || (kidemYili === 9 && kidemTarihBuYil))
-      if (!kapsamaGiriyor) continue
-
-      const kidemHedef = isIsci ? kidemYili : (kidemYili >= 10 ? kidemYili : 10)
-      const onerilenHak = hakKuralBul(statu, kidemHedef)
-      if (onerilenHak <= 0 || onerilenHak === mevcutHak) continue
+      const sonuc = izinHakkiOnerilenHesapla({
+        statu: personel.statu,
+        kidemYiliTerfi: terfi?.kidemYili,
+        kidemTarihiTerfi: terfi?.kidemTarihi,
+        kurumaGirisTarihi: personel.kurumaGirisTarihi,
+        mevcutHak: hakMap.get(sicil) ?? 0,
+        kurallar,
+        buYil,
+        bugun,
+        terfiVar: !!terfi,
+        oncekiYilHak: hakOncekiMap.get(sicil) ?? null,
+        hakGecmisi: gecmisBySicil.get(sicil) ?? [],
+      })
+      if (!sonuc?.kapsamaGiriyor) continue
+      if (sonuc.onerilenHak <= 0 || sonuc.esit) continue
       adaylar.push({
         sicil_no: sicil,
         public_id: publicIdMap[sicil],
         ad_soyad: personel.ad,
-        kidem_tarihi: kidemTarihi,
-        kidem_yili: kidemYili,
-        mevcut_hak: mevcutHak,
-        onerilen_hak: onerilenHak,
+        kidem_tarihi: sonuc.kidemTarihi,
+        kidem_yili: sonuc.kidemYili,
+        mevcut_hak: sonuc.mevcutHak,
+        onerilen_hak: sonuc.onerilenHak,
+        on_yil_artisi: sonuc.onYilArtisi,
       })
     }
     adaylar.sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, undefined, { numeric: true }))
