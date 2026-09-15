@@ -60,11 +60,21 @@ export function yuksekDerece657(
   return Math.min(...valid)
 }
 
-/** Şartsız personelde kadro/KHA yüksek derece karşılaştırmasının alt sınırı (1–5). */
+/** Şartsız personelde bakılan en düşük 657 derecesi (1 yüksek, 5 düşük). */
 export const KAZANC_YUKSEK_DERECE_TABAN = 5
 
 export function derece1Ile5Mi(derece: number | null | undefined): boolean {
   return derece != null && Number.isFinite(derece) && derece >= 1 && derece <= KAZANC_YUKSEK_DERECE_TABAN
+}
+
+/** Kadro ve KHA ikisi de 1–5 olmalı; biri 6+ ise kural yok (yalnız biri 5 yetmez). */
+export function kadroVeKha1Ile5Mi(
+  kadroDerecesi: string | number | null | undefined,
+  khaDerece: string | number | null | undefined,
+): boolean {
+  const kadro = parseDerece(kadroDerecesi)
+  const kha = parseDerece(khaDerece)
+  return derece1Ile5Mi(kadro) && derece1Ile5Mi(kha)
 }
 
 export function lisansOnlisansOgrenimIdsBul(

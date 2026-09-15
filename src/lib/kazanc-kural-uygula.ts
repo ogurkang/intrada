@@ -1,7 +1,7 @@
 import { mudurOhtYuksekDerecedenUygula, mudurThKariyerUygula } from '@/lib/kazanc-mudur-th-overlay'
 import { unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import {
-  derece1Ile5Mi,
+  kadroVeKha1Ile5Mi,
   parseDerece,
   teknikerTeknikOgrenimUygula,
   teknisyenEkGostergeUygula,
@@ -33,19 +33,20 @@ function doluMetin(v: string | null | undefined): string | null {
   return t ? t : null
 }
 
-/** Kadro/KHA yüksek 657 derecesi 1–5 ise ve KHA’dan farklıysa o derece; aksi halde yok. */
+/** İkisi de 1–5 ise kadro/KHA’dan yüksek 657 derecesi; KHA ile aynıysa yok. */
 function yuksekDerece1Ile5(
   kadroDerecesi: string | number | null | undefined,
   khaDerece: number | null | undefined,
 ): number | null {
+  if (!kadroVeKha1Ile5Mi(kadroDerecesi, khaDerece)) return null
   const yuksek = yuksekDerece657(parseDerece(kadroDerecesi), parseDerece(khaDerece))
   const kha = parseDerece(khaDerece)
-  if (yuksek == null || !derece1Ile5Mi(yuksek)) return null
+  if (yuksek == null) return null
   if (kha != null && yuksek === kha) return null
   return yuksek
 }
 
-/** Ek gösterge: 1–5’te kadro/KHA’dan yüksek 657 derecesi. Ek ödeme KHA’da kalır. */
+/** Ek gösterge: kadro ve KHA 1–5 ise yüksek 657 derecesi. Ek ödeme KHA’da kalır. */
 export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string | null }>(
   puan: T,
   lookup: KazancSatirLookup,
@@ -66,7 +67,7 @@ export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string 
   return { ...puan, ek_gosterge: ek }
 }
 
-/** ÖHT: 1–5’te kadro/KHA’dan yüksek 657 derecesi. Overlay’ler sonra kendi şartıyla ezer. */
+/** ÖHT: kadro ve KHA 1–5 ise yüksek 657 derecesi. Overlay’ler sonra kendi şartıyla ezer. */
 export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
   puan: T,
   lookup: KazancSatirLookup,
@@ -89,7 +90,7 @@ export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
 
 /**
  * KHA derecesindeki kazanç tanımına sıra ile:
- * 1) 1–5’te ek gösterge ve ÖHT’yi yüksek 657 derecesinden al (ek ödeme / yan ödeme KHA)
+ * 1) kadro ve KHA 1–5 ise ek gösterge ve ÖHT’yi yüksek 657 derecesinden al (ek ödeme / yan ödeme KHA)
  * 2) teknisyen overlay (uyumlu: ÖHT/yan ödeme kariyer; uyumsuz: ek gösterge Bİ)
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür ÖHT’yi yüksek 657 derecesinden al
