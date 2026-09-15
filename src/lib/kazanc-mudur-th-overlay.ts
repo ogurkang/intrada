@@ -44,7 +44,8 @@ export function unvanMuduruMi(unvanAdi: string | null | undefined): boolean {
  * Kazanç için seçilen öğrenim `meslegi` veya `bolum` metninden kariyer.
  * mühendis / mimar / şehir plancısı → Mühendis tanımı; kimyager → Kimyager.
  * İç mimar bu gruptan ayrı: ÖHT İç Mimar tanımından, ek gösterge / yan ödeme müdürde kalır.
- * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi; yalnızca ÖHT Peyzaj Mimarı tanımından.
+ * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi; ÖHT müdür ünvanının
+ * kadro/KHA yüksek derecesindeki kazanç satırından (195 ve Peyzaj Mimarı tanımı kullanılmaz).
  */
 export function mudurKariyerTuru(
   meslegi: string | null | undefined,
@@ -59,6 +60,20 @@ export function mudurKariyerTuru(
   if (t.includes('şehir planc') || t.includes('sehir planc')) return 'muhendis'
   if (t.includes('kimyager')) return 'kimyager'
   return null
+}
+
+/** Peyzaj tespiti varsayılan öğrenim meslek/bölümünden; diğer kariyerler kazanç öğreniminden. */
+export function mudurKariyerOgrenimKaynagi(
+  varsayilan: { meslegi?: string | null; bolum?: string | null } | null | undefined,
+  kazancOg: { meslegi?: string | null; bolum?: string | null } | null | undefined,
+): { meslegi: string | null; bolum: string | null } {
+  if (peyzajMimarOgrenimMi(varsayilan?.meslegi, varsayilan?.bolum)) {
+    return { meslegi: varsayilan?.meslegi ?? null, bolum: varsayilan?.bolum ?? null }
+  }
+  return {
+    meslegi: kazancOg?.meslegi ?? varsayilan?.meslegi ?? null,
+    bolum: kazancOg?.bolum ?? varsayilan?.bolum ?? null,
+  }
 }
 
 function doluMetin(v: string | null | undefined): string | null {
@@ -109,7 +124,6 @@ function kariyerOhtUnvanId(
   baglam: TeknisyenEkGostergeBaglam,
 ): number | null {
   if (kariyer === 'icmimar') return baglam.icMimarUnvanId
-  if (kariyer === 'peyzajmimar') return baglam.peyzajMimarUnvanId
   return null
 }
 
@@ -147,7 +161,8 @@ export function mudurOhtYuksekDerecedenUygula<T extends { oht?: string | null }>
  * ek gösterge = max(müdür, kariyer TH); yan ödeme = destek tiki yoksa min(müdür+1300, 2400);
  * ÖHT = max(müdür, 195 mühendis / 185 kimyager).
  * İç mimar: 195 / +1300 uygulanmaz; ÖHT İç Mimar kazanç satırından alınır.
- * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi kalır; yalnızca ÖHT Peyzaj Mimarı satırından alınır.
+ * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi kalır; ÖHT müdür tanımının
+ * yüksek 657 derecesinden alınır (Peyzaj Mimarı satırı ve %195 kullanılmaz).
  * Vekil ve müdür yardımcısı uygulanmaz. Ek ödeme / SDS müdür tanımında kalır.
  */
 export function mudurThKariyerUygula<
@@ -192,8 +207,7 @@ export function mudurThKariyerUygula<
 
   let oht: string | null
   if (kariyer === 'peyzajmimar') {
-    const peyzajSatir = kariyerSatirOku(lookup, baglam.peyzajMimarUnvanId, derece, baglam.lisansOnlisansOgrenimIds)
-    oht = doluMetin(peyzajSatir?.oht) ?? ohtMax(puan.oht, MUDUR_KARIYER_OHT_MUHENDIS)
+    oht = puan.oht ?? null
   } else if (kariyer === 'kimyager') {
     oht = ohtMax(puan.oht, MUDUR_KARIYER_OHT_KIMYAGER)
   } else {

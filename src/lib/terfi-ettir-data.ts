@@ -13,6 +13,7 @@ import {
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { eslestirOgrenimId, kazancIcinOgrenimSec, kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
+import { mudurKariyerOgrenimKaynagi } from '@/lib/kazanc-mudur-th-overlay'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 
 type KadroEslestirmeSatir = Pick<
@@ -215,9 +216,10 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       if (kazancOg) {
         const kt = (kazancOg.ogrenim_turu ?? '').trim()
         if (kt) kazancOgrenimTuruBySicil.set(sicil, kt)
-        ogrenimMeslekBySicil.set(sicil, kazancOg.meslegi ?? null)
-        ogrenimBolumBySicil.set(sicil, kazancOg.bolum ?? null)
       }
+      const kariyerOg = mudurKariyerOgrenimKaynagi(varsayilan, kazancOg)
+      ogrenimMeslekBySicil.set(sicil, kariyerOg.meslegi)
+      ogrenimBolumBySicil.set(sicil, kariyerOg.bolum)
     }
   }
 

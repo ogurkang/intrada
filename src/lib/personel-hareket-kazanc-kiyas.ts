@@ -2,6 +2,7 @@ import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
 import { parseKidemYili, unvanAdiNorm, unvanSinifiThMi, yanOdemeTanimdan } from '@/lib/kazanc-yan-odeme'
 import { parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import { kazancTaniminiKuralla } from '@/lib/kazanc-kural-uygula'
+import { mudurKariyerOgrenimKaynagi } from '@/lib/kazanc-mudur-th-overlay'
 import {
   ogrenimYuksekMi,
   teknisyenKariyerUnvanFromOgrenimRows,
@@ -133,6 +134,10 @@ export function personelHareketKazancKiyasHesapla(input: {
   }
 
   const teknisyenKariyer = teknisyenKariyerUnvanFromOgrenimRows(ogrenimRows)
+  const kariyerOg = mudurKariyerOgrenimKaynagi(
+    ogrenimRows.find(r => r.varsayilan),
+    kazancOg,
+  )
   const tanim = kazancTaniminiKuralla(tanimHam, kazancLookup, {
     unvanId: unvan.id,
     ogrenimId,
@@ -145,8 +150,8 @@ export function personelHareketKazancKiyasHesapla(input: {
     teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
     asilMi: giris.asilMi,
     destekYardimciBirim: unvan.destek_yardimci_birim === true,
-    meslegi: kazancOg?.meslegi ?? null,
-    bolum: kazancOg?.bolum ?? null,
+    meslegi: kariyerOg.meslegi,
+    bolum: kariyerOg.bolum,
     baglam,
   })
 
