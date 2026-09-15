@@ -1,6 +1,7 @@
 import { mudurOhtYuksekDerecedenUygula, mudurThKariyerUygula } from '@/lib/kazanc-mudur-th-overlay'
 import { unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import {
+  derece1Ile5Mi,
   parseDerece,
   teknikerTeknikOgrenimUygula,
   teknisyenEkGostergeUygula,
@@ -32,7 +33,19 @@ function doluMetin(v: string | null | undefined): string | null {
   return t ? t : null
 }
 
-/** Ek gösterge satırını kadro/KHA’dan 657’ye göre yüksek olan dereceden alır. */
+/** Kadro/KHA yüksek 657 derecesi 1–5 ise ve KHA’dan farklıysa o derece; aksi halde yok. */
+function yuksekDerece1Ile5(
+  kadroDerecesi: string | number | null | undefined,
+  khaDerece: number | null | undefined,
+): number | null {
+  const yuksek = yuksekDerece657(parseDerece(kadroDerecesi), parseDerece(khaDerece))
+  const kha = parseDerece(khaDerece)
+  if (yuksek == null || !derece1Ile5Mi(yuksek)) return null
+  if (kha != null && yuksek === kha) return null
+  return yuksek
+}
+
+/** Ek gösterge: 1–5’te kadro/KHA’dan yüksek 657 derecesi. Ek ödeme KHA’da kalır. */
 export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string | null }>(
   puan: T,
   lookup: KazancSatirLookup,
@@ -46,18 +59,37 @@ export function ekGostergeYuksekDerecedenUygula<T extends { ek_gosterge: string 
   const unvanId = opts.unvanId
   const ogrenimId = opts.ogrenimId
   if (unvanId == null || ogrenimId == null) return puan
-  const ekDerece = yuksekDerece657(parseDerece(opts.kadroDerecesi), parseDerece(opts.khaDerece))
-  const kha = parseDerece(opts.khaDerece)
+  const ekDerece = yuksekDerece1Ile5(opts.kadroDerecesi, opts.khaDerece)
   if (ekDerece == null) return puan
-  if (kha != null && ekDerece === kha) return puan
   const ek = doluMetin(lookup(unvanId, ogrenimId, ekDerece)?.ek_gosterge)
   if (ek == null) return puan
   return { ...puan, ek_gosterge: ek }
 }
 
+/** ÖHT: 1–5’te kadro/KHA’dan yüksek 657 derecesi. Overlay’ler sonra kendi şartıyla ezer. */
+export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
+  puan: T,
+  lookup: KazancSatirLookup,
+  opts: {
+    unvanId: number | null | undefined
+    ogrenimId: number | null | undefined
+    kadroDerecesi: string | number | null | undefined
+    khaDerece: number | null | undefined
+  },
+): T {
+  const unvanId = opts.unvanId
+  const ogrenimId = opts.ogrenimId
+  if (unvanId == null || ogrenimId == null) return puan
+  const ohtDerece = yuksekDerece1Ile5(opts.kadroDerecesi, opts.khaDerece)
+  if (ohtDerece == null) return puan
+  const oht = doluMetin(lookup(unvanId, ogrenimId, ohtDerece)?.oht)
+  if (oht == null) return puan
+  return { ...puan, oht }
+}
+
 /**
  * KHA derecesindeki kazanç tanımına sıra ile:
- * 1) ek göstergeyi yüksek 657 derecesinden al
+ * 1) 1–5’te ek gösterge ve ÖHT’yi yüksek 657 derecesinden al (ek ödeme / yan ödeme KHA)
  * 2) teknisyen overlay (uyumlu: ÖHT/yan ödeme kariyer; uyumsuz: ek gösterge Bİ)
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür ÖHT’yi yüksek 657 derecesinden al
@@ -75,12 +107,14 @@ export function kazancTaniminiKuralla<
   },
 >(puan: T, lookup: KazancSatirLookup, opts: KazancKuralOpts): T {
   if (unvanOzelKalemMuduruMi(opts.unvanAdi)) return puan
-  let sonraki = ekGostergeYuksekDerecedenUygula(puan, lookup, {
+  const dereceOpts = {
     unvanId: opts.unvanId,
     ogrenimId: opts.ogrenimId,
     kadroDerecesi: opts.kadroDerecesi,
     khaDerece: opts.khaDerece,
-  })
+  }
+  let sonraki = ekGostergeYuksekDerecedenUygula(puan, lookup, dereceOpts)
+  sonraki = ohtYuksekDerecedenUygula(sonraki, lookup, dereceOpts)
   sonraki = teknisyenEkGostergeUygula(sonraki, lookup, {
     unvanAdi: opts.unvanAdi,
     kadroDerecesi: opts.kadroDerecesi == null ? null : String(opts.kadroDerecesi),

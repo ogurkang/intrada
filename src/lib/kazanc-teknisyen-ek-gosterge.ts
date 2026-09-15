@@ -60,6 +60,13 @@ export function yuksekDerece657(
   return Math.min(...valid)
 }
 
+/** Şartsız personelde kadro/KHA yüksek derece karşılaştırmasının alt sınırı (1–5). */
+export const KAZANC_YUKSEK_DERECE_TABAN = 5
+
+export function derece1Ile5Mi(derece: number | null | undefined): boolean {
+  return derece != null && Number.isFinite(derece) && derece >= 1 && derece <= KAZANC_YUKSEK_DERECE_TABAN
+}
+
 export function lisansOnlisansOgrenimIdsBul(
   tanimOgList: Array<{ id: number; isim: string }>,
 ): number[] {
