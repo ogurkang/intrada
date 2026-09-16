@@ -21,6 +21,7 @@ import {
   karsilastirStatuSonraSicilAd,
 } from '@/lib/statu-liste-siralama'
 import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import { fetchAllFirmaCalisanlar } from '@/lib/supabase-sayfala'
 import { personelAktifMi, sonAyrilisHaritasiOlustur, yenidenIseGirenSiciller } from '@/lib/personel-ayrilis'
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -111,7 +112,7 @@ export async function gorevYerineGoreListeSatirlariYukle(
     if (personelAktifMi(sonAyrilisHaritasi.get(c.sicil_no), D)) aktifSiciller.add(c.sicil_no)
   })
   const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
-  const yenidenGirisKeys = kadroCalisan
+  const kadroYenidenGirisKeys = kadroCalisan
     .filter(c => yenidenGirisSiciller.has(c.sicil_no))
     .map(c => `kadro:${c.sicil_no}`)
 
@@ -163,12 +164,10 @@ export async function gorevYerineGoreListeSatirlariYukle(
     }
   })
 
-  const { data: firmaRaw } = await supabase
-    .from('firma_calisanlar')
-    .select(
-      'id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet, yerleske_adresi_id',
-    )
-    .order('ad_soyad')
+  const { data: firmaRaw } = await fetchAllFirmaCalisanlar(
+    supabase,
+    'id, public_id, sicil_no, ad_soyad, gorev_mudurlugu, gorevi, ayrilis_tarihi, e_posta, cinsiyet, yerleske_adresi_id',
+  )
 
   const firmaSatirlarRaw = filterOutHiddenSystemByEmail(firmaRaw ?? [])
     .filter(f => {
@@ -240,6 +239,10 @@ export async function gorevYerineGoreListeSatirlariYukle(
     }
     return s
   })
+
+  // ADABEL: ayrılış silinince aynı id ile geri gelir; insert senkronu çalışmaz.
+  // Listede olmayan aktif firma kayıtları kadro yeniden girişi gibi grubun sonuna eklenir.
+  const yenidenGirisKeys = [...kadroYenidenGirisKeys, ...firmaSatirlarRaw.map(f => f.kayit_key)]
 
   return { satirlar, yenidenGirisKeys }
 }

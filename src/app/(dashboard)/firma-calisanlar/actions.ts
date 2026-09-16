@@ -298,6 +298,10 @@ export async function firmaGuncelle(id: number, fd: FormData): Promise<{ hata?: 
     })
   }
 
+  await gorevYeriListeSenkronizeEt(supabase, {
+    otomatikEkleKeys: [`firma:${id}`],
+  })
+
   revalidatePath('/firma-calisanlar')
   await revalidateFirmaCalisanPaths(id)
   return {}
@@ -324,6 +328,8 @@ export async function firmaSil(id: number): Promise<{ hata?: string }> {
       onceki: oncekiSnap,
     })
   }
+
+  await gorevYeriListeSenkronizeEt(supabase)
 
   revalidatePath('/firma-calisanlar')
   return {}
