@@ -37,6 +37,7 @@ import {
 import { kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
 import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
+import { gorevYeriListeSicilSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -480,6 +481,8 @@ export async function personelHareketiGuncelle(
     if (terfiHata) return { hata: terfiHata }
   }
 
+  await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
+
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')
   revalidatePath('/personel/ayrilanlar')
@@ -659,6 +662,8 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     kadro_sira_no: kadro_sira_no,
   })
   if (terfiHata) return { hata: terfiHata }
+
+  await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
 
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')

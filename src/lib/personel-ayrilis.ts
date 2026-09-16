@@ -48,3 +48,32 @@ export function sonAyrilisHaritasiOlustur<
   }
   return map
 }
+
+/**
+ * Satırlar en yeni hareketten eskiye olmalı.
+ * Son hareketi aktif olan ve daha önce (tarih+neden) ayrılmış sicilleri döner.
+ */
+export function yenidenIseGirenSiciller<
+  T extends { sicil_no: string; ayrilis_tarihi: string | null; ayrilis_nedeni?: string | null },
+>(rows: T[], refTarih?: string): Set<string> {
+  const bySicil = new Map<string, SonAyrilisOzet[]>()
+  for (const r of rows) {
+    const sicil = String(r.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const ozet: SonAyrilisOzet = {
+      ayrilis_tarihi: r.ayrilis_tarihi,
+      ayrilis_nedeni: r.ayrilis_nedeni ?? null,
+    }
+    const list = bySicil.get(sicil)
+    if (list) list.push(ozet)
+    else bySicil.set(sicil, [ozet])
+  }
+
+  const out = new Set<string>()
+  for (const [sicil, list] of bySicil) {
+    const son = list[0]
+    if (!son || !personelAktifMi(son, refTarih)) continue
+    if (list.some(o => personelPasifMi(o, refTarih))) out.add(sicil)
+  }
+  return out
+}

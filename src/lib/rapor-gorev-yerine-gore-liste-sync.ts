@@ -67,9 +67,24 @@ export type GorevYeriListeSenkronOpts = {
   revalidate?: boolean
 }
 
+function otomatikEkleKeysBirlestir(...gruplar: Array<string[] | undefined>): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const grup of gruplar) {
+    for (const ham of grup ?? []) {
+      const key = String(ham ?? '').trim()
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      out.push(key)
+    }
+  }
+  return out
+}
+
 /**
  * Kayıtlı sıra sabittir. Ayrılanlar çıkarılır.
- * Müdürlük değişen ve yeni kayıtlar, gittikleri müdürlükte kendi istihdam grubunun sonuna alınır.
+ * Müdürlük değişen, yeni ve yeniden işe giren kayıtlar, gittikleri müdürlükte
+ * kendi istihdam grubunun sonuna alınır. Mevcut kayıtların sırasına dokunulmaz.
  */
 export async function gorevYeriListeSenkronizeEt(
   supabase: SupabaseClient,
@@ -77,9 +92,8 @@ export async function gorevYeriListeSenkronizeEt(
 ): Promise<{ hata?: string; guncellendi?: boolean }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const otomatikEkleKeys = opts.otomatikEkleKeys ?? []
 
-  const { satirlar, hata: yukleHata } = await gorevYerineGoreListeSatirlariYukle(supabase)
+  const { satirlar, hata: yukleHata, yenidenGirisKeys } = await gorevYerineGoreListeSatirlariYukle(supabase)
   if (yukleHata) return { hata: yukleHata }
 
   const satirByKey = new Map(satirlar.map(s => [s.kayit_key, s] as const))
@@ -98,6 +112,10 @@ export async function gorevYeriListeSenkronizeEt(
     .filter((a: GorevYeriListeAyarSatir) => a.kayit_key)
 
   const oncekiKeys = oncekiAyar.map(a => a.kayit_key)
+  const oncekiKeySet = new Set(oncekiKeys)
+  // Listede duran eski yeniden girişlerin sırası sayfa yükünde kaymasın.
+  const eksikYenidenGiris = (yenidenGirisKeys ?? []).filter(k => !oncekiKeySet.has(k))
+  const otomatikEkleKeys = otomatikEkleKeysBirlestir(opts.otomatikEkleKeys, eksikYenidenGiris)
   const yeniSira = gorevYerineGoreListeArtimliSenkron(satirlar, oncekiAyar, otomatikEkleKeys)
 
   const siraDegisti =
@@ -122,6 +140,21 @@ export async function gorevYeriListeSenkronizeEt(
   })
   if (yaz.hata) return { hata: yaz.hata }
   return { guncellendi: true }
+}
+
+/**
+ * Personel hareketi sonrası: ayrılan düşer, aktif/yeniden giren kendi grubunun sonuna eklenir.
+ * Listede zaten varsa ve müdürlüğü değişmediyse sırası durur.
+ */
+export async function gorevYeriListeSicilSenkronizeEt(
+  supabase: SupabaseClient,
+  sicilNo: string | null | undefined,
+): Promise<{ hata?: string; guncellendi?: boolean }> {
+  const sicil = String(sicilNo ?? '').trim()
+  if (!sicil) return { guncellendi: false }
+  return gorevYeriListeSenkronizeEt(supabase, {
+    otomatikEkleKeys: [`kadro:${sicil}`],
+  })
 }
 
 /** Toplu güncelle / kayıt listesi kaydetme — mudurluk anlık görüntüsü ile birlikte. */

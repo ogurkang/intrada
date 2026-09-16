@@ -231,7 +231,9 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
 
   const mudurlukDegisti =
     String(mevcut?.kadro_mudurlugu ?? '').trim() !== String(str(formData, 'kadro_mudurlugu') ?? '').trim()
-  if (asil && mudurlukDegisti) {
+  const oncekiAsil = String(mevcut?.asil ?? '').trim()
+  const asilYeni = Boolean(asil && asil !== oncekiAsil)
+  if (asil && (mudurlukDegisti || asilYeni)) {
     await gorevYeriListeSenkronizeEt(supabase, {
       otomatikEkleKeys: [`kadro:${asil}`],
     })

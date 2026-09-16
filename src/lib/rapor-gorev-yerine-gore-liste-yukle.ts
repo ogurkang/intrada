@@ -21,6 +21,7 @@ import {
   karsilastirStatuSonraSicilAd,
 } from '@/lib/statu-liste-siralama'
 import { fetchMudurlukYerleskeTanimSatirlari } from '@/lib/yerleske-adresi'
+import { personelAktifMi, sonAyrilisHaritasiOlustur, yenidenIseGirenSiciller } from '@/lib/personel-ayrilis'
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
@@ -62,6 +63,8 @@ type CalisanRow = {
 export type GorevYerineGoreListeYukleSonuc = {
   satirlar: GorevYerineGoreListeSatir[]
   hata?: string
+  /** Aktif olup daha önce ayrılmış siciller — `kadro:${sicil}` */
+  yenidenGirisKeys?: string[]
 }
 
 /** Aktif personel satırlarını güncel kadro / firma verilerinden üretir. */
@@ -86,31 +89,31 @@ export async function gorevYerineGoreListeSatirlariYukle(
     calisanQuery as Promise<{ data: CalisanRow[] | null; error: { message: string } | null }>,
     supabase
       .from('personel_hareketleri')
-      .select('sicil_no, ayrilis_tarihi')
-      .order('yururluk_tarihi', { ascending: false }),
+      .select('sicil_no, ayrilis_tarihi, ayrilis_nedeni')
+      .order('yururluk_tarihi', { ascending: false })
+      .order('id', { ascending: false }),
     supabase.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
     fetchMudurlukYerleskeTanimSatirlari(supabase),
     fetchSirketYerleskeTanimSatirlari(supabase),
   ])
 
   const { data: calisanRaw, error } = calisanResult
-  if (error) return { satirlar: [], hata: error.message }
+  if (error) return { satirlar: [], hata: error.message, yenidenGirisKeys: [] }
 
-  const sonAyrilisPerSicil = new Map<string, string | null>()
-  for (const r of phRaw ?? []) {
-    if (!sonAyrilisPerSicil.has(r.sicil_no)) {
-      sonAyrilisPerSicil.set(r.sicil_no, r.ayrilis_tarihi)
-    }
-  }
+  const phRows = phRaw ?? []
+  const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRows)
+  const yenidenGirisSiciller = yenidenIseGirenSiciller(phRows, D)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calisanFiltreli = filterOutGodmodeCalisan(calisanRaw as any ?? []) as CalisanRow[]
   const aktifSiciller = new Set<string>()
   calisanFiltreli.forEach(c => {
-    const sonAyrilis = sonAyrilisPerSicil.get(c.sicil_no)
-    if (!sonAyrilis || sonAyrilis > D) aktifSiciller.add(c.sicil_no)
+    if (personelAktifMi(sonAyrilisHaritasi.get(c.sicil_no), D)) aktifSiciller.add(c.sicil_no)
   })
   const kadroCalisan = calisanFiltreli.filter(c => aktifSiciller.has(c.sicil_no))
+  const yenidenGirisKeys = kadroCalisan
+    .filter(c => yenidenGirisSiciller.has(c.sicil_no))
+    .map(c => `kadro:${c.sicil_no}`)
 
   const { statuSirali, etiketler } = hazirlaStatuSirali(tanimStatuRaw ?? [])
   const konumCtx = buildPersonelKonumCtx(mudSatirlar, sirketSatirlar)
@@ -238,5 +241,5 @@ export async function gorevYerineGoreListeSatirlariYukle(
     return s
   })
 
-  return { satirlar }
+  return { satirlar, yenidenGirisKeys }
 }

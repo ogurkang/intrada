@@ -96,8 +96,9 @@ function mudurlukteKategoriSonunaEkle(
 
 /**
  * Kayıtlı sıra sabittir (anlık görüntü).
- * Ayrılanlar çıkarılır. Yeni personel ve kurum içi müdürlük nakli (kadro/personel
- * kaydıyla) gittikleri müdürlükte kendi grubunun sonuna eklenir. Sayfa yükü sırayı bozmaz.
+ * Ayrılanlar çıkarılır. Yeni personel, aynı sicille yeniden işe girenler ve kurum içi
+ * müdürlük nakli (kadro/personel kaydıyla) gittikleri müdürlükte kendi grubunun sonuna
+ * eklenir. Sayfa yükü mevcut sırayı bozmaz; yalnızca otomatikEkleKeys işlenir.
  */
 export function gorevYerineGoreListeArtimliSenkron(
   satirlar: GorevYerineGoreListeSatir[],

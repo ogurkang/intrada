@@ -20,6 +20,7 @@ import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import { asilKadroThMi } from '@/lib/th-hizmet-yili-data'
 import { thHizmetTarihiKaydet } from '@/lib/th-hizmet-yili'
 import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
+import { gorevYeriListeSicilSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 import {
   writePersonelAuditLogSafe,
   alanDegisiklikleriHesapla,
@@ -354,6 +355,7 @@ export async function personelHareketiEkle(
     ref_id: String(inserted?.id ?? ''),
     sonraki: payload,
   })
+  await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
@@ -426,6 +428,7 @@ export async function personelHareketiGuncelle(
     onceki: onceki ?? null,
     sonraki: payload,
   })
+  await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}
 }
