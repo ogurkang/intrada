@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 import { kayitKapatEsigiSonrasiMi } from '@/lib/ayy-kayit-esik'
+import { ayliksizIzinDonemiMi } from '@/lib/gorev-bilgileri'
 
 export type AyyDonemTuru = 'normal' | 'fark'
 
@@ -443,6 +444,7 @@ export function createAyyHavuzMemo(): HavuzMemo {
  * Statü bazlı AYY personel:
  * calisan.gorev_turu ∈ {'Aylıksız İzin', 'Yarı Zamanlı', 'Geçici Görevlendirme'}
  * ile birlikte Memur/Sözleşmeli kesitimine giren aktif çalışanlar.
+ * İşe dönmüş (Çalışan) olup aylıksız izin başlangıç+bitiş tarihleri duranlar da dahildir.
  *
  * Geçici Görevlendirme: yalnızca gorev_turu_yemek_hakki = false (hayır) olanlar dahil edilir.
  * Aylıksız İzin ve Yarı Zamanlı: tüm dahil edilir.
@@ -468,19 +470,39 @@ export async function ayyLoadStatuBazliPersonel(
     gorev_turu_bitis_tarihi: string | null
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const calisanQueryResult = await (supabase as any)
-    .from('calisan')
-    .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_yemek_hakki, gorev_turu_bitis_tarihi')
-    .in('sicil_no', sicilList)
-    .in('gorev_turu', ['Aylıksız İzin', 'Yarı Zamanlı', 'Geçici Görevlendirme'])
-  const calisanRaw: CalisanStatuRow[] | null = calisanQueryResult.data ?? null
+  const sb = supabase as any
+  const [statuRes, donmusRes] = await Promise.all([
+    sb
+      .from('calisan')
+      .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_yemek_hakki, gorev_turu_bitis_tarihi')
+      .in('sicil_no', sicilList)
+      .in('gorev_turu', ['Aylıksız İzin', 'Yarı Zamanlı', 'Geçici Görevlendirme']),
+    sb
+      .from('calisan')
+      .select('sicil_no, ad_soyad, gorev_turu, gorev_turu_tarihi, gorev_turu_yemek_hakki, gorev_turu_bitis_tarihi')
+      .in('sicil_no', sicilList)
+      .eq('gorev_turu', 'Çalışan')
+      .not('gorev_turu_tarihi', 'is', null)
+      .not('gorev_turu_bitis_tarihi', 'is', null),
+  ])
+  const gorulen = new Set<string>()
+  const calisanRaw: CalisanStatuRow[] = []
+  for (const c of [...(statuRes.data ?? []), ...(donmusRes.data ?? [])] as CalisanStatuRow[]) {
+    const sicil = String(c.sicil_no ?? '').trim()
+    if (!sicil || gorulen.has(sicil)) continue
+    gorulen.add(sicil)
+    calisanRaw.push(c)
+  }
 
-  if (!calisanRaw || calisanRaw.length === 0) return []
+  if (calisanRaw.length === 0) return []
 
   // Geçici Görevlendirme: yalnızca yemek hakkı Hayır (false) olanlar dahil
   const filtered: CalisanStatuRow[] = calisanRaw.filter(c => {
     if (c.gorev_turu === 'Geçici Görevlendirme') {
       return c.gorev_turu_yemek_hakki === false
+    }
+    if (c.gorev_turu === 'Çalışan') {
+      return ayliksizIzinDonemiMi(c.gorev_turu, c.gorev_turu_tarihi, c.gorev_turu_bitis_tarihi)
     }
     return true
   })
@@ -517,7 +539,9 @@ export async function ayyLoadStatuBazliPersonel(
     ad_soyad:                c.ad_soyad ?? c.sicil_no,
     unvan:                   unvanMap[c.sicil_no] ?? '',
     isZabita:                zabitaSet.has(c.sicil_no) && !zabitaMuaf.has(c.sicil_no.trim()),
-    gorev_turu:              c.gorev_turu,
+    gorev_turu:              ayliksizIzinDonemiMi(c.gorev_turu, c.gorev_turu_tarihi, c.gorev_turu_bitis_tarihi)
+      ? 'Aylıksız İzin'
+      : c.gorev_turu,
     gorev_turu_tarihi:       c.gorev_turu_tarihi ?? null,
     gorev_turu_bitis_tarihi: c.gorev_turu_bitis_tarihi ?? null,
     gorev_turu_yemek_hakki:  c.gorev_turu_yemek_hakki ?? null,

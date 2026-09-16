@@ -93,6 +93,21 @@ export function toGgAayyyy(s: string | null | undefined): string {
   return metinToGgAayyyy(s)
 }
 
+/** YYYY-MM-DD üzerine gün ekler (UTC takvim; saat dilimi kayması yok). */
+export function isoTarihGunEkle(iso: string, gun: number): string | null {
+  const m = String(iso ?? '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  if (isNaN(dt.getTime())) return null
+  dt.setUTCDate(dt.getUTCDate() + gun)
+  return dt.toISOString().slice(0, 10)
+}
+
+/** Yerel takvim bugünü (YYYY-MM-DD). */
+export function isoBugunYerel(ref = new Date()): string {
+  return `${ref.getFullYear()}-${ikiHane(ref.getMonth() + 1)}-${ikiHane(ref.getDate())}`
+}
+
 /** Yazarken gg.aa.yyyy maskesi (yalnızca rakam). */
 export function tarihYazisiMaskele(raw: string): string {
   const d = String(raw ?? '').replace(/\D/g, '').slice(0, 8)

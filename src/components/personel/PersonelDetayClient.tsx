@@ -171,6 +171,7 @@ function GorevlendirmeTab({
   asilKadroTh?: boolean
   yuruttuguUnvanAdi?: string | null
 }) {
+  const router = useRouter()
   const sicil = (calisan.sicil_no ?? '').trim()
   const anaK = anaKadroSec(kadrolar, sicil)
   const memuriyetGoster = anaK?.memuriyet_tarihi ?? calisan.memuriyet_tarihi
@@ -193,6 +194,7 @@ function GorevlendirmeTab({
     if (sonuc.hata) { setDonuHata(sonuc.hata); return }
     setDonuModalAcik(false)
     setIseDonus('')
+    router.refresh()
   }
 
   const onizleBitis = iseDonus
@@ -311,8 +313,8 @@ function GorevlendirmeTab({
             <p className="font-semibold">Aylık Yemek (+1 Kuralı)</p>
             <p>
               Girilen tarih personelin işe başladığı gündür. Sisteme bu tarihten bir önceki gün
-              aylıksız iznin bitiş tarihi olarak kaydedilir. Aylık yemek hakkı, işe dönüş
-              gününden (girilen tarihten) itibaren hesaplanmaya başlar.
+              aylıksız iznin bitiş tarihi olarak kaydedilir. Dönüş bugün veya daha önceyse görev
+              türü Çalışan olur; aylık yemek hakkı işe dönüş gününden itibaren hesaplanır.
             </p>
           </div>
 

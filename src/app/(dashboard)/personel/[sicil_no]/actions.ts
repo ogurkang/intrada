@@ -2,14 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { ggAayyyyToIso } from '@/lib/tarih'
+import { ggAayyyyToIso, isoBugunYerel, isoTarihGunEkle } from '@/lib/tarih'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { dogrulaAyrilisAlanlari, personelPasifMi } from '@/lib/personel-ayrilis'
 import { kadroPasifeAlPersonelIcin } from '@/lib/kadro-ayrilis-personel'
 import { writeKadroBosaltmaAuditLoglari } from '@/lib/kadro-audit'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { formdanHizmetSureBilesenleri } from '@/lib/hizmet-suresi-360'
-import { gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
+import { ayliksizIzinDonemiMi, gorevTuruTarihZorunlu } from '@/lib/gorev-bilgileri'
 import { personelAdresFormdan } from '@/lib/personel-adres'
 import {
   fetchMudurlukYerleskeTanimSatirlari,
@@ -94,10 +94,24 @@ export async function calisanGuncelle(
 
   if (gorevlendirmeModu) {
     const gorev_turu = str(formData, 'gorev_turu') ?? 'Çalışan'
+    const { data: gorevOnceki } = await supabase
+      .from('calisan')
+      .select('gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi')
+      .eq('sicil_no', sicil_no)
+      .maybeSingle()
+    const koruAyliksizDonem = ayliksizIzinDonemiMi(
+      gorevOnceki?.gorev_turu,
+      gorevOnceki?.gorev_turu_tarihi,
+      gorevOnceki?.gorev_turu_bitis_tarihi,
+    )
     const gorev_turu_tarihi =
-      gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_tarihi')
+      gorev_turu === 'Çalışan'
+        ? (koruAyliksizDonem ? gorevOnceki?.gorev_turu_tarihi ?? null : null)
+        : str(formData, 'gorev_turu_tarihi')
     const gorev_turu_bitis_tarihi =
-      gorev_turu === 'Çalışan' ? null : str(formData, 'gorev_turu_bitis_tarihi')
+      gorev_turu === 'Çalışan'
+        ? (koruAyliksizDonem ? gorevOnceki?.gorev_turu_bitis_tarihi ?? null : null)
+        : str(formData, 'gorev_turu_bitis_tarihi')
     const gorev_turu_aciklama =
       (gorev_turu === 'Geçici Görevlendirme' || gorev_turu === 'Kurum Görevlendirme')
         ? str(formData, 'gorev_turu_aciklama')
@@ -656,6 +670,7 @@ export async function izinHakiEkleGuncelle(
  * `iseDonus` = personelin fiilen işe başladığı gün (YYYY-MM-DD).
  * `gorev_turu_bitis_tarihi` = iseDonus - 1 gün olarak saklanır.
  * İşe dönüş günü aylık yemek hakkının ilk günüdür; bir önceki gün aylıksız iznin son günüdür.
+ * Dönüş bugün veya geçmişse görev türü Çalışan olur; başlangıç/bitiş AYY için durur.
  */
 export async function ayliksizIzindenDon(
   sicil_no: string,
@@ -663,12 +678,9 @@ export async function ayliksizIzindenDon(
 ): Promise<{ hata?: string }> {
   if (!iseDonus) return { hata: 'İşe dönüş tarihi zorunludur.' }
 
-  const donus = new Date(iseDonus)
-  if (isNaN(donus.getTime())) return { hata: 'Geçersiz tarih.' }
-
-  const bitisDate = new Date(donus)
-  bitisDate.setDate(bitisDate.getDate() - 1)
-  const bitis = bitisDate.toISOString().slice(0, 10)
+  const donus = String(iseDonus).slice(0, 10)
+  const bitis = isoTarihGunEkle(donus, -1)
+  if (!bitis) return { hata: 'Geçersiz tarih.' }
 
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -676,15 +688,27 @@ export async function ayliksizIzindenDon(
 
   const { data: mevcut, error: fetchErr } = await db
     .from('calisan')
-    .select('gorev_turu, gorev_turu_bitis_tarihi')
+    .select('gorev_turu, gorev_turu_tarihi, gorev_turu_bitis_tarihi')
     .eq('sicil_no', sicil_no)
-    .single() as { data: { gorev_turu: string | null; gorev_turu_bitis_tarihi: string | null } | null; error: { message: string } | null }
+    .single() as {
+      data: {
+        gorev_turu: string | null
+        gorev_turu_tarihi: string | null
+        gorev_turu_bitis_tarihi: string | null
+      } | null
+      error: { message: string } | null
+    }
   if (fetchErr) return { hata: fetchErr.message }
   if (mevcut?.gorev_turu !== 'Aylıksız İzin') return { hata: 'Personelin görevi aylıksız izin değil.' }
 
+  const turDondu = donus <= isoBugunYerel()
+  const guncelleme = turDondu
+    ? { gorev_turu: 'Çalışan', gorev_turu_bitis_tarihi: bitis }
+    : { gorev_turu_bitis_tarihi: bitis }
+
   const { error: updErr } = await db
     .from('calisan')
-    .update({ gorev_turu_bitis_tarihi: bitis })
+    .update(guncelleme)
     .eq('sicil_no', sicil_no) as { error: { message: string } | null }
   if (updErr) return { hata: updErr.message }
 
@@ -692,13 +716,23 @@ export async function ayliksizIzindenDon(
     sicil_no,
     modul: 'görev bilgileri',
     islem: 'Güncelle',
-    ozet: `Aylıksız izin bitiş tarihi ${bitis} olarak güncellendi (işe dönüş: ${iseDonus}).`,
+    ozet: turDondu
+      ? `Aylıksız izinden işe döndü (${donus}). Görev türü Çalışan; izin bitişi ${bitis}.`
+      : `Aylıksız izin bitiş tarihi ${bitis} olarak güncellendi (işe dönüş: ${donus}).`,
     ref_table: 'calisan',
     ref_id: sicil_no,
-    onceki: { gorev_turu_bitis_tarihi: mevcut?.gorev_turu_bitis_tarihi ?? null },
-    sonraki: { gorev_turu_bitis_tarihi: bitis },
+    onceki: {
+      gorev_turu: mevcut?.gorev_turu ?? null,
+      gorev_turu_bitis_tarihi: mevcut?.gorev_turu_bitis_tarihi ?? null,
+    },
+    sonraki: {
+      gorev_turu: turDondu ? 'Çalışan' : (mevcut?.gorev_turu ?? null),
+      gorev_turu_bitis_tarihi: bitis,
+    },
   })
 
   await revalidatePersonelDetayPaths(sicil_no)
+  revalidatePath('/personel')
+  revalidatePath('/', 'layout')
   return {}
 }

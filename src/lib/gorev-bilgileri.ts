@@ -24,6 +24,22 @@ export function gorevTuruTarihZorunlu(tur: string | null | undefined): boolean {
   return t === 'Aylıksız İzin' || t === 'Geçici Görevlendirme' || t === 'Yarı Zamanlı'
 }
 
+/**
+ * Aylıksız izin dönemi: tür hâlâ Aylıksız İzin, veya işe dönüş sonrası Çalışan
+ * olup başlangıç+bitiş duruyor (AYY bu aralığı kesinti sayar).
+ */
+export function ayliksizIzinDonemiMi(
+  gorevTuru: string | null | undefined,
+  baslangic?: string | null,
+  bitis?: string | null,
+): boolean {
+  const tur = String(gorevTuru ?? '').trim()
+  if (tur === 'Aylıksız İzin') return true
+  const bas = String(baslangic ?? '').trim()
+  const bit = String(bitis ?? '').trim()
+  return tur === 'Çalışan' && Boolean(bas) && Boolean(bit)
+}
+
 export function gorevTuruAciklamaGoster(tur: string | null | undefined): boolean {
   const t = (tur ?? '').trim()
   return t === 'Geçici Görevlendirme' || t === 'Kurum Görevlendirme'
