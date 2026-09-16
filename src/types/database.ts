@@ -1055,7 +1055,8 @@ export interface Database {
           yakini_telefonu: string | null; askerlik_durumu: string | null
           memuriyet_tarihi: string | null; kuruma_giris_tarihi: string | null
           hizmet_suresi_yil: number; hizmet_suresi_ay: number; hizmet_suresi_gun: number
-          gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_turu_aciklama: string | null; gorev_durumu: string | null
+          gorev_yeri: string | null; gorev_turu: string; gorev_turu_tarihi: string | null; gorev_turu_bitis_tarihi: string | null; gorev_turu_yemek_hakki: boolean | null; gorev_turu_aciklama: string | null; gorev_durumu: string | null
+          engelli_oran: number | null; engelli_baslangic: string | null; engelli_bitis: string | null
           yerleske_adresi_id: number | null
           tasinir_gorevi: string | null
           th_hizmet_baslangic: string | null
@@ -1072,7 +1073,8 @@ export interface Database {
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
           memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
-          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
+          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_bitis_tarihi?: string | null; gorev_turu_yemek_hakki?: boolean | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
+          engelli_oran?: number | null; engelli_baslangic?: string | null; engelli_bitis?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
           th_hizmet_baslangic?: string | null
@@ -1089,7 +1091,8 @@ export interface Database {
           yakini_telefonu?: string | null; askerlik_durumu?: string | null
           memuriyet_tarihi?: string | null; kuruma_giris_tarihi?: string | null
           hizmet_suresi_yil?: number; hizmet_suresi_ay?: number; hizmet_suresi_gun?: number
-          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
+          gorev_yeri?: string | null; gorev_turu?: string; gorev_turu_tarihi?: string | null; gorev_turu_bitis_tarihi?: string | null; gorev_turu_yemek_hakki?: boolean | null; gorev_turu_aciklama?: string | null; gorev_durumu?: string | null
+          engelli_oran?: number | null; engelli_baslangic?: string | null; engelli_bitis?: string | null
           yerleske_adresi_id?: number | null
           tasinir_gorevi?: string | null
           th_hizmet_baslangic?: string | null

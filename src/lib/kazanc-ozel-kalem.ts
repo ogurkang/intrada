@@ -3,9 +3,13 @@ import { unvanAdiNorm } from '@/lib/kazanc-yan-odeme'
 /** Özel Kalem Müdürü ve Belediye Başkan Yardımcısı kazanç satırı her zaman bu dereceden okunur. */
 export const OZEL_KALEM_KAZANC_DERECE = 1
 
+export function unvanBelediyeBaskanYardimcisiMi(unvanAdi: string | null | undefined): boolean {
+  return unvanAdiNorm(unvanAdi) === 'BELEDIYEBASKANYARDIMCISI'
+}
+
 export function unvanKazancBirinciDereceMi(unvanAdi: string | null | undefined): boolean {
   const n = unvanAdiNorm(unvanAdi)
-  return n === 'OZELKALEMMUDURU' || n === 'BELEDIYEBASKANYARDIMCISI'
+  return n === 'OZELKALEMMUDURU' || unvanBelediyeBaskanYardimcisiMi(unvanAdi)
 }
 
 /** @deprecated unvanKazancBirinciDereceMi — Özel Kalem + Başkan Yardımcısı */

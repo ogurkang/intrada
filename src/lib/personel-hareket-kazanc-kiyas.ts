@@ -145,7 +145,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     ogrenimId,
     unvanAdi: unvan.unvan_adi,
     kadroDerecesi: giris.kadroDerecesi,
-    khaDerece: birinciDerece ? OZEL_KALEM_KAZANC_DERECE : khaDerece,
+    khaDerece: Number.isFinite(khaDerece) ? khaDerece : birinciDerece ? OZEL_KALEM_KAZANC_DERECE : null,
     yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
     kadrosuIleIlgili: teknisyenKariyer != null,
     teknisyenKariyer,

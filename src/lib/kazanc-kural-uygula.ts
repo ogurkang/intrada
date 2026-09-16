@@ -1,5 +1,5 @@
 import { mudurOhtYuksekDerecedenUygula, mudurThKariyerUygula } from '@/lib/kazanc-mudur-th-overlay'
-import { unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
+import { unvanBelediyeBaskanYardimcisiMi, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
 import {
   kadroVeKha1Ile5Mi,
   parseDerece,
@@ -95,7 +95,8 @@ export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür ÖHT’yi yüksek 657 derecesinden al
  * 5) asil müdür + TH kariyer overlay
- * Özel Kalem Müdürü / Belediye Başkan Yardımcısı: 1. derece satırı olduğu gibi kalır (KHA yok sayılır).
+ * Özel Kalem Müdürü: 1. derece satırı olduğu gibi kalır.
+ * Belediye Başkan Yardımcısı: 1. derece taban + asil TH kariyer overlay (EG KHA’dan, yan 2600).
  */
 export function kazancTaniminiKuralla<
   T extends {
@@ -107,7 +108,19 @@ export function kazancTaniminiKuralla<
     sds_orani?: string | null
   },
 >(puan: T, lookup: KazancSatirLookup, opts: KazancKuralOpts): T {
-  if (unvanOzelKalemMuduruMi(opts.unvanAdi)) return puan
+  if (unvanOzelKalemMuduruMi(opts.unvanAdi)) {
+    if (!unvanBelediyeBaskanYardimcisiMi(opts.unvanAdi)) return puan
+    return mudurThKariyerUygula(puan, lookup, {
+      unvanAdi: opts.unvanAdi,
+      kadroDerecesi: opts.kadroDerecesi,
+      khaDerece: opts.khaDerece,
+      asilMi: opts.asilMi,
+      destekYardimciBirim: opts.destekYardimciBirim,
+      meslegi: opts.meslegi,
+      bolum: opts.bolum,
+      baglam: opts.baglam,
+    })
+  }
   const dereceOpts = {
     unvanId: opts.unvanId,
     ogrenimId: opts.ogrenimId,

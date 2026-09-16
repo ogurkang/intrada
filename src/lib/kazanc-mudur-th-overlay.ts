@@ -1,4 +1,5 @@
 import { unvanAdiNorm } from '@/lib/kazanc-yan-odeme'
+import { unvanBelediyeBaskanYardimcisiMi } from '@/lib/kazanc-ozel-kalem'
 import { formatKazancPuan, parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import {
   parseDerece,
@@ -10,6 +11,10 @@ import {
 /** 2006/10344 I sayılı cetvel B dipnot 3/a + md. 4/a TG tavanı: +1400’den yalnızca +1300 kalır → 1100+1300=2400. */
 export const MUDUR_KARIYER_YAN_EK = 1300
 export const MUDUR_KARIYER_YAN_TAVAN = 2400
+/** 2006/10344 G/B-3-a (nüfus 100.000+): İGZ 800 + TG 800; B dipnot 3/a +1400 TG, md. 4/a tavan 1800 → TG 1800. */
+export const BBY_KARIYER_IGZ = 800
+export const BBY_KARIYER_TGZ = 1800
+export const BBY_KARIYER_YAN = BBY_KARIYER_IGZ + BBY_KARIYER_TGZ
 /** Grup 8 + 40 (mühendis/mimar/şehir plancısı). TH Mühendis satırındaki %160 kopyalanmaz. İç / peyzaj mimar dahil değil. */
 export const MUDUR_KARIYER_OHT_MUHENDIS = '195'
 /** Grup 9 + 40 (kimyager). */
@@ -38,6 +43,11 @@ export function peyzajMimarOgrenimMi(meslegi: string | null | undefined, bolum: 
 /** Unvan adında «müdürü» geçer; «Müdür Yardımcısı» eşleşmez. */
 export function unvanMuduruMi(unvanAdi: string | null | undefined): boolean {
   return unvanAdiNorm(unvanAdi).includes('MUDURU')
+}
+
+/** Asil GİH müdürü veya Belediye Başkan Yardımcısı — TH kariyer overlay kapısı. */
+export function unvanMudurThKariyerKapsamiMi(unvanAdi: string | null | undefined): boolean {
+  return unvanMuduruMi(unvanAdi) || unvanBelediyeBaskanYardimcisiMi(unvanAdi)
 }
 
 /**
@@ -101,6 +111,16 @@ export function mudurKariyerYanOdeme(
   return formatKazancPuan(Math.min(n + MUDUR_KARIYER_YAN_EK, MUDUR_KARIYER_YAN_TAVAN))
 }
 
+/** İGZ 800 + TG 1800 = 2600. Destek tiki varsa BBY tabanı kalır. */
+export function bbyKariyerYanOdeme(
+  bbyYan: string | null | undefined,
+  destekYardimciBirim: boolean,
+): string | null {
+  const mevcut = doluMetin(bbyYan)
+  if (destekYardimciBirim) return mevcut
+  return formatKazancPuan(BBY_KARIYER_YAN)
+}
+
 function kariyerSatirOku(
   lookup: KazancSatirLookup,
   unvanId: number | null,
@@ -157,13 +177,16 @@ export function mudurOhtYuksekDerecedenUygula<T extends { oht?: string | null }>
 }
 
 /**
- * Asil GİH müdürü + TH kariyer öğrenimi:
- * ek gösterge = max(müdür, kariyer TH); yan ödeme = destek tiki yoksa min(müdür+1300, 2400);
- * ÖHT = max(müdür, 195 mühendis / 185 kimyager).
- * İç mimar: 195 / +1300 uygulanmaz; ÖHT İç Mimar kazanç satırından alınır.
- * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi kalır; ÖHT müdür tanımının
+ * Asil GİH müdürü veya Belediye Başkan Yardımcısı + TH kariyer öğrenimi:
+ * ek gösterge = max(unvan, kariyer TH). Müdürde kariyer satırı yüksek 657 derecesinden;
+ * BBY’de kariyer satırı KHA’dan (kadro 1 olsa da 4200 ancak KHA 1 iken).
+ * Yan ödeme: müdürde destek tiki yoksa min(müdür+1300, 2400); BBY’de 2600 (İGZ 800 + TG 1800).
+ * ÖHT = max(unvan, 195 mühendis / 185 kimyager).
+ * İç mimar: 195 / kariyer yan uygulanmaz; ÖHT İç Mimar kazanç satırından alınır.
+ * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi kalır; ÖHT unvan tanımının
  * yüksek 657 derecesinden alınır (Peyzaj Mimarı satırı ve %195 kullanılmaz).
- * Vekil ve müdür yardımcısı uygulanmaz. Ek ödeme / SDS müdür tanımında kalır.
+ * Vekil ve müdür yardımcısı uygulanmaz. Ek ödeme / SDS unvan tanımında kalır.
+ * Özel Kalem Müdürü bu overlay’e girmez.
  */
 export function mudurThKariyerUygula<
   T extends {
@@ -185,13 +208,16 @@ export function mudurThKariyerUygula<
     baglam: TeknisyenEkGostergeBaglam | null | undefined
   },
 ): T {
-  if (!opts.asilMi || !unvanMuduruMi(opts.unvanAdi)) return puan
+  const bbyMi = unvanBelediyeBaskanYardimcisiMi(opts.unvanAdi)
+  if (!opts.asilMi || !unvanMudurThKariyerKapsamiMi(opts.unvanAdi)) return puan
   const kariyer = mudurKariyerTuru(opts.meslegi, opts.bolum)
   if (!kariyer) return puan
   const baglam = opts.baglam
   if (!baglam) return puan
 
-  const derece = yuksekDerece657(parseDerece(opts.kadroDerecesi), parseDerece(opts.khaDerece))
+  const derece = bbyMi
+    ? parseDerece(opts.khaDerece)
+    : yuksekDerece657(parseDerece(opts.kadroDerecesi), parseDerece(opts.khaDerece))
   if (derece == null) return puan
 
   const ozelOhtUnvanId = kariyerOhtUnvanId(kariyer, baglam)
@@ -216,7 +242,9 @@ export function mudurThKariyerUygula<
 
   let sonraki: T = {
     ...puan,
-    yan_odeme: mudurKariyerYanOdeme(puan.yan_odeme, opts.destekYardimciBirim),
+    yan_odeme: bbyMi
+      ? bbyKariyerYanOdeme(puan.yan_odeme, opts.destekYardimciBirim)
+      : mudurKariyerYanOdeme(puan.yan_odeme, opts.destekYardimciBirim),
     oht,
   }
   const kariyerEk = doluMetin(kariyerSatir?.ek_gosterge)
