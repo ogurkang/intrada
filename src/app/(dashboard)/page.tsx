@@ -9,6 +9,7 @@ import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
 import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { izinDurumDegistir } from './izin/actions'
 import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
+import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 import {
   izinHakArtisGecmisi,
   izinHakkiOnerilenHesapla,
@@ -237,8 +238,8 @@ export default async function DashboardPage() {
   // Yıllık izni artacak/eklenecek adaylar (yalnızca dashboard içinde hesaplanır)
   let izinArtisAdaylari: IzinArtisAdayi[] = []
   if (user && access?.mode === 'admin') {
-    const [{ data: personelOzet }, { data: terfiRaw }, { data: hakRaw }, { data: hakOncekiRaw }, { data: hakKuralRaw }, hakAuditRes] = await Promise.all([
-      supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, statu, kuruma_giris_tarihi'),
+    const [{ data: personelOzet }, { data: terfiRaw }, { data: hakRaw }, { data: hakOncekiRaw }, { data: hakKuralRaw }, hakAuditRes, phRes] = await Promise.all([
+      supabase.from('personel_kadro_ozet').select('sicil_no, ad_soyad, statu, kuruma_giris_tarihi, kadro_durumu'),
       supabase
         .from('terfi_hareketleri')
         .select('sicil_no, kidem_yili, kidem_tarihi, kayit_zamani')
@@ -258,6 +259,13 @@ export default async function DashboardPage() {
           .eq('ref_table', 'izin_haklari')
           .like('ref_id', `%-${buYil}`)
           .order('created_at', { ascending: false })
+          .range(from, to),
+      ),
+      fetchAllPaged<{ sicil_no: string; ayrilis_tarihi: string | null; ayrilis_nedeni: string | null }>((from, to) =>
+        supabase
+          .from('personel_hareketleri')
+          .select('sicil_no, ayrilis_tarihi, ayrilis_nedeni')
+          .order('yururluk_tarihi', { ascending: false })
           .range(from, to),
       ),
     ])
@@ -297,10 +305,13 @@ export default async function DashboardPage() {
       kurumaGirisTarihi: p.kuruma_giris_tarihi ?? null,
     }]))
 
+    const sonAyrilisHaritasi = sonAyrilisHaritasiOlustur(phRes.data ?? [])
     const adaylar: IzinArtisAdayi[] = []
     for (const p of personelOzet ?? []) {
       const sicil = p.sicil_no ?? ''
       if (!sicil) continue
+      if (!p.kadro_durumu) continue
+      if (!personelAktifMi(sonAyrilisHaritasi.get(sicil), bugun)) continue
       const personel = adMapAdmin.get(sicil)
       if (!personel) continue
       const terfi = sonTerfiMap.get(sicil)

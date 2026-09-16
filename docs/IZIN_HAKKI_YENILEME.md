@@ -13,15 +13,17 @@ Bu dokuman, dashboard uzerindeki "Yillik Izni Artacaklar / Eklenecekler" widgeti
 - Isci statusundeki personel icin kidem yili, `kuruma_giris_tarihi` bazli tamamlanan yil olarak hesaplanir.
 - Isci personelde yil donumu geldigi tarihten sonra, `tanim_izin_hak` kurallarina gore onerilen hak ile cari hak farkliysa widgette listelenir.
 - Widget sorgusu sadece dashboard icinde calisir; diger sayfalari etkilemez.
+- Kontrol yalnizca aktif personel icin yapilir (ayrilis kaydi olmayan, kadro durumu dolu).
 
 ## Listeleme Kriteri
 
 Bir personel satiri listelenir, eger:
 
-1. Memur/sozlesmeli personelde son kidem bilgisi `terfi_hareketleri`nden alinir; isci personelde kidem `kuruma_giris_tarihi`nden hesaplanir.
-2. Memur/sozlesmeli personelde 9->10 gecisi (veya 10+) kontrol edilir; iscide yil donumu tarihi gelmis olmalidir.
-3. Memur/sozlesmeli: 10. yil +10 artisi henuz uygulanmamissa listelenir (mevcut → mevcut+10).
-4. Isci: `tanim_izin_hak` onerilen hakki ile cari hak farkliysa listelenir.
+1. Yalnizca aktif personel (ayrilis tarihi+nedeni yok, kadro durumu dolu).
+2. Memur/sozlesmeli personelde son kidem bilgisi `terfi_hareketleri`nden alinir; isci personelde kidem `kuruma_giris_tarihi`nden hesaplanir.
+3. Memur/sozlesmeli personelde 9->10 gecisi (veya 10+) kontrol edilir; iscide yil donumu tarihi gelmis olmalidir.
+4. Memur/sozlesmeli: 10. yil +10 artisi henuz uygulanmamissa listelenir (mevcut → mevcut+10).
+5. Isci: `tanim_izin_hak` onerilen hakki ile cari hak farkliysa listelenir.
 
 ## Aksiyon Akisi
 
