@@ -62,6 +62,12 @@ export default function KazancBilgiOzetClient({
         {aktifSekme === 'kadro' ? (
           <div className="flex flex-wrap gap-2 shrink-0">
             <Link
+              href="/tanimlar/kazanc-bilgi/personel-kural"
+              className="text-sm font-medium border border-indigo-300 bg-indigo-50 text-indigo-900 px-4 py-2 rounded-lg hover:bg-indigo-100 shadow-sm"
+            >
+              Personel Kazanç Kuralı
+            </Link>
+            <Link
               href="/tanimlar/kazanc-bilgi/uyusan"
               className="text-sm font-medium border border-emerald-300 bg-emerald-50 text-emerald-900 px-4 py-2 rounded-lg hover:bg-emerald-100 shadow-sm"
             >
