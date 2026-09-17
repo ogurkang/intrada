@@ -41,6 +41,7 @@ interface MemurSatir {
   kadro_id?: number | null
   tasinir_gorevi?: string | null
   tasinir_yan_odeme_uygulandi?: boolean
+  kazancNotu?: string | null
 }
 
 interface KadroSecenek {
@@ -275,6 +276,7 @@ export default function TerfiClient({
     kadro_id?: number | null
     tasinir_gorevi?: string | null
     tasinir_yan_odeme_uygulandi?: boolean
+    kazancNotu?: string | null
   }
   const tasinirGoreviBySicil = useMemo(() => {
     const m = new Map<string, string | null>()
@@ -309,6 +311,7 @@ export default function TerfiClient({
         kadro_id: m.kadro_id ?? null,
         tasinir_gorevi: m.tasinir_gorevi ?? null,
         tasinir_yan_odeme_uygulandi: m.tasinir_yan_odeme_uygulandi ?? false,
+        kazancNotu: m.kazancNotu ?? null,
       }))
     }
     return filtreli.map(r => ({
@@ -611,6 +614,11 @@ export default function TerfiClient({
                       </td>
                       <td className="px-1 py-1.5 align-top text-slate-700 text-center text-[10px]">
                         {m.kadro_rolu === 'Asil' || m.kadro_rolu === 'Vekil' ? m.kadro_rolu : '—'}
+                        {m.kazancNotu ? (
+                          <span className="block text-[9px] text-amber-700 font-medium leading-tight mt-0.5">
+                            {m.kazancNotu}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-1 py-1.5 align-top text-slate-700 text-center tabular-nums text-[10px]">
                         {m.kadro_derecesi?.trim() ? m.kadro_derecesi : '—'}
@@ -761,6 +769,11 @@ export default function TerfiClient({
                       {row.kadro_rolu === 'Asil' || row.kadro_rolu === 'Vekil'
                         ? row.kadro_rolu
                         : '—'}
+                      {row.kazancNotu ? (
+                        <span className="block text-[9px] text-amber-700 font-medium leading-tight mt-0.5">
+                          {row.kazancNotu}
+                        </span>
+                      ) : null}
                     </td>
                   )}
                   {showMemurMeta && (

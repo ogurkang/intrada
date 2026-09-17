@@ -4,10 +4,13 @@ import { terfiEkle, terfiGuncelle, terfiSil, terfiTopluKaydet, terfiKadroyaBagla
 import { terfiKayitlariIndeksle, terfiKaydiEsle } from '@/lib/terfi-kadro-esleme'
 import { personelAktifMi } from '@/lib/personel-ayrilis'
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
+import { uygulaVekilMudurFarkDeneme } from '@/lib/kazanc-vekil-mudur-fark-uygula'
+import { vekilMudurFarkDenemeMi } from '@/lib/kazanc-vekil-mudur-fark'
 import type { Tables } from '@/types/database'
 
 export default async function TerfiBilgilerPage() {
   const supabase = await createClient()
+  await uygulaVekilMudurFarkDeneme(supabase, '346')
   const D = new Date().toISOString().slice(0, 10)
   const aktifMi = (ayrilis: string | null | undefined) => {
     const t = String(ayrilis ?? '').trim().slice(0, 10)
@@ -224,6 +227,7 @@ export default async function TerfiBilgilerPage() {
     kadro_id: number | null
     tasinir_gorevi: string | null
     tasinir_yan_odeme_uygulandi?: boolean
+    kazancNotu?: string | null
   }[] = []
 
   for (const sicil_no of [...memurSiciller].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))) {
@@ -304,6 +308,10 @@ export default async function TerfiBilgilerPage() {
           kadro_derecesi: h.kadro_derecesi,
           kadro_sira_no: h.kadro_sira_no,
           kadro_id: h.khId,
+          kazancNotu:
+            h.rol === 'Vekil' && vekilMudurFarkDenemeMi(sicil_no)
+              ? 'Vekalet farkı (asil müdür − kendi unvan)'
+              : null,
         })
       }
     }

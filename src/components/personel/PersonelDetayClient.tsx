@@ -10,6 +10,8 @@ import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
 import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasinir-yetkili'
+import { vekilMudurFarkDenemeMi } from '@/lib/kazanc-vekil-mudur-fark'
+import { terfiRolEtiketi } from '@/lib/terfi-kadro-esleme'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
 import { terfiAuditDiffSatirlari, terfiAuditDegerGoster } from '@/lib/terfi-audit'
@@ -775,8 +777,19 @@ function KatsayiTab({
   }
 
   const son = terfiKayitlari[0]
+  const asilTerfi =
+    terfiKayitlari.find(t => terfiRolEtiketi(t.rol) === 'Asil') ?? son
+  const vekilFarkTerfi = vekilMudurFarkDenemeMi(son.sicil_no)
+    ? terfiKayitlari.find(t => terfiRolEtiketi(t.rol) === 'Vekil') ?? null
+    : null
+  const katsayiKaynak = vekilFarkTerfi ? asilTerfi : son
   const toplamFm = fmAylik.reduce((s, r) => s + r.saat, 0)
-  const yanGoster = yanOdemeTasinirToplamGoster(son.yan_odeme, tasinirGorevi, tasinirTutarByGorev, tasinirPuanTerfide)
+  const yanGoster = yanOdemeTasinirToplamGoster(
+    katsayiKaynak.yan_odeme,
+    tasinirGorevi,
+    tasinirTutarByGorev,
+    tasinirPuanTerfide,
+  )
   const tkyPuaniVar = !!tasinirTutarBul(tasinirGorevi, tasinirTutarByGorev)
 
   return (
@@ -815,26 +828,26 @@ function KatsayiTab({
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Güncel Katsayı Bilgileri</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Alan etiket="Görev Aylığı D/K" deger={dk(son.gorev_ayligi_derece, son.gorev_ayligi_kademe)} />
-            <Alan etiket="KHA D/K" deger={dk(son.kha_derece, son.kha_kademe)} />
-            <Alan etiket="KHA Tarihi" deger={tarihFormatla(son.kha_tarihi)} />
+            <Alan etiket="Görev Aylığı D/K" deger={dk(katsayiKaynak.gorev_ayligi_derece, katsayiKaynak.gorev_ayligi_kademe)} />
+            <Alan etiket="KHA D/K" deger={dk(katsayiKaynak.kha_derece, katsayiKaynak.kha_kademe)} />
+            <Alan etiket="KHA Tarihi" deger={tarihFormatla(katsayiKaynak.kha_tarihi)} />
             <Alan etiket="Tanım Gösterge (KHA D/K eşleşme)" deger={tanimGostergeKha ?? '—'} />
-            <Alan etiket="EKEA D/K" deger={dk(son.ekea_derece, son.ekea_kademe)} />
-            <Alan etiket="EKEA Tarihi" deger={tarihFormatla(son.ekea_tarihi)} />
-            <Alan etiket="Kıdem Yılı" deger={son.kidem_yili} />
-            <Alan etiket="Kıdem Tarihi" deger={tarihFormatla(son.kidem_tarihi)} />
+            <Alan etiket="EKEA D/K" deger={dk(katsayiKaynak.ekea_derece, katsayiKaynak.ekea_kademe)} />
+            <Alan etiket="EKEA Tarihi" deger={tarihFormatla(katsayiKaynak.ekea_tarihi)} />
+            <Alan etiket="Kıdem Yılı" deger={katsayiKaynak.kidem_yili} />
+            <Alan etiket="Kıdem Tarihi" deger={tarihFormatla(katsayiKaynak.kidem_tarihi)} />
             {thHizmetAlaniGosterMi(!!asilKadroTh, thHizmetBaslangic) && (
               <Alan
                 etiket="TH Hizmet Süresi"
                 deger={thHizmetSuresiEtiket(thHizmetBaslangic) ?? '—'}
               />
             )}
-            <Alan etiket="İyi Hal Terfi Tarihi" deger={tarihFormatla(son.iyi_hal_terfi_tarihi)} />
-            <Alan etiket="Ek Gösterge" deger={son.ek_gosterge} />
-            <Alan etiket="Ek Ödeme" deger={son.ek_odeme} />
-            <Alan etiket="ÖHT" deger={son.oht} />
+            <Alan etiket="İyi Hal Terfi Tarihi" deger={tarihFormatla(katsayiKaynak.iyi_hal_terfi_tarihi)} />
+            <Alan etiket="Ek Gösterge" deger={katsayiKaynak.ek_gosterge} />
+            <Alan etiket="Ek Ödeme" deger={katsayiKaynak.ek_odeme} />
+            <Alan etiket="ÖHT" deger={katsayiKaynak.oht} />
             <Alan etiket="Yan Ödeme" deger={yanGoster.text} />
-            <Alan etiket="SDS Oranı" deger={son.sds_orani} />
+            <Alan etiket="SDS Oranı" deger={katsayiKaynak.sds_orani} />
             {tkyPuaniVar && (
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-slate-500 mb-1">&nbsp;</label>
@@ -844,6 +857,20 @@ function KatsayiTab({
               </div>
             )}
           </div>
+          {vekilFarkTerfi && (
+            <div className="mt-5 pt-5 border-t border-slate-100">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">
+                Vekil müdür — vekalet farkı (asil müdür − kendi unvan)
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Alan etiket="Ek Gösterge" deger={vekilFarkTerfi.ek_gosterge} />
+                <Alan etiket="Ek Ödeme" deger={vekilFarkTerfi.ek_odeme} />
+                <Alan etiket="ÖHT" deger={vekilFarkTerfi.oht} />
+                <Alan etiket="Yan Ödeme" deger={vekilFarkTerfi.yan_odeme} />
+                <Alan etiket="SDS Oranı" deger={vekilFarkTerfi.sds_orani} />
+              </div>
+            </div>
+          )}
           <div className="mt-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tarihçe (Terfi Ettir Öncesi)</p>
             <div className="overflow-x-auto border border-slate-200 rounded-lg">
