@@ -16,6 +16,8 @@ import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-oze
 import { mudurKariyerOgrenimKaynagi } from '@/lib/kazanc-mudur-th-overlay'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
 import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
+import { terfiSatirAnahtari } from '@/lib/terfi-ettir-hesap'
+import { vekilMudurUnvaniMi } from '@/lib/kazanc-vekil-mudur-fark'
 
 type KadroEslestirmeSatir = Pick<
   Tables<'kadro_hareketleri'>,
@@ -251,7 +253,6 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     if (sec) terfiMap[sicil] = sec
   }
 
-  const unvanIdList = [...new Set(unvanIdBySicil.values())]
   const sinifByUnvanId = new Map<number, string | null>()
   const unvanAdiById = new Map<number, string>()
   const destekByUnvanId = new Map<number, boolean>()
@@ -262,7 +263,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   for (const u of unvanAdRaw ?? []) {
     unvanAdiById.set(u.id, u.unvan_adi)
     destekByUnvanId.set(u.id, u.destek_yardimci_birim === true)
-    if (unvanIdList.includes(u.id)) sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
+    sinifByUnvanId.set(u.id, u.sinif_adi ?? null)
   }
 
   const { data: kazancRaw } = await supabase.from('tanim_kazanc_bilgisi').select('*')
@@ -330,8 +331,99 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       th_hizmet_baslangic: thHizmetBySicil.get(sicil_no) ?? null,
       yuruttugu_unvan_id: yurutId,
       yuruttugu_unvan_adi: yurutId != null ? unvanAdiById.get(yurutId) ?? null : null,
+      kadro_rolu: asilMiBySicil.get(sicil_no) === true ? 'Asil' : 'Vekil',
+      satir_id: terfiSatirAnahtari(sicil_no, t.id, asilMiBySicil.get(sicil_no) === true ? 'Asil' : 'Vekil'),
     })
   }
+
+  const khBySicil = new Map<string, KadroEslestirmeSatir[]>()
+  for (const row of khRows) {
+    for (const s of [row.asil, row.vekil]) {
+      const sicil = (s ?? '').trim()
+      if (!sicil) continue
+      const list = khBySicil.get(sicil)
+      if (list) list.push(row)
+      else khBySicil.set(sicil, [row])
+    }
+  }
+
+  const vekilEk: TerfiKaynak[] = []
+  for (const kaynak of kaynaklar) {
+    const sicil = kaynak.sicil_no
+    const ilgili = (khBySicil.get(sicil) ?? []).filter(r => kadroAktifMi(r.ayrilis_tarihi))
+    const asilKh = ilgili.find(r => sicilEsit(r.asil, sicil))
+    if (!asilKh) continue
+    const vekilMudurKh = ilgili.filter(
+      r => sicilEsit(r.vekil, sicil) && vekilMudurUnvaniMi(r.kadro_unvani ?? r.gorev_unvani),
+    )
+    if (!vekilMudurKh.length) continue
+    const asilUnvanId = asilKh.kadro_unvan_id ?? asilKh.gorev_unvan_id ?? null
+    const asilUnvanAdi =
+      (asilUnvanId != null ? unvanAdiById.get(asilUnvanId) : undefined) ?? asilKh.kadro_unvani ?? asilKh.gorev_unvani ?? null
+    for (const vk of vekilMudurKh) {
+      const vt = terfiKaydiSec(terfiBySicil.get(sicil) ?? [], vk.id)
+      if (!vt || vt.id === kaynak.terfi_id) continue
+      const vekilUnvanId = vk.kadro_unvan_id ?? vk.gorev_unvan_id ?? null
+      vekilEk.push({
+        sicil_no: sicil,
+        ad_soyad: kaynak.ad_soyad,
+        unvan_adi:
+          (vekilUnvanId != null ? unvanAdiById.get(vekilUnvanId) : undefined) ??
+          vk.kadro_unvani ??
+          vk.gorev_unvani ??
+          null,
+        unvan_sinif: vekilUnvanId != null ? (sinifByUnvanId.get(vekilUnvanId) ?? null) : null,
+        kadro_derecesi: vk.kadro_derecesi ?? null,
+        ogrenim_turu: kaynak.ogrenim_turu,
+        ogrenim_id: kaynak.ogrenim_id,
+        unvan_id: vekilUnvanId,
+        kha_derece: vt.kha_derece ?? kaynak.kha_derece,
+        kha_kademe: vt.kha_kademe ?? kaynak.kha_kademe,
+        kha_tarihi: vt.kha_tarihi ?? kaynak.kha_tarihi,
+        ekea_derece: vt.ekea_derece ?? kaynak.ekea_derece,
+        ekea_kademe: vt.ekea_kademe ?? kaynak.ekea_kademe,
+        ekea_tarihi: vt.ekea_tarihi ?? kaynak.ekea_tarihi,
+        kidem_yili: vt.kidem_yili ?? kaynak.kidem_yili,
+        kidem_tarihi: vt.kidem_tarihi ?? kaynak.kidem_tarihi,
+        iyi_hal_terfi_tarihi: vt.iyi_hal_terfi_tarihi ?? kaynak.iyi_hal_terfi_tarihi,
+        ek_gosterge: vt.ek_gosterge,
+        ek_odeme: vt.ek_odeme,
+        oht: vt.oht,
+        yan_odeme: vt.yan_odeme,
+        yan_odeme_eksi5: vt.yan_odeme_eksi5,
+        sds_orani: vt.sds_orani,
+        terfi_id: vt.id,
+        bilgisayar_kullaniyor: kaynak.bilgisayar_kullaniyor,
+        yuksek_ogrenim_var: kaynak.yuksek_ogrenim_var,
+        kadrosu_ile_ilgili: kaynak.kadrosu_ile_ilgili,
+        teknisyen_kariyer: kaynak.teknisyen_kariyer,
+        teknik_ogrenim: kaynak.teknik_ogrenim,
+        ogrenim_meslegi: kaynak.ogrenim_meslegi,
+        ogrenim_bolum: kaynak.ogrenim_bolum,
+        asil_mi: false,
+        destek_yardimci_birim: vekilUnvanId != null ? destekByUnvanId.get(vekilUnvanId) === true : false,
+        th_hizmet_baslangic: kaynak.th_hizmet_baslangic,
+        yuruttugu_unvan_id: kaynak.yuruttugu_unvan_id,
+        yuruttugu_unvan_adi: kaynak.yuruttugu_unvan_adi,
+        kadro_rolu: 'Vekil',
+        satir_id: terfiSatirAnahtari(sicil, vt.id, 'Vekil'),
+        vekil_mudur_fark_mi: true,
+        asil_unvan_id: asilUnvanId,
+        asil_unvan_adi: asilUnvanAdi,
+        asil_kadro_derecesi: asilKh.kadro_derecesi ?? null,
+        asil_destek_yardimci_birim: asilUnvanId != null ? destekByUnvanId.get(asilUnvanId) === true : false,
+      })
+    }
+  }
+  kaynaklar.push(...vekilEk)
+  kaynaklar.sort((a, b) => {
+    const sicil = (parseInt(a.sicil_no, 10) || 0) - (parseInt(b.sicil_no, 10) || 0) || a.sicil_no.localeCompare(b.sicil_no, 'tr')
+    if (sicil !== 0) return sicil
+    const ra = a.kadro_rolu === 'Asil' ? 0 : a.kadro_rolu === 'Vekil' ? 1 : 2
+    const rb = b.kadro_rolu === 'Asil' ? 0 : b.kadro_rolu === 'Vekil' ? 1 : 2
+    if (ra !== rb) return ra - rb
+    return (a.terfi_id ?? 0) - (b.terfi_id ?? 0)
+  })
 
   const kazancLookupHam = (unvanId: number, ogrenimId: number, derece: number): KazancPuan | null =>
     kazancMap.get(`${unvanId}-${ogrenimId}-${derece}`) ?? null

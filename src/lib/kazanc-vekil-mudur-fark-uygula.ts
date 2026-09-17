@@ -10,18 +10,55 @@ import {
   ogrenimYuksekMi,
   teknisyenEkGostergeBaglamKur,
   teknisyenKariyerUnvanFromOgrenimRows,
+  type TeknisyenEkGostergeBaglam,
+  type KazancSatirLookup,
 } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import type { Database } from '@/types/database'
 import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
 import {
   kazancPuanEsit,
-  vekilMudurFarkDenemeMi,
   vekilMudurFarkHesapla,
   vekilMudurUnvaniMi,
 } from '@/lib/kazanc-vekil-mudur-fark'
 
 type Sb = SupabaseClient<Database>
+
+type KadroSatir = {
+  id: number
+  asil: string | null
+  vekil: string | null
+  kadro_derecesi: string | null
+  kadro_unvan_id: number | null
+  kadro_unvani: string | null
+  gorev_unvan_id: number | null
+  gorev_unvani: string | null
+  ayrilis_tarihi: string | null
+}
+
+type UnvanSatir = {
+  id: number
+  unvan_adi: string
+  sinif_adi: string | null
+  destek_yardimci_birim: boolean | null
+}
+
+export type VekilMudurFarkBaglam = {
+  lookup: KazancSatirLookup
+  tanimOgList: { id: number; isim: string }[]
+  unvanlar: UnvanSatir[]
+  baglam: TeknisyenEkGostergeBaglam
+}
+
+function kadroAktifMi(ayrilis: string | null | undefined, bugun = new Date().toISOString().slice(0, 10)): boolean {
+  const t = String(ayrilis ?? '').trim().slice(0, 10)
+  if (!t) return true
+  return t > bugun
+}
+
+function kadroUnvanAdi(k: KadroSatir): string {
+  return String(k.kadro_unvani ?? k.gorev_unvani ?? '').trim()
+}
 
 function kazancPayload(p: KazancPuan) {
   return {
@@ -51,59 +88,16 @@ function terfiPuan(row: {
   }
 }
 
-/**
- * Deneme sicilinde asil terfiyi kendi unvan tanımına, vekil müdür terfisini
- * asil müdür − kendi farkına çeker. Diğer sicillere dokunmaz.
- */
-export async function uygulaVekilMudurFarkDeneme(
-  supabase: Sb,
-  sicilNo: string,
-): Promise<{ uygulandi: boolean; hata?: string }> {
-  const sicil = String(sicilNo ?? '').trim()
-  if (!vekilMudurFarkDenemeMi(sicil)) return { uygulandi: false }
-
-  const [{ data: kadrolar, error: kErr }, { data: terfiler, error: tErr }, { data: ogrenimRows, error: oErr }] =
-    await Promise.all([
-      supabase
-        .from('kadro_hareketleri')
-        .select(
-          'id, asil, vekil, kadro_derecesi, kadro_unvan_id, kadro_unvani, gorev_unvan_id, gorev_unvani, ayrilis_tarihi',
-        )
-        .or(`asil.eq.${sicil},vekil.eq.${sicil}`),
-      supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil),
-      supabase
-        .from('calisan_ogrenim')
-        .select('ogrenim_turu, varsayilan, aktif, kayit_zamani, kadrosu_ile_ilgili, teknik_ogrenim, meslegi, bolum')
-        .eq('sicil_no', sicil),
-    ])
-  if (kErr) return { uygulandi: false, hata: kErr.message }
-  if (tErr) return { uygulandi: false, hata: tErr.message }
-  if (oErr) return { uygulandi: false, hata: oErr.message }
-
-  const asilKadro = (kadrolar ?? []).find(k => (k.asil ?? '').trim() === sicil && !k.ayrilis_tarihi)
-  const vekilKadro = (kadrolar ?? []).find(k => (k.vekil ?? '').trim() === sicil && !k.ayrilis_tarihi)
-  if (!asilKadro || !vekilKadro) return { uygulandi: false }
-
-  const vekilUnvan = String(vekilKadro.kadro_unvani ?? vekilKadro.gorev_unvani ?? '').trim()
-  if (!vekilMudurUnvaniMi(vekilUnvan)) return { uygulandi: false }
-
-  const asilTerfi =
-    (terfiler ?? []).find(t => t.kadro_id === asilKadro.id) ??
-    (terfiler ?? []).find(t => String(t.rol ?? '').toLowerCase() === 'asil')
-  const vekilTerfi =
-    (terfiler ?? []).find(t => t.kadro_id === vekilKadro.id) ??
-    (terfiler ?? []).find(t => String(t.rol ?? '').toLowerCase() === 'vekil')
-  if (!asilTerfi || !vekilTerfi) return { uygulandi: false }
-
+export async function yukleVekilMudurFarkBaglam(supabase: Sb): Promise<VekilMudurFarkBaglam> {
   const [{ data: unvanAdRaw }, { data: kazancRaw }, { data: tanimOg }] = await Promise.all([
     supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi, destek_yardimci_birim').eq('aktif', true),
     supabase.from('tanim_kazanc_bilgisi').select('*'),
     supabase.from('tanim_ogrenim').select('id, isim'),
   ])
-
+  const unvanlar = (unvanAdRaw ?? []) as UnvanSatir[]
   const tanimOgList = sortTanimOgrenimByIsim((tanimOg ?? []).map(o => ({ id: o.id, isim: o.isim })))
   const baglam = teknisyenEkGostergeBaglamKur({
-    unvanlar: (unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi })),
+    unvanlar: unvanlar.map(u => ({ id: u.id, unvan_adi: u.unvan_adi })),
     tanimOgList,
   })
   const kazancMap = new Map<string, KazancPuan>()
@@ -133,8 +127,71 @@ export async function uygulaVekilMudurFarkDeneme(
   }
   const lookup = kazancLookupOzelKalemIle(
     lookupYedek,
-    ozelKalemUnvanIdleri((unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi }))),
+    ozelKalemUnvanIdleri(unvanlar.map(u => ({ id: u.id, unvan_adi: u.unvan_adi }))),
   )
+  return { lookup, tanimOgList, unvanlar, baglam }
+}
+
+async function vekilMudurSicillerBul(supabase: Sb): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('kadro_hareketleri')
+    .select('vekil, kadro_unvani, gorev_unvani, ayrilis_tarihi')
+    .not('vekil', 'is', null)
+  if (error) return []
+  const siciller = new Set<string>()
+  for (const k of data ?? []) {
+    const sicil = String(k.vekil ?? '').trim()
+    if (!sicil) continue
+    if (!kadroAktifMi(k.ayrilis_tarihi)) continue
+    const unvan = String(k.kadro_unvani ?? k.gorev_unvani ?? '').trim()
+    if (!vekilMudurUnvaniMi(unvan)) continue
+    siciller.add(sicil)
+  }
+  return [...siciller]
+}
+
+/**
+ * Asil terfiyi kendi unvan tanımına, vekil müdür terfilerini asil müdür − kendi farkına çeker.
+ */
+export async function uygulaVekilMudurFarkSicil(
+  supabase: Sb,
+  sicilNo: string,
+  hazirBaglam?: VekilMudurFarkBaglam,
+): Promise<{ uygulandi: boolean; hata?: string }> {
+  const sicil = String(sicilNo ?? '').trim()
+  if (!sicil) return { uygulandi: false }
+
+  const [{ data: kadrolar, error: kErr }, { data: terfiler, error: tErr }, { data: ogrenimRows, error: oErr }] =
+    await Promise.all([
+      supabase
+        .from('kadro_hareketleri')
+        .select(
+          'id, asil, vekil, kadro_derecesi, kadro_unvan_id, kadro_unvani, gorev_unvan_id, gorev_unvani, ayrilis_tarihi',
+        )
+        .or(`asil.eq.${sicil},vekil.eq.${sicil}`),
+      supabase.from('terfi_hareketleri').select('*').eq('sicil_no', sicil),
+      supabase
+        .from('calisan_ogrenim')
+        .select('ogrenim_turu, varsayilan, aktif, kayit_zamani, kadrosu_ile_ilgili, teknik_ogrenim, meslegi, bolum')
+        .eq('sicil_no', sicil),
+    ])
+  if (kErr) return { uygulandi: false, hata: kErr.message }
+  if (tErr) return { uygulandi: false, hata: tErr.message }
+  if (oErr) return { uygulandi: false, hata: oErr.message }
+
+  const asilKadro = (kadrolar ?? []).find(k => (k.asil ?? '').trim() === sicil && kadroAktifMi(k.ayrilis_tarihi))
+  const vekilKadrolar = (kadrolar ?? []).filter(
+    k => (k.vekil ?? '').trim() === sicil && kadroAktifMi(k.ayrilis_tarihi) && vekilMudurUnvaniMi(kadroUnvanAdi(k)),
+  )
+  if (!asilKadro || vekilKadrolar.length === 0) return { uygulandi: false }
+
+  const asilTerfi =
+    (terfiler ?? []).find(t => t.kadro_id === asilKadro.id) ??
+    (terfiler ?? []).find(t => String(t.rol ?? '').toLowerCase() === 'asil')
+  if (!asilTerfi) return { uygulandi: false }
+
+  const bag = hazirBaglam ?? (await yukleVekilMudurFarkBaglam(supabase))
+  const { lookup, tanimOgList, unvanlar, baglam } = bag
 
   const kazancOg = kazancIcinOgrenimSec(ogrenimRows ?? [])
   const ogrenimId = eslestirOgrenimId(kazancOg?.ogrenim_turu, tanimOgList)
@@ -145,10 +202,8 @@ export async function uygulaVekilMudurFarkDeneme(
   const teknisyenKariyer = teknisyenKariyerUnvanFromOgrenimRows(ogrenimRows ?? [])
   const khaDerece = asilTerfi.kha_derece
   const asilUnvanId = asilKadro.kadro_unvan_id ?? asilKadro.gorev_unvan_id
-  const vekilUnvanId = vekilKadro.kadro_unvan_id ?? vekilKadro.gorev_unvan_id
-  const asilUnvanAdi = String(asilKadro.kadro_unvani ?? asilKadro.gorev_unvani ?? '').trim()
-  const asilUnvan = (unvanAdRaw ?? []).find(u => u.id === asilUnvanId)
-  const vekilUnvanKayit = (unvanAdRaw ?? []).find(u => u.id === vekilUnvanId)
+  const asilUnvanAdi = kadroUnvanAdi(asilKadro)
+  const asilUnvan = unvanlar.find(u => u.id === asilUnvanId)
 
   const ortak = {
     ogrenimId,
@@ -162,44 +217,77 @@ export async function uygulaVekilMudurFarkDeneme(
     baglam,
   }
 
-  const sonuc = vekilMudurFarkHesapla({
-    lookup,
-    khaDerece,
-    kendiOpts: {
-      ...ortak,
-      unvanId: asilUnvanId,
-      unvanAdi: asilUnvanAdi,
-      kadroDerecesi: asilKadro.kadro_derecesi,
-      asilMi: true,
-      destekYardimciBirim: asilUnvan?.destek_yardimci_birim === true,
-    },
-    mudurOpts: {
-      ...ortak,
-      unvanId: vekilUnvanId,
-      unvanAdi: vekilUnvan,
-      kadroDerecesi: vekilKadro.kadro_derecesi,
-      asilMi: true,
-      destekYardimciBirim: vekilUnvanKayit?.destek_yardimci_birim === true,
-    },
-  })
-  if (!sonuc) return { uygulandi: false, hata: 'Kazanç tanımı hesaplanamadı.' }
-
   let yazildi = false
-  if (!kazancPuanEsit(terfiPuan(asilTerfi), sonuc.kendi)) {
+  let kendiPuan: KazancPuan | null = null
+
+  for (const vekilKadro of vekilKadrolar) {
+    const vekilUnvan = kadroUnvanAdi(vekilKadro)
+    const vekilTerfi =
+      (terfiler ?? []).find(t => t.kadro_id === vekilKadro.id) ??
+      (terfiler ?? []).find(t => String(t.rol ?? '').toLowerCase() === 'vekil')
+    if (!vekilTerfi) continue
+
+    const vekilUnvanId = vekilKadro.kadro_unvan_id ?? vekilKadro.gorev_unvan_id
+    const vekilUnvanKayit = unvanlar.find(u => u.id === vekilUnvanId)
+    const sonuc = vekilMudurFarkHesapla({
+      lookup,
+      khaDerece,
+      kendiOpts: {
+        ...ortak,
+        unvanId: asilUnvanId,
+        unvanAdi: asilUnvanAdi,
+        kadroDerecesi: asilKadro.kadro_derecesi,
+        asilMi: true,
+        destekYardimciBirim: asilUnvan?.destek_yardimci_birim === true,
+      },
+      mudurOpts: {
+        ...ortak,
+        unvanId: vekilUnvanId,
+        unvanAdi: vekilUnvan,
+        kadroDerecesi: vekilKadro.kadro_derecesi,
+        asilMi: true,
+        destekYardimciBirim: vekilUnvanKayit?.destek_yardimci_birim === true,
+      },
+    })
+    if (!sonuc) continue
+    kendiPuan = sonuc.kendi
+
+    if (!kazancPuanEsit(terfiPuan(vekilTerfi), sonuc.fark)) {
+      const { error } = await supabase
+        .from('terfi_hareketleri')
+        .update(kazancPayload(sonuc.fark))
+        .eq('id', vekilTerfi.id)
+      if (error) return { uygulandi: false, hata: error.message }
+      yazildi = true
+    }
+  }
+
+  if (kendiPuan && !kazancPuanEsit(terfiPuan(asilTerfi), kendiPuan)) {
     const { error } = await supabase
       .from('terfi_hareketleri')
-      .update(kazancPayload(sonuc.kendi))
+      .update(kazancPayload(kendiPuan))
       .eq('id', asilTerfi.id)
     if (error) return { uygulandi: false, hata: error.message }
     yazildi = true
   }
-  if (!kazancPuanEsit(terfiPuan(vekilTerfi), sonuc.fark)) {
-    const { error } = await supabase
-      .from('terfi_hareketleri')
-      .update(kazancPayload(sonuc.fark))
-      .eq('id', vekilTerfi.id)
-    if (error) return { uygulandi: false, hata: error.message }
-    yazildi = true
-  }
+
   return { uygulandi: yazildi }
+}
+
+/** Eski ad — tek sicil uygulaması. */
+export const uygulaVekilMudurFarkDeneme = uygulaVekilMudurFarkSicil
+
+export async function uygulaVekilMudurFarkToplu(
+  supabase: Sb,
+): Promise<{ uygulandi: boolean; adet: number; hata?: string }> {
+  const siciller = await vekilMudurSicillerBul(supabase)
+  if (!siciller.length) return { uygulandi: false, adet: 0 }
+  const baglam = await yukleVekilMudurFarkBaglam(supabase)
+  let adet = 0
+  for (const sicil of siciller) {
+    const r = await uygulaVekilMudurFarkSicil(supabase, sicil, baglam)
+    if (r.hata) return { uygulandi: adet > 0, adet, hata: `${sicil}: ${r.hata}` }
+    if (r.uygulandi) adet++
+  }
+  return { uygulandi: adet > 0, adet }
 }

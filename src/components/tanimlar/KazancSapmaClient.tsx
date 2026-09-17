@@ -89,7 +89,7 @@ export default function KazancSapmaClient({
       ws.addRow([
         s.sicil_no,
         s.ad_soyad ?? '',
-        s.unvan_adi ?? '',
+        s.kadro_rolu ? `${s.unvan_adi ?? ''} (${s.kadro_rolu})` : (s.unvan_adi ?? ''),
         s.ogrenim_turu ?? '',
         teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) ?? '',
         s.teknik_ogrenim ? 'Evet' : '',
@@ -262,7 +262,7 @@ export default function KazancSapmaClient({
               const ogrenimUyumYazi = uyum ? teknisyenOgrenimUyumEtiket(s.ogrenim_uyum) : null
               const teknikOgrenimYazi = s.teknik_ogrenim ? 'Teknik Öğrenim' : null
               return (
-              <tr key={s.sicil_no} className="hover:bg-slate-50/80 align-top">
+              <tr key={s.satir_id ?? `${s.sicil_no}-${s.kadro_rolu ?? ''}-${s.unvan_id ?? ''}`} className="hover:bg-slate-50/80 align-top">
                 <td className="px-3 py-2">
                   <span className="text-xs text-slate-400 tabular-nums">{s.sicil_no}</span>
                   <p className="font-medium text-slate-800">{s.ad_soyad ?? '—'}</p>
@@ -279,6 +279,9 @@ export default function KazancSapmaClient({
                     <span className="mt-1 block rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-indigo-900 w-fit">
                       {s.kazanc_derece_kural}
                     </span>
+                  ) : null}
+                  {s.kadro_rolu ? (
+                    <span className="mt-1 block text-[10px] font-medium text-slate-500">{s.kadro_rolu}</span>
                   ) : null}
                 </td>
                 <td className="px-3 py-2 text-slate-600">

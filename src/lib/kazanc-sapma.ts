@@ -18,6 +18,7 @@ import { teknisyenOgrenimUyum, type TeknisyenEkGostergeBaglam, type TeknisyenOgr
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 import { OZEL_KALEM_KAZANC_DERECE, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
 import { yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
+import { vekilMudurFarkHesapla } from '@/lib/kazanc-vekil-mudur-fark'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -56,6 +57,9 @@ export type KazancSapmaSatir = {
   ogrenim_uyum: TeknisyenOgrenimUyum | null
   /** Tekniker + varsayılan Teknik Öğrenim tiki */
   teknik_ogrenim: boolean
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  satir_id?: string
+  vekil_mudur_fark_mi?: boolean
 }
 
 /** Kazanç tanımı hiç bulunamayan personel (ünvan/öğrenim/derece üçlüsü tabloda yok) */
@@ -211,44 +215,88 @@ export function kazancSapmaHesapla(
     }
 
     kontrolEdilen++
-    const tanim = kazancTaniminiKuralla(
+    const khaKural = khaGecerli ? kha : derece
+    let tanim = kazancTaniminiKuralla(
       tanimHam,
       kazancLookup,
-      terfiKaynaktanKuralOpts(r, khaGecerli ? kha : derece, teknisyenEkGosterge),
+      terfiKaynaktanKuralOpts(r, khaKural, teknisyenEkGosterge),
     )
+    let vekilFarkKural: string | null = null
+    if (r.vekil_mudur_fark_mi) {
+      const fark = vekilMudurFarkHesapla({
+        lookup: kazancLookup,
+        khaDerece: khaKural,
+        kendiOpts: terfiKaynaktanKuralOpts(
+          {
+            unvan_id: r.asil_unvan_id ?? null,
+            ogrenim_id: r.ogrenim_id,
+            unvan_adi: r.asil_unvan_adi ?? null,
+            kadro_derecesi: r.asil_kadro_derecesi ?? null,
+            kha_derece: r.kha_derece,
+            yuksek_ogrenim_var: r.yuksek_ogrenim_var,
+            kadrosu_ile_ilgili: r.kadrosu_ile_ilgili,
+            teknisyen_kariyer: r.teknisyen_kariyer ?? null,
+            teknik_ogrenim: r.teknik_ogrenim,
+            asil_mi: true,
+            destek_yardimci_birim: r.asil_destek_yardimci_birim === true,
+            ogrenim_meslegi: r.ogrenim_meslegi,
+            ogrenim_bolum: r.ogrenim_bolum,
+          },
+          khaKural,
+          teknisyenEkGosterge,
+        ),
+        mudurOpts: terfiKaynaktanKuralOpts({ ...r, asil_mi: true }, khaKural, teknisyenEkGosterge),
+      })
+      if (!fark) {
+        tanimsizlar.push({
+          sicil_no: r.sicil_no,
+          ad_soyad: r.ad_soyad,
+          unvan_id: r.unvan_id,
+          unvan_adi: r.unvan_adi,
+          ogrenim_turu: r.ogrenim_turu,
+          kadro_derecesi: r.kadro_derecesi ?? null,
+          derece: khaGecerli ? kha : derece,
+          neden: 'tanim_yok',
+        })
+        kontrolEdilen--
+        continue
+      }
+      tanim = fark.fark
+      vekilFarkKural = 'Vekalet farkı (asil müdür − kendi unvan)'
+    }
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = thYanOdemeYilSec({
       thMi,
       thHizmetBaslangic: r.th_hizmet_baslangic,
       kidemYili: parseKidemYili(r.kidem_yili),
     })
-    const kuralKisa = yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)
+    const kuralKisa = vekilFarkKural ?? yanOdemeKuralKisa(kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)
     const yurutSds = yuruttuguUnvanSdsAl(kazancLookup, {
       yuruttuguUnvanId: r.yuruttugu_unvan_id,
       ogrenimId: r.ogrenim_id,
-      derece: khaGecerli ? kha : derece,
+      derece: khaKural,
     })
     const yurutAd = String(r.yuruttugu_unvan_adi ?? '').trim() || null
     const alanlar = {} as KazancSapmaSatir['alanlar']
     let farkAdedi = 0
     for (const { key } of KAZANC_ALANLARI) {
       const mevcut = norm(r[key])
-      const tanimDeger = norm(
-        tanimAlanDegeri(tanim, key, kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor ?? null),
-      )
+      const tanimDeger = vekilFarkKural
+        ? norm(tanim[key])
+        : norm(tanimAlanDegeri(tanim, key, kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor ?? null))
       if (key === 'yan_odeme') {
         const k = yanOdemeSapmaKarsilastir(
           mevcut,
           tanimDeger,
-          tasinirCtx?.tasinirGoreviBySicil.get(String(r.sicil_no).trim()),
-          tasinirCtx?.tasinirTutarByGorev,
+          vekilFarkKural ? null : tasinirCtx?.tasinirGoreviBySicil.get(String(r.sicil_no).trim()),
+          vekilFarkKural ? undefined : tasinirCtx?.tasinirTutarByGorev,
           kuralKisa,
         )
         if (k.farkli) farkAdedi++
         alanlar[key] = k
         continue
       }
-      if (key === 'sds_orani') {
+      if (key === 'sds_orani' && !vekilFarkKural) {
         const hedef = r.yuruttugu_unvan_id != null ? (yurutSds ?? '') : tanimDeger
         const farkli = !puanEsit(mevcut.replace(/%/g, ''), (hedef ?? '').replace(/%/g, ''))
         if (farkli) farkAdedi++
@@ -260,7 +308,7 @@ export function kazancSapmaHesapla(
         }
         continue
       }
-      const farkli = mevcut !== tanimDeger
+      const farkli = !puanEsit(mevcut.replace(/%/g, ''), tanimDeger.replace(/%/g, ''))
       if (farkli) farkAdedi++
       alanlar[key] = { mevcut: mevcut || null, tanim: tanimDeger || null, farkli }
     }
@@ -273,7 +321,7 @@ export function kazancSapmaHesapla(
       ogrenim_turu: r.ogrenim_turu,
       kadro_derecesi: r.kadro_derecesi ?? null,
       derece: khaGecerli ? kha : derece,
-      kazanc_derece_kural: kazancDereceKural,
+      kazanc_derece_kural: vekilFarkKural ?? kazancDereceKural,
       kidem_yili: r.kidem_yili,
       yan_odeme_kural: alanlar.yan_odeme.aciklama ?? kuralKisa ?? 'Yan Ödeme',
       alanlar,
@@ -285,15 +333,22 @@ export function kazancSapmaHesapla(
         teknisyenKariyer: r.teknisyen_kariyer ?? null,
       }),
       teknik_ogrenim: r.teknik_ogrenim === true,
+      kadro_rolu: r.kadro_rolu ?? null,
+      satir_id: r.satir_id,
+      vekil_mudur_fark_mi: r.vekil_mudur_fark_mi === true,
     }
 
     if (farkAdedi === 0) uyusanlar.push(satir)
     else sapanlar.push(satir)
   }
 
-  const sicilSirala = (a: { sicil_no: string }, b: { sicil_no: string }) =>
+  const sicilSirala = (
+    a: { sicil_no: string; kadro_rolu?: string | null },
+    b: { sicil_no: string; kadro_rolu?: string | null },
+  ) =>
     (Number.parseInt(a.sicil_no, 10) || 0) - (Number.parseInt(b.sicil_no, 10) || 0) ||
-    a.sicil_no.localeCompare(b.sicil_no, 'tr')
+    a.sicil_no.localeCompare(b.sicil_no, 'tr') ||
+    (a.kadro_rolu === 'Asil' ? 0 : 1) - (b.kadro_rolu === 'Asil' ? 0 : 1)
 
   return {
     sapanlar: sapanlar.sort(sicilSirala),

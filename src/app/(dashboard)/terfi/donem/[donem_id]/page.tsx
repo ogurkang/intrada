@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import { terfiTarihPenceresiOncekiDonem } from '@/lib/terfi-donem-aralik'
-import { buildTerfiEttirOnizleme, type TerfiEttirDurumEtiket, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { buildTerfiEttirOnizleme, terfiSatirAnahtari, type TerfiEttirDurumEtiket, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { ogrenimOlayEtiket, type TerfiOgrenimOlayTipi } from '@/lib/terfi-ogrenim-ettir'
 import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import TerfiEttirClient from '@/components/terfi/TerfiEttirClient'
@@ -81,6 +81,9 @@ function satirKaynaktan(k: TerfiKaynak): TerfiEttirOnizlemeSatir | null {
     durum: '—',
     th_hizmet_baslangic: k.th_hizmet_baslangic ?? null,
     terfi_id: k.terfi_id,
+    kadro_rolu: k.kadro_rolu ?? null,
+    satir_id: k.satir_id ?? terfiSatirAnahtari(k.sicil_no, k.terfi_id, k.kadro_rolu),
+    vekil_mudur_fark_mi: k.vekil_mudur_fark_mi === true,
     payload: {
       kha_derece: k.kha_derece,
       kha_kademe: k.kha_kademe,
@@ -126,17 +129,31 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
     .order('islem_tarihi', { ascending: false })
 
   const aktifLoglar = (logRows ?? []).filter(x => !x.geri_alindi)
+  const aktifLogTerfiIds = new Set(
+    aktifLoglar.map(x => x.terfi_id).filter((id): id is number => id != null && id > 0),
+  )
   const aktifLogSicilleri = new Set(aktifLoglar.map(x => x.sicil_no))
-  // Aktif log'u olan (terfi ettirilmiş) personeli önizlemeden çıkar
-  const initialRowsFinal = initialRows.filter(r => !aktifLogSicilleri.has(r.sicil_no))
+  const initialRowsFinal = initialRows.filter(r => {
+    if (r.terfi_id != null && aktifLogTerfiIds.has(r.terfi_id)) return false
+    if (r.terfi_id == null && aktifLogSicilleri.has(r.sicil_no)) return false
+    return true
+  })
 
-  // Terfi ettirilmiş kişilerden Excel için satır üret (onceki → sonraki snapshot)
-  const kaynakBySicil = new Map(kaynaklar.map(k => [k.sicil_no, k]))
+  const kaynakByTerfiId = new Map(
+    kaynaklar.filter(k => k.terfi_id != null).map(k => [k.terfi_id!, k]),
+  )
+  const kaynakBySicil = new Map<string, TerfiKaynak>()
+  for (const k of kaynaklar) {
+    if (!kaynakBySicil.has(k.sicil_no) || k.kadro_rolu === 'Asil') kaynakBySicil.set(k.sicil_no, k)
+  }
+
+  const kaynakBul = (sicil: string, terfiId: number | null | undefined) =>
+    (terfiId != null && terfiId > 0 ? kaynakByTerfiId.get(terfiId) : undefined) ?? kaynakBySicil.get(sicil)
 
   // Orijinal terfi sebebini (durum) yeniden türet: onceki snapshot değerleriyle
   // buildTerfiEttirOnizleme'yi çalıştır — hangi tarih [bas,bit] aralığına düşüyorsa aynı durum hesaplanır
   const oncekiKaynaklar: TerfiKaynak[] = aktifLoglar.map(log => {
-    const kaynak = kaynakBySicil.get(log.sicil_no)
+    const kaynak = kaynakBul(log.sicil_no, log.terfi_id)
     const onc: LogSnap = (log.onceki ?? {}) as LogSnap
     return {
       sicil_no: log.sicil_no,
@@ -173,13 +190,23 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       asil_mi: kaynak?.asil_mi ?? false,
       destek_yardimci_birim: kaynak?.destek_yardimci_birim ?? false,
       th_hizmet_baslangic: kaynak?.th_hizmet_baslangic ?? null,
+      kadro_rolu: kaynak?.kadro_rolu ?? null,
+      satir_id: kaynak?.satir_id ?? terfiSatirAnahtari(log.sicil_no, log.terfi_id, kaynak?.kadro_rolu),
+      vekil_mudur_fark_mi: kaynak?.vekil_mudur_fark_mi === true,
+      asil_unvan_id: kaynak?.asil_unvan_id ?? null,
+      asil_unvan_adi: kaynak?.asil_unvan_adi ?? null,
+      asil_kadro_derecesi: kaynak?.asil_kadro_derecesi ?? null,
+      asil_destek_yardimci_birim: kaynak?.asil_destek_yardimci_birim === true,
     }
   })
   const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup, teknisyenEkGosterge)
+  const durumByTerfiId = new Map(
+    oncekiOnizleme.filter(r => r.terfi_id != null).map(r => [r.terfi_id!, r.durum]),
+  )
   const durumBySicil = new Map(oncekiOnizleme.map(r => [r.sicil_no, r.durum]))
 
   const terfiEttirilenSatirlar: TerfiEttirOnizlemeSatir[] = aktifLoglar.map(log => {
-    const kaynak = kaynakBySicil.get(log.sicil_no)
+    const kaynak = kaynakBul(log.sicil_no, log.terfi_id)
     const onc: LogSnap = (log.onceki ?? {}) as LogSnap
     const son: LogSnap = (log.sonraki ?? {}) as LogSnap
     const ogrenimTerfi = !!log.ogrenim_terfi
@@ -187,7 +214,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
     const durum: TerfiEttirDurumEtiket =
       ogrenimTerfi && ogrenimOlay
         ? (ogrenimOlayEtiket(ogrenimOlay) as TerfiEttirDurumEtiket)
-        : (durumBySicil.get(log.sicil_no) ?? '—')
+        : (durumByTerfiId.get(log.terfi_id ?? 0) ?? durumBySicil.get(log.sicil_no) ?? '—')
     return {
       sicil_no: log.sicil_no,
       ad_soyad: kaynak?.ad_soyad ?? log.sicil_no,
@@ -222,6 +249,9 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       sds_yeni: ds(son.sds_orani),
       durum,
       terfi_id: log.terfi_id ?? null,
+      kadro_rolu: kaynak?.kadro_rolu ?? null,
+      satir_id: kaynak?.satir_id ?? terfiSatirAnahtari(log.sicil_no, log.terfi_id, kaynak?.kadro_rolu),
+      vekil_mudur_fark_mi: kaynak?.vekil_mudur_fark_mi === true,
       ogrenim_terfi: ogrenimTerfi || undefined,
       ogrenim_olay: ogrenimOlay ?? undefined,
       payload: {

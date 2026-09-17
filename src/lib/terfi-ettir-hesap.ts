@@ -15,6 +15,7 @@ import {
 import { type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
+import { vekilMudurFarkHesapla } from '@/lib/kazanc-vekil-mudur-fark'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -240,6 +241,16 @@ export type TerfiKaynak = {
   /** Görevlendirmede yürütülen unvan — SDS bu tanımdan alınır */
   yuruttugu_unvan_id?: number | null
   yuruttugu_unvan_adi?: string | null
+  /** Asil / vekil kadro satırı — aynı sicilde birden fazla kaynak olabilir */
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  /** Liste / kayıt anahtarı (`sicil-t{terfi_id}`) */
+  satir_id?: string
+  /** Vekil müdür kaydı: kazanç asil müdür − kendi unvan farkı */
+  vekil_mudur_fark_mi?: boolean
+  asil_unvan_id?: number | null
+  asil_unvan_adi?: string | null
+  asil_kadro_derecesi?: string | null
+  asil_destek_yardimci_birim?: boolean
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -288,6 +299,9 @@ export type TerfiEttirOnizlemeSatir = {
   ogrenim_terfi?: boolean
   ogrenim_olay?: 'hazirlik' | 'yuksek_lisans' | 'doktora'
   yeni_ogrenim_turu?: string | null
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  satir_id?: string
+  vekil_mudur_fark_mi?: boolean
   payload: {
     kha_derece: string | null
     kha_kademe: string | null
@@ -308,6 +322,16 @@ export type TerfiEttirOnizlemeSatir = {
 }
 
 type KazancLookup = (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null
+
+export function terfiSatirAnahtari(
+  sicil: string,
+  terfiId?: number | null,
+  rol?: string | null,
+): string {
+  if (terfiId != null && terfiId > 0) return `${sicil}-t${terfiId}`
+  const r = String(rol ?? '').trim()
+  return r ? `${sicil}-${r}` : sicil
+}
 
 function birlesDurum(a: TerfiEttirDurumEtiket, b: TerfiEttirDurumEtiket): TerfiEttirDurumEtiket {
   const labels = new Set<string>()
@@ -525,6 +549,34 @@ export function buildTerfiEttirOnizleme(
     puanSon = overlayYan.puan
     yanUyg.tanimArti5 = overlayYan.tanimArti5
 
+    if (r.vekil_mudur_fark_mi) {
+      const fark = vekilMudurFarkHesapla({
+        lookup: kazancLookup,
+        khaDerece: newKd,
+        kendiOpts: terfiKaynaktanKuralOpts(
+          {
+            unvan_id: r.asil_unvan_id ?? null,
+            ogrenim_id: r.ogrenim_id,
+            unvan_adi: r.asil_unvan_adi ?? null,
+            kadro_derecesi: r.asil_kadro_derecesi ?? null,
+            kha_derece: r.kha_derece,
+            yuksek_ogrenim_var: r.yuksek_ogrenim_var,
+            kadrosu_ile_ilgili: r.kadrosu_ile_ilgili,
+            teknisyen_kariyer: r.teknisyen_kariyer ?? null,
+            teknik_ogrenim: r.teknik_ogrenim,
+            asil_mi: true,
+            destek_yardimci_birim: r.asil_destek_yardimci_birim === true,
+            ogrenim_meslegi: r.ogrenim_meslegi,
+            ogrenim_bolum: r.ogrenim_bolum,
+          },
+          newKd,
+          teknisyenEkGosterge,
+        ),
+        mudurOpts: terfiKaynaktanKuralOpts(r, newKd, teknisyenEkGosterge),
+      })
+      if (fark) puanSon = { ...puanSon, ...fark.fark }
+    }
+
     let thHizmetNotu: string | null = null
     // Listeye 5. yıl dönümü ile girenlerde yan ödeme zaten +5 olsa da açıklama yazılsın.
     if (thMi && (besinciIn || thCatchUp)) {
@@ -570,6 +622,9 @@ export function buildTerfiEttirOnizleme(
       kazanc_tanimi_eksik: kazancEksik.size > 0,
       kazanc_eksik_dereceler: kazancEksik.size > 0 ? [...kazancEksik].sort((a, b) => a - b) : undefined,
       terfi_id: r.terfi_id,
+      kadro_rolu: r.kadro_rolu ?? null,
+      satir_id: r.satir_id ?? terfiSatirAnahtari(r.sicil_no, r.terfi_id, r.kadro_rolu),
+      vekil_mudur_fark_mi: r.vekil_mudur_fark_mi === true,
       payload: {
         kha_derece: String(newKd),
         kha_kademe: String(newKk),

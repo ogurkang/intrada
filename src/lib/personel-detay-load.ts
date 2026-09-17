@@ -5,8 +5,7 @@ import { isUuidSegment } from '@/lib/personel-link'
 import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
 import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
-import { uygulaVekilMudurFarkDeneme } from '@/lib/kazanc-vekil-mudur-fark-uygula'
-import { vekilMudurFarkDenemeMi } from '@/lib/kazanc-vekil-mudur-fark'
+import { uygulaVekilMudurFarkSicil } from '@/lib/kazanc-vekil-mudur-fark-uygula'
 import type { Database } from '@/types/database'
 
 export type PersonelDetayMalRow = {
@@ -97,9 +96,7 @@ export async function fetchPersonelDetayPageData(
   sicil_no: string,
   kaynak: string,
 ): Promise<PersonelDetayLoadResult | null> {
-  if (vekilMudurFarkDenemeMi(sicil_no)) {
-    await uygulaVekilMudurFarkDeneme(supabase as SupabaseClient<Database>, sicil_no)
-  }
+  await uygulaVekilMudurFarkSicil(supabase as SupabaseClient<Database>, sicil_no)
   const [
     { data: calisan, error },
     { data: kadroHareketleriRaw },

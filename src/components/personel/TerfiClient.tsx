@@ -42,6 +42,8 @@ interface MemurSatir {
   tasinir_gorevi?: string | null
   tasinir_yan_odeme_uygulandi?: boolean
   kazancNotu?: string | null
+  iliskiliUnvanlar?: { rol: 'Asil' | 'Vekil'; unvan: string }[]
+  kadro_unvani?: string | null
 }
 
 interface KadroSecenek {
@@ -277,6 +279,8 @@ export default function TerfiClient({
     tasinir_gorevi?: string | null
     tasinir_yan_odeme_uygulandi?: boolean
     kazancNotu?: string | null
+    iliskiliUnvanlar?: { rol: 'Asil' | 'Vekil'; unvan: string }[]
+    kadro_unvani?: string | null
   }
   const tasinirGoreviBySicil = useMemo(() => {
     const m = new Map<string, string | null>()
@@ -312,6 +316,8 @@ export default function TerfiClient({
         tasinir_gorevi: m.tasinir_gorevi ?? null,
         tasinir_yan_odeme_uygulandi: m.tasinir_yan_odeme_uygulandi ?? false,
         kazancNotu: m.kazancNotu ?? null,
+        iliskiliUnvanlar: m.iliskiliUnvanlar ?? [],
+        kadro_unvani: m.kadro_unvani ?? null,
       }))
     }
     return filtreli.map(r => ({
@@ -610,7 +616,15 @@ export default function TerfiClient({
                         <span className="block text-slate-600 font-medium text-[10px] mt-0.5 leading-snug">
                           {ogTxt || '—'}
                         </span>
-                        {m.gorev_unvani && <span className="block text-slate-400 font-normal text-[10px]">{m.gorev_unvani}</span>}
+                        {m.iliskiliUnvanlar?.length
+                          ? m.iliskiliUnvanlar.map((u, ui) => (
+                              <span key={`${u.rol}-${u.unvan}-${ui}`} className="block text-slate-500 font-normal text-[10px] leading-snug">
+                                {u.rol} · {u.unvan}
+                              </span>
+                            ))
+                          : m.gorev_unvani
+                            ? <span className="block text-slate-400 font-normal text-[10px]">{m.gorev_unvani}</span>
+                            : null}
                       </td>
                       <td className="px-1 py-1.5 align-top text-slate-700 text-center text-[10px]">
                         {m.kadro_rolu === 'Asil' || m.kadro_rolu === 'Vekil' ? m.kadro_rolu : '—'}
@@ -758,6 +772,13 @@ export default function TerfiClient({
                           {ogTxt || '—'}
                         </span>
                       )}
+                      {showMemurMeta && row.iliskiliUnvanlar?.length
+                        ? row.iliskiliUnvanlar.map((u, ui) => (
+                            <span key={`${u.rol}-${u.unvan}-${ui}`} className="block text-[10px] text-slate-500 leading-snug">
+                              {u.rol} · {u.unvan}
+                            </span>
+                          ))
+                        : null}
                       <span className="block text-[10px] text-slate-400 mt-0.5">
                         {terfiIslemNo(r?.id)}
                         {row.kadro_sira_no ? ` · Kadro ${row.kadro_sira_no}` : ''}

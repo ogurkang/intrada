@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import ExcelJS from 'exceljs'
-import type { KazancPuan, TerfiEttirOnizlemeSatir, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { terfiSatirAnahtari, type KazancPuan, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import { kazancOkMetni } from '@/lib/kazanc-vekil-mudur-fark'
 import type { TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { parseKidemYili, thKidemEksi5BandiMi, unvanSinifiThMi } from '@/lib/kazanc-yan-odeme'
 import {
@@ -118,6 +119,10 @@ function richOk(eski: string, yeni: string): ExcelJS.CellRichTextValue {
   }
 }
 
+function satirKey(r: TerfiEttirOnizlemeSatir): string {
+  return r.satir_id || terfiSatirAnahtari(r.sicil_no, r.terfi_id, r.kadro_rolu)
+}
+
 export default function TerfiEttirClient({
   donemId,
   donemAdi,
@@ -145,25 +150,40 @@ export default function TerfiEttirClient({
   const [ogrenimSeciliSicil, setOgrenimSeciliSicil] = useState('')
   const [ogrenimModalHata, setOgrenimModalHata] = useState<string | null>(null)
 
-  const kaynakBySicil = useMemo(() => new Map(kaynaklar.map(k => [k.sicil_no, k])), [kaynaklar])
+  const kaynakBySicil = useMemo(() => {
+    const m = new Map<string, TerfiKaynak>()
+    for (const k of kaynaklar) {
+      if (!m.has(k.sicil_no) || k.kadro_rolu === 'Asil') m.set(k.sicil_no, k)
+    }
+    return m
+  }, [kaynaklar])
   const kazancLookup = useMemo(() => kazancLookupFromEntries(kazancEntries), [kazancEntries])
 
   const kazancEksikSatirlar = useMemo(() => satirlar.filter(r => r.kazanc_tanimi_eksik), [satirlar])
 
   const tumSecili = useMemo(() => {
     if (!satirlar.length) return false
-    return satirlar.every((r) => secili[r.sicil_no])
+    return satirlar.every((r) => secili[satirKey(r)])
   }, [satirlar, secili])
 
   function toggleHepsi() {
     const next = !tumSecili
     const m: Record<string, boolean> = {}
-    for (const r of satirlar) m[r.sicil_no] = next
+    for (const r of satirlar) m[satirKey(r)] = next
     setSecili(m)
   }
 
-  function toggleOne(sicil: string) {
-    setSecili((prev) => ({ ...prev, [sicil]: !prev[sicil] }))
+  function toggleOne(key: string) {
+    const row = satirlar.find(r => satirKey(r) === key)
+    if (!row) return
+    const next = !secili[key]
+    setSecili((prev) => {
+      const m = { ...prev }
+      for (const r of satirlar) {
+        if (r.sicil_no === row.sicil_no) m[satirKey(r)] = next
+      }
+      return m
+    })
   }
 
   const aktifLogBySicil = useMemo(() => {
@@ -174,10 +194,10 @@ export default function TerfiEttirClient({
     return m
   }, [islemLoglari])
 
-  function guncelle(sicil: string, alan: keyof TerfiEttirOnizlemeSatir['payload'], deger: string) {
+  function guncelle(key: string, alan: keyof TerfiEttirOnizlemeSatir['payload'], deger: string) {
     setSatirlar((prev) =>
       prev.map((row) => {
-        if (row.sicil_no !== sicil) return row
+        if (satirKey(row) !== key) return row
         const p = { ...row.payload, [alan]: deger || null }
         if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif) && !row.th_hizmet_baslangic) {
           const secilen = thKidemEksi5BandiMi(parseKidemYili(p.kidem_yili))
@@ -389,7 +409,7 @@ export default function TerfiEttirClient({
         { v: r.sicil_no },
         { v: r.ad_soyad ?? '' },
         { v: r.ogrenim_turu ?? '' },
-        { v: r.unvan_adi ?? '' },
+        { v: r.kadro_rolu ? `${r.unvan_adi ?? ''} (${r.kadro_rolu})` : (r.unvan_adi ?? '') },
         { v: r.kadro_derecesi ?? '' },
         { v: richOk(r.dk_kha_eski, r.dk_kha_yeni) },
         { v: richOk(khaEski, khaYeni) },
@@ -470,7 +490,7 @@ export default function TerfiEttirClient({
   function terfiEttirUygula() {
     setHata(null)
     setBasari(null)
-    const yazilacak = satirlar.filter((r) => secili[r.sicil_no] && r.terfi_id != null)
+    const yazilacak = satirlar.filter((r) => secili[satirKey(r)] && r.terfi_id != null)
     if (!yazilacak.length) {
       setHata('Önce tabloda kaydedilecek satırları işaretleyin (terfi kaydı olan siciller).')
       return
@@ -626,12 +646,12 @@ export default function TerfiEttirClient({
               </tr>
             )}
             {satirlar.map((r, idx) => (
-              <tr key={r.sicil_no} className="hover:bg-slate-50/80">
+              <tr key={satirKey(r)} className="hover:bg-slate-50/80">
                 <td className="px-2 py-2 align-top">
                   <input
                     type="checkbox"
-                    checked={!!secili[r.sicil_no]}
-                    onChange={() => toggleOne(r.sicil_no)}
+                    checked={!!secili[satirKey(r)]}
+                    onChange={() => toggleOne(satirKey(r))}
                     disabled={r.terfi_id == null}
                   />
                 </td>
@@ -649,7 +669,15 @@ export default function TerfiEttirClient({
                     </p>
                   ) : null}
                 </td>
-                <td className="px-2 py-2 align-top text-slate-700">{r.unvan_adi ?? '—'}</td>
+                <td className="px-2 py-2 align-top text-slate-700">
+                  {r.unvan_adi ?? '—'}
+                  {r.kadro_rolu ? (
+                    <span className={`block text-[10px] font-medium mt-0.5 ${r.vekil_mudur_fark_mi ? 'text-amber-700' : 'text-slate-500'}`}>
+                      {r.kadro_rolu}
+                      {r.vekil_mudur_fark_mi ? ' · vekalet farkı' : ''}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums">{r.kadro_derecesi ?? '—'}</td>
                 <td className="px-2 py-2 align-top text-[11px] leading-snug text-slate-700">
                   <div>
@@ -676,13 +704,13 @@ export default function TerfiEttirClient({
                     <input
                       className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
                       value={r.payload.kha_derece ?? ''}
-                      onChange={(e) => guncelle(r.sicil_no, 'kha_derece', e.target.value)}
+                      onChange={(e) => guncelle(satirKey(r), 'kha_derece', e.target.value)}
                     />
                     <span className="text-slate-400">/</span>
                     <input
                       className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
                       value={r.payload.kha_kademe ?? ''}
-                      onChange={(e) => guncelle(r.sicil_no, 'kha_kademe', e.target.value)}
+                      onChange={(e) => guncelle(satirKey(r), 'kha_kademe', e.target.value)}
                     />
                   </div>
                 </td>
@@ -694,42 +722,42 @@ export default function TerfiEttirClient({
                     <input
                       className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
                       value={r.payload.ekea_derece ?? ''}
-                      onChange={(e) => guncelle(r.sicil_no, 'ekea_derece', e.target.value)}
+                      onChange={(e) => guncelle(satirKey(r), 'ekea_derece', e.target.value)}
                     />
                     <span className="text-slate-400">/</span>
                     <input
                       className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
                       value={r.payload.ekea_kademe ?? ''}
-                      onChange={(e) => guncelle(r.sicil_no, 'ekea_kademe', e.target.value)}
+                      onChange={(e) => guncelle(satirKey(r), 'ekea_kademe', e.target.value)}
                     />
                   </div>
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400">{r.ek_gosterge_eski}</div>
+                  <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.ek_gosterge_eski, r.ek_gosterge_yeni)}</div>
                   <input
                     className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
                     value={r.payload.ek_gosterge ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'ek_gosterge', e.target.value)}
+                    onChange={(e) => guncelle(satirKey(r), 'ek_gosterge', e.target.value)}
                   />
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400">{r.ek_odeme_eski}</div>
+                  <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.ek_odeme_eski, r.ek_odeme_yeni)}</div>
                   <input
                     className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
                     value={r.payload.ek_odeme ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'ek_odeme', e.target.value)}
+                    onChange={(e) => guncelle(satirKey(r), 'ek_odeme', e.target.value)}
                   />
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400">{r.oht_eski}</div>
+                  <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.oht_eski, r.oht_yeni)}</div>
                   <input
                     className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
                     value={r.payload.oht ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'oht', e.target.value)}
+                    onChange={(e) => guncelle(satirKey(r), 'oht', e.target.value)}
                   />
                 </td>
                 <td className={`px-2 py-2 align-top${String(r.yan_odeme_eski ?? '').trim() !== String(r.payload.yan_odeme ?? '').trim() ? ' bg-amber-50/80' : ''}`}>
-                  <div className="text-[11px] text-slate-400">{r.yan_odeme_eski}</div>
+                  <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.yan_odeme_eski, r.yan_odeme_yeni)}</div>
                   <input
                     className={`w-[4.5rem] border rounded px-1 py-0.5 text-xs mt-0.5 ${
                       String(r.yan_odeme_eski ?? '').trim() !== String(r.payload.yan_odeme ?? '').trim()
@@ -737,15 +765,15 @@ export default function TerfiEttirClient({
                         : 'border-slate-200'
                     }`}
                     value={r.payload.yan_odeme ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'yan_odeme', e.target.value)}
+                    onChange={(e) => guncelle(satirKey(r), 'yan_odeme', e.target.value)}
                   />
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400">{r.sds_eski}</div>
+                  <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.sds_eski, r.sds_yeni)}</div>
                   <input
                     className="w-[4.5rem] border border-slate-200 rounded px-1 py-0.5 text-xs mt-0.5"
                     value={r.payload.sds_orani ?? ''}
-                    onChange={(e) => guncelle(r.sicil_no, 'sds_orani', e.target.value)}
+                    onChange={(e) => guncelle(satirKey(r), 'sds_orani', e.target.value)}
                   />
                 </td>
                 <td className="px-2 py-2 align-top text-xs max-w-[10rem]">

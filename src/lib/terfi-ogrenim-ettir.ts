@@ -4,6 +4,7 @@ import {
   kazancSatirToPuan,
   minDereceEgitim,
   puanThYanOdemeIle,
+  terfiSatirAnahtari,
   type KazancPuan,
   type TerfiEttirDurumEtiket,
   type TerfiEttirOnizlemeSatir,
@@ -184,6 +185,9 @@ export function buildTerfiOgrenimOnizleme(input: {
     ogrenim_terfi: true,
     ogrenim_olay: olay,
     yeni_ogrenim_turu: yeniOgrenimTuru,
+    kadro_rolu: kaynak.kadro_rolu ?? null,
+    satir_id: kaynak.satir_id ?? terfiSatirAnahtari(kaynak.sicil_no, kaynak.terfi_id, kaynak.kadro_rolu),
+    vekil_mudur_fark_mi: kaynak.vekil_mudur_fark_mi === true,
     payload: {
       kha_derece: String(newKd),
       kha_kademe: String(newKk),

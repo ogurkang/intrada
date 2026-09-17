@@ -1073,7 +1073,7 @@ export default function PersonelHareketiDegistirClient({
       <Modal
         open={kiyasAcik}
         onClose={kiyasHayir}
-        title="Kazanç kural karşılaştırması"
+        title={kiyasSonuc?.aciklama?.includes('Vekalet farkı') ? 'Vekalet farkı karşılaştırması' : 'Kazanç kural karşılaştırması'}
         size="lg"
       >
         <div className="space-y-4">
@@ -1092,7 +1092,9 @@ export default function PersonelHareketiDegistirClient({
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-3 py-2 font-semibold text-slate-600">Alan</th>
                     <th className="text-left px-3 py-2 font-semibold text-slate-600">Giriş</th>
-                    <th className="text-left px-3 py-2 font-semibold text-slate-600">Kural</th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-600">
+                      {kiyasSonuc?.aciklama?.includes('Vekalet farkı') ? 'Alınması gereken fark' : 'Kural'}
+                    </th>
                     <th className="text-left px-3 py-2 font-semibold text-slate-600">Sonuç</th>
                   </tr>
                 </thead>

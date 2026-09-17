@@ -3,11 +3,36 @@ import { unvanMuduruMi } from '@/lib/kazanc-mudur-th-overlay'
 import { formatKazancPuan, parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import type { KazancSatirLookup } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { parseDerece } from '@/lib/kazanc-teknisyen-ek-gosterge'
-import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
-import { kazancSatirToPuan } from '@/lib/terfi-ettir-hesap'
 
-/** Deneme: vekaleten müdür kazancı asil müdür − kendi asil unvan farkı. */
-export const VEKIL_MUDUR_FARK_DENEME_SICILLER = new Set(['346'])
+type KazancPuan = {
+  ek_gosterge: string | null
+  ek_odeme: string | null
+  oht: string | null
+  yan_odeme: string | null
+  yan_odeme_eksi5: string | null
+  yan_odeme_bilgisayarsiz?: string | null
+  sds_orani: string | null
+}
+
+function kazancSatirToPuan(row: {
+  ek_gosterge: string | null
+  ek_odeme?: string | null
+  oht?: string | null
+  yan_odeme?: string | null
+  yan_odeme_eksi5?: string | null
+  sds_orani?: string | null
+}): KazancPuan {
+  return {
+    ek_gosterge: row.ek_gosterge ?? null,
+    ek_odeme: row.ek_odeme ?? null,
+    oht: row.oht ?? null,
+    yan_odeme: row.yan_odeme ?? null,
+    yan_odeme_eksi5: row.yan_odeme_eksi5 ?? null,
+    sds_orani: row.sds_orani ?? null,
+  }
+}
+
+export const KAZANC_OK_ISARETI = '→'
 
 export const KAZANC_FARK_ALANLARI = [
   'ek_gosterge',
@@ -19,12 +44,23 @@ export const KAZANC_FARK_ALANLARI = [
 
 export type KazancFarkAlan = (typeof KAZANC_FARK_ALANLARI)[number]
 
-export function vekilMudurFarkDenemeMi(sicil: string | null | undefined): boolean {
-  return VEKIL_MUDUR_FARK_DENEME_SICILLER.has(String(sicil ?? '').trim())
-}
-
 export function vekilMudurUnvaniMi(unvanAdi: string | null | undefined): boolean {
   return unvanMuduruMi(unvanAdi)
+}
+
+/** Kadro durumu vekil ve unvanında «müdürü» geçen kayıt. */
+export function vekilMudurFarkKapsamiMi(
+  rol: string | null | undefined,
+  unvanAdi: string | null | undefined,
+): boolean {
+  const r = String(rol ?? '').trim().toLowerCase()
+  return r === 'vekil' && vekilMudurUnvaniMi(unvanAdi)
+}
+
+export function kazancOkMetni(eski: string | null | undefined, yeni: string | null | undefined): string {
+  const e = String(eski ?? '').trim() || '—'
+  const y = String(yeni ?? '').trim() || '—'
+  return `${e} ${KAZANC_OK_ISARETI} ${y}`
 }
 
 function farkAlan(mudur: string | null | undefined, kendi: string | null | undefined): string | null {

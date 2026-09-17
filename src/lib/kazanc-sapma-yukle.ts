@@ -33,5 +33,6 @@ export async function yukleKazancSapmaSonuc(): Promise<KazancSapmaSonuc & { topl
     tasinirGoreviBySicil,
     tasinirTutarByGorev,
   }, teknisyenEkGosterge)
-  return { ...sonuc, toplamPersonel: kaynaklar.length }
+  const toplamPersonel = new Set(kaynaklar.map(k => k.sicil_no)).size
+  return { ...sonuc, toplamPersonel }
 }

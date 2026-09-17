@@ -38,6 +38,7 @@ import { kazancLookupYedekOgrenimIds } from '@/lib/kazanc-ogrenim-sec'
 import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-ozel-kalem'
 import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
 import { gorevYeriListeSicilSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
+import { uygulaVekilMudurFarkSicil } from '@/lib/kazanc-vekil-mudur-fark-uygula'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -481,6 +482,8 @@ export async function personelHareketiGuncelle(
     if (terfiHata) return { hata: terfiHata }
   }
 
+  if (sicil_no) await uygulaVekilMudurFarkSicil(supabase, sicil_no)
+
   await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
 
   revalidatePath('/personel-hareketleri')
@@ -663,6 +666,8 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   })
   if (terfiHata) return { hata: terfiHata }
 
+  await uygulaVekilMudurFarkSicil(supabase, sicil_no)
+
   await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
 
   revalidatePath('/personel-hareketleri')
@@ -688,6 +693,7 @@ export async function personelHareketKazancKiyasla(
     { data: unvanAdRaw },
     { data: kazancRaw },
     calisanIlk,
+    { data: kadroRaw },
   ] = await Promise.all([
     supabase
       .from('calisan_ogrenim')
@@ -701,6 +707,10 @@ export async function personelHareketKazancKiyasla(
       .select('th_hizmet_baslangic, bilgisayar_kullaniyor, yuruttugu_unvan_id')
       .eq('sicil_no', sicil_no)
       .maybeSingle(),
+    supabase
+      .from('kadro_hareketleri')
+      .select('asil, vekil, kadro_unvani, gorev_unvani, kadro_derecesi, ayrilis_tarihi')
+      .or(`asil.eq.${sicil_no},vekil.eq.${sicil_no}`),
   ])
   const calisan = yuruttuguUnvanKolonuYokMu(calisanIlk.error?.message)
     ? (await supabase
@@ -746,6 +756,12 @@ export async function personelHareketKazancKiyasla(
   )
 
   const kadroRol = String(formData.get('yeni_kadro_rol') ?? '').trim().toLowerCase() === 'vekil' ? 'vekil' : 'asil'
+  const bugun = new Date().toISOString().slice(0, 10)
+  const asilKadro = (kadroRaw ?? []).find(k => {
+    const t = String(k.ayrilis_tarihi ?? '').trim().slice(0, 10)
+    const aktif = !t || t > bugun
+    return aktif && (k.asil ?? '').trim() === sicil_no
+  })
   const sonuc = personelHareketKazancKiyasHesapla({
     giris: {
       unvanAdi: str(formData, 'yeni_unvan') ?? str(formData, 'eski_unvan'),
@@ -772,6 +788,10 @@ export async function personelHareketKazancKiyasla(
     thHizmetBaslangic: calisan?.th_hizmet_baslangic ?? null,
     bilgisayarKullaniyor: calisan?.bilgisayar_kullaniyor ?? null,
     yuruttuguUnvanId: (calisan as { yuruttugu_unvan_id?: number | null } | null)?.yuruttugu_unvan_id ?? null,
+    kendiUnvanAdi: asilKadro
+      ? String(asilKadro.kadro_unvani ?? asilKadro.gorev_unvani ?? '').trim() || str(formData, 'eski_unvan')
+      : str(formData, 'eski_unvan'),
+    kendiKadroDerecesi: asilKadro?.kadro_derecesi ?? str(formData, 'eski_kadro_derecesi'),
   })
   return sonuc
 }

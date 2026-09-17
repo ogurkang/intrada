@@ -12,6 +12,7 @@ import { eslestirOgrenimId, kazancIcinOgrenimSec } from '@/lib/kazanc-ogrenim-se
 import { OZEL_KALEM_KAZANC_DERECE, kazancBirinciDereceAciklama, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
 import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
+import { vekilMudurFarkHesapla, vekilMudurFarkKapsamiMi } from '@/lib/kazanc-vekil-mudur-fark'
 
 export type PersonelHareketKazancKiyasSatir = {
   alan: string
@@ -94,6 +95,8 @@ export function personelHareketKazancKiyasHesapla(input: {
   thHizmetBaslangic: string | null
   bilgisayarKullaniyor: boolean | null
   yuruttuguUnvanId?: number | null
+  kendiUnvanAdi?: string | null
+  kendiKadroDerecesi?: string | null
 }): PersonelHareketKazancKiyasSonuc {
   const { giris, ogrenimRows, tanimOgList, unvanlar, kazancLookup, baglam } = input
   const unvan = unvanKaydiBul(unvanlar, giris.unvanAdi)
@@ -178,12 +181,78 @@ export function personelHareketKazancKiyasHesapla(input: {
     yan_odeme: giris.yanOdeme,
     sds_orani: giris.sdsOrani,
   }
-  const kuralMap: Record<(typeof KIYAS_ALANLARI)[number]['key'], string | null> = {
+  let kuralMap: Record<(typeof KIYAS_ALANLARI)[number]['key'], string | null> = {
     ek_gosterge: tanim.ek_gosterge,
     ek_odeme: tanim.ek_odeme,
     oht: tanim.oht,
     yan_odeme: yanKural,
     sds_orani: tanimSds.sds_orani,
+  }
+  let aciklama = kazancBirinciDereceAciklama(unvan.unvan_adi)
+
+  const vekilFark = vekilMudurFarkKapsamiMi(giris.asilMi ? 'asil' : 'vekil', unvan.unvan_adi)
+  if (vekilFark) {
+    const kendiUnvan = unvanKaydiBul(unvanlar, input.kendiUnvanAdi)
+    if (!kendiUnvan) {
+      return {
+        aciklama: 'Vekil müdür farkı için asil kadro unvanı bulunamadı.',
+        satirlar: [],
+        tumuUygun: false,
+      }
+    }
+    const fark = vekilMudurFarkHesapla({
+      lookup: kazancLookup,
+      khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
+      kendiOpts: {
+        unvanId: kendiUnvan.id,
+        ogrenimId,
+        unvanAdi: kendiUnvan.unvan_adi,
+        kadroDerecesi: input.kendiKadroDerecesi ?? giris.kadroDerecesi,
+        khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
+        yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
+        kadrosuIleIlgili: teknisyenKariyer != null,
+        teknisyenKariyer,
+        teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
+        asilMi: true,
+        destekYardimciBirim: kendiUnvan.destek_yardimci_birim === true,
+        meslegi: kariyerOg.meslegi,
+        bolum: kariyerOg.bolum,
+        baglam,
+      },
+      mudurOpts: {
+        unvanId: unvan.id,
+        ogrenimId,
+        unvanAdi: unvan.unvan_adi,
+        kadroDerecesi: giris.kadroDerecesi,
+        khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
+        yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
+        kadrosuIleIlgili: teknisyenKariyer != null,
+        teknisyenKariyer,
+        teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
+        asilMi: true,
+        destekYardimciBirim: unvan.destek_yardimci_birim === true,
+        meslegi: kariyerOg.meslegi,
+        bolum: kariyerOg.bolum,
+        baglam,
+      },
+    })
+    if (!fark) {
+      return {
+        aciklama: 'Vekil müdür farkı hesaplanamadı (kazanç tanımı eksik olabilir).',
+        satirlar: [],
+        tumuUygun: false,
+      }
+    }
+    kuralMap = {
+      ek_gosterge: fark.fark.ek_gosterge,
+      ek_odeme: fark.fark.ek_odeme,
+      oht: fark.fark.oht,
+      yan_odeme: fark.fark.yan_odeme,
+      sds_orani: fark.fark.sds_orani,
+    }
+    aciklama =
+      `Vekalet farkı (asil müdür − ${kendiUnvan.unvan_adi}). ` +
+      'Giriş, asil bir müdürün alacağı ile kendi unvan kazancı arasındaki fark olmalıdır.'
   }
 
   const satirlar = KIYAS_ALANLARI.map(({ key, etiket }) => {
@@ -193,7 +262,7 @@ export function personelHareketKazancKiyasHesapla(input: {
   })
 
   return {
-    aciklama: kazancBirinciDereceAciklama(unvan.unvan_adi),
+    aciklama,
     satirlar,
     tumuUygun: satirlar.every(s => s.uygun),
   }

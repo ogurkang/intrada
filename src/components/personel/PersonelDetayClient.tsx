@@ -10,7 +10,7 @@ import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
 import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasinir-yetkili'
-import { vekilMudurFarkDenemeMi } from '@/lib/kazanc-vekil-mudur-fark'
+import { vekilMudurUnvaniMi } from '@/lib/kazanc-vekil-mudur-fark'
 import { terfiRolEtiketi } from '@/lib/terfi-kadro-esleme'
 import { malBildirimDetayHrefPersonelSaltOkunur } from '@/lib/mal-bildirim-route'
 import { ayliksizIzindenDon } from '@/app/(dashboard)/personel/[sicil_no]/actions'
@@ -779,10 +779,18 @@ function KatsayiTab({
   const son = terfiKayitlari[0]
   const asilTerfi =
     terfiKayitlari.find(t => terfiRolEtiketi(t.rol) === 'Asil') ?? son
-  const vekilFarkTerfi = vekilMudurFarkDenemeMi(son.sicil_no)
-    ? terfiKayitlari.find(t => terfiRolEtiketi(t.rol) === 'Vekil') ?? null
-    : null
-  const katsayiKaynak = vekilFarkTerfi ? asilTerfi : son
+  const sicil = son.sicil_no
+  const vekilMudurKadroIds = new Set(
+    kadrolar
+      .filter(k => (k.vekil ?? '').trim() === sicil && vekilMudurUnvaniMi(k.kadro_unvani ?? k.gorev_unvani))
+      .map(k => k.id),
+  )
+  const vekilFarkTerfileri = terfiKayitlari.filter(t => {
+    if (terfiRolEtiketi(t.rol) !== 'Vekil') return false
+    if (t.kadro_id != null && vekilMudurKadroIds.has(t.kadro_id)) return true
+    return vekilMudurKadroIds.size > 0 && t.kadro_id == null
+  })
+  const katsayiKaynak = vekilFarkTerfileri.length ? asilTerfi : son
   const toplamFm = fmAylik.reduce((s, r) => s + r.saat, 0)
   const yanGoster = yanOdemeTasinirToplamGoster(
     katsayiKaynak.yan_odeme,
@@ -857,20 +865,20 @@ function KatsayiTab({
               </div>
             )}
           </div>
-          {vekilFarkTerfi && (
-            <div className="mt-5 pt-5 border-t border-slate-100">
+          {vekilFarkTerfileri.map(vt => (
+            <div key={vt.id} className="mt-5 pt-5 border-t border-slate-100">
               <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">
                 Vekil müdür — vekalet farkı (asil müdür − kendi unvan)
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Alan etiket="Ek Gösterge" deger={vekilFarkTerfi.ek_gosterge} />
-                <Alan etiket="Ek Ödeme" deger={vekilFarkTerfi.ek_odeme} />
-                <Alan etiket="ÖHT" deger={vekilFarkTerfi.oht} />
-                <Alan etiket="Yan Ödeme" deger={vekilFarkTerfi.yan_odeme} />
-                <Alan etiket="SDS Oranı" deger={vekilFarkTerfi.sds_orani} />
+                <Alan etiket="Ek Gösterge" deger={vt.ek_gosterge} />
+                <Alan etiket="Ek Ödeme" deger={vt.ek_odeme} />
+                <Alan etiket="ÖHT" deger={vt.oht} />
+                <Alan etiket="Yan Ödeme" deger={vt.yan_odeme} />
+                <Alan etiket="SDS Oranı" deger={vt.sds_orani} />
               </div>
             </div>
-          )}
+          ))}
           <div className="mt-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tarihçe (Terfi Ettir Öncesi)</p>
             <div className="overflow-x-auto border border-slate-200 rounded-lg">
