@@ -65,6 +65,13 @@ function programTur(p: string | null): string {
   return TUR_DIGER
 }
 
+const MUDURLUK_BELIRTILMEMIS = 'Belirtilmemiş'
+
+function kadroMudurlukEtiket(mudurluk: string | null | undefined): string {
+  const t = (mudurluk ?? '').trim()
+  return t || MUDURLUK_BELIRTILMEMIS
+}
+
 function KatilimTikGecmis({ logs }: { logs: Tables<'personel_audit_log'>[] | undefined }) {
   const [konum, setKonum] = useState<{ x: number; y: number } | null>(null)
   const latest = logs?.[0]
@@ -135,13 +142,13 @@ export default function EgitimIstatistikClient({
   }, [katilimKeys, isaretleMode])
 
   const mudurluler = useMemo(() =>
-    [...new Set(personeller.map(p => p.mudurluk ?? 'Belirtilmemiş'))].sort((a, b) => a.localeCompare(b, 'tr'))
+    [...new Set(personeller.map(p => kadroMudurlukEtiket(p.mudurluk)))].sort((a, b) => a.localeCompare(b, 'tr'))
   , [personeller])
 
   const filtreli = useMemo(() => {
     const q = arama.toLocaleLowerCase('tr-TR')
     return personeller.filter(p =>
-      (!mudFiltre || (p.mudurluk ?? 'Belirtilmemiş') === mudFiltre) &&
+      (!mudFiltre || kadroMudurlukEtiket(p.mudurluk) === mudFiltre) &&
       (!q || (p.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) || p.sicil_no.toLocaleLowerCase('tr-TR').includes(q))
     )
   }, [personeller, mudFiltre, arama])
@@ -204,11 +211,11 @@ export default function EgitimIstatistikClient({
     setExcelPending(true)
     try {
       const personelKaynak = mudFiltre
-        ? personeller.filter(p => (p.mudurluk ?? 'Belirtilmemiş') === mudFiltre)
+        ? personeller.filter(p => kadroMudurlukEtiket(p.mudurluk) === mudFiltre)
         : personeller
       await egitimIstatistikExcelIndir({
         donemAdi: seciliDonem.donem_adi,
-        kapsam: mudFiltre || 'Tüm müdürlükler',
+        kapsam: mudFiltre || 'Tüm kadro müdürlükleri',
         egitimler: egitimler.map(e => ({
           id: e.id,
           egitim_adi: e.egitim_adi,
@@ -217,7 +224,7 @@ export default function EgitimIstatistikClient({
         personeller: personelKaynak.map(p => ({
           sicil_no: p.sicil_no,
           ad_soyad: p.ad_soyad,
-          mudurluk: p.mudurluk,
+          mudurluk: kadroMudurlukEtiket(p.mudurluk),
         })),
         katilim: aktifKatilim,
       })
@@ -257,7 +264,9 @@ export default function EgitimIstatistikClient({
         <span className="text-slate-300">/</span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-800">{seciliDonem.donem_adi} — İstatistik</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{egitimler.length} eğitim · {personeller.length} personel</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {egitimler.length} eğitim · {personeller.length} personel · kadro müdürlüğüne göre
+          </p>
         </div>
         <Link href={`/egitim/${seciliDonem.id}`}
           className="text-sm font-medium text-slate-600 hover:text-slate-800 px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
@@ -267,14 +276,23 @@ export default function EgitimIstatistikClient({
 
       {/* Filtreler + Eğitimleri İşaretle */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex gap-3">
-          <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ad veya sicil ara…"
-            className="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-          <select value={mudFiltre} onChange={e => setMudFiltre(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white">
-            <option value="">Tüm Müdürlükler</option>
-            {mudurluler.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-3">
+            <input value={arama} onChange={e => setArama(e.target.value)} placeholder="Ad veya sicil ara…"
+              className="w-full max-w-xs px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+            <select
+              value={mudFiltre}
+              onChange={e => setMudFiltre(e.target.value)}
+              aria-label="Kadro müdürlüğü"
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+            >
+              <option value="">Tüm kadro müdürlükleri</option>
+              {mudurluler.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Personel listesi ve müdürlük filtresi <span className="font-medium text-slate-500">kadro müdürlüğüne</span> göredir; görev müdürlüğü kullanılmaz.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -417,7 +435,9 @@ export default function EgitimIstatistikClient({
                     <tr key={p.sicil_no} className="group hover:bg-slate-50 transition-colors">
                       <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 min-w-48">
                         <p className="font-medium text-slate-800 leading-tight">{p.ad_soyad ?? p.sicil_no}</p>
-                        <p className="text-slate-400 font-mono text-[10px] mt-0.5">{p.mudurluk ?? p.sicil_no}</p>
+                        <p className="text-slate-400 font-mono text-[10px] mt-0.5">
+                          {kadroMudurlukEtiket(p.mudurluk)}
+                        </p>
                       </td>
                       <td className="px-2 py-2 text-center border-r border-slate-200 w-14">
                         <span className={`font-bold tabular-nums ${

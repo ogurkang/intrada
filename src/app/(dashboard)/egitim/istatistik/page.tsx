@@ -60,7 +60,7 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
           .order('egitim_id')
           .range(from, to),
       ),
-      fetchAllKadroHareketleri(supabase, 'asil, gorev_mudurlugu, kadro_mudurlugu', q =>
+      fetchAllKadroHareketleri(supabase, 'asil, kadro_mudurlugu', q =>
         q.is('ayrilis_tarihi', null).not('asil', 'is', null),
       ),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
@@ -90,14 +90,18 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
   ;(calisanRaw ?? []).forEach(c => { if (c.sicil_no) adMap[c.sicil_no] = c.ad_soyad ?? c.sicil_no })
 
   const mudMap: Record<string, string> = {}
-  ;(kadroRaw ?? []).forEach(k => { if (k.asil) mudMap[k.asil] = k.gorev_mudurlugu ?? k.kadro_mudurlugu ?? '' })
+  ;(kadroRaw ?? []).forEach(k => {
+    if (!k.asil) return
+    const kadroMud = String(k.kadro_mudurlugu ?? '').trim()
+    mudMap[k.asil] = kadroMud
+  })
 
   const sicilSeti = new Set((kadroRaw ?? []).map(k => k.asil).filter(Boolean) as string[])
 
   const personeller: IstatistikPersonel[] = Array.from(sicilSeti).map(s => ({
     sicil_no: s,
     ad_soyad: adMap[s] ?? null,
-    mudurluk: mudMap[s] ?? null,
+    mudurluk: mudMap[s] || null,
   })).sort((a, b) => (a.mudurluk ?? '').localeCompare(b.mudurluk ?? '', 'tr') || (a.ad_soyad ?? '').localeCompare(b.ad_soyad ?? '', 'tr'))
 
   const mudurlukMap: Record<string, string> = Object.fromEntries(

@@ -110,7 +110,7 @@ export async function egitimIstatistikExcelIndir(opts: {
 
   ws.mergeCells(3, 1, 3, kolonSayisi)
   ws.getCell(3, 1).value =
-    'Eğitim adları eğitim takviminden alınır. Tarih tanımlı eğitimler ilgili ayda, tarihi olmayanlar “Takvimde yok” altında gösterilir.'
+    'Personel listesi kadro müdürlüğüne göredir. Eğitim adları eğitim takviminden alınır. Tarih tanımlı eğitimler ilgili ayda, tarihi olmayanlar “Takvimde yok” altında gösterilir.'
   ws.getCell(3, 1).style = {
     font: { size: 9, italic: true, color: { argb: 'FF64748B' }, name: 'Calibri' },
     alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
@@ -119,7 +119,7 @@ export async function egitimIstatistikExcelIndir(opts: {
 
   const aySatir = 4
   const adSatir = 5
-  const sabitBasliklar = ['Sıra No', 'Sicil', 'Ad Soyad', 'Müdürlük']
+  const sabitBasliklar = ['Sıra No', 'Sicil', 'Ad Soyad', 'Kadro Müdürlüğü']
   sabitBasliklar.forEach((ad, i) => {
     ws.mergeCells(aySatir, i + 1, adSatir, i + 1)
     const hucre = ws.getCell(aySatir, i + 1)
