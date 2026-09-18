@@ -213,9 +213,9 @@ export default function DashboardClient({
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h2 className="text-sm font-semibold text-slate-700">
               Bekleyen İzin Talepleri
-              {izinIstatistik.taslak > 0 && (
+              {bekleyenIzinler.length > 0 && (
                 <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {izinIstatistik.taslak}
+                  {bekleyenIzinler.length}
                 </span>
               )}
             </h2>
@@ -230,7 +230,7 @@ export default function DashboardClient({
               <p className="text-sm">Bekleyen izin talebi yok</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 max-h-[min(70vh,40rem)] overflow-y-auto">
               {bekleyenIzinler.map(iz => (
                 <div key={iz.id} className="px-5 py-3 hover:bg-slate-50 transition-colors">
                   <div className="flex items-start justify-between gap-4">

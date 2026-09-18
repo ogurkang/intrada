@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   const [
     kadroRaw,
     izinYilRes,
-    { data: bekleyenRaw },
+    bekleyenRes,
     { data: tatilRaw },
     { data: izindekiRaw },
   ] = await Promise.all([
@@ -51,13 +51,25 @@ export default async function DashboardPage() {
 
     fetchAllIzinHareketleriByYil<{ durum: string | null }>(supabase, buYil, { select: 'durum' }),
 
-    // 4) Bekleyen (Taslak) izinler — en fazla 20
-    supabase
-      .from('izin_hareketleri')
-      .select('id, sira_no, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi, islem_yapan')
-      .eq('durum', 'Taslak')
-      .order('kayit_tarihi', { ascending: true })
-      .limit(20),
+    // 4) Bekleyen (Taslak) izinler — onay bekleyenlerin tamamı
+    fetchAllPaged<{
+      id: number
+      sira_no: string | null
+      sicil_no: string | null
+      tur: string | null
+      baslama: string | null
+      ayrilis: string | null
+      gun: number | null
+      kayit_tarihi: string | null
+      islem_yapan: string | null
+    }>((from, to) =>
+      supabase
+        .from('izin_hareketleri')
+        .select('id, sira_no, sicil_no, tur, baslama, ayrilis, gun, kayit_tarihi, islem_yapan')
+        .eq('durum', 'Taslak')
+        .order('kayit_tarihi', { ascending: true })
+        .range(from, to),
+    ),
 
     // 5) Yaklaşan tatiller (bugün ve sonrası, en fazla 6)
     supabase
@@ -151,6 +163,8 @@ export default async function DashboardPage() {
     }
   }
   gorevHatirlaticilar.sort((a, b) => a.kalan_gun - b.kalan_gun)
+
+  const bekleyenRaw = bekleyenRes.data
 
   // 7) Sadece panoda görünen siciller için çalışan adı / public_id (tüm tabloyu çekme — yavaşlık riski)
   const sicilSet = new Set<string>()
