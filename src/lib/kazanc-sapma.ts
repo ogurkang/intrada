@@ -254,6 +254,7 @@ export function kazancSapmaHesapla(
     const khaKural = khaGecerli ? kha : derece
     let tanim: KazancPuan
     let vekilFarkKural: string | null = null
+    let vekilKendiEg: string | null = null
 
     if (r.vekil_mudur_fark_mi) {
       const fark = vekilMudurFarkHesapla({
@@ -294,6 +295,7 @@ export function kazancSapmaHesapla(
         continue
       }
       tanim = fark.fark
+      vekilKendiEg = fark.kendi.ek_gosterge
       vekilFarkKural = 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
       kontrolEdilen++
     } else {
@@ -326,6 +328,15 @@ export function kazancSapmaHesapla(
     let farkAdedi = 0
     for (const { key } of KAZANC_ALANLARI) {
       const mevcut = norm(r[key])
+      if (key === 'ek_gosterge' && vekilFarkKural) {
+        alanlar[key] = {
+          mevcut: 'fark yok',
+          tanim: vekilKendiEg || 'fark yok',
+          farkli: false,
+          aciklama: 'Kendi unvan / kadro derecesi (asil satır); vekalet farkına girmez',
+        }
+        continue
+      }
       const tanimDeger = vekilFarkKural
         ? norm(tanim[key])
         : norm(tanimAlanDegeri(tanim, key, kidem, thMi, r.unvan_adi, r.bilgisayar_kullaniyor ?? null))
@@ -355,7 +366,12 @@ export function kazancSapmaHesapla(
       }
       const farkli = !puanEsit(mevcut.replace(/%/g, ''), tanimDeger.replace(/%/g, ''))
       if (farkli) farkAdedi++
-      alanlar[key] = { mevcut: mevcut || null, tanim: tanimDeger || null, farkli }
+      alanlar[key] = {
+        mevcut: mevcut || null,
+        tanim: tanimDeger || null,
+        farkli,
+        aciklama: vekilFarkKural || undefined,
+      }
     }
 
     const satir: KazancSapmaSatir = {

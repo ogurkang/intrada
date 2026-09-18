@@ -167,7 +167,9 @@ export default function KazancSapmaClient({
                 <span className="font-medium">−5 Yıl</span>, 5–25 yıl <span className="font-medium">+5 Yıl</span>.
                 V.H.K.İ. ve Bilgisayar İşletmeni için Yetkinlik Bildirimi esas alınır:{' '}
                 <span className="font-medium">Bilgisayarlı</span> / <span className="font-medium">Bilgisayarsız</span>.
-                TKY görevi kadro puanını açıklıyorsa kişi sapmada yer almaz. Sapma tek başına hata anlamına gelmez.
+                TKY görevi kadro puanını açıklıyorsa kişi sapmada yer almaz. Vekil müdür satırında ek gösterge
+                vekalet farkına girmez; asil kadro unvanı / derecesindeki tanım asil satırda kıyaslanır. Sapma tek
+                başına hata anlamına gelmez.
               </>
             )}
           </p>
@@ -313,12 +315,8 @@ export default function KazancSapmaClient({
                 {KAZANC_ALANLARI.map(a => {
                   const v = s.alanlar[a.key]
                   const alanNot =
-                    a.key === 'yan_odeme'
-                      ? (v.aciklama ??
-                          (s.yan_odeme_kural !== 'Yan Ödeme' ? s.yan_odeme_kural : null))
-                      : a.key === 'sds_orani'
-                        ? (v.aciklama ?? null)
-                        : null
+                    v.aciklama ??
+                    (a.key === 'yan_odeme' && s.yan_odeme_kural !== 'Yan Ödeme' ? s.yan_odeme_kural : null)
                   return (
                     <td key={a.key} className="px-3 py-2 text-center whitespace-nowrap">
                       {v.farkli ? (

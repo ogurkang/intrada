@@ -3,9 +3,11 @@ import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import { kazancSapmaHesapla, type KazancSapmaSonuc } from '@/lib/kazanc-sapma'
 import { tasinirGoreviNormalize } from '@/lib/tasinir-gorevi'
 import { fetchAllCalisan, fetchAllPaged } from '@/lib/supabase-sayfala'
+import { uygulaVekilMudurFarkToplu } from '@/lib/kazanc-vekil-mudur-fark-uygula'
 
 export async function yukleKazancSapmaSonuc(): Promise<KazancSapmaSonuc & { toplamPersonel: number }> {
   const supabase = await createClient()
+  await uygulaVekilMudurFarkToplu(supabase)
   const [{ kaynaklar, kazancLookup, teknisyenEkGosterge }, { data: calisanTasinir }, { data: tasinirTanim }] = await Promise.all([
     yukleTerfiEttirKaynakVeKazanc(supabase),
     fetchAllCalisan<{ sicil_no: string; tasinir_gorevi: string | null }>(supabase, 'sicil_no, tasinir_gorevi'),
