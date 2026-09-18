@@ -161,7 +161,7 @@ export async function uygulaVekilMudurFarkSicil(
   const sicil = String(sicilNo ?? '').trim()
   if (!sicil) return { uygulandi: false }
 
-  const [{ data: kadrolar, error: kErr }, { data: terfiler, error: tErr }, { data: ogrenimRows, error: oErr }] =
+  const [{ data: kadrolar, error: kErr }, { data: terfiler, error: tErr }, { data: ogrenimRows, error: oErr }, { data: calisan }] =
     await Promise.all([
       supabase
         .from('kadro_hareketleri')
@@ -174,6 +174,11 @@ export async function uygulaVekilMudurFarkSicil(
         .from('calisan_ogrenim')
         .select('ogrenim_turu, varsayilan, aktif, kayit_zamani, kadrosu_ile_ilgili, teknik_ogrenim, meslegi, bolum')
         .eq('sicil_no', sicil),
+      supabase
+        .from('calisan')
+        .select('bilgisayar_kullaniyor, th_hizmet_baslangic')
+        .eq('sicil_no', sicil)
+        .maybeSingle(),
     ])
   if (kErr) return { uygulandi: false, hata: kErr.message }
   if (tErr) return { uygulandi: false, hata: tErr.message }
@@ -247,6 +252,13 @@ export async function uygulaVekilMudurFarkSicil(
         kadroDerecesi: vekilKadro.kadro_derecesi,
         asilMi: true,
         destekYardimciBirim: vekilUnvanKayit?.destek_yardimci_birim === true,
+      },
+      yanCtx: {
+        kidemYili: asilTerfi.kidem_yili,
+        thHizmetBaslangic: calisan?.th_hizmet_baslangic ?? null,
+        bilgisayarKullaniyor: calisan?.bilgisayar_kullaniyor ?? null,
+        kendiSinif: asilUnvan?.sinif_adi ?? null,
+        mudurSinif: vekilUnvanKayit?.sinif_adi ?? null,
       },
     })
     if (!sonuc) continue

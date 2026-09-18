@@ -325,7 +325,7 @@ export default async function TerfiBilgilerPage() {
           kadro_id: h.khId,
           kadro_unvani: h.kadro_unvani,
           kazancNotu: vekilMudurFarkKapsamiMi(h.rol, h.kadro_unvani)
-            ? 'Vekalet farkı (asil müdür − kendi unvan)'
+            ? 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
             : null,
         })
       }

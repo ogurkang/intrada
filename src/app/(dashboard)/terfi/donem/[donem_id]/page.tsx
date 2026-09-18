@@ -197,6 +197,7 @@ export default async function TerfiDonemDetayPage({ params }: { params: Promise<
       asil_unvan_adi: kaynak?.asil_unvan_adi ?? null,
       asil_kadro_derecesi: kaynak?.asil_kadro_derecesi ?? null,
       asil_destek_yardimci_birim: kaynak?.asil_destek_yardimci_birim === true,
+      asil_unvan_sinif: kaynak?.asil_unvan_sinif ?? null,
     }
   })
   const oncekiOnizleme = buildTerfiEttirOnizleme(oncekiKaynaklar, bas, bit, kazancLookup, teknisyenEkGosterge)

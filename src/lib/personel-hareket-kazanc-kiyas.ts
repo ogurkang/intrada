@@ -219,23 +219,30 @@ export function personelHareketKazancKiyasHesapla(input: {
         bolum: kariyerOg.bolum,
         baglam,
       },
-      mudurOpts: {
-        unvanId: unvan.id,
-        ogrenimId,
-        unvanAdi: unvan.unvan_adi,
-        kadroDerecesi: giris.kadroDerecesi,
-        khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
-        yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
-        kadrosuIleIlgili: teknisyenKariyer != null,
-        teknisyenKariyer,
-        teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
-        asilMi: true,
-        destekYardimciBirim: unvan.destek_yardimci_birim === true,
-        meslegi: kariyerOg.meslegi,
-        bolum: kariyerOg.bolum,
-        baglam,
-      },
-    })
+        mudurOpts: {
+          unvanId: unvan.id,
+          ogrenimId,
+          unvanAdi: unvan.unvan_adi,
+          kadroDerecesi: giris.kadroDerecesi,
+          khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
+          yuksekOgrenimVar: ogrenimRows.some(r => ogrenimYuksekMi(r.ogrenim_turu)),
+          kadrosuIleIlgili: teknisyenKariyer != null,
+          teknisyenKariyer,
+          teknikOgrenim: ogrenimRows.some(r => r.varsayilan && r.teknik_ogrenim),
+          asilMi: true,
+          destekYardimciBirim: unvan.destek_yardimci_birim === true,
+          meslegi: kariyerOg.meslegi,
+          bolum: kariyerOg.bolum,
+          baglam,
+        },
+        yanCtx: {
+          kidemYili: giris.kidemYili,
+          thHizmetBaslangic: input.thHizmetBaslangic,
+          bilgisayarKullaniyor: input.bilgisayarKullaniyor,
+          kendiSinif: kendiUnvan.sinif_adi,
+          mudurSinif: unvan.sinif_adi,
+        },
+      })
     if (!fark) {
       return {
         aciklama: 'Vekil müdür farkı hesaplanamadı (kazanç tanımı eksik olabilir).',
@@ -251,8 +258,8 @@ export function personelHareketKazancKiyasHesapla(input: {
       sds_orani: fark.fark.sds_orani,
     }
     aciklama =
-      `Vekalet farkı (asil müdür − ${kendiUnvan.unvan_adi}). ` +
-      'Giriş, asil bir müdürün alacağı ile kendi unvan kazancı arasındaki fark olmalıdır.'
+      `Vekalet farkı (asil müdür − ${kendiUnvan.unvan_adi}; ek gösterge hariç). ` +
+      'Girişte ek ödeme, ÖHT, yan ödeme ve SDS asil müdür ile kendi unvan kazancı farkı olmalıdır; ek gösterge 0 kalır.'
   }
 
   const satirlar = KIYAS_ALANLARI.map(({ key, etiket }) => {

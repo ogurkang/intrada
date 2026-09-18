@@ -44,6 +44,14 @@ function vekilFarkNotu(vekilVar: boolean): string {
   )
 }
 
+function vekilEkGostergeNotu(vekilVar: boolean): string {
+  if (!vekilVar) return ''
+  return (
+    ' Vekil müdür satırında ek gösterge farkı yazılmaz (0). 657 md. 43 ek gösterge kadroya bağlıdır; ' +
+    'vekalet (md. 86) kadroyu değiştirmez. Personel ek göstergeyi asil kadro / KHA kuralından alır.'
+  )
+}
+
 export function personelKazancKuralKartlariKur(kaynaklar: TerfiKaynak[]): PersonelKazancKuralKart[] {
   const grup = new Map<string, TerfiKaynak[]>()
   for (const k of kaynaklar) {
@@ -141,7 +149,7 @@ function kalemleriKur(r: TerfiKaynak, vekilMudurVar: boolean): PersonelKazancKur
       'Asil müdür TH kariyer (kimyager): ek gösterge = max(müdür unvanı, kimyager tanımı). 2006/10344 sayılı BKK I sayılı cetvel.',
     )
   }
-  egParcalar.push(`${ekranTerfi} asil satırındaki ek gösterge bu kuralın sonucudur.${fark}`)
+  egParcalar.push(`${ekranTerfi} asil satırındaki ek gösterge bu kuralın sonucudur.${vekilEkGostergeNotu(vekilMudurVar)}`)
 
   const eoParcalar: string[] = [
     '375 sayılı Kanun Hükmünde Kararname ek md. 9 (aylığa ilişkin ek ödeme).',

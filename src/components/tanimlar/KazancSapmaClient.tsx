@@ -16,6 +16,7 @@ const NEDEN_ETIKET: Record<KazancTanimsizSatir['neden'], string> = {
   ogrenim_yok: 'Aktif öğrenim kaydı yok',
   derece_yok: 'KHA derecesi okunamadı',
   tanim_yok: 'Kazanç tanımı girilmemiş',
+  vekil_fark_tanim_yok: 'Vekil fark tanımı eksik',
 }
 
 const TH_CLASS =
@@ -106,9 +107,18 @@ export default function KazancSapmaClient({
 
     if (tanimsizlar.length) {
       const ws2 = wb.addWorksheet('Tanımı Bulunamayanlar')
-      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'Kadro Derecesi', 'KHA Derecesi', 'Neden']).font = { bold: true }
+      ws2.addRow(['Sicil', 'Ad Soyad', 'Ünvan', 'Öğrenim', 'Kadro Derecesi', 'KHA Derecesi', 'Neden', 'Açıklama']).font = { bold: true }
       for (const t of tanimsizlar) {
-        ws2.addRow([t.sicil_no, t.ad_soyad ?? '', t.unvan_adi ?? '', t.ogrenim_turu ?? '', t.kadro_derecesi ?? '', t.derece ?? '', NEDEN_ETIKET[t.neden]])
+        ws2.addRow([
+          t.sicil_no,
+          t.ad_soyad ?? '',
+          t.kadro_rolu ? `${t.unvan_adi ?? ''} (${t.kadro_rolu})` : (t.unvan_adi ?? ''),
+          t.ogrenim_turu ?? '',
+          t.kadro_derecesi ?? '',
+          t.derece ?? '',
+          NEDEN_ETIKET[t.neden],
+          t.nedenAciklama,
+        ])
       }
       ws2.columns.forEach(c => {
         c.width = 20
@@ -348,8 +358,8 @@ export default function KazancSapmaClient({
         <section className="mt-10">
           <h2 className="text-lg font-semibold text-slate-800">Kazanç Tanımı Bulunamayan Personel</h2>
           <p className="text-sm text-slate-500 mt-0.5 mb-4 max-w-3xl">
-            Bu personel için ünvan + öğrenim + derece üçlüsüne karşılık gelen tanım yok. Terfide dereceleri ilerlerse
-            kazanç değerleri eski derecede kalır; Terfi Ettir önizlemesi bu satırları uyarı rozetiyle işaretler.
+            Bu personel sapma karşılaştırmasına giremiyor. Her satırın nedeni aşağıda; ünvan + öğrenim + KHA
+            üçlüsü tanıma denk gelmiyorsa Terfi Ettir o derecede kazancı eski değerde bırakır.
           </p>
           <div className={TABLO_KUTU}>
             <table className="w-full text-sm border-separate border-spacing-0">
@@ -372,11 +382,14 @@ export default function KazancSapmaClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tanimsizlar.map(t => (
-                  <tr key={t.sicil_no} className="hover:bg-slate-50/80">
+                {tanimsizlar.map((t, i) => (
+                  <tr key={t.satir_id ?? `${t.sicil_no}-${t.neden}-${i}`} className="hover:bg-slate-50/80">
                     <td className="px-3 py-2">
                       <span className="text-xs text-slate-400 tabular-nums">{t.sicil_no}</span>
                       <p className="font-medium text-slate-800">{t.ad_soyad ?? '—'}</p>
+                      {t.kadro_rolu ? (
+                        <span className="block text-[10px] text-slate-500 mt-0.5">{t.kadro_rolu}</span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-slate-700">
                       {t.unvan_id != null ? (
@@ -394,6 +407,7 @@ export default function KazancSapmaClient({
                       <span className="inline-flex rounded-full bg-red-50 border border-red-200 px-2 py-1 text-xs font-medium text-red-800">
                         {NEDEN_ETIKET[t.neden]}
                       </span>
+                      <p className="text-[11px] text-slate-600 mt-1.5 leading-snug max-w-md">{t.nedenAciklama}</p>
                     </td>
                   </tr>
                 ))}

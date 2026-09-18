@@ -251,6 +251,7 @@ export type TerfiKaynak = {
   asil_unvan_adi?: string | null
   asil_kadro_derecesi?: string | null
   asil_destek_yardimci_birim?: boolean
+  asil_unvan_sinif?: string | null
 }
 
 export type TerfiEttirOnizlemeSatir = {
@@ -573,8 +574,18 @@ export function buildTerfiEttirOnizleme(
           teknisyenEkGosterge,
         ),
         mudurOpts: terfiKaynaktanKuralOpts(r, newKd, teknisyenEkGosterge),
+        yanCtx: {
+          kidemYili: newKidemYili ?? r.kidem_yili,
+          thHizmetBaslangic: r.th_hizmet_baslangic,
+          bilgisayarKullaniyor: r.bilgisayar_kullaniyor,
+          kendiSinif: r.asil_unvan_sinif ?? null,
+          mudurSinif: r.unvan_sinif,
+        },
       })
-      if (fark) puanSon = { ...puanSon, ...fark.fark }
+      if (fark) {
+        puanSon = { ...puanSon, ...fark.fark }
+        kazancEksik.clear()
+      }
     }
 
     let thHizmetNotu: string | null = null

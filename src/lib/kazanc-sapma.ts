@@ -74,7 +74,61 @@ export type KazancTanimsizSatir = {
   /** `terfi_hareketleri.kha_derece` — okunamadıysa null */
   derece: number | null
   /** Tanımın neden aranamadığı: eksik ana veri mi, yoksa tanım mı yok */
-  neden: 'unvan_yok' | 'ogrenim_yok' | 'derece_yok' | 'tanim_yok'
+  neden: 'unvan_yok' | 'ogrenim_yok' | 'derece_yok' | 'tanim_yok' | 'vekil_fark_tanim_yok'
+  nedenAciklama: string
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  satir_id?: string
+  vekil_mudur_fark_mi?: boolean
+}
+
+export function kazancTanimsizNedenAcikla(t: {
+  neden: KazancTanimsizSatir['neden']
+  unvan_adi: string | null
+  ogrenim_turu: string | null
+  kadro_derecesi: string | null
+  derece: number | null
+  kadro_rolu?: 'Asil' | 'Vekil' | null
+  vekil_mudur_fark_mi?: boolean
+}): string {
+  const unvan = String(t.unvan_adi ?? '').trim() || 'ünvan yok'
+  const ogrenim = String(t.ogrenim_turu ?? '').trim() || 'öğrenim yok'
+  const kadro = String(t.kadro_derecesi ?? '').trim() || '—'
+  const kha = t.derece != null ? String(t.derece) : '—'
+  const rol = t.kadro_rolu ? `${t.kadro_rolu} satırında ` : ''
+  switch (t.neden) {
+    case 'unvan_yok':
+      return `${rol}kadro unvanı kazanç tanımı tablosundaki unvanlarla eşleşmedi (${unvan}). Tanımlar › Unvan / kadro hareketi unvan id’si boş.`
+    case 'ogrenim_yok':
+      return `${rol}aktif öğrenim kaydı kazanç öğrenim listesiyle eşleşmedi (${ogrenim}). Personel › Öğrenim; Tanımlar › Öğrenim.`
+    case 'derece_yok':
+      return `${rol}KHA derecesi okunamadı; kazanç satırı dereceye bakılarak aranamıyor. Terfi › Terfi Bilgileri › KHA.`
+    case 'vekil_fark_tanim_yok':
+      return `${rol}vekil müdür farkı hesaplanamadı: asil unvan veya «${unvan}» + «${ogrenim}» + KHA ${kha}. derece kazanç tanımı eksik. Tanımlar › Kazanç Bilgileri.`
+    default:
+      return `${rol}«${unvan}» + «${ogrenim}» + KHA ${kha}. derece (kadro ${kadro}) için Tanımlar › Kazanç Bilgileri satırı yok.`
+  }
+}
+
+function tanimsizSatir(
+  r: TerfiKaynak,
+  kha: number | null,
+  derece: number | null,
+  neden: KazancTanimsizSatir['neden'],
+): KazancTanimsizSatir {
+  const base = {
+    sicil_no: r.sicil_no,
+    ad_soyad: r.ad_soyad,
+    unvan_id: r.unvan_id,
+    unvan_adi: r.unvan_adi,
+    ogrenim_turu: r.ogrenim_turu,
+    kadro_derecesi: r.kadro_derecesi ?? null,
+    derece: kha,
+    neden,
+    kadro_rolu: r.kadro_rolu ?? null,
+    satir_id: r.satir_id,
+    vekil_mudur_fark_mi: r.vekil_mudur_fark_mi === true,
+  }
+  return { ...base, nedenAciklama: kazancTanimsizNedenAcikla({ ...base, derece: kha ?? derece }) }
 }
 
 export type KazancSapmaSonuc = {
@@ -186,42 +240,21 @@ export function kazancSapmaHesapla(
     const kazancDereceKural = birinciDerece ? 'Kazanç: 1. derece' : null
 
     if (r.unvan_id == null || r.ogrenim_id == null || !dereceGecerli) {
-      tanimsizlar.push({
-        sicil_no: r.sicil_no,
-        ad_soyad: r.ad_soyad,
-        unvan_id: r.unvan_id,
-        unvan_adi: r.unvan_adi,
-        ogrenim_turu: r.ogrenim_turu,
-        kadro_derecesi: r.kadro_derecesi ?? null,
-        derece: khaGecerli ? kha : null,
-        neden: r.unvan_id == null ? 'unvan_yok' : r.ogrenim_id == null ? 'ogrenim_yok' : 'derece_yok',
-      })
+      tanimsizlar.push(
+        tanimsizSatir(
+          r,
+          khaGecerli ? kha : null,
+          khaGecerli ? kha : null,
+          r.unvan_id == null ? 'unvan_yok' : r.ogrenim_id == null ? 'ogrenim_yok' : 'derece_yok',
+        ),
+      )
       continue
     }
 
-    const tanimHam = kazancLookup(r.unvan_id, r.ogrenim_id, derece)
-    if (!tanimHam) {
-      tanimsizlar.push({
-        sicil_no: r.sicil_no,
-        ad_soyad: r.ad_soyad,
-        unvan_id: r.unvan_id,
-        unvan_adi: r.unvan_adi,
-        ogrenim_turu: r.ogrenim_turu,
-        kadro_derecesi: r.kadro_derecesi ?? null,
-        derece: khaGecerli ? kha : derece,
-        neden: 'tanim_yok',
-      })
-      continue
-    }
-
-    kontrolEdilen++
     const khaKural = khaGecerli ? kha : derece
-    let tanim = kazancTaniminiKuralla(
-      tanimHam,
-      kazancLookup,
-      terfiKaynaktanKuralOpts(r, khaKural, teknisyenEkGosterge),
-    )
+    let tanim: KazancPuan
     let vekilFarkKural: string | null = null
+
     if (r.vekil_mudur_fark_mi) {
       const fark = vekilMudurFarkHesapla({
         lookup: kazancLookup,
@@ -246,23 +279,35 @@ export function kazancSapmaHesapla(
           teknisyenEkGosterge,
         ),
         mudurOpts: terfiKaynaktanKuralOpts({ ...r, asil_mi: true }, khaKural, teknisyenEkGosterge),
+        yanCtx: {
+          kidemYili: r.kidem_yili,
+          thHizmetBaslangic: r.th_hizmet_baslangic,
+          bilgisayarKullaniyor: r.bilgisayar_kullaniyor,
+          kendiSinif: r.asil_unvan_sinif ?? null,
+          mudurSinif: r.unvan_sinif,
+        },
       })
       if (!fark) {
-        tanimsizlar.push({
-          sicil_no: r.sicil_no,
-          ad_soyad: r.ad_soyad,
-          unvan_id: r.unvan_id,
-          unvan_adi: r.unvan_adi,
-          ogrenim_turu: r.ogrenim_turu,
-          kadro_derecesi: r.kadro_derecesi ?? null,
-          derece: khaGecerli ? kha : derece,
-          neden: 'tanim_yok',
-        })
-        kontrolEdilen--
+        tanimsizlar.push(
+          tanimsizSatir(r, khaGecerli ? kha : derece, khaGecerli ? kha : derece, 'vekil_fark_tanim_yok'),
+        )
         continue
       }
       tanim = fark.fark
-      vekilFarkKural = 'Vekalet farkı (asil müdür − kendi unvan)'
+      vekilFarkKural = 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
+      kontrolEdilen++
+    } else {
+      const tanimHam = kazancLookup(r.unvan_id, r.ogrenim_id, derece)
+      if (!tanimHam) {
+        tanimsizlar.push(tanimsizSatir(r, khaGecerli ? kha : derece, khaGecerli ? kha : derece, 'tanim_yok'))
+        continue
+      }
+      kontrolEdilen++
+      tanim = kazancTaniminiKuralla(
+        tanimHam,
+        kazancLookup,
+        terfiKaynaktanKuralOpts(r, khaKural, teknisyenEkGosterge),
+      )
     }
     const thMi = unvanSinifiThMi(r.unvan_sinif)
     const kidem = thYanOdemeYilSec({

@@ -105,6 +105,7 @@ export function kazancTaniminiKuralla<
     oht?: string | null
     yan_odeme?: string | null
     yan_odeme_eksi5?: string | null
+    yan_odeme_bilgisayarsiz?: string | null
     sds_orani?: string | null
   },
 >(puan: T, lookup: KazancSatirLookup, opts: KazancKuralOpts): T {

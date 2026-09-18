@@ -412,6 +412,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
         asil_unvan_adi: asilUnvanAdi,
         asil_kadro_derecesi: asilKh.kadro_derecesi ?? null,
         asil_destek_yardimci_birim: asilUnvanId != null ? destekByUnvanId.get(asilUnvanId) === true : false,
+        asil_unvan_sinif: asilUnvanId != null ? (sinifByUnvanId.get(asilUnvanId) ?? null) : null,
       })
     }
   }
