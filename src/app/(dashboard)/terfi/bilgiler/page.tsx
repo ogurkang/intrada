@@ -61,6 +61,10 @@ export default async function TerfiBilgilerPage() {
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
 
   const terfiKayitlari = (kayitlar ?? []) as Tables<'terfi_hareketleri'>[]
+  const terfiGosterimKayitlari = terfiKayitlari.map(t => ({
+    ...t,
+    ad_soyad: calisanMap.get(t.sicil_no)?.ad_soyad?.trim() || t.sicil_no,
+  }))
   const terfiIndeks = terfiKayitlariIndeksle(terfiKayitlari)
   const sonTerfiBySicil = new Map<string, Tables<'terfi_hareketleri'>>()
   for (const t of [...terfiKayitlari].sort((a, b) => b.kayit_zamani.localeCompare(a.kayit_zamani))) {
@@ -171,7 +175,7 @@ export default async function TerfiBilgilerPage() {
     }
   }
 
-  const eslesmemis = ((kayitlar ?? []) as Tables<'terfi_hareketleri'>[])
+  const eslesmemis = terfiGosterimKayitlari
     .filter(k => k.kadro_id == null && !k.kapsam_disi)
     .sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, 'tr') || a.id - b.id)
 
@@ -334,7 +338,7 @@ export default async function TerfiBilgilerPage() {
 
   return (
     <TerfiClient
-      kayitlar={kayitlar ?? []}
+      kayitlar={terfiGosterimKayitlari}
       calisanlar={(calisanlar ?? []).map((c) => ({
         sicil_no: c.sicil_no,
         ad_soyad: c.ad_soyad ?? c.sicil_no,

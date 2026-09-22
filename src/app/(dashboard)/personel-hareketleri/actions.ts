@@ -107,16 +107,10 @@ async function terfiSenkronPersonelHareketinden(
   }
 
   if (!sonTerfi?.id) {
-    const { data: calisan } = await supabase
-      .from('calisan')
-      .select('ad_soyad')
-      .eq('sicil_no', sicil_no)
-      .maybeSingle()
     const { data: inserted, error: insertErr } = await supabase
       .from('terfi_hareketleri')
       .insert({
         sicil_no,
-        ad_soyad: calisan?.ad_soyad ?? null,
         rol: rolEtiket,
         kadro_id: ctx.kadro_id ?? null,
         kadro_sira_no: ctx.kadro_sira_no ?? null,

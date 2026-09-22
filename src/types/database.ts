@@ -1488,8 +1488,8 @@ export interface Database {
       }
       terfi_hareketleri: {
         Row: {
-          id: number; sicil_no: string; ad_soyad: string | null; rol: string | null
-          kadro_id: number | null; kadro_sira_no: string | null; unvan: string | null; mudurluk: string | null
+          id: number; sicil_no: string; rol: string | null
+          kadro_id: number | null; kadro_sira_no: string | null
           gorev_ayligi_derece: string | null; gorev_ayligi_kademe: string | null
           kha_derece: string | null; kha_kademe: string | null; kha_tarihi: string | null
           ekea_derece: string | null; ekea_kademe: string | null; ekea_tarihi: string | null
@@ -1500,8 +1500,8 @@ export interface Database {
           sds_orani: string | null; kayit_zamani: string; kapsam_disi: boolean
         }
         Insert: {
-          id?: number; sicil_no: string; ad_soyad?: string | null; rol?: string | null
-          kadro_id?: number | null; kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
+          id?: number; sicil_no: string; rol?: string | null
+          kadro_id?: number | null; kadro_sira_no?: string | null
           gorev_ayligi_derece?: string | null; gorev_ayligi_kademe?: string | null
           kha_derece?: string | null; kha_kademe?: string | null; kha_tarihi?: string | null
           ekea_derece?: string | null; ekea_kademe?: string | null; ekea_tarihi?: string | null
@@ -1512,8 +1512,8 @@ export interface Database {
           sds_orani?: string | null; kayit_zamani?: string; kapsam_disi?: boolean
         }
         Update: {
-          id?: number; sicil_no?: string; ad_soyad?: string | null; rol?: string | null
-          kadro_id?: number | null; kadro_sira_no?: string | null; unvan?: string | null; mudurluk?: string | null
+          id?: number; sicil_no?: string; rol?: string | null
+          kadro_id?: number | null; kadro_sira_no?: string | null
           gorev_ayligi_derece?: string | null; gorev_ayligi_kademe?: string | null
           kha_derece?: string | null; kha_kademe?: string | null; kha_tarihi?: string | null
           ekea_derece?: string | null; ekea_kademe?: string | null; ekea_tarihi?: string | null

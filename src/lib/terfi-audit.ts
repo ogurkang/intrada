@@ -8,11 +8,8 @@ import {
 import { YAN_ODEME_EKSI5_ETIKET } from '@/lib/kazanc-yan-odeme'
 
 export const TERFI_ALAN_ETIKETLERI: Record<string, string> = {
-  ad_soyad: 'Ad Soyad',
   rol: 'Rol',
   kadro_sira_no: 'Kadro Sıra No',
-  unvan: 'Ünvan',
-  mudurluk: 'Müdürlük',
   gorev_ayligi_derece: 'Görev Aylığı Derece',
   gorev_ayligi_kademe: 'Görev Aylığı Kademe',
   kha_derece: 'KHA Derece',
@@ -33,14 +30,14 @@ export const TERFI_ALAN_ETIKETLERI: Record<string, string> = {
 }
 
 export const TERFI_KATSAYI_ALAN_ETIKETLERI: Record<string, string> = Object.fromEntries(
-  Object.entries(TERFI_ALAN_ETIKETLERI).filter(([k]) => !['ad_soyad', 'rol', 'kadro_sira_no', 'unvan', 'mudurluk'].includes(k)),
+  Object.entries(TERFI_ALAN_ETIKETLERI).filter(([k]) => !['rol', 'kadro_sira_no'].includes(k)),
 )
 
 export const TERFI_AUDIT_SELECT =
   'gorev_ayligi_derece, gorev_ayligi_kademe, kha_derece, kha_kademe, kha_tarihi, ekea_derece, ekea_kademe, ekea_tarihi, kidem_yili, kidem_tarihi, iyi_hal_terfi_tarihi, ek_gosterge, ek_odeme, oht, yan_odeme_eksi5, yan_odeme, sds_orani'
 
 export const TERFI_AUDIT_SELECT_FULL =
-  `ad_soyad, rol, kadro_sira_no, unvan, mudurluk, ${TERFI_AUDIT_SELECT}`
+  `rol, kadro_sira_no, ${TERFI_AUDIT_SELECT}`
 
 const TARIH_ALANLARI = new Set(['kha_tarihi', 'ekea_tarihi', 'kidem_tarihi', 'iyi_hal_terfi_tarihi'])
 

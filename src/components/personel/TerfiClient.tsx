@@ -18,6 +18,7 @@ import {
 } from '@/lib/kazanc-tasinir-yetkili'
 
 type TH = Tables<'terfi_hareketleri'>
+type TerfiGosterim = TH & { ad_soyad: string | null }
 
 interface Calisan {
   sicil_no: string
@@ -55,10 +56,10 @@ interface KadroSecenek {
 }
 
 interface Props {
-  kayitlar:    TH[]
+  kayitlar:    TerfiGosterim[]
   calisanlar:  Calisan[]
   memurlar?:   MemurSatir[]
-  eslesmemis?: TH[]
+  eslesmemis?: TerfiGosterim[]
   kadroSecenekleriBySicil?: Record<string, KadroSecenek[]>
   onEkle:      (fd: FormData) => Promise<{ hata?: string }>
   onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
@@ -414,7 +415,6 @@ export default function TerfiClient({
     }
     const fd = new FormData()
     fd.set('sicil_no', row.sicil_no)
-    fd.set('ad_soyad', row.ad_soyad)
     if (row.kadro_rolu) fd.set('rol', row.kadro_rolu)
     if (row.kadro_sira_no) fd.set('kadro_sira_no', row.kadro_sira_no)
     if (row.kadro_id) fd.set('kadro_id', String(row.kadro_id))
@@ -492,7 +492,6 @@ export default function TerfiClient({
       return {
         id:                   mevcut?.id,
         sicil_no:             m.sicil_no,
-        ad_soyad:             m.ad_soyad,
         rol:                  m.kadro_rolu ?? mevcut?.rol ?? null,
         kadro_id:             m.kadro_id ?? mevcut?.kadro_id ?? null,
         kadro_sira_no:        m.kadro_sira_no ?? mevcut?.kadro_sira_no ?? null,
@@ -525,7 +524,8 @@ export default function TerfiClient({
 
   const s = secili
   const formSicilNo = s?.sicil_no ?? yeniSicilNo
-  const formAdSoyad = s?.ad_soyad ?? yeniAdSoyad
+  const formAdSoyad =
+    calisanlar.find(c => c.sicil_no === (s?.sicil_no ?? yeniSicilNo))?.ad_soyad ?? yeniAdSoyad
 
   return (
     <div>
@@ -1036,8 +1036,9 @@ export default function TerfiClient({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Ad Soyad</label>
-                <input name="ad_soyad" defaultValue={formAdSoyad}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                <input value={formAdSoyad} readOnly
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-700" />
+                <p className="mt-1 text-[11px] text-slate-400">Personel ana kaydından gelir; terfi kaydında ayrıca tutulmaz.</p>
               </div>
             </div>
           )}

@@ -31,15 +31,12 @@ export async function terfiEkle(fd: FormData): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const insertPayload = {
     sicil_no,
-    ad_soyad:               str(fd, 'ad_soyad'),
     rol:                    str(fd, 'rol'),
     kadro_id: (() => {
       const n = Number.parseInt(String(fd.get('kadro_id') ?? ''), 10)
       return Number.isFinite(n) && n > 0 ? n : null
     })(),
     kadro_sira_no:          str(fd, 'kadro_sira_no'),
-    unvan:                  str(fd, 'unvan'),
-    mudurluk:               str(fd, 'mudurluk'),
     gorev_ayligi_derece:    str(fd, 'gorev_ayligi_derece'),
     gorev_ayligi_kademe:    str(fd, 'gorev_ayligi_kademe'),
     kha_derece:             str(fd, 'kha_derece'),
@@ -174,7 +171,6 @@ export interface TerfiSatir {
   /** Mevcut terfi satırı varsa güncelleme; yoksa yeni insert. */
   id?: number | null
   sicil_no:             string
-  ad_soyad:             string | null
   rol?:                 string | null
   kadro_id?:            number | null
   kadro_sira_no?:       string | null
@@ -214,7 +210,6 @@ function terfiKatsayiPayload(s: TerfiSatir) {
     oht: s.oht,
     yan_odeme: s.yan_odeme,
     sds_orani: s.sds_orani,
-    ad_soyad: s.ad_soyad,
   }
 }
 
@@ -268,8 +263,6 @@ export async function terfiTopluKaydet(
           rol: s.rol ?? null,
           kadro_id: s.kadro_id ?? null,
           kadro_sira_no: s.kadro_sira_no ?? null,
-          unvan: null,
-          mudurluk: null,
           ...payload,
         })
         .select('id')
@@ -309,7 +302,7 @@ export async function terfiKadroyaBagla(
 
   const { data: terfi, error: terfiErr } = await supabase
     .from('terfi_hareketleri')
-    .select('id, sicil_no, ad_soyad, kadro_id, rol, kadro_sira_no')
+    .select('id, sicil_no, kadro_id, rol, kadro_sira_no')
     .eq('id', id)
     .maybeSingle()
   if (terfiErr) return { hata: terfiErr.message }
@@ -378,7 +371,7 @@ export async function terfiKapsamDisiYap(
   const supabase = await createClient()
   const { data: mevcut, error: selErr } = await supabase
     .from('terfi_hareketleri')
-    .select('id, sicil_no, ad_soyad, kadro_id, kapsam_disi')
+    .select('id, sicil_no, kadro_id, kapsam_disi')
     .eq('id', id)
     .maybeSingle()
   if (selErr) return { hata: selErr.message }
