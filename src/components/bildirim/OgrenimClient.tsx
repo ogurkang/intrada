@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
+import OgrenimIsaretAciklama from '@/components/bildirim/OgrenimIsaretAciklama'
 import { CopKutusuSilDugmesi, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { ogrenimAuditDegerGoster, ogrenimAuditDiffSatirlari } from '@/lib/ogrenim-audit'
@@ -286,9 +287,15 @@ export default function OgrenimClient({
               <th className="text-left px-4 py-3 font-semibold text-slate-600 min-w-[8rem]">Okul / Bölüm</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">Mesleği</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Mezuniyet Tarihi</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Varsayılan</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Kadrosu İle İlgili</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Teknik Öğrenim</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">
+                <span className="inline-flex items-center gap-1">Varsayılan <OgrenimIsaretAciklama tur="varsayilan" /></span>
+              </th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">
+                <span className="inline-flex items-center gap-1">Kadrosu İle İlgili <OgrenimIsaretAciklama tur="kadrosu_ile_ilgili" /></span>
+              </th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">
+                <span className="inline-flex items-center gap-1">Teknik Öğrenim <OgrenimIsaretAciklama tur="teknik_ogrenim" /></span>
+              </th>
               {sekme === 'liste' && (
                 <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               )}
@@ -513,8 +520,9 @@ export default function OgrenimClient({
                 defaultChecked={k.varsayilan ?? k.aktif}
                 className="w-4 h-4 rounded border-slate-300"
               />
-              <label htmlFor="varsayilan_cb" className="text-sm text-slate-700">
+              <label htmlFor="varsayilan_cb" className="inline-flex items-center gap-1.5 text-sm text-slate-700">
                 Varsayılan öğrenim
+                <OgrenimIsaretAciklama tur="varsayilan" />
               </label>
             </div>
             <div className="flex items-center gap-2">
@@ -525,8 +533,9 @@ export default function OgrenimClient({
                 defaultChecked={k.kadrosu_ile_ilgili ?? false}
                 className="w-4 h-4 rounded border-slate-300"
               />
-              <label htmlFor="kadrosu_ile_ilgili_cb" className="text-sm text-slate-700">
+              <label htmlFor="kadrosu_ile_ilgili_cb" className="inline-flex items-center gap-1.5 text-sm text-slate-700">
                 Kadrosu ile ilgili
+                <OgrenimIsaretAciklama tur="kadrosu_ile_ilgili" />
               </label>
             </div>
             <div className="flex items-center gap-2">
@@ -537,8 +546,9 @@ export default function OgrenimClient({
                 defaultChecked={k.teknik_ogrenim ?? false}
                 className="w-4 h-4 rounded border-slate-300"
               />
-              <label htmlFor="teknik_ogrenim_cb" className="text-sm text-slate-700">
+              <label htmlFor="teknik_ogrenim_cb" className="inline-flex items-center gap-1.5 text-sm text-slate-700">
                 Teknik Öğrenim
+                <OgrenimIsaretAciklama tur="teknik_ogrenim" />
               </label>
             </div>
             {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}

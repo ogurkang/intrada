@@ -149,6 +149,11 @@ export async function yukleTerfiEttirKaynakVeKazanc(
   })
 
   const kadroMap = new Map((kadroOzet ?? []).map((k) => [k.sicil_no, k]))
+  // Ad-soyad için tek güncel kaynak `calisan` tablosudur. Terfi hareketindeki
+  // tarihsel kopya, personel kartında yapılan ad değişikliğini gölgelememeli.
+  const calisanAdBySicil = new Map(
+    (calisanlar ?? []).map((c) => [c.sicil_no, c.ad_soyad?.trim() || c.sicil_no]),
+  )
   const yetkinlikBySicil = new Map<string, boolean | null>()
   const thHizmetBySicil = new Map<string, string | null>()
   const yuruttuguUnvanIdBySicil = new Map<string, number | null>()
@@ -292,7 +297,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     const yurutId = yuruttuguUnvanIdBySicil.get(sicil_no) ?? null
     kaynaklar.push({
       sicil_no,
-      ad_soyad: t.ad_soyad ?? k?.ad_soyad ?? sicil_no,
+      ad_soyad: calisanAdBySicil.get(sicil_no) ?? k?.ad_soyad ?? t.ad_soyad ?? sicil_no,
       unvan_adi:
         (unvanId != null ? unvanAdiById.get(unvanId) : undefined) ??
         kadroUnvaniBySicil.get(sicil_no) ??
@@ -456,7 +461,7 @@ export async function yukleTerfiEttirKaynakVeKazanc(
       const k = kadroMap.get(sicil_no)
       return {
         sicil_no,
-        ad_soyad: terfiMap[sicil_no]?.ad_soyad ?? k?.ad_soyad ?? sicil_no,
+        ad_soyad: calisanAdBySicil.get(sicil_no) ?? k?.ad_soyad ?? terfiMap[sicil_no]?.ad_soyad ?? sicil_no,
         alt: ogrenimTuruBySicil.get(sicil_no) ? `Öğrenim: ${ogrenimTuruBySicil.get(sicil_no)}` : undefined,
       }
     })

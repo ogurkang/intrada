@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import type { OgrenimSatirInput } from '@/app/(dashboard)/bildirim/ogrenim/actions'
 import { ogrenimSatirlariEkle } from '@/app/(dashboard)/bildirim/ogrenim/actions'
+import OgrenimIsaretAciklama from '@/components/bildirim/OgrenimIsaretAciklama'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 
 type Satir = OgrenimSatirInput
@@ -219,6 +220,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
                 onChange={(e) => satirDegistir(idx, { varsayilan: e.target.checked })}
               />
               Varsayılan öğrenim
+              <OgrenimIsaretAciklama tur="varsayilan" />
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 mt-6 md:col-span-2 xl:col-span-1">
               <input
@@ -227,6 +229,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
                 onChange={(e) => satirDegistir(idx, { kadrosu_ile_ilgili: e.target.checked })}
               />
               Kadrosu ile ilgili
+              <OgrenimIsaretAciklama tur="kadrosu_ile_ilgili" />
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700 mt-6 md:col-span-2 xl:col-span-1">
               <input
@@ -235,6 +238,7 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
                 onChange={(e) => satirDegistir(idx, { teknik_ogrenim: e.target.checked })}
               />
               Teknik Öğrenim
+              <OgrenimIsaretAciklama tur="teknik_ogrenim" />
             </label>
             <div className="flex items-end justify-end md:col-span-2 xl:col-span-3">
               <button type="button" onClick={() => satirSil(idx)} className="text-sm text-red-600" disabled={satirlar.length <= 1}>

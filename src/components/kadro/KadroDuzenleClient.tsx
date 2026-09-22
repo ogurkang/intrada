@@ -134,13 +134,37 @@ function sel(d: Kadro | null, name: string, label: string, options: string[]) {
   )
 }
 
-function selUnvanId(d: Kadro | null, label: string, liste: UnvanSecenek[], alan: 'kadro' | 'gorev') {
-  const nameId = alan === 'kadro' ? 'kadro_unvan_id' : 'gorev_unvan_id'
-  const val = defaultUnvanSelectId(d, liste, alan)
+function selControlled(
+  name: string,
+  label: string,
+  options: string[],
+  value: string,
+  onChange: (value: string) => void,
+) {
   return (
     <div>
       <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
-      <select name={nameId} defaultValue={val}
+      <select name={name} value={value} onChange={e => onChange(e.target.value)}
+        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
+        <option value="">—</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
+}
+
+function selUnvanId(
+  label: string,
+  liste: UnvanSecenek[],
+  alan: 'kadro' | 'gorev',
+  value: string,
+  onChange: (value: string) => void,
+) {
+  const nameId = alan === 'kadro' ? 'kadro_unvan_id' : 'gorev_unvan_id'
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <select name={nameId} value={value} onChange={e => onChange(e.target.value)}
         className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500">
         <option value="">—</option>
         {liste.map(u => (
@@ -163,6 +187,10 @@ export default function KadroDuzenleClient({
   const [statu, setStatu] = useState(d.statu ?? '')
   const [iptalKararTarihi, setIptalKararTarihi] = useState(d.iptal_karar_tarihi ?? '')
   const [iptalKararNo, setIptalKararNo] = useState(d.iptal_karar_no ?? '')
+  const [kadroUnvanId, setKadroUnvanId] = useState(defaultUnvanSelectId(d, unvanlar, 'kadro'))
+  const [gorevUnvanId, setGorevUnvanId] = useState(defaultUnvanSelectId(d, unvanlar, 'gorev'))
+  const [kadroMudurlugu, setKadroMudurlugu] = useState(d.kadro_mudurlugu ?? '')
+  const [gorevMudurlugu, setGorevMudurlugu] = useState(d.gorev_mudurlugu ?? '')
 
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const hesaplananDurum = iptalMi ? 'İptal' : kadroDurumuHesapla(asilSicil, vekilSicil)
@@ -228,10 +256,16 @@ export default function KadroDuzenleClient({
                 </select>
               </div>
               {input(d, 'kadro_derecesi', 'Kadro Derecesi', { placeholder: '1, 2 ...' })}
-              {selUnvanId(d, 'Kadro Ünvanı', unvanlar, 'kadro')}
-              {sel(d, 'kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler)}
-              {selUnvanId(d, 'Görev Ünvanı', unvanlar, 'gorev')}
-              {sel(d, 'gorev_mudurlugu', 'Görev Müdürlüğü', mudurluler)}
+              {selUnvanId('Kadro Ünvanı', unvanlar, 'kadro', kadroUnvanId, value => {
+                setKadroUnvanId(value)
+                setGorevUnvanId(value)
+              })}
+              {selControlled('kadro_mudurlugu', 'Kadro Müdürlüğü', mudurluler, kadroMudurlugu, value => {
+                setKadroMudurlugu(value)
+                setGorevMudurlugu(value)
+              })}
+              {selUnvanId('Görev Ünvanı', unvanlar, 'gorev', gorevUnvanId, setGorevUnvanId)}
+              {selControlled('gorev_mudurlugu', 'Görev Müdürlüğü', mudurluler, gorevMudurlugu, setGorevMudurlugu)}
             </div>
           </div>
           <hr className="border-slate-100" />
