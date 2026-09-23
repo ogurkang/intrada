@@ -107,6 +107,7 @@ interface Props {
   popup?: boolean
   yeniKayit?: boolean
   initialHareketTipi?: string
+  initialSicil?: string
   saltOkunur?: boolean
   onKaydet: (fd: FormData) => Promise<{ hata?: string }>
 }
@@ -129,6 +130,7 @@ export default function PersonelHareketiDegistirClient({
   popup = false,
   yeniKayit = false,
   initialHareketTipi = '',
+  initialSicil = '',
   saltOkunur = false,
   onKaydet,
 }: Props) {
@@ -283,6 +285,17 @@ export default function PersonelHareketiDegistirClient({
     const qs = q.toString()
     window.history.replaceState(null, '', `/personel-hareketleri/ekle${qs ? `?${qs}` : ''}`)
   }
+
+  useEffect(() => {
+    if (!yeniKayit || personelState || !initialSicil) return
+    if (!personeller.some(p => p.sicil_no === initialSicil)) {
+      setHata(`Sicil ${initialSicil} personel listesinde bulunamadı.`)
+      return
+    }
+    void personelSec(initialSicil)
+    // İlk açılışta yönlendirmeden gelen personeli bir kez yükler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSicil, yeniKayit])
 
   const bosKadrolarSirali = useMemo(() => {
     return [...bosKadrolarState].sort((a, b) => {

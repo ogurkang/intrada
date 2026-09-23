@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { calisanEkle } from '@/app/(dashboard)/personel/actions'
 import GorevYeriListeGuncellendiModal from '@/components/rapor/GorevYeriListeGuncellendiModal'
 import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
-import { personelDetayHref } from '@/lib/personel-link'
 import PersonelAdresAlanlari from '@/components/personel/PersonelAdresAlanlari'
 import type { MahalleTanimSatir } from '@/lib/personel-adres'
 import {
@@ -25,6 +24,10 @@ const inputCls =
   'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500'
 const selectCls = `${inputCls} bg-white`
 const labelCls = 'block text-sm font-medium text-slate-700 mb-1'
+
+function personelKayitSonrasiHref(sicilNo: string): string {
+  return `/bildirim/ogrenim/yeni?sicil=${encodeURIComponent(sicilNo)}&onboarding=1`
+}
 
 function BolumBaslik({ children }: { children: React.ReactNode }) {
   return (
@@ -65,10 +68,10 @@ export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitl
           window.close()
         } else {
           router.push(
-            res.public_id
-              ? `/link/${res.public_id}`
-              : res.sicil_no
-                ? personelDetayHref({ sicil_no: res.sicil_no })
+            res.sicil_no
+              ? personelKayitSonrasiHref(res.sicil_no)
+              : res.public_id
+                ? `/link/${res.public_id}`
                 : '/personel',
           )
         }
@@ -83,10 +86,10 @@ export default function PersonelYeniClient({ mahalleKayitlari }: { mahalleKayitl
     if (window.opener) {
       window.opener.postMessage('refresh', '*')
       window.close()
+    } else if (sonuc?.sicil_no) {
+      router.push(personelKayitSonrasiHref(sonuc.sicil_no))
     } else if (sonuc?.public_id) {
       router.push(`/link/${sonuc.public_id}`)
-    } else if (sonuc?.sicil_no) {
-      router.push(personelDetayHref({ sicil_no: sonuc.sicil_no }))
     } else {
       router.push('/personel')
     }

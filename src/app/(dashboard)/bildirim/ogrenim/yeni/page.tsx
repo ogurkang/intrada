@@ -4,7 +4,14 @@ import OgrenimYeniClient from '@/components/bildirim/OgrenimYeniClient'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 
-export default async function OgrenimYeniPage() {
+export default async function OgrenimYeniPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ sicil?: string; onboarding?: string }>
+}) {
+  const sp = await searchParams?.catch(() => ({} as { sicil?: string; onboarding?: string }))
+  const initialSicil = String(sp?.sicil ?? '').trim()
+  const onboarding = sp?.onboarding === '1'
   const supabase = await createClient()
 
   const [{ data: calisanRaw }, { data: phRaw }, { data: ogrenimTurleri }] = await Promise.all([
@@ -45,6 +52,8 @@ export default async function OgrenimYeniPage() {
 
       <OgrenimYeniClient
         personeller={personeller as { sicil_no: string; ad_soyad: string }[]}
+        initialSicil={initialSicil}
+        onboarding={onboarding}
         ogrenimTurleri={sortTanimOgrenimByIsim(
           (ogrenimTurleri ?? []) as { id: number; isim: string }[],
         )}

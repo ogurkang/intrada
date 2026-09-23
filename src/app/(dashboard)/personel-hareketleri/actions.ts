@@ -787,5 +787,10 @@ export async function personelHareketKazancKiyasla(
       : str(formData, 'eski_unvan'),
     kendiKadroDerecesi: asilKadro?.kadro_derecesi ?? str(formData, 'eski_kadro_derecesi'),
   })
+  if (sonuc.satirlar.length === 0) {
+    return {
+      hata: sonuc.aciklama ?? 'Kazanç kuralı hesaplanamadı. Eksik bilgileri tamamlamadan personel hareketi kaydedilemez.',
+    }
+  }
   return sonuc
 }

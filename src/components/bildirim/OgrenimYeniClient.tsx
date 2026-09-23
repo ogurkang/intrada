@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type { OgrenimSatirInput } from '@/app/(dashboard)/bildirim/ogrenim/actions'
 import { ogrenimSatirlariEkle } from '@/app/(dashboard)/bildirim/ogrenim/actions'
 import OgrenimIsaretAciklama from '@/components/bildirim/OgrenimIsaretAciklama'
@@ -24,11 +25,21 @@ function bosSatir(ogrenimTurleri: { isim: string }[]): Satir {
 interface Props {
   personeller: { sicil_no: string; ad_soyad: string }[]
   ogrenimTurleri: { id: number; isim: string }[]
+  initialSicil?: string
+  onboarding?: boolean
 }
 
-export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props) {
+export default function OgrenimYeniClient({
+  personeller,
+  ogrenimTurleri,
+  initialSicil = '',
+  onboarding = false,
+}: Props) {
+  const router = useRouter()
   const [sicilArama, setSicilArama] = useState('')
-  const [secilenSicil, setSecilenSicil] = useState('')
+  const [secilenSicil, setSecilenSicil] = useState(() =>
+    personeller.some(p => p.sicil_no === initialSicil) ? initialSicil : '',
+  )
   const [aramaAcik, setAramaAcik] = useState(false)
   const [satirlar, setSatirlar] = useState<Satir[]>(() =>
     ogrenimTurleri.length ? [bosSatir(ogrenimTurleri)] : []
@@ -70,11 +81,19 @@ export default function OgrenimYeniClient({ personeller, ogrenimTurleri }: Props
       setHata('En az bir satırda öğrenim türü veya okul bilgisi girin.')
       return
     }
+    if (onboarding && dolu.filter(s => s.varsayilan).length !== 1) {
+      setHata('Kazanç hesabı için öğrenim kayıtlarından tam olarak birini Varsayılan seçin.')
+      return
+    }
     startTransition(async () => {
       const res = await ogrenimSatirlariEkle(secilenSicil, dolu)
       if (res.hata) setHata(res.hata)
       else {
         broadcastIntradaRefresh('ogrenim')
+        if (onboarding) {
+          router.push(`/personel/${encodeURIComponent(secilenSicil)}/hazirlik`)
+          return
+        }
         if (typeof window !== 'undefined' && window.opener) {
           try {
             window.opener.postMessage({ source: 'intrada-ogrenim-yeni', type: 'refresh' }, window.location.origin)
