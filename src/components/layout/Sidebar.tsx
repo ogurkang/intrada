@@ -418,9 +418,22 @@ function buildMenuGroups(
     icon: '🦺',
     accordion: true,
     items: [
-      { href: '/isg/islemler', label: 'İşlemler' },
+      {
+        href: '/isg/islemler',
+        label: 'İşlemler',
+        children: [
+          { href: '/isg/islemler/saglik-taramasi', label: 'Sağlık Taraması' },
+          { href: '/isg/islemler/tespit-oneri', label: 'Tespit ve Öneri' },
+        ],
+      },
       { href: '/isg/raporlar', label: 'Raporlar' },
-      { href: '/isg/tanimlar', label: 'Tanımlar' },
+      {
+        href: '/isg/tanimlar',
+        label: 'Tanımlar',
+        children: [
+          { href: '/isg/tanimlar/durum', label: 'İSG Durum Tanımları' },
+        ],
+      },
     ],
   },
   {
