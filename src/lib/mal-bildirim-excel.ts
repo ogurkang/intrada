@@ -528,6 +528,92 @@ export interface MalExcelPersonelBilgi {
   gorevUnvani: string
 }
 
+/** Şablondaki veri satırları (başlık satırları hariç). Fazla kayıtta bu aralığın sonuna satır eklenir. */
+const SABLON_VERI_BOLUMLERI = [
+  { id: 'kimlik', start: 8, end: 14 },
+  { id: 'tasinmaz', start: 17, end: 25 },
+  { id: 'kooperatif', start: 28, end: 30 },
+  { id: 'tasit', start: 34, end: 40 },
+  { id: 'diger', start: 43, end: 50 },
+  { id: 'banka', start: 53, end: 60 },
+  { id: 'altin', start: 63, end: 66 },
+  { id: 'borc', start: 69, end: 73 },
+  { id: 'haklar', start: 76, end: 78 },
+] as const
+
+type SablonBirlestirme = { top: number; left: number; bottom: number; right: number }
+
+function sablonBirlestirmeleriOku(ws: Worksheet): SablonBirlestirme[] {
+  const ham = (ws as unknown as { _merges?: Record<string, SablonBirlestirme> })._merges ?? {}
+  return Object.values(ham).filter(m => m && m.top > 0)
+}
+
+function sablonBirlestirmeleriUygula(ws: Worksheet, liste: SablonBirlestirme[]) {
+  const ham = (ws as unknown as { _merges?: Record<string, SablonBirlestirme> })._merges ?? {}
+  for (const m of Object.values(ham)) {
+    if (!m?.top) continue
+    try {
+      ws.unMergeCells(m.top, m.left, m.bottom, m.right)
+    } catch {
+      /* duplicateRow birleştirmeleri kaydırmaz; kalanlar silinir */
+    }
+  }
+  for (const anahtar of Object.keys(ham)) delete ham[anahtar]
+  for (const m of liste) {
+    if (m.bottom < m.top || m.right < m.left) continue
+    if (m.top === m.bottom && m.left === m.right) continue
+    ws.mergeCells(m.top, m.left, m.bottom, m.right)
+  }
+}
+
+/** `sonVeriSatiri` sonrasına `adet` satır ekler; alttaki bölümler ve birleştirmeler kayar. */
+function sablonVeriSatiriEkle(
+  ws: Worksheet,
+  sonVeriSatiri: number,
+  adet: number,
+  birlestirmeler: SablonBirlestirme[],
+): SablonBirlestirme[] {
+  if (adet <= 0) return birlestirmeler
+  ws.duplicateRow(sonVeriSatiri, adet, true)
+  const ekBaslangic = sonVeriSatiri + 1
+  const sonraki: SablonBirlestirme[] = []
+  for (const m of birlestirmeler) {
+    if (m.bottom < ekBaslangic) sonraki.push(m)
+    else if (m.top >= ekBaslangic) sonraki.push({ ...m, top: m.top + adet, bottom: m.bottom + adet })
+    else sonraki.push({ ...m, bottom: m.bottom + adet })
+  }
+  const ornek = birlestirmeler.filter(m => m.top === sonVeriSatiri && m.bottom === sonVeriSatiri)
+  for (let i = 0; i < adet; i++) {
+    const satir = ekBaslangic + i
+    for (const m of ornek) {
+      sonraki.push({ top: satir, left: m.left, bottom: satir, right: m.right })
+    }
+  }
+  sablonBirlestirmeleriUygula(ws, sonraki)
+  return sonraki
+}
+
+/**
+ * Şablondaki ayrılmış satırdan fazla kayıt varsa satır ekler.
+ * Alttan üste eklenir; böylece üst bölümlerin şablon satır numaraları bozulmaz.
+ * Dönüş: her bölümün yazılacağı ilk satır ve altbilginin (açıklama, satır 80) kayma miktarı.
+ */
+function sablonBolumleriniGenislet(ws: Worksheet, kayitSayilari: Record<string, number>) {
+  let birlestirmeler = sablonBirlestirmeleriOku(ws)
+  for (let i = SABLON_VERI_BOLUMLERI.length - 1; i >= 0; i--) {
+    const bolum = SABLON_VERI_BOLUMLERI[i]
+    const fazla = Math.max(0, (kayitSayilari[bolum.id] ?? 0) - (bolum.end - bolum.start + 1))
+    birlestirmeler = sablonVeriSatiriEkle(ws, bolum.end, fazla, birlestirmeler)
+  }
+  let kayma = 0
+  const baslangic: Record<string, number> = {}
+  for (const bolum of SABLON_VERI_BOLUMLERI) {
+    baslangic[bolum.id] = bolum.start + kayma
+    kayma += Math.max(0, (kayitSayilari[bolum.id] ?? 0) - (bolum.end - bolum.start + 1))
+  }
+  return { baslangic, altbilgiKayma: kayma }
+}
+
 /** Şablonda bölümler arası ayrılan satır sayıları (taşınmaz 17–27 = 11 satır vb.) */
 const RES_COK_SATIR = {
   kimlik: 8,
@@ -734,21 +820,38 @@ export function malBildirimSablonHucreEslestir(
   const sonNetFmt = sonNet != null && sonNet > 0 ? malFormatTrNumber(sonNet) : ''
   const sonNetX5 = sonNet != null && sonNet > 0 ? malFormatTrNumber(sonNet * 5) : ''
 
-  /* Aşama 1 — şablon: G2 görev, G3 sicil, U3 TC, D5 net maaş, T5 ×5; Bölüm-1 satır 8+; A80 açıklama; U81–U83 onay */
+  /* Aşama 1 — şablon hücreleri. Ayrılan satırdan fazla kayıt varsa satır eklenir, alttaki bölümler kayar. */
   if (asama === 1) {
-    if (mod === 'coksatir') {
-      malBildirimAsama1CokSatirli(ws, kayit, p, sonNetFmt, sonNetX5)
-      return
-    }
+    void mod
+    const kimlikSatirlar = kimlikJsonToExcelSatirlar(kayit.kimlik_json)
+    const tasinmSatirlar = tasinmazJsonToExcelSatirlar(kayit.tasinmaz_json, kayit.kimlik_json)
+    const koopSatirlar = kooperatifJsonToExcelSatirlar(kayit.kooperatif_json, kayit.kimlik_json)
+    const tasitSatirlar = tasitJsonToExcelSatirlar(kayit.tasitlar_json, kayit.kimlik_json)
+    const digerSatirlar = digerTasinirJsonToExcelSatirlar(kayit.diger_tasinirlar_json, kayit.kimlik_json)
+    const bankaSatirlar = bankaMenkulJsonToExcelSatirlar(kayit.banka_menkul_json, kayit.kimlik_json)
+    const altinSatirlar = altinMucevherJsonToExcelSatirlar(kayit.altin_mucevher_json, kayit.kimlik_json)
+    const borcSatirlar = borcAlacakJsonToExcelSatirlar(kayit.borc_alacak_json)
+    const haklarSatirlar = haklarJsonToExcelSatirlar(kayit.haklar_json, kayit.kimlik_json)
+    const { baslangic, altbilgiKayma } = sablonBolumleriniGenislet(ws, {
+      kimlik: kimlikSatirlar.length,
+      tasinmaz: tasinmSatirlar.length,
+      kooperatif: koopSatirlar.length,
+      tasit: tasitSatirlar.length,
+      diger: digerSatirlar.length,
+      banka: bankaSatirlar.length,
+      altin: altinSatirlar.length,
+      borc: borcSatirlar.length,
+      haklar: haklarSatirlar.length,
+    })
+
     hucreYaz(ws, 'G', 2, p.gorevUnvani || p.kadroUnvani)
     hucreYaz(ws, 'G', 3, kayit.sicil_no)
     hucreYazMetin(ws, 'U3', p.tckn)
     hucreYazMetin(ws, 'D5', sonNetFmt)
     hucreYazMetin(ws, 'T5', sonNetX5)
 
-    const kimlikSatirlar = kimlikJsonToExcelSatirlar(kayit.kimlik_json)
     kimlikSatirlar.forEach((row, i) => {
-      const rr = 8 + i
+      const rr = baslangic.kimlik + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `C${rr}`, row.adSoyad)
       hucreYazMetin(ws, `I${rr}`, row.dogumTarihi)
@@ -757,16 +860,16 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `T${rr}`, row.tckn)
     })
 
+    const aciklamaSatiri = 80 + altbilgiKayma
     const aciklama = str(kayit.aciklama)
-    if (aciklama) hucreYazMetin(ws, 'A80', aciklama)
+    if (aciklama) hucreYazMetin(ws, `A${aciklamaSatiri}`, aciklama)
 
-    hucreYazMetin(ws, 'U81', p.adSoyad || '')
-    hucreYazMetin(ws, 'U82', formatTarihTrGunAyYil(kayit.onay_tarihi))
-    hucreYazMetin(ws, 'U83', str(kayit.beyan_turu))
+    hucreYazMetin(ws, `U${aciklamaSatiri + 1}`, p.adSoyad || '')
+    hucreYazMetin(ws, `U${aciklamaSatiri + 2}`, formatTarihTrGunAyYil(kayit.onay_tarihi))
+    hucreYazMetin(ws, `U${aciklamaSatiri + 3}`, str(kayit.beyan_turu))
 
-    const tasinmSatirlar = tasinmazJsonToExcelSatirlar(kayit.tasinmaz_json, kayit.kimlik_json)
     tasinmSatirlar.forEach((tRow, i) => {
-      const rr = 17 + i
+      const rr = baslangic.tasinmaz + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `C${rr}`, tRow.cins)
       hucreYazMetin(ws, `D${rr}`, tRow.adres)
@@ -776,9 +879,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `U${rr}`, tRow.malikTc)
     })
 
-    const koopSatirlar = kooperatifJsonToExcelSatirlar(kayit.kooperatif_json, kayit.kimlik_json)
     koopSatirlar.forEach((kRow, i) => {
-      const rr = 28 + i
+      const rr = baslangic.kooperatif + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `C${rr}`, kRow.adiYeri)
       hucreYazMetin(ws, `N${rr}`, kRow.hisseDegeri)
@@ -786,9 +888,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `V${rr}`, kRow.hissedarTc)
     })
 
-    const tasitSatirlar = tasitJsonToExcelSatirlar(kayit.tasitlar_json, kayit.kimlik_json)
     tasitSatirlar.forEach((row, i) => {
-      const rr = 34 + i
+      const rr = baslangic.tasit + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `C${rr}`, row.cins)
       hucreYazMetin(ws, `D${rr}`, row.plaka)
@@ -799,9 +900,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `T${rr}`, row.sahipTc)
     })
 
-    const digerSatirlar = digerTasinirJsonToExcelSatirlar(kayit.diger_tasinirlar_json, kayit.kimlik_json)
     digerSatirlar.forEach((row, i) => {
-      const rr = 43 + i
+      const rr = baslangic.diger + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `C${rr}`, row.cinsi)
       hucreYazMetin(ws, `J${rr}`, row.modelYili)
@@ -810,9 +910,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `T${rr}`, row.sahipTc)
     })
 
-    const bankaSatirlar = bankaMenkulJsonToExcelSatirlar(kayit.banka_menkul_json, kayit.kimlik_json)
     bankaSatirlar.forEach((row, i) => {
-      const rr = 53 + i
+      const rr = baslangic.banka + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `B${rr}`, row.nitelik)
       hucreYazMetin(ws, `D${rr}`, row.cinsi)
@@ -822,9 +921,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `U${rr}`, row.sahipTc)
     })
 
-    const altinSatirlar = altinMucevherJsonToExcelSatirlar(kayit.altin_mucevher_json, kayit.kimlik_json)
     altinSatirlar.forEach((row, i) => {
-      const rr = 63 + i
+      const rr = baslangic.altin + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `B${rr}`, row.cinsi)
       hucreYazMetin(ws, `D${rr}`, row.turu)
@@ -834,9 +932,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `U${rr}`, row.sahipTc)
     })
 
-    const borcSatirlar = borcAlacakJsonToExcelSatirlar(kayit.borc_alacak_json)
     borcSatirlar.forEach((row, i) => {
-      const rr = 69 + i
+      const rr = baslangic.borc + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `B${rr}`, row.borclu)
       hucreYazMetin(ws, `G${rr}`, row.alacakli)
@@ -846,9 +943,8 @@ export function malBildirimSablonHucreEslestir(
       hucreYazMetin(ws, `U${rr}`, row.tutarFmt)
     })
 
-    const haklarSatirlar = haklarJsonToExcelSatirlar(kayit.haklar_json, kayit.kimlik_json)
     haklarSatirlar.forEach((row, i) => {
-      const rr = 76 + i
+      const rr = baslangic.haklar + i
       hucreYaz(ws, 'A', rr, String(i + 1))
       hucreYazMetin(ws, `B${rr}`, row.unsur)
       hucreYazMetin(ws, `M${rr}`, row.edinmeSekli)
