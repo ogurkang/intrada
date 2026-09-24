@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { IsgYonlendiriciDugme } from '@/components/isg/IsgYonlendiriciDugme'
 
 type Props = {
   baslik: string
@@ -28,35 +29,28 @@ export default function IsgRaporUstBaslik({
   onYilChange,
 }: Props) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="max-w-4xl">
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
-        {aciklama ? <p className="text-sm text-slate-600 mt-1">{aciklama}</p> : null}
+        {aciklama ? <p className="mt-1 text-sm text-slate-600">{aciklama}</p> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2 justify-end shrink-0">
-        {geriHref ? (
-          <Link
-            href={geriHref}
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
-          >
-            {geriLabel}
-          </Link>
-        ) : null}
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {geriHref ? <IsgYonlendiriciDugme href={geriHref}>{geriLabel}</IsgYonlendiriciDugme> : null}
         {excelHref ? (
           <Link
             href={excelHref}
-            className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+            className="inline-flex items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
           >
             {excelLabel}
           </Link>
         ) : null}
         {yil != null && onYilChange ? (
           <>
-            <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
+            <label className="whitespace-nowrap text-sm text-slate-600">Yıl</label>
             <select
               value={yil}
               onChange={e => onYilChange(Number(e.target.value))}
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             >
               {Array.from({ length: maxYil - minYil + 1 }, (_, i) => minYil + i).map(y => (
                 <option key={y} value={y}>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { IsgYonlendiriciDugme } from '@/components/isg/IsgYonlendiriciDugme'
 
 export type IsgIslemHubSatir = {
   id: string
@@ -29,28 +30,23 @@ export default function IsgIslemlerHubClient({
 }: Props) {
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <Link
-            href={geriHref}
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
-          >
-            {geriLabel}
-          </Link>
           <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{aciklama}</p>
+          <p className="mt-0.5 text-sm text-slate-500">{aciklama}</p>
         </div>
+        <IsgYonlendiriciDugme href={geriHref}>{geriLabel}</IsgYonlendiriciDugme>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {satirlar.map(r => (
           <Link
             key={r.id}
             href={r.href}
-            className={`rounded-xl border p-5 ${r.renk ?? DEFAULT_RENK} hover:shadow-md transition-shadow`}
+            className={`rounded-xl border p-5 ${r.renk ?? DEFAULT_RENK} transition-shadow hover:shadow-md`}
           >
-            <h2 className="font-semibold text-slate-800 leading-snug">{r.baslik}</h2>
-            <p className="text-xs opacity-80 mt-3 mb-4 leading-relaxed">{r.aciklama}</p>
+            <h2 className="font-semibold leading-snug text-slate-800">{r.baslik}</h2>
+            <p className="mb-4 mt-3 text-xs leading-relaxed opacity-80">{r.aciklama}</p>
             <span className="text-xs font-medium opacity-90">Yönet →</span>
           </Link>
         ))}

@@ -1,20 +1,17 @@
-import Link from 'next/link'
 import { ISG_DURUM_TANIMLARI } from '@/lib/isg-tespit-oneri'
+import { IsgYonlendiriciDugme } from '@/components/isg/IsgYonlendiriciDugme'
 
 export default function IsgDurumTanimlariPage() {
   return (
     <div>
-      <div className="mb-6">
-        <Link
-          href="/isg/tanimlar"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-        >
-          ← Tanımlar
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-800">İSG Durum Tanımları</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Tespit ve öneri kayıtlarında kullanılan ilerleme aşamaları. Her aşama %25 oranındadır.
-        </p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-slate-800">İSG Durum Tanımları</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Tespit ve öneri kayıtlarında kullanılan ilerleme aşamaları. Her aşama %25 oranındadır.
+          </p>
+        </div>
+        <IsgYonlendiriciDugme href="/isg/tanimlar">← Tanımlar</IsgYonlendiriciDugme>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import Modal from '@/components/ui/Modal'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
 import { GozDetayLink, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { IsgYonlendiriciDugme, ISG_YONLENDIRICI_BTN } from '@/components/isg/IsgYonlendiriciDugme'
 import {
   isgSaglikDonemAuditDiffSatirlari,
   isgSaglikDonemAuditDegerGoster,
@@ -79,27 +79,20 @@ export default function IsgSaglikTaramasiDonemClient({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <Link
-            href="/isg/islemler"
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
-          >
-            ← İşlemler
-          </Link>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-800">Sağlık Taraması</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Dönem bazlı tarama ve muayene takibi</p>
+          <p className="mt-0.5 text-sm text-slate-500">Dönem bazlı tarama ve muayene takibi</p>
         </div>
-        <button
-          type="button"
-          onClick={yeniEkleAc}
-          className="flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Dönem Ekle
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <IsgYonlendiriciDugme href="/isg/islemler">← İşlemler</IsgYonlendiriciDugme>
+          <button type="button" onClick={yeniEkleAc} className={ISG_YONLENDIRICI_BTN}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Dönem Ekle
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

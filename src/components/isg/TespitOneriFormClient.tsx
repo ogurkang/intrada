@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { IsgYonlendiriciDugme, ISG_YONLENDIRICI_BTN } from '@/components/isg/IsgYonlendiriciDugme'
 import {
   ISG_DURUM_TANIMLARI,
   type MudurlukSecenek,
@@ -83,14 +83,12 @@ export default function TespitOneriFormClient({
 
   return (
     <div className="w-full">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <Link href="/isg/islemler/tespit-oneri" className="mb-2 inline-flex text-sm text-slate-500 hover:text-slate-700">
-            ← Tespit ve Öneri
-          </Link>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
           {kayit ? <p className="mt-1 text-sm text-slate-500">Sıra No: {kayit.sira_no}</p> : null}
         </div>
+        <IsgYonlendiriciDugme href="/isg/islemler/tespit-oneri">← Tespit ve Öneri</IsgYonlendiriciDugme>
       </div>
 
       <form onSubmit={handleSubmit} className="w-full space-y-4 rounded-xl border border-slate-200 bg-white p-5">
@@ -152,17 +150,8 @@ export default function TespitOneriFormClient({
         {hata ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{hata}</p> : null}
 
         <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-          <Link
-            href="/isg/islemler/tespit-oneri"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            İptal
-          </Link>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-          >
+          <IsgYonlendiriciDugme href="/isg/islemler/tespit-oneri">İptal</IsgYonlendiriciDugme>
+          <button type="submit" disabled={isPending} className={ISG_YONLENDIRICI_BTN}>
             {isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>

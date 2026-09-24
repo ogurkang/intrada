@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import TanimEkleListeGeriLink from '@/components/tanimlar/TanimEkleListeGeriLink'
+import { IsgYonlendiriciDugme } from '@/components/isg/IsgYonlendiriciDugme'
 import type { Tables } from '@/types/database'
 import type { IsgSaglikTaramasiPersonel } from '@/lib/isg-saglik-taramasi-personel'
 import type { IsgSaglikKayitTur } from '@/lib/isg-saglik-taramasi-kayit-audit'
@@ -236,7 +236,7 @@ export default function IsgSaglikTaramasiDetayClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
-          <TanimEkleListeGeriLink href="/isg/islemler/saglik-taramasi" label="Dönem listesi" />
+          <IsgYonlendiriciDugme href="/isg/islemler/saglik-taramasi">← Dönem listesi</IsgYonlendiriciDugme>
           <button
             type="button"
             onClick={excelIndir}

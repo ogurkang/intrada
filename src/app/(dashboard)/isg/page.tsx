@@ -1,9 +1,7 @@
 import Link from 'next/link'
+import { ISG_YONLENDIRICI_BTN } from '@/components/isg/IsgYonlendiriciDugme'
 
 export default function IsgYonetimiPage() {
-  const linkClass =
-    'block rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm font-medium text-slate-800 hover:border-amber-300 hover:bg-amber-50/60 transition-colors text-right'
-
   return (
     <div className="flex min-h-[60vh] justify-end">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -15,17 +13,17 @@ export default function IsgYonetimiPage() {
         </div>
         <ul className="mt-6 flex flex-col gap-3">
           <li>
-            <Link href="/isg/islemler" className={linkClass}>
+            <Link href="/isg/islemler" className={`${ISG_YONLENDIRICI_BTN} w-full`}>
               İşlemler
             </Link>
           </li>
           <li>
-            <Link href="/isg/raporlar" className={linkClass}>
+            <Link href="/isg/raporlar" className={`${ISG_YONLENDIRICI_BTN} w-full`}>
               Raporlar
             </Link>
           </li>
           <li>
-            <Link href="/isg/tanimlar" className={linkClass}>
+            <Link href="/isg/tanimlar" className={`${ISG_YONLENDIRICI_BTN} w-full`}>
               Tanımlar
             </Link>
           </li>
