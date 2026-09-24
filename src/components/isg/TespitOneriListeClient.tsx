@@ -17,6 +17,40 @@ export type TespitOneriListeSatir = {
   sorumlu_mudurluk: string
 }
 
+const TESPIT_ONERI_ALAN_ETIKETLERI: Record<string, string> = {
+  sira_no: 'Sıra No',
+  isyeri_mudurluk_id: 'İşyeri',
+  tespit_oneri: 'Tespit/Öneri',
+  sorumlu_mudurluk_id: 'Sorumlu Müdürlük',
+  isbirligi_mudurluk_id: 'İş Birliği Müdürlüğü',
+  durum: 'Durum',
+  son_tarih: 'Son Tarih',
+}
+
+function tespitOneriAuditDiffSatirlari(onceki: unknown, sonraki: unknown) {
+  const eski = (onceki && typeof onceki === 'object' ? onceki : {}) as Record<string, unknown>
+  const yeni = (sonraki && typeof sonraki === 'object' ? sonraki : {}) as Record<string, unknown>
+  const alanlar = new Set([...Object.keys(eski), ...Object.keys(yeni)])
+  const out: { alan: string; etiket: string; onceki: unknown; sonraki: unknown }[] = []
+  for (const alan of alanlar) {
+    const etiket = TESPIT_ONERI_ALAN_ETIKETLERI[alan]
+    if (!etiket) continue
+    const once = eski[alan] ?? null
+    const sonra = yeni[alan] ?? null
+    const norm = (v: unknown) => (v == null ? '' : String(v).trim())
+    if (norm(once) === norm(sonra)) continue
+    out.push({ alan, etiket, onceki: once, sonraki: sonra })
+  }
+  return out.sort((a, b) => a.etiket.localeCompare(b.etiket, 'tr'))
+}
+
+function tespitOneriAuditDegerGoster(alan: string, deger: unknown): string {
+  if (deger == null || deger === '') return '—'
+  if (alan === 'durum') return isgDurumEtiket(String(deger))
+  if (alan === 'son_tarih') return tespitOneriTarihGoster(String(deger))
+  return String(deger)
+}
+
 type Props = {
   satirlar: TespitOneriListeSatir[]
   hata?: string | null
@@ -108,6 +142,8 @@ export default function TespitOneriListeClient({
         onKapat={() => setGecmisRefId(null)}
         auditLoglar={gecmisRefId ? (auditLoglarByRefId[gecmisRefId] ?? []) : []}
         baslik="Tespit/Öneri — İşlem Geçmişi"
+        diffSatirlari={tespitOneriAuditDiffSatirlari}
+        degerGoster={tespitOneriAuditDegerGoster}
       />
     </div>
   )
