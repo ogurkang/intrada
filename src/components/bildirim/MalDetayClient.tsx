@@ -485,24 +485,14 @@ export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
             </Link>
           )}
           {!saltOkunur && (
-            <>
-              <button
-                type="button"
-                disabled={excelBusy}
-                onClick={() => void belgeIndir('excel')}
-                className="border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
-              >
-                Excel İndir
-              </button>
-              <button
-                type="button"
-                disabled={excelBusy}
-                onClick={() => void belgeIndir('pdf')}
-                className="bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-              >
-                PDF İndir
-              </button>
-            </>
+            <button
+              type="button"
+              disabled={excelBusy}
+              onClick={() => void belgeIndir('pdf')}
+              className="bg-red-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-800 transition-colors disabled:opacity-50"
+            >
+              PDF İndir
+            </button>
           )}
           {saltOkunur && (
             <p className="text-xs text-slate-500 max-w-xs">Bu ekran salt okunurdur; düzenleme için Bildirim → Mal Beyanı üzerinden ilerleyin.</p>

@@ -66,6 +66,9 @@ export default function MalClient({ kayitlar, onSil, kullaniciModu = false, audi
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Mal Bildirimi</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Bu sayfa 3628 sayılı Kanun ile Mal Bildiriminde Bulunulması Hakkında Yönetmeliğin 18. Maddesi ve 2000/16 sayılı Başbakanlık Genelgesi hükümlerine uygun beyan verilmesi için hazırlanmıştır.
+          </p>
           <p className="text-sm text-slate-500 mt-0.5">Taşınmaz, taşıt, banka ve diğer servet beyanları</p>
         </div>
         <div className="flex items-center gap-2">
