@@ -390,16 +390,14 @@ function digerTasinirDetayParse(raw: unknown, kimlikRaw: unknown): MalDetayDiger
 export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
   const [excelBusy, setExcelBusy] = useState(false)
 
-  async function malExcelIndir(modCokSatir: boolean) {
+  async function belgeIndir(tur: 'excel' | 'pdf') {
     const seg = encodeURIComponent(malBildirimUrlSegment(kayit))
-    const url = modCokSatir
-      ? `/api/bildirim/mal/excel?id=${seg}&mod=coksatir`
-      : `/api/bildirim/mal/excel?id=${seg}`
+    const url = tur === 'pdf' ? `/api/bildirim/mal/pdf?id=${seg}` : `/api/bildirim/mal/excel?id=${seg}`
     setExcelBusy(true)
     try {
       const res = await fetch(url, { credentials: 'same-origin' })
       if (!res.ok) {
-        let msg = 'Excel indirilemedi'
+        let msg = tur === 'pdf' ? 'PDF indirilemedi' : 'Excel indirilemedi'
         try {
           const j = (await res.json()) as { error?: string }
           if (typeof j?.error === 'string') msg = j.error
@@ -411,7 +409,7 @@ export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
       }
       const blob = await res.blob()
       const fromHeader = parseFilenameFromContentDisposition(res.headers.get('Content-Disposition'))
-      const fallback = modCokSatir ? 'Mal_Bildirimi_CokSatirli.xlsx' : 'Mal_Bildirimi.xlsx'
+      const fallback = tur === 'pdf' ? 'Mal_Bildirimi.pdf' : 'Mal_Bildirimi.xlsx'
       const name = fromHeader ?? fallback
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
@@ -487,32 +485,24 @@ export default function MalDetayClient({ kayit, saltOkunur = false }: Props) {
             </Link>
           )}
           {!saltOkunur && (
-            <details className="relative">
-              <summary className="list-none flex cursor-pointer items-center gap-1 border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors marker:content-none [&::-webkit-details-marker]:hidden">
+            <>
+              <button
+                type="button"
+                disabled={excelBusy}
+                onClick={() => void belgeIndir('excel')}
+                className="border border-green-600 text-green-700 text-sm px-4 py-2 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
+              >
                 Excel İndir
-                <span className="text-[10px] opacity-70" aria-hidden>
-                  ▾
-                </span>
-              </summary>
-              <div className="absolute right-0 mt-1 z-50 min-w-[220px] rounded-lg border border-slate-200 bg-white shadow-lg py-1">
-                <button
-                  type="button"
-                  disabled={excelBusy}
-                  onClick={() => void malExcelIndir(false)}
-                  className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Excel İndir
-                </button>
-                <button
-                  type="button"
-                  disabled={excelBusy}
-                  onClick={() => void malExcelIndir(true)}
-                  className="block w-full text-left px-4 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Çok Satırlı İndir
-                </button>
-              </div>
-            </details>
+              </button>
+              <button
+                type="button"
+                disabled={excelBusy}
+                onClick={() => void belgeIndir('pdf')}
+                className="bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                PDF İndir
+              </button>
+            </>
           )}
           {saltOkunur && (
             <p className="text-xs text-slate-500 max-w-xs">Bu ekran salt okunurdur; düzenleme için Bildirim → Mal Beyanı üzerinden ilerleyin.</p>

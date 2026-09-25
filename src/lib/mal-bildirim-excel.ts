@@ -521,6 +521,46 @@ function listeYaz(
   }
 }
 
+export type MalBildirimFormKayit = {
+  sicil_no: string
+  son_net_maas: number | null
+  aciklama: string | null
+  beyan_turu: string | null
+  onay_tarihi: string | null
+  kimlik_json: unknown
+  tasinmaz_json: unknown
+  kooperatif_json: unknown
+  tasitlar_json: unknown
+  diger_tasinirlar_json: unknown
+  banka_menkul_json: unknown
+  altin_mucevher_json: unknown
+  borc_alacak_json: unknown
+  haklar_json: unknown
+}
+
+/** Excel şablonu olmadan PDF üretmek için bölüm satırları. */
+export function malBildirimFormVerisi(kayit: MalBildirimFormKayit) {
+  const sonNet =
+    kayit.son_net_maas == null ? null : malMaasParse(kayit.son_net_maas as string | number)
+  return {
+    sicil: kayit.sicil_no,
+    sonNetFmt: sonNet != null && sonNet > 0 ? malFormatTrNumber(sonNet) : '',
+    sonNetX5: sonNet != null && sonNet > 0 ? malFormatTrNumber(sonNet * 5) : '',
+    aciklama: str(kayit.aciklama),
+    beyanTuru: str(kayit.beyan_turu),
+    onayTarihi: formatTarihTrGunAyYil(kayit.onay_tarihi),
+    kimlik: kimlikJsonToExcelSatirlar(kayit.kimlik_json),
+    tasinmaz: tasinmazJsonToExcelSatirlar(kayit.tasinmaz_json, kayit.kimlik_json),
+    kooperatif: kooperatifJsonToExcelSatirlar(kayit.kooperatif_json, kayit.kimlik_json),
+    tasit: tasitJsonToExcelSatirlar(kayit.tasitlar_json, kayit.kimlik_json),
+    diger: digerTasinirJsonToExcelSatirlar(kayit.diger_tasinirlar_json, kayit.kimlik_json),
+    banka: bankaMenkulJsonToExcelSatirlar(kayit.banka_menkul_json, kayit.kimlik_json),
+    altin: altinMucevherJsonToExcelSatirlar(kayit.altin_mucevher_json, kayit.kimlik_json),
+    borc: borcAlacakJsonToExcelSatirlar(kayit.borc_alacak_json),
+    haklar: haklarJsonToExcelSatirlar(kayit.haklar_json, kayit.kimlik_json),
+  }
+}
+
 export interface MalExcelPersonelBilgi {
   adSoyad: string
   tckn: string
@@ -545,20 +585,39 @@ type SablonBirlestirme = { top: number; left: number; bottom: number; right: num
 
 function sablonBirlestirmeleriOku(ws: Worksheet): SablonBirlestirme[] {
   const ham = (ws as unknown as { _merges?: Record<string, SablonBirlestirme> })._merges ?? {}
-  return Object.values(ham).filter(m => m && m.top > 0)
+  const gorulen = new Set<string>()
+  const liste: SablonBirlestirme[] = []
+  for (const m of Object.values(ham)) {
+    if (!m?.top || !m.left || !m.bottom || !m.right) continue
+    const kutu = { top: m.top, left: m.left, bottom: m.bottom, right: m.right }
+    const anahtar = `${kutu.top}:${kutu.left}:${kutu.bottom}:${kutu.right}`
+    if (gorulen.has(anahtar)) continue
+    gorulen.add(anahtar)
+    liste.push(kutu)
+  }
+  return liste
 }
 
-function sablonBirlestirmeleriUygula(ws: Worksheet, liste: SablonBirlestirme[]) {
+function sablonBirlestirmeleriCoz(ws: Worksheet) {
   const ham = (ws as unknown as { _merges?: Record<string, SablonBirlestirme> })._merges ?? {}
   for (const m of Object.values(ham)) {
     if (!m?.top) continue
     try {
       ws.unMergeCells(m.top, m.left, m.bottom, m.right)
     } catch {
-      /* duplicateRow birleştirmeleri kaydırmaz; kalanlar silinir */
+      /* kalan hücre birleştirmesi ayrıca temizlenir */
     }
   }
+  ws.eachRow({ includeEmpty: true }, row => {
+    row.eachCell({ includeEmpty: true }, cell => {
+      if (cell.isMerged) cell.unmerge()
+    })
+  })
   for (const anahtar of Object.keys(ham)) delete ham[anahtar]
+}
+
+function sablonBirlestirmeleriUygula(ws: Worksheet, liste: SablonBirlestirme[]) {
+  sablonBirlestirmeleriCoz(ws)
   for (const m of liste) {
     if (m.bottom < m.top || m.right < m.left) continue
     if (m.top === m.bottom && m.left === m.right) continue
@@ -574,11 +633,26 @@ function sablonVeriSatiriEkle(
   birlestirmeler: SablonBirlestirme[],
 ): SablonBirlestirme[] {
   if (adet <= 0) return birlestirmeler
-  ws.duplicateRow(sonVeriSatiri, adet, true)
+  const ornekSatir = ws.getRow(sonVeriSatiri)
+  const ornekStil: { col: number; style: object }[] = []
+  ornekSatir.eachCell({ includeEmpty: true }, (cell, col) => {
+    ornekStil.push({ col, style: { ...cell.style } })
+  })
+  const yukseklik = ornekSatir.height
+
+  /* duplicateRow birleştirmeleri kaydırmaz ve başlık metnini her hücreye kopyalar. */
+  sablonBirlestirmeleriCoz(ws)
+  ws.spliceRows(sonVeriSatiri + 1, 0, ...Array.from({ length: adet }, () => [] as unknown[]))
+  for (let i = 0; i < adet; i++) {
+    const satir = ws.getRow(sonVeriSatiri + 1 + i)
+    satir.height = yukseklik
+    for (const hucre of ornekStil) satir.getCell(hucre.col).style = { ...hucre.style }
+  }
+
   const ekBaslangic = sonVeriSatiri + 1
   const sonraki: SablonBirlestirme[] = []
   for (const m of birlestirmeler) {
-    if (m.bottom < ekBaslangic) sonraki.push(m)
+    if (m.bottom < ekBaslangic) sonraki.push({ ...m })
     else if (m.top >= ekBaslangic) sonraki.push({ ...m, top: m.top + adet, bottom: m.bottom + adet })
     else sonraki.push({ ...m, bottom: m.bottom + adet })
   }
