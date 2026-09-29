@@ -38,6 +38,7 @@ export default async function FirmaPersonelDuzenlePage({
 
   const [
     { data: kayitlar },
+    { data: tanimMud },
     { data: tanimSirket },
     { data: tanimOgr },
     { data: fcAyrilis },
@@ -46,6 +47,7 @@ export default async function FirmaPersonelDuzenlePage({
     sirketSatirlar,
   ] = await Promise.all([
     fetchAllFirmaCalisanlar(supabase, 'gorev_mudurlugu'),
+    supabase.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
     sb.from('tanim_sirket').select('sirket_adi').eq('aktif', true).order('sirket_adi'),
     supabase.from('tanim_ogrenim').select('isim').eq('aktif', true),
     fetchAllFirmaCalisanlar(supabase, 'ayrilis_nedeni', q => q.not('ayrilis_nedeni', 'is', null)),
@@ -54,10 +56,11 @@ export default async function FirmaPersonelDuzenlePage({
     fetchSirketYerleskeTanimSatirlari(supabase),
   ])
 
+  const tanimMudList = (tanimMud ?? []).map(m => m.mudurluk_adi)
   const tanimSirketList = (tanimSirket ?? []).map((s: { sirket_adi: string }) => s.sirket_adi)
   const fcMudList = (kayitlar ?? []).map(k => k.gorev_mudurlugu ?? '').filter(Boolean)
   const mevcutMud = (row as { gorev_mudurlugu?: string | null }).gorev_mudurlugu ?? ''
-  const mudurluler = [...new Set([...tanimSirketList, ...fcMudList, mevcutMud].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
+  const mudurluler = [...new Set([...tanimMudList, ...tanimSirketList, ...fcMudList, mevcutMud].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'))
 
   const ogrenimler = sortOgrenimIsimListesi((tanimOgr ?? []).map(o => o.isim))
 
