@@ -11,6 +11,8 @@ import {
   normalizeKullaniciAdi,
 } from '@/lib/kullanici-adi'
 import { disDenetciSifreGecerliMi, disDenetciSifreHataMetni } from '@/lib/dis-denetci-sifre'
+import { kullaniciAdiCakismaKontrol } from '@/lib/kullanici-adi-tekil'
+import { KULLANICI_ADI_KULLANIMDA_METNI } from '@/lib/kullanici-adi'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 
 export type DisDenetciActionSonuc = { ok?: true; hata?: string }
@@ -45,13 +47,8 @@ export async function disDenetciOlustur(formData: FormData): Promise<DisDenetciA
   }
   if (!disDenetciSifreGecerliMi(sifre)) return { hata: disDenetciSifreHataMetni() }
 
-  const { data: mevcut } = await adminGate.supabase
-    .from('app_profiles')
-    .select('id')
-    .eq('profil_turu', 'dis_denetci')
-    .ilike('kullanici_adi', kullaniciAdi)
-    .maybeSingle()
-  if (mevcut) return { hata: 'Bu kullanıcı adı zaten kullanılıyor.' }
+  const cakisma = await kullaniciAdiCakismaKontrol(kullaniciAdi)
+  if (cakisma) return { hata: cakisma }
 
   let service
   try {
@@ -68,7 +65,7 @@ export async function disDenetciOlustur(formData: FormData): Promise<DisDenetciA
     user_metadata: { profil_turu: 'dis_denetci', kullanici_adi: kullaniciAdi },
   })
   if (authError || !authData.user) {
-    return { hata: authError?.message.includes('already') ? 'Bu kullanıcı adı zaten kullanılıyor.' : 'Kullanıcı hesabı oluşturulamadı.' }
+    return { hata: authError?.message.includes('already') ? KULLANICI_ADI_KULLANIMDA_METNI : 'Kullanıcı hesabı oluşturulamadı.' }
   }
 
   const { error: profileError } = await service.from('app_profiles').insert({
@@ -88,7 +85,15 @@ export async function disDenetciOlustur(formData: FormData): Promise<DisDenetciA
 
   if (profileError) {
     await service.auth.admin.deleteUser(authData.user.id)
-    return { hata: profileError.code === '23505' ? 'Bu kullanıcı adı veya e-posta zaten kullanılıyor.' : profileError.message }
+    const adCakismasi =
+      profileError.code === '23505' && /kullanici_adi/i.test(`${profileError.message} ${profileError.details ?? ''}`)
+    return {
+      hata: adCakismasi
+        ? KULLANICI_ADI_KULLANIMDA_METNI
+        : profileError.code === '23505'
+          ? 'Bu kullanıcı adı veya e-posta zaten kullanılıyor.'
+          : profileError.message,
+    }
   }
 
   await writePersonelAuditLogSafe(adminGate.supabase, {

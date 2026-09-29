@@ -13,6 +13,8 @@ import { loadKysSidebarAgac } from '@/lib/kys-menu'
 import { tasinirGorevlendirmeMenuAcikMi } from '@/lib/uygulama-ayar'
 import { thHizmetYiliMenuAcikMi } from '@/lib/th-hizmet-yili-data'
 import { performansDegerlendirmeLandingHref } from '@/lib/performans-donem-coz'
+import { kullaniciAdiDuyurusuCoz } from '@/lib/kullanici-adi'
+import { KullaniciAdiGirisDuyuru } from '@/components/auth/KullaniciAdiGirisDuyuru'
 
 export default async function DashboardLayout({
   children,
@@ -91,8 +93,27 @@ export default async function DashboardLayout({
         : Promise.resolve('/performans/degerlendirme'),
     ])
 
+  let girisDuyurusu: 'degisti' | 'ipucu' | null = null
+  let girisDuyuruAdi = ''
+  if (ilkTamam && access.mode !== 'dis_denetci') {
+    const { data: duyuruSatir } = await supabase
+      .from('app_profiles')
+      .select('kullanici_adi, kurtarma_hash')
+      .eq('id', user.id)
+      .maybeSingle()
+    const ad = (duyuruSatir?.kullanici_adi ?? '').trim()
+    const tur = kullaniciAdiDuyurusuCoz(duyuruSatir?.kurtarma_hash)
+    if (ad && tur) {
+      girisDuyurusu = tur
+      girisDuyuruAdi = ad
+    }
+  }
+
   return (
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
+      {girisDuyurusu ? (
+        <KullaniciAdiGirisDuyuru tur={girisDuyurusu} kullaniciAdi={girisDuyuruAdi} />
+      ) : null}
       <DashboardShell
         userEmail={headerKimlik}
         kullaniciKarsilamaAd={kullaniciKarsilamaAd}

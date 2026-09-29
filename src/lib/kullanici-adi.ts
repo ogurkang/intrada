@@ -42,6 +42,21 @@ export function kullaniciAdiHataMetni(): string {
   return `Kullanıcı adı ${min}–${max} karakter olmalı; harf (A–Z) ve rakam (0–9) kullanılabilir. Özel karakter yok; yazdığınız küçük harf otomatik büyük kaydedilir.`
 }
 
+export const KULLANICI_ADI_KULLANIMDA_METNI =
+  'Bu kullanıcı adı kullanılmaktadır. Lütfen başka bir kullanıcı adı belirleyiniz.'
+
+/** `app_profiles.kurtarma_hash` içinde bir kez gösterilen giriş duyurusu. */
+export const KULLANICI_ADI_DUYURU_ANAHTAR = 'kullanici_adi_duyuru'
+export const KULLANICI_ADI_DUYURU_GORULDU = 'kullanici_adi_duyuru_goruldu'
+
+export type KullaniciAdiGirisDuyurusu = 'degisti' | 'ipucu'
+
+export function kullaniciAdiDuyurusuCoz(hash: unknown): KullaniciAdiGirisDuyurusu | null {
+  if (!hash || typeof hash !== 'object' || Array.isArray(hash)) return null
+  const v = (hash as Record<string, unknown>)[KULLANICI_ADI_DUYURU_ANAHTAR]
+  return v === 'degisti' || v === 'ipucu' ? v : null
+}
+
 /** Supabase Auth e-posta/şifre altyapısında kullanıcı adıyla giriş için iç kimlik. */
 export function disDenetciAuthEmail(kullaniciAdi: string): string {
   return `${normalizeKullaniciAdi(kullaniciAdi).toLowerCase()}@auditor.invalid`

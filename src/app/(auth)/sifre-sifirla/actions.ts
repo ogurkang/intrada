@@ -10,8 +10,10 @@ import {
   normalizeKullaniciAdi,
   kullaniciAdiGecerliMi,
   kullaniciAdiHataMetni,
+  KULLANICI_ADI_KULLANIMDA_METNI,
 } from '@/lib/kullanici-adi'
 import { yeniSifreGecerliMi, yeniSifreHataMetni, yeniSifreNormalize } from '@/lib/sifre-politikasi'
+import { kullaniciAdiCakismaKontrol } from '@/lib/kullanici-adi-tekil'
 
 const GENEL_HATA =
   'E-posta, T.C. kimlik numarası ve sicil bilgisi kayıtlarla eşleşmiyor veya hesap bulunamadı.'
@@ -133,6 +135,9 @@ export async function sifreSifirlaKaydet(formData: FormData): Promise<{ hata?: s
       }
     }
 
+    const cakisma = await kullaniciAdiCakismaKontrol(kullaniciAdi, authUserId)
+    if (cakisma) return { hata: cakisma }
+
     const { error: updErr } = await admin.auth.admin.updateUserById(authUserId, { password: sifre })
     if (updErr) return { hata: updErr.message }
 
@@ -144,7 +149,7 @@ export async function sifreSifirlaKaydet(formData: FormData): Promise<{ hata?: s
       })
       .eq('id', authUserId)
 
-    if (profErr) return { hata: profErr.message }
+    if (profErr) return { hata: profErr.code === '23505' ? KULLANICI_ADI_KULLANIMDA_METNI : profErr.message }
 
     revalidatePath('/login')
     return {}
@@ -180,6 +185,8 @@ export async function kurtarmaKullaniciAdiVeSifreKaydet(formData: FormData): Pro
   const sifreTekrar = yeniSifreNormalize(String(formData.get('sifre_tekrar') ?? ''))
 
   if (!kullaniciAdiGecerliMi(kullaniciAdi)) return { hata: kullaniciAdiHataMetni() }
+  const cakisma = await kullaniciAdiCakismaKontrol(kullaniciAdi, user.id)
+  if (cakisma) return { hata: cakisma }
   if (!yeniSifreGecerliMi(sifre)) return { hata: yeniSifreHataMetni() }
   if (sifre !== sifreTekrar) return { hata: 'Şifre ile tekrarı eşleşmiyor.' }
 
@@ -194,7 +201,7 @@ export async function kurtarmaKullaniciAdiVeSifreKaydet(formData: FormData): Pro
     })
     .eq('id', user.id)
 
-  if (profErr) return { hata: profErr.message }
+  if (profErr) return { hata: profErr.code === '23505' ? KULLANICI_ADI_KULLANIMDA_METNI : profErr.message }
 
   await supabase.auth.signOut()
   revalidatePath('/login')

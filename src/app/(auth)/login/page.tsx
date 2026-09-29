@@ -4,11 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { LoginDuyuruModal } from '@/components/auth/LoginDuyuruModal'
 import { LoginKurumsalLogo } from '@/components/branding/IntradaLogos'
-import { disDenetciAuthEmail, normalizeKullaniciAdi } from '@/lib/kullanici-adi'
+import { girisYap } from './actions'
 
 export default function LoginPage() {
   const [kimlik, setKimlik]     = useState('')
@@ -17,7 +16,6 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
 
   const router  = useRouter()
-  const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,22 +23,14 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const girisKimligi = kimlik.includes('@')
-      ? kimlik.trim().toLowerCase()
-      : disDenetciAuthEmail(normalizeKullaniciAdi(kimlik))
-    const { data, error } = await supabase.auth.signInWithPassword({ email: girisKimligi, password })
-
-    if (error) {
-      setError('E-posta/kullanıcı adı veya şifre hatalı.')
+    const sonuc = await girisYap(kimlik, password)
+    if (sonuc.hata) {
+      setError(sonuc.hata)
       setLoading(false)
-    } else {
-      const { data: profil } = data.user
-        ? await supabase.from('app_profiles').select('profil_turu').eq('id', data.user.id).maybeSingle()
-        : { data: null }
-      router.push(profil?.profil_turu === 'dis_denetci' ? '/denetim' : '/')
-      router.refresh()
-      // Başarıda loading kalsın, sayfa yönlenecek
+      return
     }
+    router.push(sonuc.yon ?? '/')
+    router.refresh()
   }
 
   return (
@@ -63,7 +53,7 @@ export default function LoginPage() {
             required
             value={kimlik}
             onChange={(e) => setKimlik(e.target.value)}
-            placeholder="kullanici@kurum.gov.tr veya DENETCI"
+            placeholder="ornek@kurum.gov.tr veya KULLANICIADI"
             className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800 bg-white
                        focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
           />
