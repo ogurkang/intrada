@@ -351,6 +351,7 @@ function buildMenuGroups(
       { href: '/kesintiler/ayy',          label: 'Aylık Yemek (AYY)'          },
       { href: '/kesintiler/zabita-havuz', label: 'Zabıta Havuzu'              },
       { href: '/kesintiler/sosyal-hak',  label: 'Sosyal Hak Kesintileri'    },
+      { href: '/kesintiler/ayliktan-kesme', label: 'Aylıktan Kesme İşlemleri' },
       { href: '/kesintiler/toplam-raporlu', label: 'Toplam Raporlu Zabıtalar' },
     ],
   },

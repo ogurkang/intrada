@@ -171,10 +171,16 @@ export function kullaniciPathAllowed(
     return false
   }
 
-  // Kesintiler: yalnızca yevmiye + arazi
+  // Kesintiler: yevmiye, arazi ve aylıktan kesme bordrosu
   if (path.startsWith('/kesintiler')) {
     if (!menuModulAcik('kesintiler', menuIzinleri)) return false
-    if (path.startsWith('/kesintiler/yevmiye') || path.startsWith('/kesintiler/arazi')) return true
+    if (
+      path.startsWith('/kesintiler/yevmiye') ||
+      path.startsWith('/kesintiler/arazi') ||
+      path.startsWith('/kesintiler/ayliktan-kesme')
+    ) {
+      return true
+    }
     return false
   }
 
