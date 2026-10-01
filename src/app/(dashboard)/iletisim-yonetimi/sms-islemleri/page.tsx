@@ -39,6 +39,14 @@ const KARTLAR: {
     ikonRenk: 'bg-emerald-100',
   },
   {
+    href: '/iletisim-yonetimi/sms-islemleri/excel',
+    baslik: 'Excel ile Gönder',
+    aciklama: 'Telefon ve mesaj listesini Excel’den yükleyin, önizleyin, onaydan sonra gönderin.',
+    ikon: '📊',
+    renk: 'border-amber-200 bg-amber-50 hover:border-amber-300',
+    ikonRenk: 'bg-amber-100',
+  },
+  {
     href: '/iletisim-yonetimi/sms-islemleri/grup',
     baslik: 'Grup Mesajları',
     aciklama: 'Grup oluşturup içine personel ekleyin ve gruba toplu mesaj gönderin.',

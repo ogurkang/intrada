@@ -14,6 +14,7 @@ import {
   type SmsGonderSonuc,
 } from '@/lib/sms-mesajpaketi'
 import { sablonDoldur, ilkAd } from '@/lib/sms-sablon'
+import { SMS_EXCEL_UST_SINIR, SMS_MESAJ_UST_SINIR, smsExcelGonderimMetni } from '@/lib/sms-excel'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import type { TablesInsert } from '@/types/database'
 
@@ -276,4 +277,114 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
     mesajId: ilkMesajId,
     gecersiz: gecersiz.length ? gecersiz : undefined,
   }
+}
+
+export interface SmsExcelGonderInput {
+  originator?: string
+  satirlar: { telefon: string; mesaj: string; ad?: string }[]
+}
+
+/** Önizlemede onaylanan Excel satırlarını gönderir. Numara ve metin sunucuda yeniden doğrulanır. */
+export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<SmsGonderActionSonuc> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+
+  const access = await getAppAccess(supabase, user.id)
+  if (!isAdminLike(access)) return { hata: 'Bu işlem için yetkiniz yok.' }
+
+  const ayar = await fetchSmsAyar(supabase)
+  if (!smsAyarHazirMi(ayar)) {
+    return { hata: 'SMS ayarları eksik veya pasif. İletişim Yönetimi → Tanımlar ekranından tamamlayın.' }
+  }
+  const config = smsAyarToConfig(ayar)
+  const originatorlar = smsOriginatorListesi(ayar)
+  const secilenOriginator = String(input.originator ?? '').trim()
+  if (secilenOriginator && originatorlar.includes(secilenOriginator)) {
+    config.originator = secilenOriginator
+  }
+
+  const gelen = Array.isArray(input.satirlar) ? input.satirlar : []
+  if (!gelen.length) return { hata: 'Gönderilecek satır yok. Önce önizleyin.' }
+  if (gelen.length > SMS_EXCEL_UST_SINIR) return { hata: `En fazla ${SMS_EXCEL_UST_SINIR} alıcı gönderilebilir.` }
+
+  const gorulen = new Set<string>()
+  const alicilar: Alici[] = []
+  const gecersiz: string[] = []
+  for (const s of gelen) {
+    const gsm = gsmNormalize(s.telefon)
+    const mesaj = smsExcelGonderimMetni(String(s.ad ?? ''), String(s.mesaj ?? ''))
+    if (!gsm) {
+      gecersiz.push(`${s.telefon || '—'} (numara geçersiz)`)
+      continue
+    }
+    if (!mesaj || mesaj.length > SMS_MESAJ_UST_SINIR) {
+      gecersiz.push(`${gsm} (mesaj boş veya çok uzun)`)
+      continue
+    }
+    if (gorulen.has(gsm)) continue
+    gorulen.add(gsm)
+    alicilar.push({ sicil_no: null, ad: String(s.ad ?? '').trim() || null, telefon: gsm, mesaj, sdate: '' })
+  }
+  if (!alicilar.length) return { hata: 'Geçerli alıcı bulunamadı.', gecersiz }
+
+  const tekMetin = alicilar.every(a => a.mesaj === alicilar[0].mesaj)
+  const sonuc = tekMetin
+    ? await smsGonderTekMetin(config, alicilar[0].mesaj, alicilar.map(a => a.telefon))
+    : await smsGonderCokluMetin(config, alicilar.map(a => ({ telefon: a.telefon, mesaj: a.mesaj })))
+
+  const durum = sonuc.ok ? 'gonderildi' : 'basarisiz'
+  const now = new Date().toISOString()
+  const logKayitlari: TablesInsert<'iletisim_sms_log'>[] = alicilar.map(a => ({
+    actor_id: user.id,
+    actor_email: user.email ?? null,
+    alici_sicil: null,
+    alici_ad: a.ad,
+    telefon: a.telefon,
+    mesaj: a.mesaj,
+    originator: config.originator,
+    durum,
+    baglam: 'excel',
+    saglayici_mesaj_id: sonuc.mesajId ?? null,
+    hata_kodu: sonuc.hataKodu ?? null,
+    hata_mesaji: sonuc.ok ? null : sonuc.hata ?? null,
+    created_at: now,
+  }))
+
+  const { data: insertedLogs, error: logErr } = await supabase
+    .from('iletisim_sms_log')
+    .insert(logKayitlari)
+    .select('id')
+  if (logErr) console.error('SMS_LOG_INSERT', logErr.message)
+  if (insertedLogs?.length) {
+    const olayRows = insertedLogs.map(row => ({
+      log_id: row.id,
+      olay_tipi: sonuc.ok ? 'gonderildi' : 'basarisiz',
+      aciklama: sonuc.ok ? 'Excel listesinden anında gönderildi.' : `Gönderim başarısız: ${sonuc.hata ?? '—'}`,
+      saglayici_durum: null,
+    }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: olayErr } = await (supabase as any).from('iletisim_sms_log_olay').insert(olayRows)
+    if (olayErr) console.error('SMS_LOG_OLAY_INSERT', olayErr.message)
+  }
+
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: null,
+    modul: 'iletisim_sms',
+    islem: sonuc.ok ? 'SMS Gönder' : 'SMS Gönder (Başarısız)',
+    ozet: sonuc.ok
+      ? `Excel: ${alicilar.length} alıcıya gönderildi.`
+      : `Excel: SMS gönderilemedi: ${sonuc.hata ?? '—'}`,
+    ref_table: 'iletisim_sms_log',
+    ref_id: sonuc.mesajId ?? null,
+    sonraki: { gonderilen: sonuc.ok ? alicilar.length : 0, baglam: 'excel' },
+  })
+
+  revalidatePath(SAYFA)
+  revalidatePath('/iletisim-yonetimi/gecmis-gonderimler')
+
+  if (!sonuc.ok) return { hata: sonuc.hata ?? 'SMS gönderilemedi.', gecersiz: gecersiz.length ? gecersiz : undefined }
+  return { ok: true, gonderilen: alicilar.length, mesajId: sonuc.mesajId, gecersiz: gecersiz.length ? gecersiz : undefined }
 }
