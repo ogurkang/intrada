@@ -11,3 +11,12 @@ export const AYLIKTAN_KESME_KATSAYI = {
   tabanAylik: '25,794915',
   yanOdeme: '0,499649',
 } as const
+
+/** 657 md. 43: 1/4 derece göstergesi 1500 + en yüksek ek gösterge 8000. ÖHT ve ek ödeme tabanı. */
+export const EN_YUKSEK_DEVLET_MEMURU_GOSTERGE = 9500
+
+/** 7456 sayılı Kanun: seyyanen ilave ödeme = bu gösterge × aylık katsayı. */
+export const SEYYANEN_ILAVE_GOSTERGE = 15965
+
+/** Yerel yönetim toplu sözleşmesi: sosyal denge aylık tavanı, en yüksek devlet memuru aylığının bu yüzdesi. */
+export const SDS_TAVAN_YUZDE = 120

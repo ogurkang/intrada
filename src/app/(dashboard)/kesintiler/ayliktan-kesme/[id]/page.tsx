@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
-import { paraTr, YARIM_ZAMANLI_CUMLE, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
+import { ayliktanKesmeDayanakMetni, ayliktanKesmeGenelToplam, paraTr, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -55,7 +55,7 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
     { etiket: 'Müdürlük', deger: k.mudurluk || '—' },
     { etiket: 'KHA derece / kademe', deger: `${k.derece} / ${k.kademe}` },
     { etiket: 'Ceza oranı', deger: `1/${bordro.katsayi.payda}` },
-    { etiket: 'Kesinti toplamı', deger: paraTr(bordro.toplam) },
+    { etiket: 'Toplam aylıktan kesinti', deger: paraTr(ayliktanKesmeGenelToplam(bordro)) },
     { etiket: 'Yarım zamanlı', deger: bordro.yarim_zamanli ? 'Evet' : 'Hayır' },
     { etiket: 'Oluşturulma', deger: tarihFormat(kayit.created_at) },
     { etiket: 'Oluşturan', deger: kayit.created_by_email ?? '—' },
@@ -120,10 +120,23 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-200">
+              <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Aylıktan ceza kesintisi</td>
+              <td className="pt-3 text-right font-semibold tabular-nums text-slate-800">{paraTr(bordro.toplam)}</td>
+            </tr>
+            <tr className="border-b border-slate-100">
+              <td className="py-2 text-slate-700">Sosyal Denge Tazminatı</td>
+              <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+              <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+            </tr>
+            <tr>
+              <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Toplam aylıktan kesinti</td>
+              <td className="pt-3 text-right font-semibold tabular-nums text-slate-800">{paraTr(ayliktanKesmeGenelToplam(bordro))}</td>
+            </tr>
+          </tfoot>
         </table>
-        {bordro.yarim_zamanli ? (
-          <p className="mt-4 text-sm text-slate-700">{YARIM_ZAMANLI_CUMLE}</p>
-        ) : null}
+        <p className="mt-4 text-sm text-slate-700 whitespace-pre-line">{ayliktanKesmeDayanakMetni(bordro.yarim_zamanli)}</p>
       </div>
     </div>
   )

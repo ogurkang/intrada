@@ -2,12 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { fetchAllCalisan } from '@/lib/supabase-sayfala'
 import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
-import type { TerfiKaynak } from '@/lib/terfi-ettir-hesap'
+import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 import { OZEL_KALEM_KAZANC_DERECE, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
-import { parseKidemYili, unvanSinifiThMi, yanOdemeTanimdan } from '@/lib/kazanc-yan-odeme'
 import { parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
-import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
 import { kazancTanimsizNedenAcikla } from '@/lib/kazanc-sapma'
 import { yarimZamanliOdemeDurumu, type AyliktanKesmeKaynak } from '@/lib/ayliktan-kesme-hesap'
 
@@ -54,11 +52,24 @@ function asilKaynak(kaynaklar: TerfiKaynak[], sicil: string): TerfiKaynak | null
   )
 }
 
+function puanSayi(raw: string | number | null | undefined): number {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0
+  return Math.max(parseKazancPuan(raw) ?? 0, 0)
+}
+
+function sdsSec(terfi: string | null, tanim: string | null): { puan: number; kaynak: 'terfi' | 'kazanc' | 'yok' } {
+  const t = parseKazancPuan(terfi)
+  if (t != null && t > 0) return { puan: t, kaynak: 'terfi' }
+  const k = parseKazancPuan(tanim)
+  if (k != null && k > 0) return { puan: k, kaynak: 'kazanc' }
+  return { puan: 0, kaynak: 'yok' }
+}
+
 function kazancKalemleri(
   r: TerfiKaynak,
-  lookup: (unvanId: number, ogrenimId: number, derece: number) => { ek_gosterge: string | null; oht: string | null; yan_odeme: string | null; yan_odeme_eksi5: string | null; yan_odeme_bilgisayarsiz?: string | null } | null,
+  lookup: (unvanId: number, ogrenimId: number, derece: number) => KazancPuan | null,
   baglam: Parameters<typeof terfiKaynaktanKuralOpts>[2],
-): { ek: number; oht: number; yan: number } | { hata: string } {
+): { ek: number; oht: number; ekOdeme: number; sds: { puan: number; kaynak: 'terfi' | 'kazanc' | 'yok' } } | { hata: string } {
   const kha = Number.parseInt(String(r.kha_derece ?? '').trim(), 10)
   const khaGecerli = Number.isFinite(kha)
   const birinciDerece = unvanKazancBirinciDereceMi(r.unvan_adi)
@@ -90,16 +101,11 @@ function kazancKalemleri(
   }
   const khaKural = khaGecerli ? kha : derece
   const tanim = kazancTaniminiKuralla(ham, lookup, terfiKaynaktanKuralOpts(r, khaKural, baglam))
-  const thMi = unvanSinifiThMi(r.unvan_sinif)
-  const yanYil = thYanOdemeYilSec({
-    thMi,
-    thHizmetBaslangic: r.th_hizmet_baslangic,
-    kidemYili: parseKidemYili(r.kidem_yili),
-  })
   return {
     ek: Math.max(tamSayi(tanim.ek_gosterge) ?? 0, 0),
     oht: Math.max(tamSayi(tanim.oht) ?? 0, 0),
-    yan: Math.max(tamSayi(yanOdemeTanimdan(tanim, yanYil, thMi, r.unvan_adi, r.bilgisayar_kullaniyor)) ?? 0, 0),
+    ekOdeme: puanSayi(tanim.ek_odeme),
+    sds: sdsSec(r.sds_orani, tanim.sds_orani ?? null),
   }
 }
 
@@ -108,7 +114,7 @@ function kaynakKur(
   tckn: string,
   mudurluk: string,
   yarim: { uygulanir: boolean; not: string | null },
-  kalem: { ek: number; oht: number; yan: number },
+  kalem: { ek: number; oht: number; ekOdeme: number; sds: { puan: number; kaynak: 'terfi' | 'kazanc' | 'yok' } },
 ): AyliktanKesmeKaynak | { hata: string } {
   const derece = tamSayi(r.kha_derece)
   const kademe = tamSayi(r.kha_kademe)
@@ -118,6 +124,10 @@ function kaynakKur(
   }
   if (kidem == null || kidem < 0) {
     return { hata: 'Asıl terfi kaydında kıdem yılı yok.' }
+  }
+  const yan = tamSayi(r.yan_odeme)
+  if (yan == null || yan < 0) {
+    return { hata: 'Asıl terfi kaydında yan ödeme yok.' }
   }
   return {
     sicil_no: r.sicil_no.trim(),
@@ -131,7 +141,10 @@ function kaynakKur(
     kademe,
     ek_gosterge: kalem.ek,
     oht_orani: kalem.oht,
-    yan_odeme_gostergesi: kalem.yan,
+    yan_odeme_gostergesi: yan,
+    ek_odeme_orani: kalem.ekOdeme,
+    sds_puan: kalem.sds.puan,
+    sds_kaynak: kalem.sds.kaynak,
     kidem_yili: kidem,
   }
 }

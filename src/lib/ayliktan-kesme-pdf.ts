@@ -1,9 +1,10 @@
 import path from 'node:path'
 import PDFDocument from 'pdfkit'
 import {
+  ayliktanKesmeDayanakMetni,
+  ayliktanKesmeGenelToplam,
   katsayiTr,
   paraTr,
-  YARIM_ZAMANLI_CUMLE,
   type AyliktanKesmeBordro,
 } from '@/lib/ayliktan-kesme-hesap'
 
@@ -56,7 +57,10 @@ function hucre(
 export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A4', margin: MARGIN })
   const done = pdfBuffer(doc)
-  const { kaynak, katsayi, satirlar, toplam, gosterge, yarim_zamanli } = bordro
+  const { kaynak, katsayi, satirlar, toplam, gosterge, yarim_zamanli, sosyal_denge } = bordro
+  const genel = ayliktanKesmeGenelToplam(bordro)
+  const sdsTutar = sosyal_denge?.aylik ?? 0
+  const sdsKesinti = sosyal_denge?.aylik ?? 0
   const icW = PAGE_W - MARGIN * 2
   let y = MARGIN
 
@@ -86,7 +90,9 @@ export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promi
     ['Gösterge', String(gosterge)],
     ['Ödemeye Esas Ek Göstergesi', String(kaynak.ek_gosterge)],
     ['Özel Hizmet Tazminat Oranı', String(kaynak.oht_orani)],
-    ['Yan Ödeme Göstergesi', String(kaynak.yan_odeme_gostergesi)],
+    ['Yan Ödeme', String(kaynak.yan_odeme_gostergesi)],
+    ['Ek Ödeme Oranı', String(kaynak.ek_odeme_orani ?? 0)],
+    ['SDS Puanı', String(kaynak.sds_puan ?? 0)],
     ['Kıdem Yılı', String(kaynak.kidem_yili)],
     ['Kesilecek Ceza Oranı', `1/${katsayi.payda}`],
   ]
@@ -136,13 +142,33 @@ export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promi
     fill: '#0f172a',
     color: '#ffffff',
   })
+  const sdsY = toplamY + toplamH
+  hucre(doc, sagX, sdsY, col1, satirH, 'Sosyal Denge Tazminatı', { size: 7.5 })
+  hucre(doc, sagX + col1, sdsY, col2, satirH, paraTr(sdsTutar), { size: 8, align: 'right' })
+  hucre(doc, sagX + col1 + col2, sdsY, col3, satirH, paraTr(sdsKesinti), { size: 8, align: 'right' })
+  const genelY = sdsY + satirH
+  hucre(doc, sagX, genelY, col1 + col2, toplamH, 'Toplam aylıktan kesinti', {
+    bold: true,
+    size: 7.5,
+    fill: '#0f172a',
+    color: '#ffffff',
+  })
+  hucre(doc, sagX + col1 + col2, genelY, col3, toplamH, paraTr(genel), {
+    bold: true,
+    size: 8,
+    align: 'right',
+    fill: '#0f172a',
+    color: '#ffffff',
+  })
 
-  let imzaY = Math.max(y + sol.length * satirH, toplamY + satirH + 4) + 22
-  if (yarim_zamanli) {
-    font(doc, false)
-    doc.fontSize(8).fillColor('#0f172a').text(YARIM_ZAMANLI_CUMLE, MARGIN, imzaY, { width: icW, align: 'left' })
-    imzaY = doc.y + 22
-  }
+  let imzaY = Math.max(y + sol.length * satirH, genelY + toplamH) + 16
+  font(doc, false)
+  doc.fontSize(8).fillColor('#0f172a').text(ayliktanKesmeDayanakMetni(yarim_zamanli), MARGIN, imzaY, {
+    width: icW,
+    align: 'left',
+    lineGap: 2,
+  })
+  imzaY = doc.y + 22
   const imzaW = (icW - 16) / 2
   font(doc, true)
   doc.fontSize(9).text('DÜZENLEYEN', MARGIN, imzaY, { width: imzaW, align: 'center' })

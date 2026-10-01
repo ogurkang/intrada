@@ -6,9 +6,10 @@ import {
   AYLIKTAN_KESME_PAYDALARI,
   ayliktanKesmeHesapla,
   ayliktanKesmePaydaMi,
+  ayliktanKesmeDayanakMetni,
+  ayliktanKesmeGenelToplam,
   paraTr,
   sayiOku,
-  YARIM_ZAMANLI_CUMLE,
   type AyliktanKesmeKaynak,
   type AyliktanKesmePayda,
 } from '@/lib/ayliktan-kesme-hesap'
@@ -176,14 +177,14 @@ export default function AyliktanKesmeClient({
             <Alan etiket="KHA derece / kademe" deger={`${kaynak.derece} / ${kaynak.kademe}`} />
             <Alan etiket="Ek gösterge" deger={String(kaynak.ek_gosterge)} />
             <Alan etiket="ÖHT oranı" deger={String(kaynak.oht_orani)} />
-            <Alan etiket="Yan ödeme göstergesi" deger={String(kaynak.yan_odeme_gostergesi)} />
+            <Alan etiket="Ek ödeme oranı" deger={String(kaynak.ek_odeme_orani ?? 0)} />
+            <Alan etiket="Yan ödeme" deger={String(kaynak.yan_odeme_gostergesi)} />
+            <Alan etiket="SDS puanı" deger={String(kaynak.sds_puan ?? 0)} />
             <Alan etiket="Kıdem yılı" deger={String(kaynak.kidem_yili)} />
           </dl>
         ) : null}
 
-        {kaynak?.yarim_zamanli ? (
-          <p className="text-sm text-amber-900 bg-amber-50 px-3 py-2 rounded-lg">{YARIM_ZAMANLI_CUMLE}</p>
-        ) : kaynak?.yarim_zamanli_not ? (
+        {kaynak?.yarim_zamanli_not ? (
           <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2 rounded-lg">{kaynak.yarim_zamanli_not}</p>
         ) : null}
 
@@ -268,9 +269,18 @@ export default function AyliktanKesmeClient({
               ))}
             </tbody>
             <tfoot>
-              <tr>
+              <tr className="border-t border-slate-200">
                 <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Aylıktan ceza kesintisi</td>
                 <td className="pt-3 text-right font-semibold tabular-nums text-slate-800">{paraTr(bordro.toplam)}</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="py-2 text-slate-700">Sosyal Denge Tazminatı</td>
+                <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+                <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+              </tr>
+              <tr>
+                <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Toplam aylıktan kesinti</td>
+                <td className="pt-3 text-right font-semibold tabular-nums text-slate-800">{paraTr(ayliktanKesmeGenelToplam(bordro))}</td>
               </tr>
             </tfoot>
           </table>
@@ -279,8 +289,8 @@ export default function AyliktanKesmeClient({
             Personel ve ceza oranı tamamlanınca tutarlar burada görünür. Katsayılar genelgeden gelir; gerekirse alanlardan değiştirilir.
           </p>
         )}
-        {bordro?.yarim_zamanli ? (
-          <p className="mt-4 text-sm text-slate-700">{YARIM_ZAMANLI_CUMLE}</p>
+        {bordro ? (
+          <p className="mt-4 text-sm text-slate-700 whitespace-pre-line">{ayliktanKesmeDayanakMetni(bordro.yarim_zamanli)}</p>
         ) : null}
       </div>
     </div>

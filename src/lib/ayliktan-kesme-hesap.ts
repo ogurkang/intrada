@@ -1,8 +1,13 @@
 /**
  * Aylıktan kesme bordrosu.
- * 657 gösterge tablosu ve formüller, örnek xlsm ile aynıdır.
- * Toplam yalnızca altı kesinti satırıdır; katsayı satırı toplama girmez.
+ * Kesinti, bordrodaki üstü çizili olmayan aylık unsurlarına uygulanır.
+ * Sosyal denge bu orana girmez; sözleşme gereği 2 aylık tutar ayrıca yazılır.
  */
+import {
+  EN_YUKSEK_DEVLET_MEMURU_GOSTERGE,
+  SDS_TAVAN_YUZDE,
+  SEYYANEN_ILAVE_GOSTERGE,
+} from '@/lib/ayliktan-kesme-katsayi'
 
 /** Derece 1–15, kademe 1–9. Sıfır: o kademe gösterge tablosunda yok. */
 const GOSTERGE: readonly (readonly number[])[] = [
@@ -39,7 +44,13 @@ export type AyliktanKesmeKaynak = {
   kademe: number
   ek_gosterge: number
   oht_orani: number
+  /** Asıl terfi kaydındaki yan ödeme. */
   yan_odeme_gostergesi: number
+  /** 375 sayılı KHK ek md. 9 oranı. */
+  ek_odeme_orani?: number
+  /** Terfi kaydındaki SDS puanı; boşsa kazanç tanımı. Yüzde olarak kullanılır. */
+  sds_puan?: number
+  sds_kaynak?: 'terfi' | 'kazanc' | 'yok'
   kidem_yili: number
   mudurluk: string
   /** Yönetmelik m.12: ödeme unsurlarının yarısı bu bordroda esas alındı. */
@@ -61,17 +72,41 @@ export type AyliktanKesmeSatir = {
   kesinti: number
 }
 
+export type AyliktanKesmeSosyalDenge = {
+  puan: number
+  kaynak: 'terfi' | 'kazanc' | 'yok'
+  aylik: number
+  iki_ay: number
+  tavan: number
+  tavan_asildi: boolean
+  cumle: string
+}
+
 export type AyliktanKesmeBordro = {
   kaynak: AyliktanKesmeKaynak
   katsayi: AyliktanKesmeKatsayi
   gosterge: number
   satirlar: AyliktanKesmeSatir[]
+  /** Oranlı maaş unsurlarının kesinti toplamı. Sosyal denge buna girmez. */
   toplam: number
+  /** Aylıktan ceza kesintisi + 1 aylık sosyal denge tazminatı. */
+  genel_toplam?: number
   yarim_zamanli: boolean
+  sosyal_denge?: AyliktanKesmeSosyalDenge
 }
 
 export const YARIM_ZAMANLI_CUMLE =
-  'Hesaplamada Devlet Memurlarının Yarım Zamanlı Çalışma Hakkının Kullanımına İlişkin Yönetmelik hükümleri dikkate alınmıştır.'
+  'Devlet Memurlarının Yarım Zamanlı Çalışma Hakkının Kullanımına İlişkin Yönetmelik hükümleri dikkate alınmıştır.'
+
+export function ayliktanKesmeDayanakMetni(yarimZamanli: boolean): string {
+  const satirlar = [
+    'Bu hesaplama aşağıdaki hükümlere göre hesaplanmıştır.',
+    'a) 657 sayılı Devlet Memurları Kanunu\'nun 147. maddesinde yer alan "Aylık: Bu Kanuna tabi kurumlarda görevlendirilen memurlara hizmetlerinin karşılığında, kadroya dayanılarak ay itibariyle ödenen parayı" ifadesi ile Hazine ve Maliye Bakanlığı\'nın görüşleri',
+    'b) Adapazarı Belediye Başkanlığı ile BEM-BİR-SEN arasında imzalanan 2026-2027 yıllarını kapsayan Sosyal Denge Tazminatı Sözleşmesi\'nin 13. Maddesinin (c) fıkrasında yer alan "aylıktan kesme cezası alınması halinde 2 ay süreyle sosyal denge tazminatı kesilir ve ödenmez" ifadesi',
+  ]
+  if (yarimZamanli) satirlar.push(`c) ${YARIM_ZAMANLI_CUMLE}`)
+  return satirlar.join('\n')
+}
 
 function yerelGun(d: Date): string {
   const y = d.getFullYear()
@@ -169,20 +204,28 @@ export function ayliktanKesmeHesapla(
     return yarim ? excelRound2(tam / 2) : tam
   }
 
+  const yanToplam = Math.max(kaynak.yan_odeme_gostergesi, 0)
+  const ekOran = Math.max(kaynak.ek_odeme_orani ?? 0, 0)
+  const eydma = EN_YUKSEK_DEVLET_MEMURU_GOSTERGE * katsayi.maas
+
   const aylikTutar = unsur(katsayi.maas * gosterge)
   const ekTutar = unsur(katsayi.maas * kaynak.ek_gosterge)
   const tabanTutar = unsur(katsayi.tabanAylik * 1000)
   const kidemTutar = unsur(kidemYili * 20 * katsayi.maas)
-  const yanTutar = unsur(katsayi.yanOdeme * kaynak.yan_odeme_gostergesi)
-  const ohtTutar = unsur((9500 * katsayi.maas * kaynak.oht_orani) / 100)
+  const yanTutar = unsur(katsayi.yanOdeme * yanToplam)
+  const seyyanenTutar = unsur(SEYYANEN_ILAVE_GOSTERGE * katsayi.maas)
+  const ohtTutar = unsur((eydma * kaynak.oht_orani) / 100)
+  const ekOdemeTutar = unsur((eydma * ekOran) / 100)
 
   const kalemler: Array<[string, number]> = [
-    ['Aylık Tutar', aylikTutar],
-    ['Ek Gösterge', ekTutar],
+    ['Maaş Gösterge Tutarı', aylikTutar],
+    ['Maaş Ek Gösterge Tutarı', ekTutar],
     ['Taban Aylık', tabanTutar],
-    ['Kıdem Aylık', kidemTutar],
+    ['Kıdem Aylık Tutarı', kidemTutar],
     ['Yan Ödeme', yanTutar],
+    ['Seyyanen İlave Ödeme', seyyanenTutar],
     ['Özel Hizmet Tazminatı', ohtTutar],
+    ['Ek Ödeme', ekOdemeTutar],
   ]
 
   const satirlar = kalemler.map(([ad, tutar]) => ({
@@ -191,6 +234,28 @@ export function ayliktanKesmeHesapla(
     kesinti: excelRound2(tutar * oran),
   }))
   const toplam = excelRound2(satirlar.reduce((s, r) => s + r.kesinti, 0))
+  const sosyal_denge = sosyalDengeHesapla(kaynak.sds_puan ?? 0, kaynak.sds_kaynak ?? 'yok', eydma, yarim)
+  const genel_toplam = excelRound2(toplam + sosyal_denge.aylik)
 
-  return { kaynak, katsayi, gosterge, satirlar, toplam, yarim_zamanli: yarim }
+  return { kaynak, katsayi, gosterge, satirlar, toplam, genel_toplam, yarim_zamanli: yarim, sosyal_denge }
+}
+
+export function ayliktanKesmeGenelToplam(bordro: Pick<AyliktanKesmeBordro, 'toplam' | 'genel_toplam' | 'sosyal_denge'>): number {
+  if (bordro.genel_toplam != null) return bordro.genel_toplam
+  return excelRound2(bordro.toplam + (bordro.sosyal_denge?.aylik ?? 0))
+}
+
+function sosyalDengeHesapla(
+  puanHam: number,
+  kaynak: 'terfi' | 'kazanc' | 'yok',
+  eydma: number,
+  yarim: boolean,
+): AyliktanKesmeSosyalDenge {
+  const puan = Math.max(puanHam, 0)
+  const tavan = excelRound2((eydma * SDS_TAVAN_YUZDE) / 100)
+  const aylikTam = excelRound2((eydma * puan) / 100)
+  const aylik = yarim ? excelRound2(aylikTam / 2) : aylikTam
+  const iki_ay = excelRound2(aylik * 2)
+  const tavan_asildi = puan > 0 && aylikTam > tavan
+  return { puan, kaynak, aylik, iki_ay, tavan, tavan_asildi, cumle: '' }
 }

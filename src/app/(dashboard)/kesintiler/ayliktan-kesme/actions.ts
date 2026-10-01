@@ -7,6 +7,7 @@ import { getAppAccess, isAdminLike, type AppAccess } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import {
+  ayliktanKesmeGenelToplam,
   ayliktanKesmeHesapla,
   ayliktanKesmePaydaMi,
   type AyliktanKesmeBordro,
@@ -42,7 +43,7 @@ function auditGovde(bordro: AyliktanKesmeBordro) {
     maas: bordro.katsayi.maas,
     tabanAylik: bordro.katsayi.tabanAylik,
     yanOdeme: bordro.katsayi.yanOdeme,
-    toplam: bordro.toplam,
+    toplam: ayliktanKesmeGenelToplam(bordro),
     yarim_zamanli: bordro.yarim_zamanli,
   }
 }
@@ -103,7 +104,7 @@ export async function ayliktanKesmeKaydet(
     unvan: bordro.kaynak.unvan,
     mudurluk: bordro.kaynak.mudurluk,
     payda: bordro.katsayi.payda,
-    toplam: bordro.toplam,
+    toplam: ayliktanKesmeGenelToplam(bordro),
     yarim_zamanli: bordro.yarim_zamanli,
     bordro,
     updated_at: new Date().toISOString(),

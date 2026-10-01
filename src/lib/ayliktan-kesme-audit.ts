@@ -7,7 +7,7 @@ const ALANLAR: { alan: string; etiket: string }[] = [
   { alan: 'maas', etiket: 'Maaş katsayısı' },
   { alan: 'tabanAylik', etiket: 'Taban aylık katsayısı' },
   { alan: 'yanOdeme', etiket: 'Yan ödeme katsayısı' },
-  { alan: 'toplam', etiket: 'Kesinti toplamı' },
+  { alan: 'toplam', etiket: 'Toplam aylıktan kesinti' },
   { alan: 'yarim_zamanli', etiket: 'Yarım zamanlı' },
 ]
 
