@@ -3,7 +3,12 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SmsExcelGonderInput, SmsGonderActionSonuc } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/actions'
-import { smsExcelOnizleme, type SmsExcelSatir } from '@/lib/sms-excel'
+import {
+  smsExcelKolonSecenekleri,
+  smsExcelOnizleme,
+  type SmsExcelKolonSecenegi,
+  type SmsExcelSatir,
+} from '@/lib/sms-excel'
 
 interface SablonSecenek {
   id: number
@@ -51,6 +56,11 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
   const [ortakMesaj, setOrtakMesaj] = useState('')
   const [dosyaAdi, setDosyaAdi] = useState('')
   const [ham, setHam] = useState<unknown[][] | null>(null)
+  const [kolonlar, setKolonlar] = useState<SmsExcelKolonSecenegi[]>([])
+  const [telefonKolon, setTelefonKolon] = useState(-1)
+  const [adKolon, setAdKolon] = useState(-1)
+  const [mesajKolon, setMesajKolon] = useState(-1)
+  const [baslikSatiri, setBaslikSatiri] = useState(true)
   const [onizleme, setOnizleme] = useState<SmsExcelSatir[] | null>(null)
   const [onizlemeHatasi, setOnizlemeHatasi] = useState<string | null>(null)
   const [sonuc, setSonuc] = useState<SmsGonderActionSonuc | null>(null)
@@ -64,10 +74,19 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
     setSonuc(null)
   }
 
+  function kolonlariSifirla() {
+    setKolonlar([])
+    setTelefonKolon(-1)
+    setAdKolon(-1)
+    setMesajKolon(-1)
+    setBaslikSatiri(true)
+  }
+
   async function dosyaSec(file: File | null) {
     onizlemeyiSil()
     setHam(null)
     setDosyaAdi('')
+    kolonlariSifirla()
     if (!file) return
     if (!file.name.match(/\.xlsx$/i)) {
       setOnizlemeHatasi('Yalnızca .xlsx dosyası yükleyebilirsiniz. Eski .xls dosyasını Excel’de .xlsx olarak kaydedin.')
@@ -90,6 +109,12 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
         })
         rows.push(cells)
       })
+      const kolon = smsExcelKolonSecenekleri(rows)
+      setKolonlar(kolon.secenekler)
+      setTelefonKolon(kolon.oneri.telefon)
+      setAdKolon(kolon.oneri.ad)
+      setMesajKolon(kolon.oneri.mesaj)
+      setBaslikSatiri(kolon.oneri.baslikSatiri)
       setHam(rows)
       setDosyaAdi(file.name)
     } catch {
@@ -104,7 +129,12 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
       setOnizlemeHatasi('Önce bir Excel dosyası seçin.')
       return
     }
-    const sonucOnizleme = smsExcelOnizleme(ham, ortakMesaj)
+    const sonucOnizleme = smsExcelOnizleme(ham, ortakMesaj, {
+      telefon: telefonKolon,
+      ad: adKolon,
+      mesaj: mesajKolon,
+      baslikSatiri,
+    })
     setOnizleme(sonucOnizleme.satirlar)
     setOnizlemeHatasi(sonucOnizleme.hata ?? null)
   }
@@ -144,6 +174,7 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
       if (res.ok) {
         setHam(null)
         setDosyaAdi('')
+        kolonlariSifirla()
         setOnizleme(null)
         setOrtakMesaj('')
         if (fileRef.current) fileRef.current.value = ''
@@ -159,7 +190,7 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Excel dosyası</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Sütunlar: Telefon, isteğe bağlı Ad Soyad ve Mesaj. Mesaj sütunu boşsa aşağıdaki ortak metin kullanılır.
+              Dosyayı yükledikten sonra telefon, ad soyad ve mesaj sütunlarını seçin. Mesaj sütunu boşsa veya seçilmezse ortak metin kullanılır.
               Gönderim, önizlemeyi onayladıktan sonra başlar.
             </p>
           </div>
@@ -180,6 +211,73 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
           className="block w-full text-sm text-slate-600"
         />
         {dosyaAdi ? <p className="text-xs text-slate-500">Seçilen dosya: {dosyaAdi}</p> : null}
+
+        {kolonlar.length > 0 && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Telefon sütunu</label>
+                <select
+                  value={telefonKolon}
+                  onChange={e => {
+                    setTelefonKolon(Number(e.target.value))
+                    onizlemeyiSil()
+                  }}
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                >
+                  <option value={-1}>— Seçin —</option>
+                  {kolonlar.map(k => (
+                    <option key={k.index} value={k.index}>{k.etiket}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Ad soyad sütunu</label>
+                <select
+                  value={adKolon}
+                  onChange={e => {
+                    setAdKolon(Number(e.target.value))
+                    onizlemeyiSil()
+                  }}
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                >
+                  <option value={-1}>— Kullanma —</option>
+                  {kolonlar.map(k => (
+                    <option key={k.index} value={k.index}>{k.etiket}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Mesaj sütunu</label>
+                <select
+                  value={mesajKolon}
+                  onChange={e => {
+                    setMesajKolon(Number(e.target.value))
+                    onizlemeyiSil()
+                  }}
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                >
+                  <option value={-1}>— Ortak mesaj —</option>
+                  {kolonlar.map(k => (
+                    <option key={k.index} value={k.index}>{k.etiket}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={baslikSatiri}
+                onChange={e => {
+                  setBaslikSatiri(e.target.checked)
+                  onizlemeyiSil()
+                }}
+                className="rounded border-slate-300"
+              />
+              İlk satır başlık satırıdır
+            </label>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {sablonlar.length > 0 && (

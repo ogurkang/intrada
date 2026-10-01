@@ -33,7 +33,7 @@ export default async function SmsExcelPage() {
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-slate-800">Excel ile SMS</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Listeyi yükleyin, gidecek metinleri kontrol edin, sonra gönderin.
+          Listeyi yükleyin, sütunları seçin, gidecek metinleri kontrol edin, sonra gönderin.
         </p>
       </div>
 

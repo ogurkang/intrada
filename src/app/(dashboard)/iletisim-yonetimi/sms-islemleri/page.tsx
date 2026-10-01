@@ -41,7 +41,7 @@ const KARTLAR: {
   {
     href: '/iletisim-yonetimi/sms-islemleri/excel',
     baslik: 'Excel ile Gönder',
-    aciklama: 'Telefon ve mesaj listesini Excel’den yükleyin, önizleyin, onaydan sonra gönderin.',
+    aciklama: 'Excel’den yükleyin, telefon, ad soyad ve mesaj sütunlarını seçin, önizleyip gönderin.',
     ikon: '📊',
     renk: 'border-amber-200 bg-amber-50 hover:border-amber-300',
     ikonRenk: 'bg-amber-100',
