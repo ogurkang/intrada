@@ -192,14 +192,24 @@ export function yoneticiIletisimListeSnapshot(input: {
     const kadro = kadroById.get(parsed.kadroId)
     if (!kadro) continue
 
-    const sicil = yoneticiSicilAtD(kadro, parsed.rol, D, hareketlerByKadroId)
+    let rol = parsed.rol
+    let sicil = yoneticiSicilAtD(kadro, rol, D, hareketlerByKadroId)
+    if (!sicil) {
+      const diger = rol === 'asil' ? 'vekil' : 'asil'
+      const digerSicil = yoneticiSicilAtD(kadro, diger, D, hareketlerByKadroId)
+      if (digerSicil) {
+        rol = diger
+        sicil = digerSicil
+      }
+    }
     if (!sicil) continue
+    if (out.some(s => s.sicil_no === sicil && s.kadro_unvani === (String(kadro.kadro_unvani ?? '').trim() || '—'))) continue
 
     const c = calisanBySicil.get(sicil)
     const iletisim = iletisimAtD(D, c ?? {}, auditBySicil.get(sicil) ?? [])
 
     out.push({
-      kayit_key: yoneticiKayitKeyOlustur(parsed.kadroId, parsed.rol, sicil),
+      kayit_key: yoneticiKayitKeyOlustur(parsed.kadroId, rol, sicil),
       sicil_no: sicil,
       ad_soyad: iletisim.ad_soyad !== '—' ? iletisim.ad_soyad : (c?.ad_soyad ?? '—'),
       kadro_unvani: String(kadro.kadro_unvani ?? '').trim() || '—',
