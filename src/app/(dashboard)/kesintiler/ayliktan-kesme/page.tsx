@@ -5,6 +5,8 @@ import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import AyliktanKesmeListeClient, {
   type AyliktanKesmeListeKayit,
 } from '@/components/kesintiler/AyliktanKesmeListeClient'
+import { ayliktanKesmeGenelToplam, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
+import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
 import { ayliktanKesmeSil } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -20,20 +22,25 @@ export default async function AyliktanKesmePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: kayitlarRaw } = await (supabase as any)
     .from('ayliktan_kesme_bordrolari')
-    .select('id, sicil_no, ad_soyad, tckn, unvan, payda, toplam, yarim_zamanli')
+    .select('id, sicil_no, ad_soyad, tckn, unvan, payda, toplam, yarim_zamanli, bordro')
     .order('created_at', { ascending: false })
     .limit(300)
 
-  const kayitlar: AyliktanKesmeListeKayit[] = ((kayitlarRaw ?? []) as AyliktanKesmeListeKayit[]).map(k => ({
-    id: k.id,
-    sicil_no: k.sicil_no,
-    ad_soyad: k.ad_soyad,
-    tckn: k.tckn ?? null,
-    unvan: k.unvan ?? '',
-    payda: Number(k.payda),
-    toplam: Number(k.toplam),
-    yarim_zamanli: k.yarim_zamanli === true,
-  }))
+  const kayitlar: AyliktanKesmeListeKayit[] = await Promise.all(
+    ((kayitlarRaw ?? []) as Array<AyliktanKesmeListeKayit & { bordro?: AyliktanKesmeBordro }>).map(async k => {
+      const bordro = k.bordro ? await ayliktanKesmeBordroGoster(supabase, k.bordro) : null
+      return {
+        id: k.id,
+        sicil_no: k.sicil_no,
+        ad_soyad: k.ad_soyad,
+        tckn: k.tckn ?? null,
+        unvan: k.unvan ?? '',
+        payda: Number(k.payda),
+        toplam: bordro ? ayliktanKesmeGenelToplam(bordro) : Number(k.toplam),
+        yarim_zamanli: k.yarim_zamanli === true,
+      }
+    }),
+  )
 
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,

@@ -4,6 +4,7 @@ import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import type { AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
 import { ayliktanKesmePdfBuffer } from '@/lib/ayliktan-kesme-pdf'
+import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Kayıt bulunamadı.' }, { status: 404 })
     }
 
-    const pdf = await ayliktanKesmePdfBuffer(data.bordro)
+    const pdf = await ayliktanKesmePdfBuffer(await ayliktanKesmeBordroGoster(supabase, data.bordro))
     const ad = String(data.ad_soyad ?? 'bordro').replace(/[^\p{L}\p{N}]+/gu, '_')
     const filename = `Ayliktan_Kesme_${ad}.pdf`
     const filenameAscii = filename.replace(/[^\x20-\x7E]/g, '_')

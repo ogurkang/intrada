@@ -8,6 +8,7 @@ import {
   ayliktanKesmePaydaMi,
   ayliktanKesmeDayanakMetni,
   ayliktanKesmeGenelToplam,
+  bordroSdsKesintisi,
   paraTr,
   sayiOku,
   type AyliktanKesmeKaynak,
@@ -276,7 +277,7 @@ export default function AyliktanKesmeClient({
               <tr className="border-b border-slate-100">
                 <td className="py-2 text-slate-700">Sosyal Denge Tazminatı</td>
                 <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
-                <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+                <td className="py-2 text-right tabular-nums">{paraTr(bordroSdsKesintisi(bordro))}</td>
               </tr>
               <tr>
                 <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Toplam aylıktan kesinti</td>

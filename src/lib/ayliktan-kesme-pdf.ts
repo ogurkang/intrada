@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit'
 import {
   ayliktanKesmeDayanakMetni,
   ayliktanKesmeGenelToplam,
+  bordroSdsKesintisi,
   katsayiTr,
   paraTr,
   type AyliktanKesmeBordro,
@@ -60,7 +61,7 @@ export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promi
   const { kaynak, katsayi, satirlar, toplam, gosterge, yarim_zamanli, sosyal_denge } = bordro
   const genel = ayliktanKesmeGenelToplam(bordro)
   const sdsTutar = sosyal_denge?.aylik ?? 0
-  const sdsKesinti = sosyal_denge?.aylik ?? 0
+  const sdsKesinti = bordroSdsKesintisi(bordro)
   const icW = PAGE_W - MARGIN * 2
   let y = MARGIN
 

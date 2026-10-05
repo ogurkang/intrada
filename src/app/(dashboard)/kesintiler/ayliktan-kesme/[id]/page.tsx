@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
-import { ayliktanKesmeDayanakMetni, ayliktanKesmeGenelToplam, paraTr, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
+import { ayliktanKesmeDayanakMetni, ayliktanKesmeGenelToplam, bordroSdsKesintisi, paraTr, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
+import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,7 +36,6 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
     .maybeSingle()
 
   if (!kayit?.bordro) notFound()
-  const bordro = kayit.bordro as AyliktanKesmeBordro
 
   const {
     data: { user },
@@ -46,6 +46,8 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
     (access.mode === 'kullanici' &&
       kullaniciPathAllowed('/kesintiler/ayliktan-kesme', access.sicilNo, access.menuIzinleri))
   if (!izinli) notFound()
+
+  const bordro = await ayliktanKesmeBordroGoster(supabase, kayit.bordro as AyliktanKesmeBordro)
 
   const k = bordro.kaynak
   const satirlar: { etiket: string; deger: string }[] = [
@@ -128,7 +130,7 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
             <tr className="border-b border-slate-100">
               <td className="py-2 text-slate-700">Sosyal Denge Tazminatı</td>
               <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
-              <td className="py-2 text-right tabular-nums">{paraTr(bordro.sosyal_denge?.aylik ?? 0)}</td>
+              <td className="py-2 text-right tabular-nums">{paraTr(bordroSdsKesintisi(bordro))}</td>
             </tr>
             <tr>
               <td className="pt-3 font-semibold text-slate-800" colSpan={2}>Toplam aylıktan kesinti</td>

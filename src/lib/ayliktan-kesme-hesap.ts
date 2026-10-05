@@ -1,7 +1,7 @@
 /**
  * Aylıktan kesme bordrosu.
  * Kesinti, bordrodaki üstü çizili olmayan aylık unsurlarına uygulanır.
- * Sosyal denge bu orana girmez; sözleşme gereği 2 aylık tutar ayrıca yazılır.
+ * Sosyal denge tazminatı da aynı orana girer: tutar karşılığı, kesinti tutarın paydasıdır.
  */
 import {
   EN_YUKSEK_DEVLET_MEMURU_GOSTERGE,
@@ -75,7 +75,10 @@ export type AyliktanKesmeSatir = {
 export type AyliktanKesmeSosyalDenge = {
   puan: number
   kaynak: 'terfi' | 'kazanc' | 'yok'
+  /** Aylık sosyal denge karşılığı. Yarı zamanlıda ödeme unsurunun yarısı. */
   aylik: number
+  /** Diğer maaş unsurları gibi: karşılık × 1/payda. */
+  kesinti?: number
   iki_ay: number
   tavan: number
   tavan_asildi: boolean
@@ -89,7 +92,7 @@ export type AyliktanKesmeBordro = {
   satirlar: AyliktanKesmeSatir[]
   /** Oranlı maaş unsurlarının kesinti toplamı. Sosyal denge buna girmez. */
   toplam: number
-  /** Aylıktan ceza kesintisi + 1 aylık sosyal denge tazminatı. */
+  /** Aylıktan ceza kesintisi + sosyal denge kesintisi. */
   genel_toplam?: number
   yarim_zamanli: boolean
   sosyal_denge?: AyliktanKesmeSosyalDenge
@@ -234,15 +237,50 @@ export function ayliktanKesmeHesapla(
     kesinti: excelRound2(tutar * oran),
   }))
   const toplam = excelRound2(satirlar.reduce((s, r) => s + r.kesinti, 0))
-  const sosyal_denge = sosyalDengeHesapla(kaynak.sds_puan ?? 0, kaynak.sds_kaynak ?? 'yok', eydma, yarim)
-  const genel_toplam = excelRound2(toplam + sosyal_denge.aylik)
+  const sosyal_denge = sosyalDengeHesapla(kaynak.sds_puan ?? 0, kaynak.sds_kaynak ?? 'yok', eydma, yarim, oran)
+  const genel_toplam = excelRound2(toplam + (sosyal_denge.kesinti ?? 0))
 
   return { kaynak, katsayi, gosterge, satirlar, toplam, genel_toplam, yarim_zamanli: yarim, sosyal_denge }
 }
 
-export function ayliktanKesmeGenelToplam(bordro: Pick<AyliktanKesmeBordro, 'toplam' | 'genel_toplam' | 'sosyal_denge'>): number {
-  if (bordro.genel_toplam != null) return bordro.genel_toplam
-  return excelRound2(bordro.toplam + (bordro.sosyal_denge?.aylik ?? 0))
+/** Kayıtlı bordroda kesinti yoksa, karşılık diğer satırlar gibi paydaya bölünür. */
+export function bordroSdsKesintisi(
+  bordro: Pick<AyliktanKesmeBordro, 'sosyal_denge' | 'katsayi'>,
+): number {
+  const sds = bordro.sosyal_denge
+  if (!sds) return 0
+  if (typeof sds.kesinti === 'number' && Number.isFinite(sds.kesinti)) return sds.kesinti
+  const payda = bordro.katsayi?.payda
+  if (!payda) return 0
+  return excelRound2(sds.aylik / payda)
+}
+
+export function ayliktanKesmeGenelToplam(
+  bordro: Pick<AyliktanKesmeBordro, 'toplam' | 'sosyal_denge' | 'katsayi'>,
+): number {
+  return excelRound2(bordro.toplam + bordroSdsKesintisi(bordro))
+}
+
+/** Eski kayıtta sosyal denge yoksa, güncel puanla satırı tamamlar. Yarı zaman bayrağı bordrodakidir. */
+export function bordroyaSdsIsle(
+  bordro: AyliktanKesmeBordro,
+  puan: number,
+  sdsKaynak: 'terfi' | 'kazanc' | 'yok',
+): AyliktanKesmeBordro {
+  const eydma = EN_YUKSEK_DEVLET_MEMURU_GOSTERGE * bordro.katsayi.maas
+  const sosyal_denge = sosyalDengeHesapla(
+    puan,
+    sdsKaynak,
+    eydma,
+    bordro.yarim_zamanli === true,
+    1 / bordro.katsayi.payda,
+  )
+  return {
+    ...bordro,
+    kaynak: { ...bordro.kaynak, sds_puan: puan, sds_kaynak: sdsKaynak },
+    sosyal_denge,
+    genel_toplam: excelRound2(bordro.toplam + (sosyal_denge.kesinti ?? 0)),
+  }
 }
 
 function sosyalDengeHesapla(
@@ -250,12 +288,14 @@ function sosyalDengeHesapla(
   kaynak: 'terfi' | 'kazanc' | 'yok',
   eydma: number,
   yarim: boolean,
+  oran: number,
 ): AyliktanKesmeSosyalDenge {
   const puan = Math.max(puanHam, 0)
   const tavan = excelRound2((eydma * SDS_TAVAN_YUZDE) / 100)
   const aylikTam = excelRound2((eydma * puan) / 100)
   const aylik = yarim ? excelRound2(aylikTam / 2) : aylikTam
+  const kesinti = excelRound2(aylik * oran)
   const iki_ay = excelRound2(aylik * 2)
   const tavan_asildi = puan > 0 && aylikTam > tavan
-  return { puan, kaynak, aylik, iki_ay, tavan, tavan_asildi, cumle: '' }
+  return { puan, kaynak, aylik, kesinti, iki_ay, tavan, tavan_asildi, cumle: '' }
 }

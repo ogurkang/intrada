@@ -7,7 +7,12 @@ import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kur
 import { OZEL_KALEM_KAZANC_DERECE, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
 import { parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import { kazancTanimsizNedenAcikla } from '@/lib/kazanc-sapma'
-import { yarimZamanliOdemeDurumu, type AyliktanKesmeKaynak } from '@/lib/ayliktan-kesme-hesap'
+import {
+  bordroyaSdsIsle,
+  yarimZamanliOdemeDurumu,
+  type AyliktanKesmeBordro,
+  type AyliktanKesmeKaynak,
+} from '@/lib/ayliktan-kesme-hesap'
 
 export type AyliktanKesmeAday = {
   sicil_no: string
@@ -202,4 +207,15 @@ export async function ayliktanKesmeKaynakGetir(
   const kaynak = kaynakKur(kayit, String(cal?.tckn ?? ''), kadroMudurlugu(kadroRes.data ?? []), yarim, kalem)
   if ('hata' in kaynak) return { hata: kaynak.hata }
   return { kaynak }
+}
+
+/** Eski bordroda sosyal denge satırı yoksa güncel terfi puanıyla tamamlanır. */
+export async function ayliktanKesmeBordroGoster(
+  supabase: Db,
+  bordro: AyliktanKesmeBordro,
+): Promise<AyliktanKesmeBordro> {
+  if (bordro.sosyal_denge && typeof bordro.sosyal_denge.aylik === 'number') return bordro
+  const sonuc = await ayliktanKesmeKaynakGetir(supabase, bordro.kaynak?.sicil_no ?? '')
+  if (!sonuc.kaynak) return bordro
+  return bordroyaSdsIsle(bordro, sonuc.kaynak.sds_puan ?? 0, sonuc.kaynak.sds_kaynak ?? 'yok')
 }
