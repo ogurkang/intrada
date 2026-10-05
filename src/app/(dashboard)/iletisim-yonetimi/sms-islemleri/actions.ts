@@ -282,6 +282,8 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
 export interface SmsExcelGonderInput {
   originator?: string
   satirlar: { telefon: string; mesaj: string; ad?: string }[]
+  /** datetime-local değeri; doluysa liste bu tarihte gönderilir */
+  planlananGonderimAt?: string
 }
 
 /** Önizlemede onaylanan Excel satırlarını gönderir. Numara ve metin sunucuda yeniden doğrulanır. */
@@ -310,6 +312,17 @@ export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<
   if (!gelen.length) return { hata: 'Gönderilecek satır yok. Önce önizleyin.' }
   if (gelen.length > SMS_EXCEL_UST_SINIR) return { hata: `En fazla ${SMS_EXCEL_UST_SINIR} alıcı gönderilebilir.` }
 
+  let ortakSdate = ''
+  const planHam = String(input.planlananGonderimAt ?? '').trim()
+  if (planHam) {
+    const plan = planliGonderimSDate(planHam)
+    if (!plan) return { hata: 'Geçersiz planlanan gönderim tarihi.' }
+    if (plan.aninda) {
+      return { hata: 'Planlanan gönderim zamanı geçmiş veya çok yakın; gelecek bir tarih seçin.' }
+    }
+    ortakSdate = plan.sdate
+  }
+
   const gorulen = new Set<string>()
   const alicilar: Alici[] = []
   const gecersiz: string[] = []
@@ -326,16 +339,21 @@ export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<
     }
     if (gorulen.has(gsm)) continue
     gorulen.add(gsm)
-    alicilar.push({ sicil_no: null, ad: String(s.ad ?? '').trim() || null, telefon: gsm, mesaj, sdate: '' })
+    alicilar.push({ sicil_no: null, ad: String(s.ad ?? '').trim() || null, telefon: gsm, mesaj, sdate: ortakSdate })
   }
   if (!alicilar.length) return { hata: 'Geçerli alıcı bulunamadı.', gecersiz }
 
   const tekMetin = alicilar.every(a => a.mesaj === alicilar[0].mesaj)
   const sonuc = tekMetin
-    ? await smsGonderTekMetin(config, alicilar[0].mesaj, alicilar.map(a => a.telefon))
-    : await smsGonderCokluMetin(config, alicilar.map(a => ({ telefon: a.telefon, mesaj: a.mesaj })))
+    ? await smsGonderTekMetin(config, alicilar[0].mesaj, alicilar.map(a => a.telefon), ortakSdate || undefined)
+    : await smsGonderCokluMetin(
+        config,
+        alicilar.map(a => ({ telefon: a.telefon, mesaj: a.mesaj })),
+        ortakSdate || undefined,
+      )
 
-  const durum = sonuc.ok ? 'gonderildi' : 'basarisiz'
+  const durum = sonuc.ok ? (ortakSdate ? 'planlandi' : 'gonderildi') : 'basarisiz'
+  const planlananAt = ortakSdate ? sdateToPlanlananAt(ortakSdate) : null
   const now = new Date().toISOString()
   const logKayitlari: TablesInsert<'iletisim_sms_log'>[] = alicilar.map(a => ({
     actor_id: user.id,
@@ -347,6 +365,7 @@ export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<
     originator: config.originator,
     durum,
     baglam: 'excel',
+    planlanan_gonderim_at: planlananAt,
     saglayici_mesaj_id: sonuc.mesajId ?? null,
     hata_kodu: sonuc.hataKodu ?? null,
     hata_mesaji: sonuc.ok ? null : sonuc.hata ?? null,
@@ -361,8 +380,12 @@ export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<
   if (insertedLogs?.length) {
     const olayRows = insertedLogs.map(row => ({
       log_id: row.id,
-      olay_tipi: sonuc.ok ? 'gonderildi' : 'basarisiz',
-      aciklama: sonuc.ok ? 'Excel listesinden anında gönderildi.' : `Gönderim başarısız: ${sonuc.hata ?? '—'}`,
+      olay_tipi: durum === 'planlandi' ? 'planlandi' : durum === 'gonderildi' ? 'gonderildi' : 'basarisiz',
+      aciklama: sonuc.ok
+        ? planlananAt
+          ? `Excel listesi ileri tarihte iletilmek üzere planlandı (${new Date(planlananAt).toLocaleString('tr-TR')}).`
+          : 'Excel listesinden anında gönderildi.'
+        : `Gönderim başarısız: ${sonuc.hata ?? '—'}`,
       saglayici_durum: null,
     }))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -375,16 +398,28 @@ export async function smsExcelGonderAction(input: SmsExcelGonderInput): Promise<
     modul: 'iletisim_sms',
     islem: sonuc.ok ? 'SMS Gönder' : 'SMS Gönder (Başarısız)',
     ozet: sonuc.ok
-      ? `Excel: ${alicilar.length} alıcıya gönderildi.`
+      ? planlananAt
+        ? `Excel: ${alicilar.length} alıcı ileri tarihte planlandı.`
+        : `Excel: ${alicilar.length} alıcıya gönderildi.`
       : `Excel: SMS gönderilemedi: ${sonuc.hata ?? '—'}`,
     ref_table: 'iletisim_sms_log',
     ref_id: sonuc.mesajId ?? null,
-    sonraki: { gonderilen: sonuc.ok ? alicilar.length : 0, baglam: 'excel' },
+    sonraki: {
+      gonderilen: sonuc.ok && !planlananAt ? alicilar.length : 0,
+      planlanan: sonuc.ok && planlananAt ? alicilar.length : 0,
+      baglam: 'excel',
+    },
   })
 
   revalidatePath(SAYFA)
   revalidatePath('/iletisim-yonetimi/gecmis-gonderimler')
 
   if (!sonuc.ok) return { hata: sonuc.hata ?? 'SMS gönderilemedi.', gecersiz: gecersiz.length ? gecersiz : undefined }
-  return { ok: true, gonderilen: alicilar.length, mesajId: sonuc.mesajId, gecersiz: gecersiz.length ? gecersiz : undefined }
+  return {
+    ok: true,
+    gonderilen: planlananAt ? 0 : alicilar.length,
+    planlanan: planlananAt ? alicilar.length : 0,
+    mesajId: sonuc.mesajId,
+    gecersiz: gecersiz.length ? gecersiz : undefined,
+  }
 }

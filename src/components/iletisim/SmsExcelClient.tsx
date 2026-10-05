@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SmsExcelGonderInput, SmsGonderActionSonuc } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/actions'
+import SmsPlanliGonderimAlanlari from '@/components/iletisim/SmsPlanliGonderimAlanlari'
 import {
   smsExcelKolonSecenekleri,
   smsExcelOnizleme,
@@ -64,6 +65,8 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
   const [onizleme, setOnizleme] = useState<SmsExcelSatir[] | null>(null)
   const [onizlemeHatasi, setOnizlemeHatasi] = useState<string | null>(null)
   const [sonuc, setSonuc] = useState<SmsGonderActionSonuc | null>(null)
+  const [planliGonderim, setPlanliGonderim] = useState(false)
+  const [planliTarihSaat, setPlanliTarihSaat] = useState('')
   const [isPending, startTransition] = useTransition()
 
   const hazir = useMemo(() => (onizleme ?? []).filter(s => s.durum === 'hazir'), [onizleme])
@@ -159,11 +162,19 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
 
   function gonder() {
     if (!hazir.length) return
-    if (!confirm(`${hazir.length} numaraya SMS gönderilecek. Onaylıyor musunuz?`)) return
+    if (planliGonderim && !planliTarihSaat) {
+      setSonuc({ hata: 'Planlanan gönderim tarihi ve saati seçin.' })
+      return
+    }
+    const onay = planliGonderim
+      ? `${hazir.length} numaraya SMS, seçilen tarihte gönderilmek üzere planlanacak. Onaylıyor musunuz?`
+      : `${hazir.length} numaraya SMS gönderilecek. Onaylıyor musunuz?`
+    if (!confirm(onay)) return
     setSonuc(null)
     startTransition(async () => {
       const res = await onGonder({
         originator,
+        planlananGonderimAt: planliGonderim ? planliTarihSaat : undefined,
         satirlar: hazir.map(s => ({
           telefon: s.telefon ?? '',
           mesaj: s.mesaj,
@@ -177,6 +188,8 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
         kolonlariSifirla()
         setOnizleme(null)
         setOrtakMesaj('')
+        setPlanliGonderim(false)
+        setPlanliTarihSaat('')
         if (fileRef.current) fileRef.current.value = ''
         router.refresh()
       }
@@ -347,19 +360,31 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
 
       {onizleme ? (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div className="px-4 py-3 border-b border-slate-200 space-y-3">
             <p className="text-sm text-slate-700">
               <span className="font-semibold">{hazir.length}</span> hazır
               <span className="text-slate-400"> · </span>
               {onizleme.length - hazir.length} gönderilmeyecek
             </p>
+            <SmsPlanliGonderimAlanlari
+              planli={planliGonderim}
+              onPlanliChange={setPlanliGonderim}
+              tarihSaat={planliTarihSaat}
+              onTarihSaatChange={setPlanliTarihSaat}
+            />
             <button
               type="button"
               onClick={gonder}
               disabled={!gonderimAcik || !hazir.length || isPending}
               className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
-              {isPending ? 'Gönderiliyor…' : 'Onayla ve gönder'}
+              {isPending
+                ? planliGonderim
+                  ? 'Planlanıyor…'
+                  : 'Gönderiliyor…'
+                : planliGonderim
+                  ? 'Onayla ve planla'
+                  : 'Onayla ve gönder'}
             </button>
           </div>
           <div className="overflow-x-auto max-h-[28rem]">
@@ -401,7 +426,8 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
       ) : null}
       {sonuc?.ok ? (
         <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-          {sonuc.gonderilen ?? 0} alıcıya gönderildi.
+          {(sonuc.gonderilen ?? 0) > 0 && <>{sonuc.gonderilen} alıcıya gönderildi. </>}
+          {(sonuc.planlanan ?? 0) > 0 && <>{sonuc.planlanan} alıcıya ileri tarihte iletilmek üzere planlandı. </>}
         </p>
       ) : null}
     </div>
