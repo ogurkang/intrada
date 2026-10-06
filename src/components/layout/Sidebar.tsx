@@ -30,7 +30,7 @@ function itemPathActive(pathname: string, item: MenuItem): boolean {
     if (item.children.some(c => itemOrSubtreeActive(pathname, c))) return false
   }
   // Denetim: Genel Bakış derin rotalarda yanlış vurgulanmasın
-  if (item.href === '/denetim' || item.href === '/denetim/donemler' || item.href === '/kys') {
+  if (item.href === '/hesaplama' || item.href === '/denetim' || item.href === '/denetim/donemler' || item.href === '/kys') {
     return pathname === item.href
   }
   // Dönem özeti: yalnızca tam dönem kökü (alt menüler ayrı vurgulanır)
@@ -353,6 +353,24 @@ function buildMenuGroups(
       { href: '/kesintiler/sosyal-hak',  label: 'Sosyal Hak Kesintileri'    },
       { href: '/kesintiler/ayliktan-kesme', label: 'Aylıktan Kesme İşlemleri' },
       { href: '/kesintiler/toplam-raporlu', label: 'Toplam Raporlu Zabıtalar' },
+    ],
+  },
+  {
+    grup: 'Hesaplama Yönetimi',
+    icon: '🧮',
+    accordion: true,
+    items: [
+      { href: '/hesaplama', label: 'Genel Bakış' },
+      { href: '/hesaplama/personel-maliyeti', label: 'Personel Maliyeti Hesaplama' },
+      {
+        href: '/hesaplama/tanimlar',
+        label: 'Tanımlar',
+        children: [
+          { href: '/hesaplama/tanimlar/kalemler', label: 'Kalemler' },
+          { href: '/hesaplama/tanimlar/gorev-gruplari', label: 'Görev Grupları' },
+          { href: '/hesaplama/tanimlar/yasal-oranlar', label: 'Yasal Oranlar' },
+        ],
+      },
     ],
   },
   {

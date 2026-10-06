@@ -13,6 +13,7 @@ export type MenuModulKey =
   | 'izin'
   | 'bildirim'
   | 'kesintiler'
+  | 'hesaplamaYonetimi'
   | 'egitim'
   | 'performansYonetimi'
   | 'iletisimYonetimi'
@@ -40,6 +41,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'izin', labelKisa: 'İzin', label: 'İzin Yönetimi', pathPrefixes: ['/izin'] },
   { key: 'bildirim', labelKisa: 'Bildirim', label: 'Bildirim', pathPrefixes: ['/bildirim'] },
   { key: 'kesintiler', labelKisa: 'Kesinti', label: 'Kesintiler', pathPrefixes: ['/kesintiler'] },
+  { key: 'hesaplamaYonetimi', labelKisa: 'Hesaplama', label: 'Hesaplama Yönetimi', pathPrefixes: ['/hesaplama'] },
   { key: 'egitim', labelKisa: 'Eğitim', label: 'Eğitim', pathPrefixes: ['/egitim'] },
   { key: 'performansYonetimi', labelKisa: 'Performans', label: 'Performans Yönetimi', pathPrefixes: ['/performans'] },
   { key: 'iletisimYonetimi', labelKisa: 'İletişim', label: 'İletişim Yönetimi', pathPrefixes: ['/iletisim-yonetimi'] },
@@ -171,6 +173,10 @@ export function kullaniciPathAllowed(
     return false
   }
 
+  if (path.startsWith('/hesaplama')) {
+    return menuModulAcik('hesaplamaYonetimi', menuIzinleri)
+  }
+
   // Kesintiler: yevmiye, arazi ve aylıktan kesme bordrosu
   if (path.startsWith('/kesintiler')) {
     if (!menuModulAcik('kesintiler', menuIzinleri)) return false
@@ -255,6 +261,7 @@ export function sidebarGrupGoster(
     'İzin Yönetimi': 'izin',
     'Bildirim Yönetimi': 'bildirim',
     'Kesintiler Yönetimi': 'kesintiler',
+    'Hesaplama Yönetimi': 'hesaplamaYonetimi',
     'Eğitim Yönetimi': 'egitim',
     'Performans Yönetimi': 'performansYonetimi',
     'İletişim Yönetimi': 'iletisimYonetimi',
