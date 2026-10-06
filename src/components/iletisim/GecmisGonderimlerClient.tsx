@@ -1,10 +1,12 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState, useTransition, type MouseEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import type { SmsLogOlaySatir } from '@/lib/sms-log-durum'
+import Modal from '@/components/ui/Modal'
 import {
   smsLogDurumSenkronizeAction,
-  smsLogIptalAction,
+  smsLogTopluIptalAction,
   smsPlanliLoglariSenkronizeAction,
 } from '@/app/(dashboard)/iletisim-yonetimi/gecmis-gonderimler/actions'
 
@@ -69,12 +71,15 @@ interface Props {
 }
 
 export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Props) {
+  const router = useRouter()
   const [arama, setArama] = useState('')
   const [durum, setDurum] = useState('')
   const [acikLogId, setAcikLogId] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
   const [senkronLogId, setSenkronLogId] = useState<number | null>(null)
-  const [iptalLogId, setIptalLogId] = useState<number | null>(null)
+  const [secili, setSecili] = useState<Set<number>>(new Set())
+  const [iptalAday, setIptalAday] = useState<number[] | null>(null)
+  const [iptalSonuc, setIptalSonuc] = useState<string | null>(null)
   const [planSenkron, setPlanSenkron] = useState(false)
 
   useEffect(() => {
@@ -118,20 +123,59 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
     })
   }
 
-  function gonderimIptal(logId: number, e: MouseEvent) {
-    e.stopPropagation()
-    if (
-      !confirm(
-        'Planlanmış gönderim Intrada\'da iptal edilecek.\n\nMesajpaketi API\'sinde iptal uç noktası olmadığı için mesaj sağlayıcı kuyruğunda bekliyorsa panelden ayrıca iptal gerekebilir.\n\nDevam edilsin mi?',
-      )
-    ) {
-      return
-    }
-    setIptalLogId(logId)
+  const planliFiltre = filtreli.filter(l => l.durum === 'planlandi')
+  const seciliPlanli = planliFiltre.filter(l => secili.has(l.id))
+  const tumPlanliSecili = planliFiltre.length > 0 && seciliPlanli.length === planliFiltre.length
+
+  function secimDegistir(id: number, acik: boolean) {
+    setSecili(prev => {
+      const sonraki = new Set(prev)
+      if (acik) sonraki.add(id)
+      else sonraki.delete(id)
+      return sonraki
+    })
+  }
+
+  function tumPlanlilariSec(acik: boolean) {
+    setSecili(prev => {
+      const sonraki = new Set(prev)
+      for (const l of planliFiltre) {
+        if (acik) sonraki.add(l.id)
+        else sonraki.delete(l.id)
+      }
+      return sonraki
+    })
+  }
+
+  function iptalPenceresiAc(idler: number[], e?: MouseEvent) {
+    e?.stopPropagation()
+    const planliIdler = idler.filter(id => loglar.some(l => l.id === id && l.durum === 'planlandi'))
+    if (!planliIdler.length) return
+    setIptalSonuc(null)
+    setIptalAday(planliIdler)
+  }
+
+  function iptaliOnayla() {
+    if (!iptalAday?.length) return
+    const idler = iptalAday
     startTransition(async () => {
-      const sonuc = await smsLogIptalAction(logId)
-      setIptalLogId(null)
-      if (sonuc.hata) alert(sonuc.hata)
+      const sonuc = await smsLogTopluIptalAction(idler)
+      if (!sonuc.iptal) {
+        setIptalSonuc(sonuc.hata ?? 'İptal edilemedi.')
+        return
+      }
+      setSecili(prev => {
+        const sonraki = new Set(prev)
+        for (const id of idler) sonraki.delete(id)
+        return sonraki
+      })
+      setIptalAday(null)
+      setIptalSonuc(
+        sonuc.hatalar?.length
+          ? `${sonuc.iptal} kayıt iptal edildi. İptal edilemeyen ${sonuc.hatalar.length} kayıt: ${sonuc.hatalar.join(' ')}`
+          : null,
+      )
+      router.refresh()
     })
   }
 
@@ -166,6 +210,24 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
         </div>
       </div>
 
+      {seciliPlanli.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+          <p className="text-sm text-sky-900">{seciliPlanli.length} planlanmış SMS seçildi.</p>
+          <button
+            type="button"
+            onClick={() => iptalPenceresiAc(seciliPlanli.map(l => l.id))}
+            disabled={pending}
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            Seçilenleri iptal et
+          </button>
+        </div>
+      ) : null}
+
+      {iptalSonuc && !iptalAday ? (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">{iptalSonuc}</p>
+      ) : null}
+
       <p className="text-xs text-slate-500">
         Satıra tıklayarak gönderim geçmişini görüntüleyebilirsiniz. Planlanmış doğum günü mesajlarında
         iletim durumu sağlayıcıdan sorgulanır. Sağlayıcı durum kodu <strong>0</strong> (beklemede), planlanan
@@ -180,6 +242,16 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500 sticky top-0 z-10">
               <tr>
+                <th className="text-left font-medium px-3 py-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={tumPlanliSecili}
+                    disabled={!planliFiltre.length}
+                    aria-label="Görünen planlanmış SMS’leri seç"
+                    onChange={e => tumPlanlilariSec(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                </th>
                 <th className="text-left font-medium px-4 py-2 w-8" />
                 <th className="text-left font-medium px-2 py-2">Tarih</th>
                 <th className="text-left font-medium px-2 py-2">Alıcı</th>
@@ -201,6 +273,17 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
                       onClick={() => satirTikla(l.id)}
                       className={`border-b border-slate-50 cursor-pointer transition-colors ${acik ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}
                     >
+                      <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                        {l.durum === 'planlandi' ? (
+                          <input
+                            type="checkbox"
+                            checked={secili.has(l.id)}
+                            aria-label={`${l.alici_ad ?? l.telefon} planını seç`}
+                            onChange={e => secimDegistir(l.id, e.target.checked)}
+                            className="rounded border-slate-300"
+                          />
+                        ) : null}
+                      </td>
                       <td className="px-4 py-2 text-slate-400 text-xs">{acik ? '▼' : '▶'}</td>
                       <td className="px-2 py-2 whitespace-nowrap text-slate-500 text-xs">
                         {tarihFmt(l.created_at)}
@@ -235,7 +318,7 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
                     </tr>
                     {acik ? (
                       <tr className="bg-slate-50/80 border-b border-slate-100">
-                        <td colSpan={8} className="px-4 py-4">
+                        <td colSpan={9} className="px-4 py-4">
                           <div className="space-y-3 max-w-3xl">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <h3 className="text-sm font-semibold text-slate-700">Gönderim geçmişi</h3>
@@ -251,11 +334,11 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={e => gonderimIptal(l.id, e)}
-                                    disabled={pending && iptalLogId === l.id}
+                                    onClick={e => iptalPenceresiAc([l.id], e)}
+                                    disabled={pending}
                                     className="text-xs rounded-lg border border-red-200 bg-white px-3 py-1.5 text-red-700 hover:bg-red-50 disabled:opacity-50"
                                   >
-                                    {pending && iptalLogId === l.id ? 'İptal ediliyor…' : 'Gönderimi iptal et'}
+                                    Gönderimi iptal et
                                   </button>
                                 </div>
                               ) : null}
@@ -303,7 +386,7 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
               })}
               {!filtreli.length && (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-400 text-sm">
+                  <td colSpan={9} className="py-10 text-center text-slate-400 text-sm">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
@@ -312,6 +395,47 @@ export default function GecmisGonderimlerClient({ loglar, olaylarByLogId }: Prop
           </table>
         </div>
       </div>
+
+      <Modal
+        open={iptalAday != null}
+        onClose={() => {
+          if (pending) return
+          setIptalAday(null)
+          setIptalSonuc(null)
+        }}
+        title="Planlanmış gönderimi iptal et"
+        size="sm"
+      >
+        <p className="text-sm text-slate-700">
+          <strong>{iptalAday?.length ?? 0}</strong> planlanmış SMS Intrada kaydında iptal edilecek.
+          Mesaj henüz gitmediyse bu listedeki plan kalkar.
+        </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Sağlayıcı kuyruğundaki mesaj bu işlemle otomatik silinmeyebilir. Gerekirse Mesajpaketi panelinden de kontrol edin.
+        </p>
+        {iptalSonuc ? <p className="mt-3 text-sm text-red-700">{iptalSonuc}</p> : null}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIptalAday(null)
+              setIptalSonuc(null)
+            }}
+            disabled={pending}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            onClick={iptaliOnayla}
+            disabled={pending || !iptalAday?.length}
+            className="rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+          >
+            {pending ? 'İptal ediliyor…' : 'İptal et'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

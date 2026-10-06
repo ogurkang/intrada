@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SmsExcelGonderInput, SmsGonderActionSonuc } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/actions'
 import SmsPlanliGonderimAlanlari from '@/components/iletisim/SmsPlanliGonderimAlanlari'
+import SmsPlanOnayModal from '@/components/iletisim/SmsPlanOnayModal'
 import {
   smsExcelKolonSecenekleri,
   smsExcelOnizleme,
@@ -67,6 +68,7 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
   const [sonuc, setSonuc] = useState<SmsGonderActionSonuc | null>(null)
   const [planliGonderim, setPlanliGonderim] = useState(false)
   const [planliTarihSaat, setPlanliTarihSaat] = useState('')
+  const [planOnay, setPlanOnay] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const hazir = useMemo(() => (onizleme ?? []).filter(s => s.durum === 'hazir'), [onizleme])
@@ -166,10 +168,16 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
       setSonuc({ hata: 'Planlanan gönderim tarihi ve saati seçin.' })
       return
     }
-    const onay = planliGonderim
-      ? `${hazir.length} numaraya SMS, seçilen tarihte gönderilmek üzere planlanacak. Onaylıyor musunuz?`
-      : `${hazir.length} numaraya SMS gönderilecek. Onaylıyor musunuz?`
-    if (!confirm(onay)) return
+    if (planliGonderim) {
+      setPlanOnay(true)
+      return
+    }
+    if (!confirm(`${hazir.length} numaraya SMS gönderilecek. Onaylıyor musunuz?`)) return
+    gonderimiBaslat()
+  }
+
+  function gonderimiBaslat() {
+    setPlanOnay(false)
     setSonuc(null)
     startTransition(async () => {
       const res = await onGonder({
@@ -424,6 +432,15 @@ export default function SmsExcelClient({ originatorlar, sablonlar, gonderimAcik,
       {sonuc?.hata ? (
         <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{sonuc.hata}</p>
       ) : null}
+      <SmsPlanOnayModal
+        open={planOnay}
+        tarihSaat={planliTarihSaat}
+        aliciSayisi={hazir.length}
+        bekliyor={isPending}
+        onKapat={() => setPlanOnay(false)}
+        onOnayla={gonderimiBaslat}
+      />
+
       {sonuc?.ok ? (
         <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
           {(sonuc.gonderilen ?? 0) > 0 && <>{sonuc.gonderilen} alıcıya gönderildi. </>}

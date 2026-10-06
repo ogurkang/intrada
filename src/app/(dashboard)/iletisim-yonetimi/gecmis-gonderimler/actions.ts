@@ -25,6 +25,35 @@ export async function smsLogDurumSenkronizeAction(logId: number): Promise<{
   return { ok: true, durum: sonuc.durum }
 }
 
+export async function smsLogTopluIptalAction(
+  logIds: number[],
+): Promise<{ ok?: boolean; iptal?: number; hatalar?: string[]; hata?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+
+  const access = await getAppAccess(supabase, user.id)
+  if (!isAdminLike(access)) return { hata: 'Yetkiniz yok.' }
+
+  const idler = [...new Set(logIds.map(id => Number(id)).filter(id => Number.isFinite(id) && id > 0))]
+  if (!idler.length) return { hata: 'İptal edilecek planlanmış SMS seçin.' }
+  if (idler.length > 200) return { hata: 'Tek seferde en fazla 200 kayıt iptal edilebilir.' }
+
+  const hatalar: string[] = []
+  let iptal = 0
+  for (const id of idler) {
+    const sonuc = await smsLogIptalEt(supabase, id, user.email ?? 'admin')
+    if (sonuc.hata) hatalar.push(`#${id}: ${sonuc.hata}`)
+    else iptal += 1
+  }
+
+  revalidatePath('/iletisim-yonetimi/gecmis-gonderimler')
+  if (!iptal) return { hata: hatalar[0] ?? 'İptal edilemedi.', hatalar }
+  return { ok: true, iptal, hatalar: hatalar.length ? hatalar : undefined }
+}
+
 export async function smsLogIptalAction(logId: number): Promise<{ ok?: boolean; hata?: string }> {
   const supabase = await createClient()
   const {

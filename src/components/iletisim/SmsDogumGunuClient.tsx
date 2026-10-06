@@ -8,6 +8,7 @@ import { sablonTurEtiket } from '@/lib/sms-sablon'
 import type { SmsPersonelSatir, SmsSablonSecenek } from '@/lib/sms-islemleri-tipleri'
 import SmsSecimListesi from './SmsSecimListesi'
 import SmsPlanliGonderimAlanlari from './SmsPlanliGonderimAlanlari'
+import SmsPlanOnayModal from './SmsPlanOnayModal'
 
 const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -51,6 +52,7 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
   const [isPending, startTransition] = useTransition()
   const [planliGonderim, setPlanliGonderim] = useState(false)
   const [planliTarihSaat, setPlanliTarihSaat] = useState('')
+  const [planOnay, setPlanOnay] = useState(false)
 
   const kullanilabilirSablonlar = useMemo(
     () => sablonlar.filter(s => IZINLI_TURLER.includes(s.tur)),
@@ -82,6 +84,17 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
       setSonuc({ hata: 'Planlanan gönderim tarihi ve saati seçin.' })
       return
     }
+    if (planliGonderim) {
+      setPlanOnay(true)
+      return
+    }
+    gonderimiBaslat()
+  }
+
+  function gonderimiBaslat() {
+    setPlanOnay(false)
+    const sablon = kullanilabilirSablonlar.find(s => String(s.id) === sablonId)
+    if (!sablon) return
     startTransition(async () => {
       const res = await smsGonderAction({
         metin: sablon.metin,
@@ -185,6 +198,15 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
               : `SMS Gönder (${gonderilecek.length})`}
         </button>
       </div>
+
+      <SmsPlanOnayModal
+        open={planOnay}
+        tarihSaat={planliTarihSaat}
+        aliciSayisi={gonderilecek.length}
+        bekliyor={isPending}
+        onKapat={() => setPlanOnay(false)}
+        onOnayla={gonderimiBaslat}
+      />
 
       {sonuc?.ok && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">

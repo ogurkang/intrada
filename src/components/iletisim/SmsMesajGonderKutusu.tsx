@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { SmsGonderInput, SmsGonderActionSonuc } from '@/app/(dashboard)/iletisim-yonetimi/sms-islemleri/actions'
 import { sablonTurEtiket } from '@/lib/sms-sablon'
 import SmsPlanliGonderimAlanlari from './SmsPlanliGonderimAlanlari'
+import SmsPlanOnayModal from './SmsPlanOnayModal'
 
 export interface SablonSecenek {
   id: number
@@ -57,6 +58,7 @@ export default function SmsMesajGonderKutusu({
   const [isPending, startTransition] = useTransition()
   const [planliGonderim, setPlanliGonderim] = useState(false)
   const [planliTarihSaat, setPlanliTarihSaat] = useState('')
+  const [planOnay, setPlanOnay] = useState(false)
 
   const kullanilabilirSablonlar = useMemo(
     () => sablonlar.filter(s => izinliTurler.includes(s.tur)),
@@ -84,6 +86,15 @@ export default function SmsMesajGonderKutusu({
       setSonuc({ hata: 'Planlanan gönderim tarihi ve saati seçin.' })
       return
     }
+    if (planliGonderim) {
+      setPlanOnay(true)
+      return
+    }
+    gonderimiBaslat()
+  }
+
+  function gonderimiBaslat() {
+    setPlanOnay(false)
     startTransition(async () => {
       const res = await onGonder({
         metin: mesaj.trim(),
@@ -183,6 +194,15 @@ export default function SmsMesajGonderKutusu({
             ? `SMS Planla (${toplamAlici})`
             : `SMS Gönder (${toplamAlici})`}
       </button>
+
+      <SmsPlanOnayModal
+        open={planOnay}
+        tarihSaat={planliTarihSaat}
+        aliciSayisi={toplamAlici}
+        bekliyor={isPending}
+        onKapat={() => setPlanOnay(false)}
+        onOnayla={gonderimiBaslat}
+      />
 
       {sonuc?.ok && (
         <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
