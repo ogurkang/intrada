@@ -123,6 +123,80 @@ function satirKey(r: TerfiEttirOnizlemeSatir): string {
   return r.satir_id || terfiSatirAnahtari(r.sicil_no, r.terfi_id, r.kadro_rolu)
 }
 
+const PAYLASILAN_ALANLAR = new Set<keyof TerfiEttirOnizlemeSatir['payload']>([
+  'kha_derece',
+  'kha_kademe',
+  'kha_tarihi',
+  'ekea_derece',
+  'ekea_kademe',
+  'ekea_tarihi',
+  'kidem_tarihi',
+  'kidem_yili',
+  'iyi_hal_terfi_tarihi',
+])
+
+function alanMetni(a: string | null | undefined, b: string | null | undefined): boolean {
+  return String(a ?? '').trim() === String(b ?? '').trim()
+}
+
+function asilKariyeriniVekileYansit(rows: TerfiEttirOnizlemeSatir[]): TerfiEttirOnizlemeSatir[] {
+  const asilBySicil = new Map<string, TerfiEttirOnizlemeSatir>()
+  for (const r of rows) {
+    if (r.kadro_rolu === 'Asil') asilBySicil.set(r.sicil_no, r)
+  }
+  if (!asilBySicil.size) return rows
+  return rows.map(r => {
+    if (r.kadro_rolu === 'Asil' || r.ogrenim_terfi) return r
+    const asil = asilBySicil.get(r.sicil_no)
+    if (!asil) return r
+    const payload = { ...r.payload }
+    for (const alan of PAYLASILAN_ALANLAR) payload[alan] = asil.payload[alan]
+    return {
+      ...r,
+      payload,
+      dk_kha_eski: asil.dk_kha_eski,
+      dk_kha_yeni: asil.dk_kha_yeni,
+      dk_ekea_eski: asil.dk_ekea_eski,
+      dk_ekea_yeni: asil.dk_ekea_yeni,
+      kha_tarihi: asil.kha_tarihi,
+      ekea_tarihi: asil.ekea_tarihi,
+      kidem_tarihi_eski: asil.kidem_tarihi_eski,
+      kidem_tarihi_yeni: asil.kidem_tarihi_yeni,
+      iyi_hal_tarihi_eski: asil.iyi_hal_tarihi_eski,
+      iyi_hal_tarihi_yeni: asil.iyi_hal_tarihi_yeni,
+      kidem_yili_eski: asil.kidem_yili_eski,
+      kidem_yili_yeni: asil.kidem_yili_yeni,
+      durum: asil.durum,
+    }
+  })
+}
+
+function alanUygula(
+  row: TerfiEttirOnizlemeSatir,
+  alan: keyof TerfiEttirOnizlemeSatir['payload'],
+  deger: string,
+): TerfiEttirOnizlemeSatir {
+  const p = { ...row.payload, [alan]: deger || null }
+  if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif) && !row.th_hizmet_baslangic) {
+    const secilen = thKidemEksi5BandiMi(parseKidemYili(p.kidem_yili))
+      ? p.yan_odeme_eksi5
+      : row.tanim_yan_odeme_arti5
+    if (String(secilen ?? '').trim()) p.yan_odeme = secilen
+  }
+  return {
+    ...row,
+    dk_kha_yeni: `${p.kha_derece}/${p.kha_kademe}`,
+    dk_ekea_yeni: `${p.ekea_derece}/${p.ekea_kademe}`,
+    ek_gosterge_yeni: puanGoster(p.ek_gosterge),
+    ek_odeme_yeni: puanGoster(p.ek_odeme),
+    oht_yeni: puanGoster(p.oht),
+    yan_odeme_yeni: puanGoster(p.yan_odeme),
+    yan_odeme_eksi5_yeni: puanGoster(p.yan_odeme_eksi5),
+    sds_yeni: puanGoster(p.sds_orani),
+    payload: p,
+  }
+}
+
 export default function TerfiEttirClient({
   donemId,
   donemAdi,
@@ -140,7 +214,7 @@ export default function TerfiEttirClient({
   onGeriAlToplu,
 }: Props) {
   const router = useRouter()
-  const [satirlar, setSatirlar] = useState<TerfiEttirOnizlemeSatir[]>(initialRows)
+  const [satirlar, setSatirlar] = useState<TerfiEttirOnizlemeSatir[]>(() => asilKariyeriniVekileYansit(initialRows))
   const [secili, setSecili] = useState<Record<string, boolean>>({})
   const [seciliGeriAl, setSeciliGeriAl] = useState<Record<number, boolean>>({})
   const [hata, setHata] = useState<string | null>(null)
@@ -195,31 +269,29 @@ export default function TerfiEttirClient({
   }, [islemLoglari])
 
   function guncelle(key: string, alan: keyof TerfiEttirOnizlemeSatir['payload'], deger: string) {
-    setSatirlar((prev) =>
-      prev.map((row) => {
-        if (satirKey(row) !== key) return row
-        const p = { ...row.payload, [alan]: deger || null }
-        if (alan === 'kidem_yili' && unvanSinifiThMi(row.unvan_sinif) && !row.th_hizmet_baslangic) {
-          const secilen = thKidemEksi5BandiMi(parseKidemYili(p.kidem_yili))
-            ? p.yan_odeme_eksi5
-            : row.tanim_yan_odeme_arti5
-          if (String(secilen ?? '').trim()) p.yan_odeme = secilen
-        }
-        return {
-          ...row,
-          dk_kha_yeni: `${p.kha_derece}/${p.kha_kademe}`,
-          dk_ekea_yeni: `${p.ekea_derece}/${p.ekea_kademe}`,
-          ek_gosterge_yeni: puanGoster(p.ek_gosterge),
-          ek_odeme_yeni: puanGoster(p.ek_odeme),
-          oht_yeni: puanGoster(p.oht),
-          yan_odeme_yeni: puanGoster(p.yan_odeme),
-          yan_odeme_eksi5_yeni: puanGoster(p.yan_odeme_eksi5),
-          sds_yeni: puanGoster(p.sds_orani),
-          payload: p,
-        }
-      }),
-    )
+    setSatirlar((prev) => {
+      const kaynak = prev.find(row => satirKey(row) === key)
+      if (!kaynak) return prev
+      const eski = kaynak.payload[alan]
+      const paylas = PAYLASILAN_ALANLAR.has(alan)
+      return prev.map((row) => {
+        if (satirKey(row) === key) return alanUygula(row, alan, deger)
+        if (!paylas || row.sicil_no !== kaynak.sicil_no || row.kadro_rolu === 'Asil') return row
+        if (kaynak.kadro_rolu === 'Asil' || alanMetni(row.payload[alan], eski)) return alanUygula(row, alan, deger)
+        return row
+      })
+    })
   }
+
+  const gruplar = useMemo(() => {
+    const out: { sicil: string; satirlar: TerfiEttirOnizlemeSatir[] }[] = []
+    for (const r of satirlar) {
+      const son = out[out.length - 1]
+      if (son && son.sicil === r.sicil_no) son.satirlar.push(r)
+      else out.push({ sicil: r.sicil_no, satirlar: [r] })
+    }
+    return out
+  }, [satirlar])
 
   const ogrenimAdayPersoneller = useMemo(() => {
     const listede = new Set(satirlar.map(r => r.sicil_no))
@@ -589,8 +661,8 @@ export default function TerfiEttirClient({
       </div>
 
       <p className="text-xs text-slate-500 mb-4">
-        Kurallar: <code className="bg-slate-200/80 px-1 rounded">docs/TERFI_ETTIR.md</code>. Satırları seçin, gerekirse değerleri düzenleyin,{' '}
-        <strong>Terfi Ettir</strong> ile kaydedin.
+        Aynı personelin asıl ve vekil kadroları tek blokta durur. Vekilin derece, kademe ve tarihleri asıl kaydı izler ve “Asıl ile aynı” yazar. Vekilde yalnızca ünvana özel kazanç alanları ayrı durur.
+        Seçip <strong>Terfi Ettir</strong> dediğinizde her kadro kaydı kendi terfi satırına yazılır. Aylıksız izindeki personel bu listeden çıkarılmaz.
       </p>
 
       {hata && <p className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg mb-4">{hata}</p>}
@@ -645,21 +717,50 @@ export default function TerfiEttirClient({
                 </td>
               </tr>
             )}
-            {satirlar.map((r, idx) => (
-              <tr key={satirKey(r)} className="hover:bg-slate-50/80">
-                <td className="px-2 py-2 align-top">
+            {gruplar.map((g, gi) => {
+              const anchor = g.satirlar.find(r => r.kadro_rolu === 'Asil') ?? g.satirlar[0]
+              const sirali = [anchor, ...g.satirlar.filter(r => satirKey(r) !== satirKey(anchor))]
+              return sirali.map((r) => {
+              const ozet = sirali.length > 1 && satirKey(r) !== satirKey(anchor)
+              const ilk = satirKey(r) === satirKey(anchor)
+              const ayniKha = !ozet || (alanMetni(r.payload.kha_derece, anchor.payload.kha_derece) && alanMetni(r.payload.kha_kademe, anchor.payload.kha_kademe))
+              const ayniEkea = !ozet || (alanMetni(r.payload.ekea_derece, anchor.payload.ekea_derece) && alanMetni(r.payload.ekea_kademe, anchor.payload.ekea_kademe))
+              const ayniTarih = !ozet || (
+                alanMetni(r.payload.kha_tarihi, anchor.payload.kha_tarihi)
+                && alanMetni(r.payload.ekea_tarihi, anchor.payload.ekea_tarihi)
+                && alanMetni(r.payload.kidem_tarihi, anchor.payload.kidem_tarihi)
+                && alanMetni(r.payload.iyi_hal_terfi_tarihi, anchor.payload.iyi_hal_terfi_tarihi)
+              )
+              const ayniKidem = !ozet || alanMetni(r.payload.kidem_yili, anchor.payload.kidem_yili)
+              const ayniDurum = !ozet || r.durum === anchor.durum
+              const ayniYazi = anchor.kadro_rolu === 'Asil' ? 'Asıl ile aynı' : 'Aynı'
+              return (
+              <tr key={satirKey(r)} className={ozet ? 'bg-amber-50/60' : 'hover:bg-slate-50/80'}>
+                {ilk ? (
+                <td className="px-2 py-2 align-top" rowSpan={sirali.length}>
                   <input
                     type="checkbox"
-                    checked={!!secili[satirKey(r)]}
-                    onChange={() => toggleOne(satirKey(r))}
-                    disabled={r.terfi_id == null}
+                    checked={sirali.every(s => secili[satirKey(s)])}
+                    onChange={() => toggleOne(satirKey(anchor))}
+                    disabled={sirali.every(s => s.terfi_id == null)}
                   />
                 </td>
-                <td className="px-2 py-2 align-top text-center text-slate-600 tabular-nums">{idx + 1}</td>
-                <td className="px-2 py-2 align-top">
+                ) : null}
+                {ilk ? (
+                <td className="px-2 py-2 align-top text-center text-slate-600 tabular-nums" rowSpan={sirali.length}>{gi + 1}</td>
+                ) : null}
+                {ilk ? (
+                <td className="px-2 py-2 align-top" rowSpan={sirali.length}>
                   <span className="font-mono text-xs text-slate-500">{r.sicil_no}</span>
                   <br />
                   <span className="font-medium text-slate-800">{r.ad_soyad}</span>
+                  {sirali.length > 1 ? (
+                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                      {sirali.some(s => s.kadro_rolu === 'Asil')
+                        ? `Asıl ve ${sirali.filter(s => s.kadro_rolu === 'Vekil').length} vekil kadro`
+                        : `${sirali.length} kadro`}
+                    </p>
+                  ) : null}
                   {r.ogrenim_turu || r.yeni_ogrenim_turu ? (
                     <p className="text-[11px] text-slate-500 mt-1 leading-snug">
                       Öğrenim: {r.ogrenim_turu ?? '—'}
@@ -669,6 +770,7 @@ export default function TerfiEttirClient({
                     </p>
                   ) : null}
                 </td>
+                ) : null}
                 <td className="px-2 py-2 align-top text-slate-700">
                   {r.unvan_adi ?? '—'}
                   {r.kadro_rolu ? (
@@ -680,57 +782,83 @@ export default function TerfiEttirClient({
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums">{r.kadro_derecesi ?? '—'}</td>
                 <td className="px-2 py-2 align-top text-[11px] leading-snug text-slate-700">
-                  <div>
-                    <span className="text-slate-400">KHA:</span> {fmtTarih(r.kha_tarihi)} → {fmtTarih(r.payload.kha_tarihi)}
-                  </div>
-                  <div className="mt-0.5">
-                    <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)} → {fmtTarih(r.payload.ekea_tarihi)}
-                  </div>
-                  <div className="mt-0.5">
-                    <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.kidem_tarihi_yeni)}
-                  </div>
-                  <div className="mt-0.5">
-                    <span className="text-slate-400">İyi Hal:</span> {fmtTarih(r.iyi_hal_tarihi_eski)} → {fmtTarih(r.iyi_hal_tarihi_yeni)}
-                  </div>
+                  {ayniTarih && ozet ? (
+                    <span className="text-slate-400">{ayniYazi}</span>
+                  ) : (
+                    <>
+                      {(!ozet || !alanMetni(r.payload.kha_tarihi, anchor.payload.kha_tarihi)) && (
+                        <div>
+                          <span className="text-slate-400">KHA:</span> {fmtTarih(r.kha_tarihi)} → {fmtTarih(r.payload.kha_tarihi)}
+                        </div>
+                      )}
+                      {(!ozet || !alanMetni(r.payload.ekea_tarihi, anchor.payload.ekea_tarihi)) && (
+                        <div className="mt-0.5">
+                          <span className="text-slate-400">EKEA:</span> {fmtTarih(r.ekea_tarihi)} → {fmtTarih(r.payload.ekea_tarihi)}
+                        </div>
+                      )}
+                      {(!ozet || !alanMetni(r.payload.kidem_tarihi, anchor.payload.kidem_tarihi)) && (
+                        <div className="mt-0.5">
+                          <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.payload.kidem_tarihi)}
+                        </div>
+                      )}
+                      {(!ozet || !alanMetni(r.payload.iyi_hal_terfi_tarihi, anchor.payload.iyi_hal_terfi_tarihi)) && (
+                        <div className="mt-0.5">
+                          <span className="text-slate-400">İyi Hal:</span> {fmtTarih(r.iyi_hal_tarihi_eski)} → {fmtTarih(r.payload.iyi_hal_terfi_tarihi)}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums whitespace-nowrap">
-                  {r.kidem_yili_eski} → {r.kidem_yili_yeni}
+                  {ayniKidem && ozet ? <span className="text-slate-400 text-[11px]">{ayniYazi}</span> : <>{r.kidem_yili_eski} → {r.kidem_yili_yeni}</>}
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
-                    {r.dk_kha_eski} → {r.dk_kha_yeni}
-                  </div>
-                  <div className="flex gap-0.5 items-center flex-wrap">
-                    <input
-                      className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
-                      value={r.payload.kha_derece ?? ''}
-                      onChange={(e) => guncelle(satirKey(r), 'kha_derece', e.target.value)}
-                    />
-                    <span className="text-slate-400">/</span>
-                    <input
-                      className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
-                      value={r.payload.kha_kademe ?? ''}
-                      onChange={(e) => guncelle(satirKey(r), 'kha_kademe', e.target.value)}
-                    />
-                  </div>
+                  {ayniKha && ozet ? (
+                    <span className="text-[11px] text-slate-400">{ayniYazi}</span>
+                  ) : (
+                    <>
+                      <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
+                        {r.dk_kha_eski} → {r.dk_kha_yeni}
+                      </div>
+                      <div className="flex gap-0.5 items-center flex-wrap">
+                        <input
+                          className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
+                          value={r.payload.kha_derece ?? ''}
+                          onChange={(e) => guncelle(satirKey(r), 'kha_derece', e.target.value)}
+                        />
+                        <span className="text-slate-400">/</span>
+                        <input
+                          className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
+                          value={r.payload.kha_kademe ?? ''}
+                          onChange={(e) => guncelle(satirKey(r), 'kha_kademe', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
-                    {r.dk_ekea_eski} → {r.dk_ekea_yeni}
-                  </div>
-                  <div className="flex gap-0.5 items-center flex-wrap">
-                    <input
-                      className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
-                      value={r.payload.ekea_derece ?? ''}
-                      onChange={(e) => guncelle(satirKey(r), 'ekea_derece', e.target.value)}
-                    />
-                    <span className="text-slate-400">/</span>
-                    <input
-                      className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
-                      value={r.payload.ekea_kademe ?? ''}
-                      onChange={(e) => guncelle(satirKey(r), 'ekea_kademe', e.target.value)}
-                    />
-                  </div>
+                  {ayniEkea && ozet ? (
+                    <span className="text-[11px] text-slate-400">{ayniYazi}</span>
+                  ) : (
+                    <>
+                      <div className="text-[11px] text-slate-400 mb-1 whitespace-nowrap">
+                        {r.dk_ekea_eski} → {r.dk_ekea_yeni}
+                      </div>
+                      <div className="flex gap-0.5 items-center flex-wrap">
+                        <input
+                          className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
+                          value={r.payload.ekea_derece ?? ''}
+                          onChange={(e) => guncelle(satirKey(r), 'ekea_derece', e.target.value)}
+                        />
+                        <span className="text-slate-400">/</span>
+                        <input
+                          className="w-9 border border-slate-200 rounded px-1 py-0.5 text-xs"
+                          value={r.payload.ekea_kademe ?? ''}
+                          onChange={(e) => guncelle(satirKey(r), 'ekea_kademe', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top">
                   <div className="text-[11px] text-slate-500 whitespace-nowrap">{kazancOkMetni(r.ek_gosterge_eski, r.ek_gosterge_yeni)}</div>
@@ -777,7 +905,9 @@ export default function TerfiEttirClient({
                   />
                 </td>
                 <td className="px-2 py-2 align-top text-xs max-w-[10rem]">
-                  {r.ogrenim_terfi ? (
+                  {ayniDurum && ozet && !r.kazanc_tanimi_eksik ? (
+                    <span className="text-[11px] text-slate-400">{ayniYazi}</span>
+                  ) : r.ogrenim_terfi ? (
                     <select
                       value={r.ogrenim_olay ?? 'hazirlik'}
                       onChange={e => ogrenimOlayDegistir(r.sicil_no, e.target.value as TerfiOgrenimOlayTipi)}
@@ -808,7 +938,9 @@ export default function TerfiEttirClient({
                   )}
                 </td>
                 <td className="px-2 py-2 align-top text-center">
-                  {r.ogrenim_terfi ? (
+                  {ozet ? (
+                    <span className="text-slate-300">—</span>
+                  ) : r.ogrenim_terfi ? (
                     <button
                       type="button"
                       onClick={() => ogrenimListedenCikar(r.sicil_no)}
@@ -830,7 +962,9 @@ export default function TerfiEttirClient({
                   )}
                 </td>
               </tr>
-            ))}
+              )
+              })
+            })}
           </tbody>
         </table>
       </div>
