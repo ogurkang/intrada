@@ -344,9 +344,35 @@ export async function appProfilOlustur(_prev: unknown, formData: FormData): Prom
 
     authUserId = await authUserIdByEmail(admin, email)
     if (!authUserId) {
-      return {
-        hata: `Bu e-posta (${email}) ile Supabase Auth’ta kullanıcı yok. Önce “Kullanıcılar”da hesap oluşturun veya toplu script (npm run bulk-auth-users) çalıştırın.`,
+      const sifre = varsayilanSifreFromCalisan(calisanTemel?.tckn, calisanTemel?.dogum_tarihi)
+      if (!sifre) {
+        return {
+          hata: 'Giriş hesabı açılamadı. Kartta T.C. kimlik numarasının en az ilk 3 hanesi ve doğum tarihi olmalı; varsayılan şifre bunlardan üretilir.',
+        }
       }
+      const { data, error: authErr } = await admin.auth.admin.createUser({
+        email,
+        password: sifre,
+        email_confirm: true,
+      })
+      authUserId = data?.user?.id ?? (await authUserIdByEmail(admin, email))
+      if (!authUserId) {
+        return { hata: authErr?.message ?? 'Giriş hesabı oluşturulamadı.' }
+      }
+    }
+  }
+
+  if (!authUserId) return { hata: 'Giriş hesabı bulunamadı.' }
+
+  const { data: bagliProfil, error: bagliErr } = await r.supabase
+    .from('app_profiles')
+    .select('sicil_no')
+    .eq('id', authUserId)
+    .maybeSingle()
+  if (bagliErr) return { hata: bagliErr.message }
+  if (bagliProfil) {
+    return {
+      hata: `Bu e-posta zaten ${bagliProfil.sicil_no ?? 'başka bir sicil'} kaydına bağlı.`,
     }
   }
 
