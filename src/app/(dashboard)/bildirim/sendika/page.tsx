@@ -1,8 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import SendikaBildirimClient from '@/components/bildirim/SendikaBildirimClient'
 import { sortBildirimSendikaList, sortTanimSendika } from '@/lib/sendika-sira'
+import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import { kadroStatuSendikaGrubu, type SendikaStatuGrubu } from '@/lib/sendika-statu'
+import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
-import { sendikaBildirimGuncelle, sendikaBildirimSil } from './actions'
+import { sendikaBildirimGuncelle, sendikaBildirimIstifa, sendikaBildirimSil } from './actions'
 import type { Tables } from '@/types/database'
 
 export default async function SendikaBildirimPage() {
@@ -19,6 +22,33 @@ export default async function SendikaBildirimPage() {
   ])
 
   const ayrilanSet = new Set((ayrilanPh ?? []).map(r => r.sicil_no))
+  const siciller = [...new Set((raw ?? []).map(r => r.sicil_no).filter(s => !ayrilanSet.has(s)))]
+  const kadroByAsil = new Map<string, KadroRaporRow[]>()
+  const bugun = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+  for (let i = 0; i < siciller.length; i += 120) {
+    const part = siciller.slice(i, i + 120)
+    if (!part.length) continue
+    const { data: kRows } = await supabase
+      .from('kadro_hareketleri')
+      .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+      .in('asil', part)
+    for (const r of kRows ?? []) {
+      if (!r.asil) continue
+      const list = kadroByAsil.get(r.asil) ?? []
+      list.push(r as KadroRaporRow)
+      kadroByAsil.set(r.asil, list)
+    }
+  }
+  const grupBySicil = new Map<string, SendikaStatuGrubu | null>()
+  for (const sicil of siciller) {
+    const kadro = secilenKadroSatirAsil(kadroByAsil.get(sicil) ?? [], bugun)
+    grupBySicil.set(sicil, kadroStatuSendikaGrubu(kadro?.statu ?? null))
+  }
 
   const kayitlar = sortBildirimSendikaList(
     (raw ?? [])
@@ -34,6 +64,7 @@ export default async function SendikaBildirimPage() {
           aktif: r.aktif,
           ad_soyad: calisan?.ad_soyad ?? null,
           kisa_ad: sendika?.kisa_ad ?? null,
+          sendikaGrubu: grupBySicil.get(r.sicil_no) ?? null,
         }
       }),
   )
@@ -57,6 +88,7 @@ export default async function SendikaBildirimPage() {
       kayitlar={kayitlar}
       sendikalar={sendikalar}
       onGuncelle={sendikaBildirimGuncelle}
+      onIstifa={sendikaBildirimIstifa}
       onSil={sendikaBildirimSil}
       auditLoglarByRefId={auditLoglarByRefId}
     />

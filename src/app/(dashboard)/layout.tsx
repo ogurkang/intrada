@@ -15,6 +15,7 @@ import { thHizmetYiliMenuAcikMi } from '@/lib/th-hizmet-yili-data'
 import { performansDegerlendirmeLandingHref } from '@/lib/performans-donem-coz'
 import { kullaniciAdiDuyurusuCoz } from '@/lib/kullanici-adi'
 import { KullaniciAdiGirisDuyuru } from '@/components/auth/KullaniciAdiGirisDuyuru'
+import YoneticiGelistirmeDuyuru from '@/components/layout/YoneticiGelistirmeDuyuru'
 
 export default async function DashboardLayout({
   children,
@@ -113,6 +114,9 @@ export default async function DashboardLayout({
     <IlkKurulumGuard ilkKurulumTamam={ilkTamam}>
       {girisDuyurusu ? (
         <KullaniciAdiGirisDuyuru tur={girisDuyurusu} kullaniciAdi={girisDuyuruAdi} />
+      ) : null}
+      {ilkTamam && isAdminLike(access) ? (
+        <YoneticiGelistirmeDuyuru adminMi kullaniciId={user.id} />
       ) : null}
       <DashboardShell
         userEmail={headerKimlik}

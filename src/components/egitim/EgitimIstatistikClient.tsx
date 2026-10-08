@@ -67,7 +67,7 @@ function programTur(p: string | null): string {
 
 const MUDURLUK_BELIRTILMEMIS = 'Belirtilmemiş'
 
-function kadroMudurlukEtiket(mudurluk: string | null | undefined): string {
+function gorevMudurlukEtiket(mudurluk: string | null | undefined): string {
   const t = (mudurluk ?? '').trim()
   return t || MUDURLUK_BELIRTILMEMIS
 }
@@ -142,13 +142,13 @@ export default function EgitimIstatistikClient({
   }, [katilimKeys, isaretleMode])
 
   const mudurluler = useMemo(() =>
-    [...new Set(personeller.map(p => kadroMudurlukEtiket(p.mudurluk)))].sort((a, b) => a.localeCompare(b, 'tr'))
+    [...new Set(personeller.map(p => gorevMudurlukEtiket(p.mudurluk)))].sort((a, b) => a.localeCompare(b, 'tr'))
   , [personeller])
 
   const filtreli = useMemo(() => {
     const q = arama.toLocaleLowerCase('tr-TR')
     return personeller.filter(p =>
-      (!mudFiltre || kadroMudurlukEtiket(p.mudurluk) === mudFiltre) &&
+      (!mudFiltre || gorevMudurlukEtiket(p.mudurluk) === mudFiltre) &&
       (!q || (p.ad_soyad ?? '').toLocaleLowerCase('tr-TR').includes(q) || p.sicil_no.toLocaleLowerCase('tr-TR').includes(q))
     )
   }, [personeller, mudFiltre, arama])
@@ -211,11 +211,11 @@ export default function EgitimIstatistikClient({
     setExcelPending(true)
     try {
       const personelKaynak = mudFiltre
-        ? personeller.filter(p => kadroMudurlukEtiket(p.mudurluk) === mudFiltre)
+        ? personeller.filter(p => gorevMudurlukEtiket(p.mudurluk) === mudFiltre)
         : personeller
       await egitimIstatistikExcelIndir({
         donemAdi: seciliDonem.donem_adi,
-        kapsam: mudFiltre || 'Tüm kadro müdürlükleri',
+        kapsam: mudFiltre || 'Tüm görev müdürlükleri',
         egitimler: egitimler.map(e => ({
           id: e.id,
           egitim_adi: e.egitim_adi,
@@ -224,7 +224,7 @@ export default function EgitimIstatistikClient({
         personeller: personelKaynak.map(p => ({
           sicil_no: p.sicil_no,
           ad_soyad: p.ad_soyad,
-          mudurluk: kadroMudurlukEtiket(p.mudurluk),
+          mudurluk: gorevMudurlukEtiket(p.mudurluk),
         })),
         katilim: aktifKatilim,
       })
@@ -265,7 +265,7 @@ export default function EgitimIstatistikClient({
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-800">{seciliDonem.donem_adi} — İstatistik</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {egitimler.length} eğitim · {personeller.length} personel · kadro müdürlüğüne göre
+            {egitimler.length} eğitim · {personeller.length} personel · görev müdürlüğüne göre
           </p>
         </div>
         <Link href={`/egitim/${seciliDonem.id}`}
@@ -283,15 +283,15 @@ export default function EgitimIstatistikClient({
             <select
               value={mudFiltre}
               onChange={e => setMudFiltre(e.target.value)}
-              aria-label="Kadro müdürlüğü"
+              aria-label="Görev müdürlüğü"
               className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
             >
-              <option value="">Tüm kadro müdürlükleri</option>
+              <option value="">Tüm görev müdürlükleri</option>
               {mudurluler.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <p className="text-[11px] text-slate-400">
-            Personel listesi ve müdürlük filtresi <span className="font-medium text-slate-500">kadro müdürlüğüne</span> göredir; görev müdürlüğü kullanılmaz.
+            Personel listesi ve müdürlük filtresi <span className="font-medium text-slate-500">görev müdürlüğüne</span> göredir.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ export default function EgitimIstatistikClient({
                       <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 min-w-48">
                         <p className="font-medium text-slate-800 leading-tight">{p.ad_soyad ?? p.sicil_no}</p>
                         <p className="text-slate-400 font-mono text-[10px] mt-0.5">
-                          {kadroMudurlukEtiket(p.mudurluk)}
+                          {gorevMudurlukEtiket(p.mudurluk)}
                         </p>
                       </td>
                       <td className="px-2 py-2 text-center border-r border-slate-200 w-14">

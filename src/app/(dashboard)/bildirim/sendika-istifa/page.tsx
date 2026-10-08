@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { sendikaIstifaSil } from '../calisma-belgesi/actions'
 import SendikaIstifaListeClient, {
+  type IstifaSilmeDurumu,
   type SendikaIstifaListeKayit,
 } from '@/components/bildirim/SendikaIstifaListeClient'
 
@@ -17,7 +19,7 @@ export default async function SendikaIstifaPage() {
 
   let q = supabase
     .from('sendika_istifa_bildirimleri')
-    .select('id, sicil_no, ad_soyad, tckn, sendika_adi')
+    .select('id, sicil_no, ad_soyad, tckn, sendika_adi, created_at')
     .order('created_at', { ascending: false })
     .limit(300)
 
@@ -26,15 +28,43 @@ export default async function SendikaIstifaPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: kayitlarRaw } = await (q as any)
 
-  const kayitlar: SendikaIstifaListeKayit[] = ((kayitlarRaw ?? []) as SendikaIstifaListeKayit[]).map(
-    k => ({
-      id: k.id,
-      sicil_no: k.sicil_no,
-      ad_soyad: k.ad_soyad,
-      tckn: k.tckn ?? null,
-      sendika_adi: k.sendika_adi,
-    }),
-  )
+  type HamKayit = SendikaIstifaListeKayit & { created_at?: string }
+  const ham = (kayitlarRaw ?? []) as HamKayit[]
+  const siciller = [...new Set(ham.map(k => String(k.sicil_no)))]
+  const uyelikler: { sicil_no: string; aktif: boolean; bitis_tarihi: string | null }[] = []
+  for (let i = 0; i < siciller.length; i += 120) {
+    const part = siciller.slice(i, i + 120)
+    if (!part.length) continue
+    const { data } = await supabase
+      .from('personel_sendika')
+      .select('sicil_no, aktif, bitis_tarihi')
+      .in('sicil_no', part)
+    uyelikler.push(...((data ?? []) as typeof uyelikler))
+  }
+
+  function utcGun(iso: string): string {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10)
+    return d.toISOString().slice(0, 10)
+  }
+
+  function silmeDurumu(sicil: string, gun: string): IstifaSilmeDurumu {
+    const satirlar = uyelikler.filter(u => u.sicil_no === sicil)
+    const aktifVar = satirlar.some(u => u.aktif)
+    const kapananVar = satirlar.some(u => !u.aktif && String(u.bitis_tarihi ?? '').slice(0, 10) === gun)
+    if (aktifVar && kapananVar) return 'iki-uyelik'
+    if (!aktifVar && kapananVar) return 'uyelik-acilir'
+    return 'uyelik-degismez'
+  }
+
+  const kayitlar: SendikaIstifaListeKayit[] = ham.map(k => ({
+    id: k.id,
+    sicil_no: k.sicil_no,
+    ad_soyad: k.ad_soyad,
+    tckn: k.tckn ?? null,
+    sendika_adi: k.sendika_adi,
+    silmeDurumu: silmeDurumu(String(k.sicil_no), utcGun(String(k.created_at ?? ''))),
+  }))
 
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
@@ -54,8 +84,8 @@ export default async function SendikaIstifaPage() {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Sendika İstifa İşlemleri</h1>
           <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-            Sendika istifa bildirim formları aşağıda listelenir. Word belgesi indirerek dilekçe
-            çıktısı alabilirsiniz.
+            Dilekçe kayıtları. Word çıktısı alınır. Silme yalnızca yönetici hesabındadır; silinen
+            kaydın kapattığı üyelik yeniden açılır.
           </p>
         </div>
         <Link
@@ -70,7 +100,12 @@ export default async function SendikaIstifaPage() {
         </Link>
       </div>
 
-      <SendikaIstifaListeClient kayitlar={kayitlar} auditLoglarByRefId={auditLoglarByRefId} />
+      <SendikaIstifaListeClient
+        kayitlar={kayitlar}
+        auditLoglarByRefId={auditLoglarByRefId}
+        adminMi={isAdminLike(access)}
+        onSil={sendikaIstifaSil}
+      />
     </div>
   )
 }

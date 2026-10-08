@@ -119,7 +119,7 @@ export async function egitimIstatistikExcelIndir(opts: {
 
   const aySatir = 4
   const adSatir = 5
-  const sabitBasliklar = ['Sıra No', 'Sicil', 'Ad Soyad', 'Kadro Müdürlüğü']
+  const sabitBasliklar = ['Sıra No', 'Sicil', 'Ad Soyad', 'Görev Müdürlüğü']
   sabitBasliklar.forEach((ad, i) => {
     ws.mergeCells(aySatir, i + 1, adSatir, i + 1)
     const hucre = ws.getCell(aySatir, i + 1)

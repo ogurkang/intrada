@@ -8,6 +8,7 @@ import { CopKutusuSilDugmesi, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/c
 import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { sendikaAuditDegerGoster, sendikaAuditDiffSatirlari } from '@/lib/sendika-audit'
 import { sortBildirimSendikaList } from '@/lib/sendika-sira'
+import type { SendikaStatuGrubu } from '@/lib/sendika-statu'
 import type { Tables } from '@/types/database'
 
 type SendikaKayit = {
@@ -18,14 +19,33 @@ type SendikaKayit = {
   aktif: boolean
   ad_soyad?: string | null
   kisa_ad?: string | null
+  sendikaGrubu?: SendikaStatuGrubu | null
 }
 
 interface Props {
   kayitlar: SendikaKayit[]
   sendikalar: { id: number; statu: string; kisa_ad: string; uzun_ad: string; aktif: boolean }[]
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onIstifa: (id: number, tarih: string) => Promise<{ hata?: string }>
   onSil: (id: number) => Promise<{ hata?: string }>
   auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
+}
+
+function IstifaOkDugmesi({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+      title="İstifa"
+      aria-label="İstifa"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    </button>
+  )
 }
 
 function formatGGAAYYYY(val: string | null | undefined): string {
@@ -41,6 +61,7 @@ export default function SendikaBildirimClient({
   kayitlar,
   sendikalar,
   onGuncelle,
+  onIstifa,
   onSil,
   auditLoglarByRefId = {},
 }: Props) {
@@ -66,6 +87,9 @@ export default function SendikaBildirimClient({
   const [secili, setSecili] = useState<SendikaKayit | null>(null)
   const [hata, setHata] = useState<string | null>(null)
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [istifaKayit, setIstifaKayit] = useState<SendikaKayit | null>(null)
+  const [istifaTarih, setIstifaTarih] = useState('')
+  const [istifaHata, setIstifaHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtreli = useMemo(() => {
@@ -104,6 +128,33 @@ export default function SendikaBildirimClient({
     })
   }
 
+  function istifaKapat() {
+    if (isPending) return
+    setIstifaKayit(null)
+    setIstifaTarih('')
+    setIstifaHata(null)
+  }
+
+  function istifaKaydet() {
+    if (!istifaKayit) return
+    setIstifaHata(null)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(istifaTarih)) {
+      setIstifaHata('İstifa tarihi seçilmelidir.')
+      return
+    }
+    const id = istifaKayit.id
+    const tarih = istifaTarih
+    startTransition(async () => {
+      const res = await onIstifa(id, tarih)
+      if (res.hata) {
+        setIstifaHata(res.hata)
+        return
+      }
+      setIstifaKayit(null)
+      setIstifaTarih('')
+    })
+  }
+
   function handleSil(id: number) {
     if (!confirm('Bu kayıt silinecek. Onaylıyor musunuz?')) return
     startTransition(async () => {
@@ -119,7 +170,9 @@ export default function SendikaBildirimClient({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Sendika Bildirimi</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Personel sendika üyelik kayıtları</p>
+          <p className="text-sm text-slate-500 mt-0.5 max-w-xl">
+            Aktif üyelikler. İşlemler sütunundaki kırmızı ok, üyeliği seçilen tarihte kapatır; dilekçe kaydı açmaz.
+          </p>
         </div>
         <button
           type="button"
@@ -150,7 +203,7 @@ export default function SendikaBildirimClient({
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-32">Sicil No</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600">Ad Soyad</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-600 w-48">Sendika Kısa Adı</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-600 w-36">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -182,6 +235,14 @@ export default function SendikaBildirimClient({
                         title="Sendika kaydı değişiklik geçmişi"
                       />
                       <KalemDuzenleDugmesi onClick={() => duzenleAc(row)} title="Düzenle" />
+                      <IstifaOkDugmesi
+                        disabled={isPending}
+                        onClick={() => {
+                          setIstifaKayit(row)
+                          setIstifaTarih('')
+                          setIstifaHata(null)
+                        }}
+                      />
                       <CopKutusuSilDugmesi onClick={() => handleSil(row.id)} disabled={isPending} title="Sil" />
                     </div>
                   </td>
@@ -205,12 +266,19 @@ export default function SendikaBildirimClient({
               <span className="font-medium">Sendika</span>
               <select
                 name="sendika_id"
-                defaultValue={k.sendika_id}
+                defaultValue={
+                  k.sendikaGrubu && sendikalar.some(s => s.id === k.sendika_id && s.statu === k.sendikaGrubu)
+                    ? k.sendika_id
+                    : ''
+                }
                 required
                 className="border border-slate-300 rounded-lg px-3 py-2"
               >
+                <option value="" disabled>
+                  Sendika seçin
+                </option>
                 {sendikalar
-                  .filter(s => s.aktif || s.id === k.sendika_id)
+                  .filter(s => k.sendikaGrubu && s.statu === k.sendikaGrubu && (s.aktif || s.id === k.sendika_id))
                   .map(s => (
                     <option key={s.id} value={s.id}>
                       [{s.statu}] {s.kisa_ad}
@@ -241,6 +309,46 @@ export default function SendikaBildirimClient({
               </button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      <Modal open={istifaKayit != null} onClose={istifaKapat} title="İstifa" size="sm">
+        {istifaKayit && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-700">
+              {istifaKayit.ad_soyad ?? '—'}{' '}
+              <span className="font-mono text-xs">({istifaKayit.sicil_no})</span>
+              {istifaKayit.kisa_ad ? ` · ${istifaKayit.kisa_ad}` : ''}
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Seçilen tarihte üyelik kapanır. Dilekçe kaydı açılmaz.
+            </p>
+            {istifaHata && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{istifaHata}</div>
+            )}
+            <label className="flex flex-col gap-1 text-sm text-slate-600">
+              <span className="font-medium">İstifa tarihi</span>
+              <input
+                type="date"
+                value={istifaTarih}
+                onChange={e => setIstifaTarih(e.target.value)}
+                className="border border-slate-300 rounded-lg px-3 py-2"
+              />
+            </label>
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={istifaKapat} disabled={isPending} className="px-4 py-2 text-sm text-slate-600">
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={istifaKaydet}
+                disabled={isPending}
+                className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg disabled:opacity-50"
+              >
+                {isPending ? 'Kapatılıyor…' : 'Üyeliği kapat'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 

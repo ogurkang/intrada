@@ -2,6 +2,7 @@ const ALANLAR = [
   { alan: 'ad_soyad', etiket: 'Ad Soyad' },
   { alan: 'tckn', etiket: 'T.C. Kimlik No' },
   { alan: 'sendika_adi', etiket: 'Sendika Adı' },
+  { alan: 'istifa_tarihi', etiket: 'İstifa Tarihi' },
 ] as const
 
 export function sendikaIstifaAuditDiffSatirlari(

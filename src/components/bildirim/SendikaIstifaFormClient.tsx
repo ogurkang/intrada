@@ -28,7 +28,7 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
-  const [bilgiModalAcik, setBilgiModalAcik] = useState(false)
+  const [onayAcik, setOnayAcik] = useState(false)
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
   const [sendikaAdi, setSendikaAdi] = useState('')
 
@@ -52,7 +52,8 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
   }, [seciliSicil, aktifSendikaUzunAd])
 
   const tcknUygun = bildirimTcknGecerliMi(secili?.tckn)
-  const formHazir = Boolean(seciliSicil && tcknUygun && sendikaAdi.trim())
+  const aktifUyelikVar = Boolean(seciliSicil && aktifSendikaUzunAd[seciliSicil])
+  const formHazir = Boolean(seciliSicil && tcknUygun && aktifUyelikVar && sendikaAdi.trim())
 
   const onizlemeAlanlar =
     secili && formHazir
@@ -82,33 +83,31 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
       setHata('Personel kaydında geçerli T.C. kimlik numarası bulunamadı.')
       return
     }
+    if (!aktifUyelikVar) {
+      setHata('Aktif sendika üyeliği olmayan personel için istifa dilekçesi oluşturulamaz.')
+      return
+    }
     if (!sendikaAdi.trim()) {
       setHata('Sendika adı zorunludur.')
       return
     }
+    setOnayAcik(true)
+  }
 
+  function onaylaOlustur() {
     const fd = new FormData()
     fd.set('sicil_no', seciliSicil)
     fd.set('sendika_adi', sendikaAdi.trim())
-
+    setOnayAcik(false)
     startTransition(async () => {
       const sonuc = await onKaydet(fd)
       if (sonuc?.hata) {
         setHata(sonuc.hata)
         return
       }
-      if (sonuc?.ok) {
-        if (sonuc.sendikaPasiflestirildi) broadcastIntradaRefresh('sendika')
-        setBilgiModalAcik(true)
-        return
-      }
+      if (sonuc?.sendikaPasiflestirildi) broadcastIntradaRefresh('sendika')
       listeyeDon()
     })
-  }
-
-  function bilgiModalKapat() {
-    setBilgiModalAcik(false)
-    listeyeDon()
   }
 
   return (
@@ -122,7 +121,8 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
         </Link>
         <h1 className="text-2xl font-bold text-slate-800">Yeni Sendika İstifa Bildirimi</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Personel ve sendika adı girildiğinde istifa dilekçesi oluşturulur.
+          Dilekçe yalnızca açık sendika üyeliği olan personel için oluşturulur. Oluşturmadan önce
+          onay istenir. Yalnızca üyelik kapatılacaksa Sendika Bildirimi’ndeki kırmızı oku kullanın.
         </p>
       </div>
 
@@ -136,9 +136,16 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
           />
 
           {secili ? (
-            <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
-              <div className="text-slate-500 text-xs mb-1">T.C. Kimlik No</div>
-              <div className="font-mono text-slate-800">{secili.tckn || '—'}</div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm space-y-2">
+              <div>
+                <div className="text-slate-500 text-xs mb-1">T.C. Kimlik No</div>
+                <div className="font-mono text-slate-800">{secili.tckn || '—'}</div>
+              </div>
+              {!aktifUyelikVar ? (
+                <p className="text-amber-800">
+                  Aktif sendika üyeliği yok. Bu personel için istifa dilekçesi oluşturulamaz.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -204,18 +211,28 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
         </div>
       </div>
 
-      <Modal open={bilgiModalAcik} onClose={bilgiModalKapat} title="Sendika üyeliği güncellendi" size="md">
+      <Modal open={onayAcik} onClose={() => !pending && setOnayAcik(false)} title="İstifa dilekçesi" size="md">
         <p className="text-sm text-slate-700 leading-relaxed">
-          Personelin mevcut sendika üyelik bilgisi pasif duruma gelmiştir. Yeni bir sendika üyesi olduğunda Sendika
-          Bildirimi ekranından işlem yapmayı unutmayınız.
+          İstifanız intradaya işlendi, evrakınızı Yazı İşleri Müdürlüğü aracılığı ile İnsan Kaynakları ve Eğitim
+          Müdürlüğü&apos;ne ulaştırmanız gerekmektedir. Yanlış bir işlem yapmışsanız lütfen İnsan Kaynakları ve Eğitim
+          Müdürlüğü ile görüşün.
         </p>
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            onClick={bilgiModalKapat}
-            className="inline-flex items-center rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 transition-colors"
+            onClick={() => setOnayAcik(false)}
+            disabled={pending}
+            className="px-4 py-2 text-sm text-slate-600"
           >
-            Tamam
+            Hayır
+          </button>
+          <button
+            type="button"
+            onClick={onaylaOlustur}
+            disabled={pending}
+            className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg disabled:opacity-50"
+          >
+            {pending ? 'Kaydediliyor…' : 'Tamam'}
           </button>
         </div>
       </Modal>

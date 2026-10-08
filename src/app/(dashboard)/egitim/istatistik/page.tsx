@@ -60,7 +60,7 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
           .order('egitim_id')
           .range(from, to),
       ),
-      fetchAllKadroHareketleri(supabase, 'asil, kadro_mudurlugu', q =>
+      fetchAllKadroHareketleri(supabase, 'asil, gorev_mudurlugu', q =>
         q.is('ayrilis_tarihi', null).not('asil', 'is', null),
       ),
       supabase.from('calisan').select('sicil_no, ad_soyad'),
@@ -92,8 +92,8 @@ export default async function EgitimIstatistikPage({ searchParams }: Props) {
   const mudMap: Record<string, string> = {}
   ;(kadroRaw ?? []).forEach(k => {
     if (!k.asil) return
-    const kadroMud = String(k.kadro_mudurlugu ?? '').trim()
-    mudMap[k.asil] = kadroMud
+    const gorevMud = String(k.gorev_mudurlugu ?? '').trim()
+    mudMap[k.asil] = gorevMud
   })
 
   const sicilSeti = new Set((kadroRaw ?? []).map(k => k.asil).filter(Boolean) as string[])

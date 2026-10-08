@@ -51,8 +51,9 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
   }, [seciliSiciller, personeller])
 
   const topluSendikaSecenekleri = useMemo(() => {
-    if (!seciliStatuGruplari.size) return sendikalar
-    return sendikalar.filter(s => seciliStatuGruplari.has(s.statu))
+    if (seciliStatuGruplari.size !== 1) return []
+    const grup = [...seciliStatuGruplari][0]
+    return sendikalar.filter(s => s.statu === grup)
   }, [sendikalar, seciliStatuGruplari])
 
   useEffect(() => {
@@ -163,9 +164,11 @@ export default function PersonelSendikaAtamaClient({ personeller, sendikalar }: 
           className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white min-w-[180px]"
         >
           <option value="">
-            {seciliSiciller.size
-              ? 'Toplu sendika seç…'
-              : 'Önce personel işaretleyin…'}
+            {seciliStatuGruplari.size > 1
+              ? 'Aynı statüden personel seçin…'
+              : seciliSiciller.size
+                ? 'Toplu sendika seç…'
+                : 'Önce personel işaretleyin…'}
           </option>
           {topluSendikaSecenekleri.map(s => (
             <option key={s.id} value={s.id}>

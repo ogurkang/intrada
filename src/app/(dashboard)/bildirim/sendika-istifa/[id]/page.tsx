@@ -2,21 +2,23 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { sendikaIstifaGuncelle } from '../../calisma-belgesi/actions'
+import SendikaIstifaDetayClient from '@/components/bildirim/SendikaIstifaDetayClient'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
-function tarihFormat(iso: string): string {
+function utcGun(iso: string): string {
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10)
+  return d.toISOString().slice(0, 10)
+}
+
+function ggAayyyy(isoGun: string): string {
+  const [y, a, g] = isoGun.split('-')
+  if (!y || !a || !g) return isoGun
+  return `${g}.${a}.${y}`
 }
 
 export default async function SendikaIstifaDetayPage({ params }: Props) {
@@ -44,11 +46,12 @@ export default async function SendikaIstifaDetayPage({ params }: Props) {
     if (String(access.sicilNo).trim() !== String(kayit.sicil_no ?? '').trim()) notFound()
   }
 
+  const istifaTarihi = utcGun(String(kayit.created_at ?? ''))
   const satirlar: { etiket: string; deger: string }[] = [
     { etiket: 'Personel', deger: `${kayit.ad_soyad} (${kayit.sicil_no})` },
     { etiket: 'T.C. Kimlik No', deger: kayit.tckn ?? '—' },
     { etiket: 'Sendika Adı', deger: kayit.sendika_adi ?? '—' },
-    { etiket: 'Oluşturulma', deger: tarihFormat(kayit.created_at) },
+    { etiket: 'İstifa Tarihi', deger: istifaTarihi.length >= 10 ? ggAayyyy(istifaTarihi) : '—' },
     { etiket: 'Oluşturan', deger: kayit.created_by_email ?? '—' },
   ]
 
@@ -77,18 +80,12 @@ export default async function SendikaIstifaDetayPage({ params }: Props) {
         </a>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden max-w-2xl">
-        <table className="w-full text-sm">
-          <tbody>
-            {satirlar.map(s => (
-              <tr key={s.etiket} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium text-slate-600 w-44 align-top">{s.etiket}</td>
-                <td className="px-4 py-3 text-slate-800">{s.deger}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SendikaIstifaDetayClient
+        id={kayit.id}
+        satirlar={satirlar}
+        istifaTarihi={istifaTarihi}
+        onGuncelle={sendikaIstifaGuncelle}
+      />
     </div>
   )
 }

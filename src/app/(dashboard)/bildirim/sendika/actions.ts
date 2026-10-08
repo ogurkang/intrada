@@ -6,6 +6,9 @@ import { ggAayyyyToIso } from '@/lib/tarih'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import { pasiflestirAktifPersonelSendika } from '@/lib/personel-sendika-load'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
+import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
+import { kadroStatuSendikaGrubu } from '@/lib/sendika-statu'
+import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
 
@@ -31,8 +34,34 @@ async function personelAyrilmisMi(supabase: SupabaseServer, sicil_no: string): P
 }
 
 async function sendikaMeta(supabase: SupabaseServer, sendika_id: number) {
-  const { data } = await supabase.from('tanim_sendika').select('kisa_ad, uzun_ad').eq('id', sendika_id).maybeSingle()
+  const { data } = await supabase.from('tanim_sendika').select('kisa_ad, uzun_ad, statu').eq('id', sendika_id).maybeSingle()
   return data
+}
+
+async function sendikaStatuUygunMu(
+  supabase: SupabaseServer,
+  sicil_no: string,
+  sendikaStatu: string,
+): Promise<string | null> {
+  const bugun = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+  const { data } = await supabase
+    .from('kadro_hareketleri')
+    .select('asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu')
+    .eq('asil', sicil_no)
+  const kadro = secilenKadroSatirAsil((data ?? []) as KadroRaporRow[], bugun)
+  const grup = kadroStatuSendikaGrubu(kadro?.statu ?? null)
+  if (!grup) return 'Personelin kadro statüsü memur veya işçi olarak belirlenemedi.'
+  if (sendikaStatu !== grup) {
+    return grup === 'Memur'
+      ? 'Memur personele işçi sendikası yazılamaz.'
+      : 'İşçi personele memur sendikası yazılamaz.'
+  }
+  return null
 }
 
 export async function personelSendikaEkle(
@@ -48,6 +77,8 @@ export async function personelSendikaEkle(
 
   const meta = await sendikaMeta(supabase, sendika_id)
   if (!meta) return { hata: 'Sendika tanımı bulunamadı.' }
+  const statuHata = await sendikaStatuUygunMu(supabase, sicil_no.trim(), meta.statu)
+  if (statuHata) return { hata: statuHata }
 
   await pasiflestirAktifPersonelSendika(supabase, sicil_no, baslangic, null)
 
@@ -118,6 +149,8 @@ export async function sendikaBildirimGuncelle(id: number, fd: FormData): Promise
 
   const meta = await sendikaMeta(supabase, sendika_id)
   if (!meta) return { hata: 'Sendika tanımı bulunamadı.' }
+  const statuHata = await sendikaStatuUygunMu(supabase, sicil_no, meta.statu)
+  if (statuHata) return { hata: statuHata }
 
   const payload = {
     sendika_id,
@@ -136,6 +169,76 @@ export async function sendikaBildirimGuncelle(id: number, fd: FormData): Promise
     ref_id: String(id),
     onceki: row,
     sonraki: { ...row, ...payload, kisa_ad: meta.kisa_ad },
+  })
+
+  revalidatePath('/bildirim/sendika')
+  revalidatePath('/personel/sendika-atama')
+  await revalidatePersonelDetayPaths(sicil_no)
+  return {}
+}
+
+function bugunIstanbulIso(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function isoTakvimGecerli(iso: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return false
+  const y = Number(m[1])
+  const a = Number(m[2])
+  const g = Number(m[3])
+  const d = new Date(Date.UTC(y, a - 1, g))
+  return d.getUTCFullYear() === y && d.getUTCMonth() + 1 === a && d.getUTCDate() === g
+}
+
+/** Dilekçe kaydı açmadan mevcut üyeliği seçilen tarihte kapatır. */
+export async function sendikaBildirimIstifa(
+  id: number,
+  tarihMetin: string,
+): Promise<{ hata?: string }> {
+  const iso = tarihFromForm(tarihMetin)
+  if (!iso || !isoTakvimGecerli(iso)) return { hata: 'İstifa tarihi gg.aa.yyyy biçiminde olmalıdır.' }
+
+  const bugun = bugunIstanbulIso()
+  if (iso > bugun) return { hata: 'İstifa tarihi bugünden sonra olamaz.' }
+
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('personel_sendika')
+    .select('sicil_no, sendika_id, baslangic_tarihi, bitis_tarihi, aktif, tanim_sendika(kisa_ad)')
+    .eq('id', id)
+    .single()
+  const sicil_no = row?.sicil_no
+  if (!sicil_no || !row) return { hata: 'Kayıt bulunamadı.' }
+  if (!row.aktif) return { hata: 'Bu üyelik zaten kapalı.' }
+  if (await personelAyrilmisMi(supabase, sicil_no)) {
+    return { hata: 'Personel kurumdan ayrıldığı için sendika kaydı kapatılamaz.' }
+  }
+  if (iso < String(row.baslangic_tarihi).slice(0, 10)) {
+    return { hata: 'İstifa tarihi üyelik başlangıcından önce olamaz.' }
+  }
+
+  const payload = { aktif: false, bitis_tarihi: iso }
+  const { error } = await supabase.from('personel_sendika').update(payload).eq('id', id).eq('aktif', true)
+  if (error) return { hata: error.message }
+
+  const kisa =
+    (row as { tanim_sendika?: { kisa_ad: string } | null }).tanim_sendika?.kisa_ad ?? 'Sendika'
+  const gg = `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no,
+    modul: 'sendika',
+    islem: 'Güncelle',
+    ozet: `${kisa} üyeliği ${gg} tarihinde istifa ile kapatıldı.`,
+    ref_table: 'personel_sendika',
+    ref_id: String(id),
+    onceki: row,
+    sonraki: { ...row, ...payload, kisa_ad: kisa },
   })
 
   revalidatePath('/bildirim/sendika')
