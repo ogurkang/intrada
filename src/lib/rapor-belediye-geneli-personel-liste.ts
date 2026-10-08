@@ -24,6 +24,7 @@ export interface BelediyeGeneliPersonelSatir {
   anne_adi: string
   adres: string
   cep_telefonu: string
+  e_posta: string
   kan_grubu: string
 }
 
@@ -34,6 +35,7 @@ export interface BelediyeCalisanRow extends CalisanRaporRow {
   anne_adi?: string | null
   adresi?: string | null
   telefon?: string | null
+  e_posta?: string | null
   dogum_tarihi?: string | null
   sgk_ssk_sicil_no?: string | null
   kan_grubu?: string | null
@@ -93,6 +95,7 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
       anne_adi: txt(calisan.anne_adi),
       adres: txt(calisan.adresi),
       cep_telefonu: txt(calisan.telefon),
+      e_posta: txt(calisan.e_posta),
       kan_grubu: txt(calisan.kan_grubu),
     })
   }

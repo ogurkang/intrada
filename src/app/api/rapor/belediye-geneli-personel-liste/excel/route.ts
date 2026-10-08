@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
       supabase
         .from('calisan')
-      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
+      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, e_posta, kan_grubu'),
       fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
     ])
 
@@ -78,6 +78,7 @@ export async function GET(req: Request) {
         anne_adi: c.anne_adi,
         adresi: c.adresi,
         telefon: c.telefon,
+        e_posta: c.e_posta,
         kan_grubu: c.kan_grubu,
       })
     }
@@ -99,7 +100,7 @@ export async function GET(req: Request) {
       varsayilanOgrenimBySicil,
     })
 
-    const cols = 20
+    const cols = 21
     const rows: (string | number)[][] = [
       padRow(cols, ['Belediye Geneli Personel Listesi']),
       padRow(cols, [`Yıl: ${yil} · Sekme: ${label}`]),
@@ -125,6 +126,7 @@ export async function GET(req: Request) {
         'Anne Adı',
         'Adres',
         'Cep Telefonu',
+        'E-Posta',
         'Kan Grubu',
       ]),
       ...satirlar.map((r, i) =>
@@ -148,10 +150,11 @@ export async function GET(req: Request) {
           r.anne_adi,
           r.adres,
           r.cep_telefonu,
+          r.e_posta,
           r.kan_grubu,
         ]),
       ),
-      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
+      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -166,7 +169,7 @@ export async function GET(req: Request) {
     ws['!cols'] = [
       { wch: 8 }, { wch: 12 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
       { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
-      { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 12 },
+      { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 28 }, { wch: 12 },
     ]
 
     const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')

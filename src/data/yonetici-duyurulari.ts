@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-08-belediye-liste-eposta',
+    baslik: '8 Ekim 2026 — Belediye geneli personel listesi',
+    maddeler: [
+      'Belediye Geneli Personel Listesinde Cep Telefonu sütunundan sonra E-Posta sütunu eklendi. Excel indirmesi de aynı sırayı kullanır.',
+    ],
+  },
+  {
     id: '2026-10-08-sendika-egitim',
     baslik: '8 Ekim 2026 geliştirmeleri',
     maddeler: [

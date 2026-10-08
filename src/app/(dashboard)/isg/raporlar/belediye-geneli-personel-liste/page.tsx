@@ -53,7 +53,7 @@ export default async function IsgBelediyeGeneliPersonelListePage({
     fetchAllKadroHareketleri(supabase, 'asil, statu, kuruma_giris_tarihi, memuriyet_tarihi, ayrilis_tarihi, durumu, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu', q => q.not('asil', 'is', null)),
     supabase
       .from('calisan')
-      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, kan_grubu'),
+      .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, e_posta, kan_grubu'),
     fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
   ])
 
@@ -72,6 +72,7 @@ export default async function IsgBelediyeGeneliPersonelListePage({
       anne_adi: c.anne_adi,
       adresi: c.adresi,
       telefon: c.telefon,
+      e_posta: c.e_posta,
       kan_grubu: c.kan_grubu,
     })
   }

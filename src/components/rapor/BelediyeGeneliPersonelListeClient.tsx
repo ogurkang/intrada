@@ -191,7 +191,7 @@ export default function BelediyeGeneliPersonelListeClient({
               onScroll={onTableScroll}
               className="overflow-auto max-h-[min(70vh,720px)]"
             >
-              <table className="w-full text-sm border-collapse min-w-[2600px]">
+              <table className="w-full text-sm border-collapse min-w-[2840px]">
                 <thead>
                   <tr>
                     <th className={`${TH_CLASS} text-center w-20`}>Sıra No</th>
@@ -213,13 +213,14 @@ export default function BelediyeGeneliPersonelListeClient({
                     <th className={`${TH_CLASS} text-left min-w-[120px]`}>Anne Adı</th>
                     <th className={`${TH_CLASS} text-left min-w-[240px]`}>Adres</th>
                     <th className={`${TH_CLASS} text-left w-32`}>Cep Telefonu</th>
+                    <th className={`${TH_CLASS} text-left min-w-[220px]`}>E-Posta</th>
                     <th className={`${TH_CLASS} text-left w-24`}>Kan Grubu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {aktif.satirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={20} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={21} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
@@ -245,6 +246,7 @@ export default function BelediyeGeneliPersonelListeClient({
                         <td className="px-3 py-2.5 text-slate-700">{r.anne_adi}</td>
                         <td className="px-3 py-2.5 text-slate-700 whitespace-normal break-words">{r.adres}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.cep_telefonu}</td>
+                        <td className="px-3 py-2.5 text-slate-700 break-all">{r.e_posta}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.kan_grubu}</td>
                       </tr>
                     ))
