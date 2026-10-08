@@ -4,27 +4,33 @@ import { useState, useTransition, useMemo } from 'react'
 import { personelSendikaTopluEkle } from '@/app/(dashboard)/bildirim/sendika/actions'
 import { broadcastIntradaRefresh } from '@/lib/intrada-tab-sync'
 import { kadroStatuSendikaGrubu } from '@/lib/sendika-statu'
+import { ggAayyyyToIso } from '@/lib/tarih'
+import Modal from '@/components/ui/Modal'
 
 type Satir = { sendika_id: number | ''; baslangic_tarihi: string }
 
 interface Props {
   personeller: { sicil_no: string; ad_soyad: string; statu: string | null }[]
   sendikalar: { id: number; statu: string; kisa_ad: string; uzun_ad: string }[]
+  aktifUyelikBySicil?: Record<string, { baslangic: string; ad: string }>
 }
 
 function bosSatir(): Satir {
   return { sendika_id: '', baslangic_tarihi: '' }
 }
 
-export default function SendikaYeniClient({ personeller, sendikalar }: Props) {
+export default function SendikaYeniClient({ personeller, sendikalar, aktifUyelikBySicil = {} }: Props) {
   const [sicilArama, setSicilArama] = useState('')
   const [secilenSicil, setSecilenSicil] = useState('')
   const [aramaAcik, setAramaAcik] = useState(false)
   const [satirlar, setSatirlar] = useState<Satir[]>([bosSatir()])
+  const [istifaTarih, setIstifaTarih] = useState('')
+  const [istifaUyari, setIstifaUyari] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const secilen = personeller.find(p => p.sicil_no === secilenSicil)
+  const aktifUyelik = secilenSicil ? aktifUyelikBySicil[secilenSicil] : undefined
   const sendikaGrubu = kadroStatuSendikaGrubu(secilen?.statu)
 
   const uygunSendikalar = useMemo(
@@ -64,12 +70,32 @@ export default function SendikaYeniClient({ personeller, sendikalar }: Props) {
       setHata('En az bir sendika seçin.')
       return
     }
+    if (dolu.length > 1) {
+      setHata('Bir personel için tek seferde bir sendika üyeliği açılır.')
+      return
+    }
+    if (aktifUyelik && !/^\d{4}-\d{2}-\d{2}$/.test(istifaTarih)) {
+      setIstifaUyari(true)
+      return
+    }
+    if (aktifUyelik && istifaTarih < aktifUyelik.baslangic) {
+      setHata('İstifa tarihi üyelik başlangıcından önce olamaz.')
+      return
+    }
+    const yeniBaslangic = dolu[0]?.baslangic_tarihi.trim()
+      ? ggAayyyyToIso(dolu[0].baslangic_tarihi.trim().replace(/\//g, '.'))
+      : null
+    if (aktifUyelik && yeniBaslangic && yeniBaslangic < istifaTarih) {
+      setHata('Yeni üyelik, mevcut üyelik bitmeden başlayamaz.')
+      return
+    }
     startTransition(async () => {
       const res = await personelSendikaTopluEkle(
         dolu.map(s => ({
           sicil_no: secilenSicil,
           sendika_id: Number(s.sendika_id),
           baslangic_tarihi: s.baslangic_tarihi.trim() || null,
+          istifa_tarihi: aktifUyelik ? istifaTarih : null,
         })),
       )
       if (res.hata) setHata(res.hata)
@@ -136,6 +162,7 @@ export default function SendikaYeniClient({ personeller, sendikalar }: Props) {
                         setAramaAcik(false)
                         setSicilArama('')
                         setSatirlar([bosSatir()])
+                        setIstifaTarih('')
                       }}
                     >
                       {p.ad_soyad} <span className="text-slate-400 font-mono text-xs">{p.sicil_no}</span>
@@ -157,8 +184,27 @@ export default function SendikaYeniClient({ personeller, sendikalar }: Props) {
       {secilen && sendikaGrubu && (
         <>
           <p className="text-xs text-slate-500">
-            {sendikaGrubu} sendikası seçenekleri listelenir. Her yeni kayıt önceki aktif üyeliği pasifleştirir.
+            {sendikaGrubu} sendikası seçenekleri listelenir.
+            {aktifUyelik
+              ? ' Açık üyelik varsa istifa tarihi olmadan yeni üyelik açılmaz. Bu tarih dilekçe oluşturmaz.'
+              : ' Açık üyelik yok.'}
           </p>
+          {aktifUyelik && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <p className="text-sm text-amber-950">
+                Mevcut üyelik: <span className="font-medium">{aktifUyelik.ad || '—'}</span>
+              </p>
+              <label className="flex flex-col gap-1 text-xs text-slate-700 max-w-xs">
+                <span className="font-medium">Mevcut üyeliğin istifa tarihi</span>
+                <input
+                  type="date"
+                  value={istifaTarih}
+                  onChange={e => setIstifaTarih(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm bg-white"
+                />
+              </label>
+            </div>
+          )}
           <div className="space-y-3">
             {satirlar.map((satir, idx) => (
               <div key={idx} className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/60">
@@ -212,6 +258,20 @@ export default function SendikaYeniClient({ personeller, sendikalar }: Props) {
           </div>
         </>
       )}
+      <Modal open={istifaUyari} onClose={() => setIstifaUyari(false)} title="İstifa tarihi gerekli" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          Mevcut sendika üyeliğinin istifa tarihini işlemeden yeni bir sendika üyeliği oluşturulamaz.
+        </p>
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIstifaUyari(false)}
+            className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg"
+          >
+            Tamam
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

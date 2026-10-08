@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-08-sendika-istifa-tarihi',
+    baslik: '8 Ekim 2026 — Sendika istifa ve yeni üyelik',
+    maddeler: [
+      'İstifa dilekçesinde sendika adı değiştirilemez; yalnızca açık üyelik kapanır ve tarih bugündür.',
+      'Üyeliği bitmiş personelde dilekçe açılmaz. Bitiş tarihi popup ile gösterilir.',
+      'Yeni sendika kaydı, açık üyeliğin istifa tarihi girilmeden oluşmaz. Bu tarih dilekçe yazmaz. Yeni üyelik o tarihten önce başlayamaz.',
+    ],
+  },
+  {
     id: '2026-10-08-belediye-liste-eposta',
     baslik: '8 Ekim 2026 — Belediye geneli personel listesi',
     maddeler: [

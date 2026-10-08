@@ -153,9 +153,6 @@ export async function sendikaIstifaEkle(formData: FormData): Promise<BildirimAct
   if (sicilSonuc.hata || !sicilSonuc.sicil) return { hata: sicilSonuc.hata ?? 'Personel seçilmedi.' }
   const sicil = sicilSonuc.sicil
 
-  const sendika_adi = str(formData, 'sendika_adi')
-  if (!sendika_adi) return { hata: 'Sendika adı zorunludur.' }
-
   const personel = await getBildirimFormPersonel(supabase, sicil)
   if (!personel) return { hata: 'Personel bulunamadı.' }
 
@@ -166,14 +163,34 @@ export async function sendikaIstifaEkle(formData: FormData): Promise<BildirimAct
 
   const { data: aktifUyelik, error: aktifUyelikHata } = await supabase
     .from('personel_sendika')
-    .select('id')
+    .select('id, tanim_sendika(uzun_ad, kisa_ad)')
     .eq('sicil_no', sicil)
     .eq('aktif', true)
     .limit(1)
   if (aktifUyelikHata) return { hata: aktifUyelikHata.message }
-  if (!aktifUyelik?.length) {
+  const acik = aktifUyelik?.[0] as
+    | { tanim_sendika?: { uzun_ad?: string | null; kisa_ad?: string | null } | null }
+    | undefined
+  if (!acik) {
+    const { data: kapanan, error: kapananHata } = await supabase
+      .from('personel_sendika')
+      .select('bitis_tarihi')
+      .eq('sicil_no', sicil)
+      .eq('aktif', false)
+      .not('bitis_tarihi', 'is', null)
+      .order('bitis_tarihi', { ascending: false })
+      .limit(1)
+    if (kapananHata) return { hata: kapananHata.message }
+    const bitis = String(kapanan?.[0]?.bitis_tarihi ?? '').slice(0, 10)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(bitis)) {
+      const gg = `${bitis.slice(8, 10)}.${bitis.slice(5, 7)}.${bitis.slice(0, 4)}`
+      return { hata: `İşlem yapmak istediğiniz sendika üyeliğiniz ${gg} tarihinde son bulmuştur.` }
+    }
     return { hata: 'Aktif sendika üyeliği olmayan personel için istifa dilekçesi oluşturulamaz.' }
   }
+  const sendikaKaydi = acik.tanim_sendika
+  const sendika_adi = String(sendikaKaydi?.uzun_ad || sendikaKaydi?.kisa_ad || '').trim()
+  if (!sendika_adi) return { hata: 'Açık sendika üyeliğinin adı bulunamadı.' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error } = await (supabase as any)

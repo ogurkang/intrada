@@ -4,6 +4,7 @@ import SendikaYeniClient from '@/components/bildirim/SendikaYeniClient'
 import { filterOutGodmodeCalisan } from '@/lib/godmode-calisan'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { sortTanimSendika } from '@/lib/sendika-sira'
+import { fetchAktifPersonelSendika } from '@/lib/personel-sendika-load'
 import type { KadroRaporRow } from '@/lib/rapor-statuye-gore-cinsiyet'
 import type { Tables } from '@/types/database'
 
@@ -17,10 +18,11 @@ export default async function SendikaYeniPage() {
   const supabase = await createClient()
   const D = new Date().toISOString().slice(0, 10)
 
-  const [{ data: calisanRaw }, { data: phRaw }, { data: sendikaRaw }] = await Promise.all([
+  const [{ data: calisanRaw }, { data: phRaw }, { data: sendikaRaw }, aktifMap] = await Promise.all([
     supabase.from('calisan').select('sicil_no, ad_soyad').order('ad_soyad'),
     supabase.from('personel_hareketleri').select('sicil_no, ayrilis_tarihi').order('yururluk_tarihi', { ascending: false }),
     supabase.from('tanim_sendika').select('id, statu, kisa_ad, uzun_ad, aktif').eq('aktif', true),
+    fetchAktifPersonelSendika(supabase),
   ])
 
   const sonAyrilisPerSicil = new Map<string, string | null>()
@@ -63,6 +65,13 @@ export default async function SendikaYeniPage() {
     .sort((a, b) => a.ad_soyad.localeCompare(b.ad_soyad, 'tr'))
 
   const sendikalar = sortTanimSendika((sendikaRaw ?? []) as Tables<'tanim_sendika'>[])
+  const aktifUyelikBySicil: Record<string, { baslangic: string; ad: string }> = {}
+  for (const [sicil, row] of aktifMap) {
+    aktifUyelikBySicil[sicil] = {
+      baslangic: String(row.baslangic_tarihi ?? '').slice(0, 10),
+      ad: row.tanim_sendika?.kisa_ad || row.tanim_sendika?.uzun_ad || '',
+    }
+  }
 
   return (
     <div>
@@ -75,7 +84,11 @@ export default async function SendikaYeniPage() {
           ← Listeye dön
         </Link>
       </div>
-      <SendikaYeniClient personeller={personeller} sendikalar={sendikalar} />
+      <SendikaYeniClient
+        personeller={personeller}
+        sendikalar={sendikalar}
+        aktifUyelikBySicil={aktifUyelikBySicil}
+      />
     </div>
   )
 }

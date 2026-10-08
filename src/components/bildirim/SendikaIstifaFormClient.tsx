@@ -21,14 +21,22 @@ interface Props {
   personeller: BildirimFormPersonel[]
   sabitSicil?: string
   aktifSendikaUzunAd?: Record<string, string>
+  sonUyelikBitis?: Record<string, string>
   onKaydet: (fd: FormData) => Promise<Sonuc>
 }
 
-export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktifSendikaUzunAd = {}, onKaydet }: Props) {
+export default function SendikaIstifaFormClient({
+  personeller,
+  sabitSicil,
+  aktifSendikaUzunAd = {},
+  sonUyelikBitis = {},
+  onKaydet,
+}: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [hata, setHata] = useState<string | null>(null)
   const [onayAcik, setOnayAcik] = useState(false)
+  const [bitisUyari, setBitisUyari] = useState<string | null>(null)
   const [seciliSicil, setSeciliSicil] = useState(sabitSicil ?? '')
   const [sendikaAdi, setSendikaAdi] = useState('')
 
@@ -47,8 +55,7 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
       setSendikaAdi('')
       return
     }
-    const uzun = aktifSendikaUzunAd[seciliSicil]
-    if (uzun) setSendikaAdi(uzun)
+    setSendikaAdi(aktifSendikaUzunAd[seciliSicil] ?? '')
   }, [seciliSicil, aktifSendikaUzunAd])
 
   const tcknUygun = bildirimTcknGecerliMi(secili?.tckn)
@@ -84,6 +91,11 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
       return
     }
     if (!aktifUyelikVar) {
+      const bitis = sonUyelikBitis[seciliSicil]
+      if (bitis) {
+        setBitisUyari(`İşlem yapmak istediğiniz sendika üyeliğiniz ${bitis} tarihinde son bulmuştur.`)
+        return
+      }
       setHata('Aktif sendika üyeliği olmayan personel için istifa dilekçesi oluşturulamaz.')
       return
     }
@@ -102,7 +114,8 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
     startTransition(async () => {
       const sonuc = await onKaydet(fd)
       if (sonuc?.hata) {
-        setHata(sonuc.hata)
+        if (sonuc.hata.includes('tarihinde son bulmuştur')) setBitisUyari(sonuc.hata)
+        else setHata(sonuc.hata)
         return
       }
       if (sonuc?.sendikaPasiflestirildi) broadcastIntradaRefresh('sendika')
@@ -121,8 +134,8 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
         </Link>
         <h1 className="text-2xl font-bold text-slate-800">Yeni Sendika İstifa Bildirimi</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Dilekçe yalnızca açık sendika üyeliği olan personel için oluşturulur. Oluşturmadan önce
-          onay istenir. Yalnızca üyelik kapatılacaksa Sendika Bildirimi’ndeki kırmızı oku kullanın.
+          Dilekçe yalnızca açık üyeliğin sendikası için oluşturulur. Sendika adı değiştirilemez. Kayıt,
+          üyeliği bugünün tarihiyle kapatır.
         </p>
       </div>
 
@@ -157,9 +170,9 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
               id="sendika_adi"
               type="text"
               value={sendikaAdi}
-              onChange={e => setSendikaAdi(e.target.value)}
-              placeholder="Örn. Tüm Belediye ve Yerel Yönetim Hizmetleri Emekçileri Sendikası"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              readOnly
+              placeholder="Açık üyelik seçilince dolar"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
             />
           </div>
 
@@ -210,6 +223,19 @@ export default function SendikaIstifaFormClient({ personeller, sabitSicil, aktif
           )}
         </div>
       </div>
+
+      <Modal open={bitisUyari != null} onClose={() => setBitisUyari(null)} title="İstifa yapılamaz" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">{bitisUyari}</p>
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setBitisUyari(null)}
+            className="px-4 py-2 text-sm bg-slate-800 text-white rounded-lg"
+          >
+            Tamam
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={onayAcik} onClose={() => !pending && setOnayAcik(false)} title="İstifa dilekçesi" size="md">
         <p className="text-sm text-slate-700 leading-relaxed">

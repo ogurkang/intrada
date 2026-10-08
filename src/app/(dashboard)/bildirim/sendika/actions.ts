@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { ggAayyyyToIso } from '@/lib/tarih'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
-import { pasiflestirAktifPersonelSendika } from '@/lib/personel-sendika-load'
 import { revalidatePersonelDetayPaths } from '@/lib/revalidate-personel'
 import { secilenKadroSatirAsil } from '@/lib/kadro-statu-sec'
 import { kadroStatuSendikaGrubu } from '@/lib/sendika-statu'
@@ -64,23 +63,56 @@ async function sendikaStatuUygunMu(
   return null
 }
 
+const ISTIFA_TARIHI_GEREKLI =
+  'Mevcut sendika üyeliğinin istifa tarihini işlemeden yeni bir sendika üyeliği oluşturulamaz.'
+
 export async function personelSendikaEkle(
   sicil_no: string,
   sendika_id: number,
   baslangic_tarihi?: string | null,
+  istifa_tarihi?: string | null,
 ): Promise<{ hata?: string; id?: number }> {
   if (!sicil_no?.trim()) return { hata: 'Sicil no zorunludur.' }
   if (!sendika_id) return { hata: 'Sendika seçimi zorunludur.' }
 
   const supabase = await createClient()
-  const baslangic = baslangic_tarihi?.trim() || new Date().toISOString().slice(0, 10)
+  const hamBaslangic = baslangic_tarihi?.trim()
+  const baslangic = hamBaslangic ? tarihFromForm(hamBaslangic) : bugunIstanbulIso()
+  if (!baslangic || !isoTakvimGecerli(baslangic)) {
+    return { hata: 'Başlangıç tarihi gg.aa.yyyy biçiminde olmalıdır.' }
+  }
 
   const meta = await sendikaMeta(supabase, sendika_id)
   if (!meta) return { hata: 'Sendika tanımı bulunamadı.' }
   const statuHata = await sendikaStatuUygunMu(supabase, sicil_no.trim(), meta.statu)
   if (statuHata) return { hata: statuHata }
 
-  await pasiflestirAktifPersonelSendika(supabase, sicil_no, baslangic, null)
+  const { data: aktifler, error: aktifHata } = await supabase
+    .from('personel_sendika')
+    .select('id, baslangic_tarihi')
+    .eq('sicil_no', sicil_no.trim())
+    .eq('aktif', true)
+  if (aktifHata) return { hata: aktifHata.message }
+
+  let kapatilanIdler: number[] = []
+  let kapatilanGun = ''
+  if ((aktifler?.length ?? 0) > 0) {
+    const istifaIso = tarihFromForm(istifa_tarihi)
+    if (!istifaIso || !isoTakvimGecerli(istifaIso)) return { hata: ISTIFA_TARIHI_GEREKLI }
+    if (istifaIso > bugunIstanbulIso()) return { hata: 'İstifa tarihi bugünden sonra olamaz.' }
+    const enErkenIhlal = (aktifler ?? []).some(r => istifaIso < String(r.baslangic_tarihi).slice(0, 10))
+    if (enErkenIhlal) return { hata: 'İstifa tarihi üyelik başlangıcından önce olamaz.' }
+    if (baslangic < istifaIso) return { hata: 'Yeni üyelik, mevcut üyelik bitmeden başlayamaz.' }
+
+    kapatilanGun = `${istifaIso.slice(8, 10)}.${istifaIso.slice(5, 7)}.${istifaIso.slice(0, 4)}`
+    kapatilanIdler = (aktifler ?? []).map(r => r.id)
+    const { error: kapatHata } = await supabase
+      .from('personel_sendika')
+      .update({ aktif: false, bitis_tarihi: istifaIso })
+      .in('id', kapatilanIdler)
+      .eq('aktif', true)
+    if (kapatHata) return { hata: kapatHata.message }
+  }
 
   const payload = {
     sicil_no,
@@ -91,13 +123,23 @@ export async function personelSendikaEkle(
   }
 
   const { data: inserted, error } = await supabase.from('personel_sendika').insert(payload).select('id').single()
-  if (error) return { hata: error.message }
+  if (error) {
+    if (kapatilanIdler.length > 0) {
+      await supabase
+        .from('personel_sendika')
+        .update({ aktif: true, bitis_tarihi: null })
+        .in('id', kapatilanIdler)
+    }
+    return { hata: error.message }
+  }
 
   await writePersonelAuditLogSafe(supabase, {
     sicil_no,
     modul: 'sendika',
     islem: 'Ekle',
-    ozet: `${meta.kisa_ad} sendika kaydı eklendi.`,
+    ozet: kapatilanGun
+      ? `${meta.kisa_ad} sendika kaydı eklendi. Önceki üyelik ${kapatilanGun} tarihinde kapatıldı. Dilekçe oluşturulmadı.`
+      : `${meta.kisa_ad} sendika kaydı eklendi.`,
     ref_table: 'personel_sendika',
     ref_id: String(inserted?.id ?? ''),
     sonraki: { ...payload, kisa_ad: meta.kisa_ad },
@@ -110,11 +152,19 @@ export async function personelSendikaEkle(
 }
 
 export async function personelSendikaTopluEkle(
-  satirlar: { sicil_no: string; sendika_id: number; baslangic_tarihi?: string | null }[],
+  satirlar: { sicil_no: string; sendika_id: number; baslangic_tarihi?: string | null; istifa_tarihi?: string | null }[],
 ): Promise<{ hata?: string }> {
   if (!satirlar.length) return { hata: 'En az bir satır ekleyin.' }
+  const ayniSicil = new Map<string, number>()
   for (const s of satirlar) {
-    const res = await personelSendikaEkle(s.sicil_no, s.sendika_id, s.baslangic_tarihi)
+    const sicil = s.sicil_no.trim()
+    ayniSicil.set(sicil, (ayniSicil.get(sicil) ?? 0) + 1)
+  }
+  if ([...ayniSicil.values()].some(n => n > 1)) {
+    return { hata: 'Bir personel için tek seferde bir sendika üyeliği açılır.' }
+  }
+  for (const s of satirlar) {
+    const res = await personelSendikaEkle(s.sicil_no, s.sendika_id, s.baslangic_tarihi, s.istifa_tarihi)
     if (res.hata) return { hata: res.hata }
   }
   return {}
