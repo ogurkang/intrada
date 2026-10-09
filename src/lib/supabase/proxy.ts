@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   - /login
  *   - /auth/callback  (Supabase OAuth dönüş noktası)
  *   - /sifre-sifirla
+ *   - /anket          (isimsiz anket cevaplama)
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -42,7 +43,9 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth/callback') ||
-    pathname.startsWith('/sifre-sifirla')
+    pathname.startsWith('/sifre-sifirla') ||
+    pathname === '/anket' ||
+    pathname.startsWith('/anket/')
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()

@@ -197,6 +197,8 @@ export function kullaniciPathAllowed(
 
   if (path.startsWith('/link')) return false
 
+  if (path.startsWith('/anket-yonetimi')) return false
+
   if (path.startsWith('/yerel-bilgi')) {
     return menuModulAcik('yerelBilgi', menuIzinleri)
   }
@@ -247,7 +249,7 @@ export function sidebarGrupGoster(
   /** Kullanıcı: eğitim / tanımlar sol menüde yok; yetkilendirme yalnızca hayalet profil yetkisi varsa */
   if (
     accessMode === 'kullanici' &&
-    (grupEtiket === 'Eğitim Yönetimi' || grupEtiket === 'Tanımlar Yönetimi')
+    (grupEtiket === 'Eğitim Yönetimi' || grupEtiket === 'Tanımlar Yönetimi' || grupEtiket === 'Anket Yönetimi')
   ) {
     return false
   }

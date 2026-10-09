@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError]       = useState<string | null>(null)
   const [loading, setLoading]   = useState(false)
+  const [anketKod, setAnketKod] = useState('')
 
   const router  = useRouter()
 
@@ -107,6 +108,35 @@ export default function LoginPage() {
             Şifremi sıfırla
           </Link>
         </p>
+      </form>
+
+      <form
+        className="mt-6 border-t border-slate-200 pt-6 space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const kod = anketKod.trim()
+          if (!kod) return
+          router.push(`/anket/${encodeURIComponent(kod)}`)
+        }}
+      >
+        <label className="block text-sm font-medium text-slate-700" htmlFor="anket-kodu">
+          Anket kodu
+        </label>
+        <input
+          id="anket-kodu"
+          type="text"
+          value={anketKod}
+          onChange={(e) => setAnketKod(e.target.value)}
+          placeholder="Paylaşılan kod"
+          className="w-full px-3 py-2 border-2 border-slate-800 rounded-lg text-sm text-slate-800 bg-white
+                     focus:outline-none focus:ring-2 focus:ring-slate-800 focus:border-slate-800"
+        />
+        <button
+          type="submit"
+          className="w-full py-2.5 rounded-lg border-2 border-slate-800 text-sm font-medium text-slate-800 hover:bg-slate-50"
+        >
+          Ankete git
+        </button>
       </form>
     </div>
     </>

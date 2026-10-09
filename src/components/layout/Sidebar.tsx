@@ -374,6 +374,15 @@ function buildMenuGroups(
     ],
   },
   {
+    grup: 'Anket Yönetimi',
+    icon: '📋',
+    accordion: true,
+    items: [
+      { href: '/anket-yonetimi/anketler', label: 'Anketler' },
+      { href: '/anket-yonetimi/raporlar', label: 'Raporlar' },
+    ],
+  },
+  {
     grup: 'Eğitim Yönetimi',
     icon: '🎓',
     accordion: true,
