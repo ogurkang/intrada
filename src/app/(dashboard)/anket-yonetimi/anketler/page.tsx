@@ -12,7 +12,7 @@ export default async function AnketlerPage() {
           Anket oluştur
         </Link>
       </div>
-      <div className="max-w-3xl space-y-3 text-sm leading-6 text-slate-600">
+      <div className="w-full space-y-3 text-sm leading-6 text-slate-600">
         <p>
           Anketi yönetici oluşturur. Ad, açıklama ve sorular yazılır. Kayıt durdurulmuş açılır. İşlemler sütunundaki yayın düğmesi anketi açar; aynı düğme yayını kaldırır. Yayındaki anket, paylaşım linki veya giriş ekranındaki anket kodu ile açılır. Cevaplamak için oturum gerekmez.
         </p>
