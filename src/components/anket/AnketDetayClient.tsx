@@ -3,17 +3,22 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
-import { anketDurumEtiket, anketLogEtiket, anketTipEtiket, anketZaman, type AnketSoruTipi } from '@/lib/anket'
+import { CopKutusuSilDugmesi, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import AnketGecmisPanel from '@/components/anket/AnketGecmisPanel'
+import { anketDurumEtiket, anketTipEtiket, type AnketSoruTipi } from '@/lib/anket'
 import {
   anketBaslikGuncelle,
+  anketDemografiSorulariEkle,
   anketSoruEkle,
   anketSoruGuncelle,
   anketSoruSil,
+  anketSorulariTopluSil,
   anketSoruTasi,
   anketYayinDegistir,
   type AnketLogSatir,
 } from '@/app/(dashboard)/anket-yonetimi/actions'
 import { AnketSoruFormu, bosSoru, type SoruTaslak } from '@/components/anket/AnketSoruFormu'
+import { anketDemografiEksikler, type AnketDemografiSoru } from '@/lib/anket-demografi-sablon'
 
 const inputSinif =
   'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-slate-800'
@@ -24,7 +29,14 @@ export type AnketSoruSatir = {
   metin: string
   tip: AnketSoruTipi
   secenekler: string[]
+  cevapSayisi: number
 }
+
+const CEVAPLI_SORU_UYARI =
+  'Bu soruya verilmiş cevaplar var. Sorunun silinmesi anketin yorumlanmasını ve sonuçlarını etkileyebilir. Hala silmek istiyor musunuz?'
+
+const CEVAPLI_DUZENLE_UYARI =
+  'Bu soruya verilmiş cevaplar var. Sorunun düzenlenmesi anketin yorumlanmasını ve sonuçlarını etkileyebilir. Hala düzenlemek istiyor musunuz?'
 
 export default function AnketDetayClient({
   id,
@@ -36,6 +48,7 @@ export default function AnketDetayClient({
   duzenleAcik,
   sorular,
   loglar,
+  demografiSablon,
 }: {
   id: string
   baslik: string
@@ -46,6 +59,7 @@ export default function AnketDetayClient({
   duzenleAcik: boolean
   sorular: AnketSoruSatir[]
   loglar: AnketLogSatir[]
+  demografiSablon: AnketDemografiSoru[]
 }) {
   const router = useRouter()
   const [baslikAcik, setBaslikAcik] = useState(duzenleAcik)
@@ -60,10 +74,29 @@ export default function AnketDetayClient({
   const [yeniSoru, setYeniSoru] = useState<SoruTaslak>(bosSoru('yeni'))
   const [duzenlenen, setDuzenlenen] = useState<AnketSoruSatir | null>(null)
   const [duzenForm, setDuzenForm] = useState<SoruTaslak>(bosSoru('duzen'))
+  const [duzenUyari, setDuzenUyari] = useState(false)
   const [silinecek, setSilinecek] = useState<AnketSoruSatir | null>(null)
+  const [secili, setSecili] = useState<string[]>([])
+  const [topluAcik, setTopluAcik] = useState(false)
 
   const yayinda = durum === 'yayinda'
+  const demografiEksik = anketDemografiEksikler(demografiSablon, sorular.map(s => s.metin))
   const gorunenLog = soruLog ? loglar.filter(l => l.soru_id === soruLog) : loglar
+
+  function duzenlemeyiKaydet() {
+    if (!duzenlenen) return
+    void calistir(
+      () => anketSoruGuncelle(id, duzenlenen.id, {
+        metin: duzenForm.metin,
+        tip: duzenForm.tip,
+        secenekler: duzenForm.secenekler,
+      }),
+      () => {
+        setDuzenUyari(false)
+        setDuzenlenen(null)
+      },
+    )
+  }
 
   async function calistir(islem: () => Promise<{ hata?: string }>, sonra?: () => void) {
     if (mesgul) return
@@ -102,7 +135,7 @@ export default function AnketDetayClient({
             type="button"
             disabled={mesgul}
             onClick={() => calistir(() => anketYayinDegistir(id, !yayinda))}
-            className={`px-3 py-2 rounded-lg text-sm font-medium ${yayinda ? 'border border-red-300 text-red-800 hover:bg-red-50' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${yayinda ? 'border border-red-300 text-red-800 hover:bg-red-50' : 'bg-blue-700 text-white hover:bg-blue-600'}`}
           >
             {yayinda ? 'Yayını kaldır' : 'Yayınla'}
           </button>
@@ -151,7 +184,7 @@ export default function AnketDetayClient({
             <span className="text-sm font-medium text-slate-700">Açıklama</span>
             <textarea value={aciklamaForm} onChange={e => setAciklamaForm(e.target.value)} rows={2} className={`${inputSinif} mt-1`} />
           </label>
-          <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm">Kaydet</button>
+          <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50">Kaydet</button>
         </form>
       ) : null}
 
@@ -161,6 +194,14 @@ export default function AnketDetayClient({
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
+              <th className="px-4 py-3 font-medium w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Tüm soruları seç"
+                  checked={sorular.length > 0 && secili.length === sorular.length}
+                  onChange={e => setSecili(e.target.checked ? sorular.map(s => s.id) : [])}
+                />
+              </th>
               <th className="px-4 py-3 font-medium">Sıra</th>
               <th className="px-4 py-3 font-medium">Soru</th>
               <th className="px-4 py-3 font-medium">Cevap tipi</th>
@@ -170,10 +211,18 @@ export default function AnketDetayClient({
           <tbody>
             {sorular.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Soru yok.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Soru yok.</td>
               </tr>
             ) : sorular.map(soru => (
               <tr key={soru.id} className="border-t border-slate-100">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`${soru.sira}. soruyu seç`}
+                    checked={secili.includes(soru.id)}
+                    onChange={e => setSecili(once => e.target.checked ? [...once, soru.id] : once.filter(x => x !== soru.id))}
+                  />
+                </td>
                 <td className="px-4 py-3 text-slate-800">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{soru.sira}</span>
@@ -184,10 +233,13 @@ export default function AnketDetayClient({
                 <td className="px-4 py-3 text-slate-800">{soru.metin}</td>
                 <td className="px-4 py-3 text-slate-700">{anketTipEtiket(soru.tip)}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => { setSoruLog(soru.id); setLogAcik(true) }} className="text-slate-700 underline">Log</button>
-                    <button
-                      type="button"
+                  <div className="flex items-center gap-1">
+                    <SaatGecmisDugmesi
+                      sayi={loglar.filter(l => l.soru_id === soru.id).length}
+                      onClick={() => { setSoruLog(soru.id); setLogAcik(true) }}
+                      title="Soru geçmişi"
+                    />
+                    <KalemDuzenleDugmesi
                       onClick={() => {
                         setDuzenlenen(soru)
                         setDuzenForm({
@@ -197,11 +249,9 @@ export default function AnketDetayClient({
                           secenekler: soru.secenekler.length ? soru.secenekler : ['', ''],
                         })
                       }}
-                      className="text-slate-700 underline"
-                    >
-                      Düzenle
-                    </button>
-                    <button type="button" onClick={() => setSilinecek(soru)} className="text-red-700 underline">Sil</button>
+                      title="Düzenle"
+                    />
+                    <CopKutusuSilDugmesi onClick={() => setSilinecek(soru)} title="Sil" />
                   </div>
                 </td>
               </tr>
@@ -226,55 +276,127 @@ export default function AnketDetayClient({
         >
           <AnketSoruFormu sira={sorular.length + 1} deger={yeniSoru} onChange={setYeniSoru} />
           <div className="flex gap-2">
-            <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm">Soruyu kaydet</button>
+            <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50">Soruyu kaydet</button>
             <button type="button" onClick={() => setEkleAcik(false)} className="px-3 py-2 rounded-lg border border-slate-300 text-sm">Vazgeç</button>
           </div>
         </form>
       ) : (
-        <button type="button" onClick={() => setEkleAcik(true)} className="text-sm font-medium text-slate-800 underline">
-          Soru ekle
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <button type="button" onClick={() => setEkleAcik(true)} className="text-sm font-medium text-blue-700 underline">
+            Soru ekle
+          </button>
+          <button
+            type="button"
+            disabled={mesgul || demografiEksik.length === 0}
+            onClick={() => void calistir(() => anketDemografiSorulariEkle(id))}
+            className="text-sm font-medium text-blue-700 underline disabled:text-slate-400 disabled:no-underline"
+          >
+            Demografik soruları ekle
+          </button>
+          {secili.length > 0 ? (
+            <button type="button" onClick={() => setTopluAcik(true)} className="text-sm font-medium text-red-700 underline">
+              Seçilenleri sil ({secili.length})
+            </button>
+          ) : null}
+        </div>
       )}
+      <p className="text-xs text-slate-500">
+        {demografiEksik.length === 0
+          ? 'Demografik sorular bu ankette var. İstemediğinizi işaretleyip Seçilenleri sil deyin.'
+          : 'Cinsiyet ve yaş kurumdaki gruplardan, öğrenim ve statü kayıtlı tanımlardan gelir. İstemediğinizi işaretleyip Seçilenleri sil deyin.'}
+      </p>
 
-      <Modal open={logAcik} onClose={() => setLogAcik(false)} title={soruLog ? 'Soru log kaydı' : 'Anket log kaydı'} size="lg">
-        {gorunenLog.length === 0 ? <p className="text-sm text-slate-500">Kayıt yok.</p> : (
-          <ul className="space-y-3">
-            {gorunenLog.map(log => (
-              <li key={log.id} className="border-b border-slate-100 pb-3 last:border-0">
-                <p className="text-sm font-medium text-slate-800">{anketLogEtiket(log.islem)}</p>
-                <p className="text-sm text-slate-600">{log.ozet}</p>
-                <p className="mt-1 text-xs text-slate-500">{anketZaman(log.created_at)} · {log.yapan_ad || '—'}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Modal>
+      <AnketGecmisPanel
+        acik={logAcik}
+        onKapat={() => setLogAcik(false)}
+        loglar={gorunenLog}
+        baslik={soruLog ? 'Soru geçmişi' : 'Anket geçmişi'}
+      />
 
-      <Modal open={duzenlenen !== null} onClose={() => setDuzenlenen(null)} title="Soruyu düzenle" size="lg">
+      <Modal
+        open={duzenlenen !== null}
+        onClose={() => {
+          if (mesgul) return
+          setDuzenUyari(false)
+          setDuzenlenen(null)
+        }}
+        title="Soruyu düzenle"
+        size="lg"
+      >
         {duzenlenen ? (
           <form
             className="space-y-3"
             onSubmit={e => {
               e.preventDefault()
-              void calistir(
-                () => anketSoruGuncelle(id, duzenlenen.id, {
-                  metin: duzenForm.metin,
-                  tip: duzenForm.tip,
-                  secenekler: duzenForm.secenekler,
-                }),
-                () => setDuzenlenen(null),
-              )
+              if (duzenlenen.cevapSayisi > 0) {
+                setDuzenUyari(true)
+                return
+              }
+              duzenlemeyiKaydet()
             }}
           >
             <AnketSoruFormu sira={duzenlenen.sira} deger={duzenForm} onChange={setDuzenForm} />
-            <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm">Kaydet</button>
+            <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50">Kaydet</button>
           </form>
         ) : null}
       </Modal>
 
-      <Modal open={silinecek !== null} onClose={() => setSilinecek(null)} title="Soruyu sil" size="sm">
-        <p className="text-sm text-slate-700">Bu soru ve ona gelen cevaplar silinir.</p>
-        <div className="mt-4 flex gap-2">
+      <Modal open={duzenUyari} onClose={() => !mesgul && setDuzenUyari(false)} title="Soruyu düzenle" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">{CEVAPLI_DUZENLE_UYARI}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={() => setDuzenUyari(false)} disabled={mesgul} className="px-3 py-1.5 text-sm text-slate-600">
+            Hayır
+          </button>
+          <button
+            type="button"
+            disabled={mesgul}
+            onClick={() => duzenlemeyiKaydet()}
+            className="px-3 py-1.5 text-sm bg-red-700 text-white rounded-lg disabled:opacity-50"
+          >
+            {mesgul ? 'Kaydediliyor…' : 'Hala düzenle'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={topluAcik} onClose={() => !mesgul && setTopluAcik(false)} title="Seçilen soruları sil" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          {secili.some(sid => (sorular.find(s => s.id === sid)?.cevapSayisi ?? 0) > 0)
+            ? CEVAPLI_SORU_UYARI
+            : `Seçilen ${secili.length} soru silinir.`}
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={() => setTopluAcik(false)} disabled={mesgul} className="px-3 py-1.5 text-sm text-slate-600">
+            Hayır
+          </button>
+          <button
+            type="button"
+            disabled={mesgul || secili.length === 0}
+            onClick={() => {
+              const idler = secili.slice()
+              void calistir(() => anketSorulariTopluSil(id, idler), () => {
+                setSecili([])
+                setTopluAcik(false)
+              })
+            }}
+            className="px-3 py-1.5 text-sm bg-red-700 text-white rounded-lg disabled:opacity-50"
+          >
+            {mesgul
+              ? 'Siliniyor…'
+              : secili.some(sid => (sorular.find(s => s.id === sid)?.cevapSayisi ?? 0) > 0)
+                ? 'Hala sil'
+                : 'Sil'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={silinecek !== null} onClose={() => !mesgul && setSilinecek(null)} title="Soruyu sil" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          {silinecek && silinecek.cevapSayisi > 0 ? CEVAPLI_SORU_UYARI : 'Bu soru silinir.'}
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={() => setSilinecek(null)} disabled={mesgul} className="px-3 py-1.5 text-sm text-slate-600">
+            Hayır
+          </button>
           <button
             type="button"
             disabled={mesgul}
@@ -282,11 +404,10 @@ export default function AnketDetayClient({
               if (!silinecek) return
               void calistir(() => anketSoruSil(id, silinecek.id), () => setSilinecek(null))
             }}
-            className="px-3 py-2 rounded-lg bg-red-700 text-white text-sm"
+            className="px-3 py-1.5 text-sm bg-red-700 text-white rounded-lg disabled:opacity-50"
           >
-            Sil
+            {mesgul ? 'Siliniyor…' : silinecek && silinecek.cevapSayisi > 0 ? 'Hala sil' : 'Sil'}
           </button>
-          <button type="button" onClick={() => setSilinecek(null)} className="px-3 py-2 rounded-lg border border-slate-300 text-sm">Vazgeç</button>
         </div>
       </Modal>
     </div>

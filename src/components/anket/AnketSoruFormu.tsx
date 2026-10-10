@@ -1,6 +1,7 @@
 'use client'
 
 import { ANKET_TIPLERI, type AnketSoruTipi } from '@/lib/anket'
+import { anketDemografiKonu } from '@/lib/anket-kirilim'
 
 export type SoruTaslak = {
   anahtar: string
@@ -26,6 +27,7 @@ export function AnketSoruFormu({
   onChange: (sonraki: SoruTaslak) => void
 }) {
   const secenekli = deger.tip === 'tek_secim' || deger.tip === 'coklu_secim'
+  const demografi = anketDemografiKonu(deger.metin)
 
   function tipDegistir(tip: AnketSoruTipi) {
     const secenekler = tip === 'tek_secim' || tip === 'coklu_secim'
@@ -100,15 +102,23 @@ export function AnketSoruFormu({
             </button>
           ) : null}
         </div>
-      ) : (
+      ) : null}
+      {demografi ? (
+        <p className="text-xs text-slate-500 md:pl-[5.25rem]">
+          {deger.tip === 'tek_secim'
+            ? 'Bu soru raporda grup olarak okunur. Statü ve öğrenim seçeneklerini personel kaydındaki adla yazın. Yaş için 18-25 gibi aralık kullanın. Cinsiyet için Kadın ve Erkek yazın.'
+            : 'Grup yorumu tek seçim cevaplarından kurulur. Bu soruyu tek seçim yapın.'}
+        </p>
+      ) : null}
+      {!secenekli ? (
         <p className="text-xs text-slate-500 md:pl-[5.25rem]">
           {deger.tip === 'evet_hayir'
             ? 'Seçenekler Evet ve Hayır olarak gelir.'
             : deger.tip === 'puan'
-              ? 'Puan 1 ile 5 arasındadır. 5’in üstü seçilemez.'
+              ? '1 çok kötü, 5 çok iyi anlamına gelir. 5’in üstü seçilemez.'
               : 'Cevap serbest metin olarak yazılır. Raporda liste halinde durur.'}
         </p>
-      )}
+      ) : null}
     </div>
   )
 }

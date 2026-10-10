@@ -57,7 +57,16 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
     if (katilim) {
       return (
         <main className="min-h-screen bg-slate-100 px-4 py-10">
-          <Kart baslik={String(anket.baslik)} metin="Bu anketi bu tarayıcıdan daha önce cevapladınız. Adınız tutulmadı." />
+          <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 shadow-sm">
+            <h1 className="text-xl font-bold text-slate-800">{String(anket.baslik)}</h1>
+            <p className="mt-3 text-sm text-slate-600">Bu anketi bu tarayıcıdan daha önce cevapladınız. Adınız tutulmadı.</p>
+            <a
+              href={`/anket/${encodeURIComponent(kod)}/pdf`}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-emerald-700 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
+            >
+              Soruları PDF indir
+            </a>
+          </div>
         </main>
       )
     }

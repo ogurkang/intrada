@@ -1,4 +1,6 @@
 import { anketYoneticiSayfasi } from '@/lib/anket-yetki'
+import { aktifPersonelProfilleri } from '@/lib/anket-aktif-personel'
+import { anketKirilimSatirlari, anketKurumKiyasMetni, type AnketCevapKaydi, type AnketSoruKaydi } from '@/lib/anket-kirilim'
 import type { AnketListeSatir } from '@/components/anket/AnketListeClient'
 import type { AnketHamCevap, AnketSoruTipi } from '@/lib/anket'
 import { anketSoruSonuc } from '@/lib/anket'
@@ -32,9 +34,10 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
       satirlar: [],
     }
   }
-  const [sorular, katilim] = await Promise.all([
+  const [sorular, katilim, loglar] = await Promise.all([
     sb.from('anket_sorulari').select('anket_id'),
     sb.from('anket_katilim').select('anket_id'),
+    sb.from('anket_log').select('anket_id'),
   ])
   const soruSay = new Map<string, number>()
   for (const satir of (sorular.data as { anket_id: string }[] | null) ?? []) {
@@ -44,6 +47,10 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
   for (const satir of (katilim.data as { anket_id: string }[] | null) ?? []) {
     cevapSay.set(satir.anket_id, (cevapSay.get(satir.anket_id) ?? 0) + 1)
   }
+  const logSay = new Map<string, number>()
+  for (const satir of (loglar.data as { anket_id: string }[] | null) ?? []) {
+    logSay.set(satir.anket_id, (logSay.get(satir.anket_id) ?? 0) + 1)
+  }
   const satirlar = ((anketler.data as { id: string; baslik: string; kod: string; durum: string }[] | null) ?? []).map(a => ({
     id: a.id,
     baslik: a.baslik,
@@ -51,6 +58,7 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
     durum: a.durum,
     soruSayisi: soruSay.get(a.id) ?? 0,
     cevapSayisi: cevapSay.get(a.id) ?? 0,
+    logSayisi: logSay.get(a.id) ?? 0,
   }))
   return { satirlar }
 }
@@ -60,10 +68,11 @@ export async function anketRaporYukle(anketId: string) {
   const sb = supabase as unknown as Sb
   const anket = await sb.from('anketler').select('id, baslik, durum').eq('id', anketId).maybeSingle()
   if (anket.error || !anket.data) return { hata: 'Anket bulunamadı.' as const }
-  const [soruSorgu, cevapSorgu, katilimSorgu] = await Promise.all([
+  const [soruSorgu, cevapSorgu, katilimSorgu, personel] = await Promise.all([
     sb.from('anket_sorulari').select('id, sira, metin, tip, secenekler').eq('anket_id', anketId).order('sira'),
-    sb.from('anket_cevaplar').select('soru_id, secimler, puan, metin').eq('anket_id', anketId),
+    sb.from('anket_cevaplar').select('katilim_id, soru_id, secimler, puan, metin').eq('anket_id', anketId),
     sb.from('anket_katilim').select('id').eq('anket_id', anketId),
+    aktifPersonelProfilleri(supabase),
   ])
   const sorular = ((soruSorgu.data as {
     id: string
@@ -72,20 +81,37 @@ export async function anketRaporYukle(anketId: string) {
     tip: AnketSoruTipi
     secenekler: string[] | null
   }[] | null) ?? []).slice().sort((a, b) => a.sira - b.sira)
-  const cevaplar = (cevapSorgu.data as ({ soru_id: string } & AnketHamCevap)[] | null) ?? []
+  const cevaplar = (cevapSorgu.data as ({ katilim_id: string; soru_id: string } & AnketHamCevap)[] | null) ?? []
   const katilim = ((katilimSorgu.data as { id: string }[] | null) ?? []).length
+  const kayitlar: AnketSoruKaydi[] = sorular.map(soru => ({
+    id: soru.id,
+    sira: soru.sira,
+    metin: soru.metin,
+    tip: soru.tip,
+    secenekler: Array.isArray(soru.secenekler) ? soru.secenekler : [],
+  }))
+  const cevapKayit: AnketCevapKaydi[] = cevaplar.map(c => ({
+    katilimId: String(c.katilim_id),
+    soruId: String(c.soru_id),
+    secimler: c.secimler,
+    puan: c.puan,
+    metin: c.metin,
+  }))
+  const kirilim = anketKirilimSatirlari(kayitlar, cevapKayit)
   return {
     baslik: String(anket.data.baslik),
     katilim,
-    sorular: sorular.map(soru => ({
+    kurumMetin: anketKurumKiyasMetni({ sorular: kayitlar, cevaplar: cevapKayit, katilim, personel }),
+    sorular: kayitlar.map(soru => ({
       id: soru.id,
       sira: soru.sira,
       metin: soru.metin,
       sonuc: anketSoruSonuc(
         soru.tip,
-        Array.isArray(soru.secenekler) ? soru.secenekler : [],
+        soru.tip === 'evet_hayir' ? ['Evet', 'Hayır'] : soru.secenekler,
         cevaplar.filter(c => c.soru_id === soru.id),
       ),
+      kirilimlar: kirilim.get(soru.id) ?? [],
     })),
   }
 }

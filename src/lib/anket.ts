@@ -1,6 +1,8 @@
 export const ANKET_BASLANGIC_UYARISI =
   'Bu anket isimsizdir. Cevabınız adınız ve siciliniz olmadan kaydedilir. Az sayıda kişi cevapladığında sonuç grafiği bir kişiyi belli edebilir.'
 
+export const ANKET_PUAN_OLCEK = '1 çok kötü, 5 çok iyi anlamına gelir.'
+
 export const ANKET_TIPLERI = [
   { id: 'tek_secim', etiket: 'Tek seçim' },
   { id: 'coklu_secim', etiket: 'Çoklu seçim' },
@@ -56,11 +58,24 @@ const LOG_ETIKET: Record<string, string> = {
   soru_tasindi: 'Soru sırası değişti',
   yayinlandi: 'Yayınlandı',
   durduruldu: 'Yayın durduruldu',
+  sifirlandi: 'Cevaplar sıfırlandı',
 }
 
 export function anketLogEtiket(islem: string): string {
   return LOG_ETIKET[islem] ?? islem
 }
+
+/** Grafik dilimleri ve PDF çubukları aynı sırayı kullanır. */
+export const ANKET_GRAFIK_HEX = [
+  '#2563eb',
+  '#059669',
+  '#d97706',
+  '#4f46e5',
+  '#e11d48',
+  '#0891b2',
+  '#7c3aed',
+  '#ea580c',
+]
 
 export type AnketSoruGirdi = {
   metin: string
@@ -151,23 +166,33 @@ function trOndalik(n: number): string {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-export function anketSoruYorumu(sonuc: AnketSoruSonuc): string {
+function soruIbaresi(metin: string): string {
+  const temiz = metin.trim()
+  if (!temiz) return 'Bu soruda'
+  return `«${temiz}» sorusunda`
+}
+
+function puanYargi(ort: number): string {
+  if (ort >= 4.5) return 'Sonuç çok iyi tarafta.'
+  if (ort >= 3.5) return 'Sonuç iyi tarafta.'
+  if (ort >= 2.5) return 'Sonuç ortaya yakın.'
+  if (ort > 1.5) return 'Sonuç kötü tarafta.'
+  return 'Sonuç çok kötü tarafta.'
+}
+
+export function anketSoruYorumu(sonuc: AnketSoruSonuc, soruMetni = ''): string {
   const n = sonuc.cevapSayisi
-  if (n === 0) return 'Bu soruya henüz cevap gelmedi.'
+  const giris = soruIbaresi(soruMetni)
+  if (n === 0) return `${giris} henüz cevap yok.`
   const az = n < 5 ? ' Cevap sayısı az. Yüzde, tek bir kişinin seçimiyle belirgin değişir.' : ''
   if (sonuc.tip === 'metin') {
-    return `${n} yazılı cevap var. Bu soru grafik yerine liste olarak durur.${az}`
+    return `${giris} ${n} yazılı cevap var. Bu soru grafik yerine liste olarak durur.${az}`
   }
   if (sonuc.tip === 'puan') {
     const ort = sonuc.ortalama ?? 0
-    const yon = ort >= 4
-      ? 'Cevaplar yüksek banda toplanmış.'
-      : ort <= 2
-        ? 'Cevaplar düşük banda toplanmış.'
-        : 'Cevaplar ortaya yakın.'
     const tepe = [...sonuc.dagilim].sort((a, b) => b.adet - a.adet)[0]
     const sik = tepe && tepe.adet > 0 ? ` En sık verilen puan ${tepe.etiket} (${tepe.adet} cevap).` : ''
-    return `Ortalama ${trOndalik(ort)} / 5. ${yon}${sik}${az}`
+    return `${giris} ${ANKET_PUAN_OLCEK} Ortalama ${trOndalik(ort)} / 5. ${puanYargi(ort)}${sik}${az}`
   }
   const coklu = sonuc.tip === 'coklu_secim'
     ? ' Bir kişi birden fazla seçenek işaretleyebildiği için yüzdelerin toplamı 100’ü geçebilir.'
@@ -176,25 +201,25 @@ export function anketSoruYorumu(sonuc: AnketSoruSonuc): string {
     .filter(d => d.adet > 0)
     .sort((a, b) => b.adet - a.adet || a.etiket.localeCompare(b.etiket, 'tr'))
   const birinci = dolu[0]
-  if (!birinci) return 'Bu soruya henüz cevap gelmedi.'
+  if (!birinci) return `${giris} henüz cevap yok.`
   const ayni = dolu.filter(d => d.adet === birinci.adet)
   if (ayni.length >= 2) {
     const adlar = ayni.slice(0, 3).map(d => `«${d.etiket}»`).join(' ve ')
-    return `${n} cevap içinde ${adlar} aynı paya sahip (%${birinci.yuzde}). Tek seçenek öne çıkmıyor.${coklu}${az}`
+    return `${giris} ${adlar} aynı paya sahip (%${birinci.yuzde}). Tek seçenek öne çıkmıyor.${coklu}${az}`
   }
   const ikinci = dolu[1]
   if (!ikinci || birinci.yuzde - ikinci.yuzde >= 15) {
-    return `${n} cevabın ${birinci.adet} tanesi (%${birinci.yuzde}) «${birinci.etiket}» seçeneğinde toplandı. Bu seçenek açık ara önde.${coklu}${az}`
+    return `${giris} ${n} cevabın ${birinci.adet} tanesi (%${birinci.yuzde}) «${birinci.etiket}» oldu. Bu cevap açık ara önde.${coklu}${az}`
   }
   if (birinci.yuzde - ikinci.yuzde <= 8) {
-    return `«${birinci.etiket}» %${birinci.yuzde} ve «${ikinci.etiket}» %${ikinci.yuzde} ile birbirine yakın. Sonuç tek tarafa yatmış değil.${coklu}${az}`
+    return `${giris} «${birinci.etiket}» %${birinci.yuzde} ve «${ikinci.etiket}» %${ikinci.yuzde} ile birbirine yakın. Sonuç tek tarafa yatmış değil.${coklu}${az}`
   }
-  return `En yüksek pay «${birinci.etiket}» (%${birinci.yuzde}). Ardından «${ikinci.etiket}» (%${ikinci.yuzde}) geliyor.${coklu}${az}`
+  return `${giris} en yüksek pay «${birinci.etiket}» (%${birinci.yuzde}). Ardından «${ikinci.etiket}» (%${ikinci.yuzde}) geliyor.${coklu}${az}`
 }
 
 export function anketGenelYorum(katilim: number): string {
   if (katilim <= 0) {
     return 'Henüz cevap yok. Anket yayındayken link paylaşılınca grafikler ve yorumlar burada dolar.'
   }
-  return `Bu raporda ${katilim} kişinin cevabı var. Kayıtlarda ad ve sicil tutulmaz. Her yorum, o sorunun dağılımını okur.`
+  return `Bu raporda ${katilim} kişinin cevabı var. Kayıtlarda ad ve sicil tutulmaz. Her yorum, sorunun metnini ve cevap dağılımını birlikte okur.`
 }

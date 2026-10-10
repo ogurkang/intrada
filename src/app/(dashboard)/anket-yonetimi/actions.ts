@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { anketKodUret, anketSoruDogrula, type AnketSoruGirdi } from '@/lib/anket'
+import { anketDemografiEksikler, anketDemografiSorulariOlustur } from '@/lib/anket-demografi-sablon'
 
 type Sb = {
   from: (tablo: string) => {
@@ -186,6 +187,58 @@ export async function anketYayinDegistir(anketId: string, yayinla: boolean): Pro
   return {}
 }
 
+export async function anketDemografiSorulariEkle(anketId: string): Promise<{ hata?: string }> {
+  const ot = await baglam()
+  if ('hata' in ot) return { hata: ot.hata }
+  const [statuSorgu, ogrenimSorgu, mevcutSorgu] = await Promise.all([
+    ot.sb.from('tanim_statu').select('statu_adi, sira_no').eq('aktif', true),
+    ot.sb.from('tanim_ogrenim').select('isim').eq('aktif', true),
+    ot.sb.from('anket_sorulari').select('metin, sira').eq('anket_id', anketId).order('sira', { ascending: false }).limit(40),
+  ])
+  if (statuSorgu.error || ogrenimSorgu.error || mevcutSorgu.error) {
+    return { hata: statuSorgu.error?.message ?? ogrenimSorgu.error?.message ?? mevcutSorgu.error?.message ?? 'Tanımlar okunamadı.' }
+  }
+  const mevcut = (mevcutSorgu.data as { metin: string; sira: number }[] | null) ?? []
+  const eklenecek = anketDemografiEksikler(
+    anketDemografiSorulariOlustur({
+      statuler: (statuSorgu.data as { statu_adi: string; sira_no: number | null }[] | null) ?? [],
+      ogrenimler: ((ogrenimSorgu.data as { isim: string }[] | null) ?? []).map(o => o.isim),
+    }),
+    mevcut.map(s => s.metin),
+  )
+  if (eklenecek.length === 0) return { hata: 'Bu demografik sorular ankette zaten var.' }
+  if (mevcut.length + eklenecek.length > 40) return { hata: 'Bir ankette en fazla 40 soru olur.' }
+  let sira = mevcut.reduce((m, s) => Math.max(m, Number(s.sira) || 0), 0)
+  for (const soru of eklenecek) {
+    sira += 1
+    const dogru = anketSoruDogrula(soru)
+    if ('hata' in dogru) return { hata: dogru.hata }
+    const { data, error } = await ot.sb
+      .from('anket_sorulari')
+      .insert({
+        anket_id: anketId,
+        sira,
+        metin: dogru.metin,
+        tip: dogru.tip,
+        secenekler: dogru.secenekler,
+      })
+      .select('id')
+      .single()
+    if (error || !data) return { hata: error?.message ?? 'Demografik soru eklenemedi.' }
+    await logYaz(ot.sb, {
+      anket_id: anketId,
+      soru_id: String(data.id),
+      islem: 'soru_eklendi',
+      ozet: `Sıra ${sira}: ${dogru.metin}`,
+      yapan_id: ot.userId,
+      yapan_ad: ot.yapanAd,
+    })
+  }
+  await ot.sb.from('anketler').update({ updated_at: new Date().toISOString() }).eq('id', anketId)
+  tazele(anketId)
+  return {}
+}
+
 export async function anketSoruEkle(anketId: string, girdi: AnketSoruGirdi): Promise<{ hata?: string }> {
   const ot = await baglam()
   if ('hata' in ot) return { hata: ot.hata }
@@ -259,6 +312,36 @@ export async function anketSoruGuncelle(
   return {}
 }
 
+export async function anketSorulariTopluSil(anketId: string, soruIdler: string[]): Promise<{ hata?: string }> {
+  const ot = await baglam()
+  if ('hata' in ot) return { hata: ot.hata }
+  const idler = [...new Set(soruIdler.map(id => id.trim()).filter(Boolean))]
+  if (idler.length === 0) return { hata: 'Silinecek soru seçin.' }
+  const { data: hepsi } = await ot.sb.from('anket_sorulari').select('id, metin').eq('anket_id', anketId)
+  const kayitlar = ((hepsi as { id: string; metin: string }[] | null) ?? [])
+  const silinen = kayitlar.filter(s => idler.includes(String(s.id)))
+  if (silinen.length === 0) return { hata: 'Silinecek soru bulunamadı.' }
+  const { error } = await ot.sb.from('anket_sorulari').delete().in('id', silinen.map(s => s.id)).eq('anket_id', anketId)
+  if (error) return { hata: error.message }
+  const { data: kalan } = await ot.sb.from('anket_sorulari').select('id, sira').eq('anket_id', anketId).order('sira')
+  const satirlar = ((kalan as { id: string; sira: number }[] | null) ?? []).slice().sort((a, b) => a.sira - b.sira)
+  for (let i = 0; i < satirlar.length; i += 1) {
+    if (satirlar[i].sira === i + 1) continue
+    await ot.sb.from('anket_sorulari').update({ sira: i + 1 }).eq('id', satirlar[i].id)
+  }
+  await ot.sb.from('anketler').update({ updated_at: new Date().toISOString() }).eq('id', anketId)
+  const ornek = silinen.slice(0, 3).map(s => s.metin).join(' · ')
+  await logYaz(ot.sb, {
+    anket_id: anketId,
+    islem: 'soru_silindi',
+    ozet: `${silinen.length} soru silindi. ${ornek}`.trim(),
+    yapan_id: ot.userId,
+    yapan_ad: ot.yapanAd,
+  })
+  tazele(anketId)
+  return {}
+}
+
 export async function anketSoruSil(anketId: string, soruId: string): Promise<{ hata?: string }> {
   const ot = await baglam()
   if ('hata' in ot) return { hata: ot.hata }
@@ -310,6 +393,23 @@ export async function anketSoruTasi(
     soru_id: soruId,
     islem: 'soru_tasindi',
     ozet: `«${a.metin}» sırası ${a.sira} → ${b.sira}.`,
+    yapan_id: ot.userId,
+    yapan_ad: ot.yapanAd,
+  })
+  tazele(anketId)
+  return {}
+}
+
+export async function anketSifirla(anketId: string): Promise<{ hata?: string }> {
+  const ot = await baglam()
+  if ('hata' in ot) return { hata: ot.hata }
+  const { error } = await ot.sb.from('anket_katilim').delete().eq('anket_id', anketId)
+  if (error) return { hata: error.message }
+  await ot.sb.from('anketler').update({ updated_at: new Date().toISOString() }).eq('id', anketId)
+  await logYaz(ot.sb, {
+    anket_id: anketId,
+    islem: 'sifirlandi',
+    ozet: 'Anket cevapları silindi. Sorular ve anket adı duruyor.',
     yapan_id: ot.userId,
     yapan_ad: ot.yapanAd,
   })

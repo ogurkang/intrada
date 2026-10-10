@@ -7,6 +7,49 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-10-anket-aciklama-sablon',
+    baslik: '10 Ekim 2026 — Anket açıklaması ve demografik şablon',
+    maddeler: [
+      'Anketler başlığının altında, anketin isimsiz nasıl işlediği ve raporun ne söylediği yazıyor.',
+      'Anket oluştururken ve düzenlerken demografik sorular tek düğmeyle eklenir. Öğrenim ve statü seçenekleri kayıtlı tanımlardan gelir. İstenmeyen soru işaretlenip çıkarılır.',
+    ],
+  },
+  {
+    id: '2026-10-10-anket-kirilim-form',
+    baslik: '10 Ekim 2026 — Anket grup yorumu ve soru formu',
+    maddeler: [
+      'Yaş, cinsiyet, öğrenim veya statü tek seçim sorusu varsa rapor, cevaplayan grupların sonucunu yazar. Örnek: anketi cevaplayan kadınlar, anketi cevaplayan memurların 18-25 yaş olanları.',
+      'Bu dağılım kayıtlı aktif personelle yan yana konur. Yakınlık, kurumun genelinin düşüncesi olarak okunmaz.',
+      'Anket linkini açan kişi soruları boş PDF olarak indirebilir.',
+    ],
+  },
+  {
+    id: '2026-10-09-anket-pasta-silme',
+    baslik: '9 Ekim 2026 — Anket silme uyarısı ve pasta grafik',
+    maddeler: [
+      'Cevabı olan bir soru silinirken veya düzenlenirken, sonucun etkileneceği uyarısı çıkar. Hala sil veya Hala düzenle denirse işlem yapılır.',
+      'Tek seçim, çoklu seçim ve evet/hayır sonuçları pasta dilimi olarak gösterilir. Puan çubuk, serbest metin liste olarak kalır.',
+    ],
+  },
+  {
+    id: '2026-10-09-anket-soru-yorum',
+    baslik: '9 Ekim 2026 — Anket soru kartı ve yorum',
+    maddeler: [
+      'Cevap ekranında soru metni kartın içinde durur. Puan sorusunda 1 çok kötü, 5 çok iyi anlamına gelir.',
+      'Rapor yorumu sorunun metnini ve cevap dağılımını birlikte okur.',
+      'Anket detayında sorular işaretlenip toplu silinebilir.',
+    ],
+  },
+  {
+    id: '2026-10-09-anket-islemler',
+    baslik: '9 Ekim 2026 — Anket işlemleri',
+    maddeler: [
+      'Anket listesindeki saat, kalem ve göz diğer modüllerdeki işlem ikonlarına çekildi. Log aynı geçmiş tablosunda açılır.',
+      'İşlemler sütunundan yayın açılıp kapatılır. İki oklu düğme cevapları sıfırlar; sorular durur.',
+      'Rapor çubukları ayrı renktedir. Rapor PDF olarak indirilir.',
+    ],
+  },
+  {
     id: '2026-10-09-anket-yonetimi',
     baslik: '9 Ekim 2026 — Anket Yönetimi',
     maddeler: [
