@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-12-yari-zamanli-saat',
+    baslik: '12 Ekim 2026 — Yarı zamanlı saat dilimi',
+    maddeler: [
+      'Yarı zamanlı çalışma tablosunda 12:30 ve 17:30 kutuları kalktı. Bir günün tüm kutuları 8 saattir. 08:30 kutusu 08:30-09:00 arasını sayar.',
+    ],
+  },
+  {
     id: '2026-10-12-sosyal-hak-50-gun',
     baslik: '12 Ekim 2026 — Sosyal hak 50 gün sınırı',
     maddeler: [

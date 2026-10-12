@@ -12,7 +12,7 @@ export const YZC_BIRIM = BILDIRIM_BIRIM
 export const YZC_GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'] as const
 export type YzcGun = (typeof YZC_GUNLER)[number]
 
-/** Öğle arası 12:30–13:30 hariç yarım saatlik dilimler. */
+/** 08:30–12:30 ve 13:30–17:30. Her kutu, yazdığı saatten sonraki yarım saattir. 12:30 ve 17:30 kutu değildir. */
 export const YZC_SAATLER = [
   '08:30',
   '09:00',
@@ -22,7 +22,6 @@ export const YZC_SAATLER = [
   '11:00',
   '11:30',
   '12:00',
-  '12:30',
   '13:30',
   '14:00',
   '14:30',
@@ -31,7 +30,6 @@ export const YZC_SAATLER = [
   '16:00',
   '16:30',
   '17:00',
-  '17:30',
 ] as const
 
 export type YzcSaat = (typeof YZC_SAATLER)[number]
