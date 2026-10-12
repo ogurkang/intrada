@@ -26,7 +26,9 @@ import {
   groupShakIzyKsdOverridesByDonem,
 } from '@/lib/sosyal-hak-izy-hesap'
 import KesintimDetayClient from '@/components/kesintiler/KesintimDetayClient'
+import Modal from '@/components/ui/Modal'
 import { createClient } from '@/lib/supabase/client'
+import { sosyalHakYillikIzinSiniri, type YillikIzinSinirSatir } from '@/app/(dashboard)/kesintiler/sosyal-hak/actions'
 
 interface Props {
   donemId: number
@@ -269,6 +271,8 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
   const [ozetAcik, setOzetAcik]      = useState(false)
   const [ozetData, setOzetData]      = useState<{ donem: SosyalHakDetayData['donem']; sonuc: ReturnType<typeof kesintimHesapla> } | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [sinirListe, setSinirListe] = useState<YillikIzinSinirSatir[]>([])
+  const [sinirAcik, setSinirAcik] = useState(false)
 
   async function yukle() {
     setYukleniyor(true)
@@ -284,6 +288,18 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
   }
 
   useEffect(() => { yukle() }, [donemId])
+
+  useEffect(() => {
+    let iptal = false
+    sosyalHakYillikIzinSiniri(donemId).then(liste => {
+      if (iptal) return
+      setSinirListe(liste)
+      setSinirAcik(liste.length > 0)
+    }).catch(() => {
+      if (!iptal) setSinirListe([])
+    })
+    return () => { iptal = true }
+  }, [donemId])
 
   function sagaAl(sira_no: string) {
     if (!data) return
@@ -595,6 +611,21 @@ export default function SosyalHakDetayClient({ donemId }: Props) {
 
   return (
     <div className="space-y-6">
+      <Modal open={sinirAcik} onClose={() => setSinirAcik(false)} title="50 Gün Sınırına Dahil Olan Personel" size="md">
+        <ul className="space-y-2">
+          {sinirListe.map(p => (
+            <li key={p.sicil_no} className="flex items-baseline justify-between gap-3 text-sm text-slate-800">
+              <span><span className="font-mono text-slate-500">{p.sicil_no}</span> {p.ad_soyad}</span>
+              <span className="shrink-0 tabular-nums text-slate-600">{p.gun} gün</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex justify-end">
+          <button type="button" onClick={() => setSinirAcik(false)} className="px-3 py-1.5 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-600">
+            Tamam
+          </button>
+        </div>
+      </Modal>
       {/* Dönem başlığı */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

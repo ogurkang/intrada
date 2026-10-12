@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-12-sosyal-hak-50-gun',
+    baslik: '12 Ekim 2026 — Sosyal hak 50 gün sınırı',
+    maddeler: [
+      'Sosyal hak dönem detayı açıldığında, o yıl yıllık izni 50 gün ve üzeri olan personelin sicili ve adı popup olarak gösterilir.',
+    ],
+  },
+  {
     id: '2026-10-12-ayy-kacak-gun',
     baslik: '12 Ekim 2026 — Dönemden önce başlayan izin',
     maddeler: [

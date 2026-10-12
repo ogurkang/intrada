@@ -27,6 +27,57 @@ async function tumSosyalHakDonemTarihleri(
   return (data ?? []) as SosyalHakDonemTarih[]
 }
 
+export type YillikIzinSinirSatir = { sicil_no: string; ad_soyad: string; gun: number }
+
+/** Dönem yılında yıllık izin toplamı 50 gün ve üzeri olan personel. */
+export async function sosyalHakYillikIzinSiniri(donemId: number): Promise<YillikIzinSinirSatir[]> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data: donem } = await db
+    .from('sosyal_hak_donem')
+    .select('yil, baslangic_tarihi')
+    .eq('id', donemId)
+    .maybeSingle()
+  const yil = Number(donem?.yil) || Number(String(donem?.baslangic_tarihi ?? '').slice(0, 4))
+  if (!yil) return []
+
+  const satirlar: { sicil_no: string; gun: number }[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await db
+      .from('izin_hareketleri')
+      .select('sicil_no, gun')
+      .eq('yil', yil)
+      .eq('tur', 'Yıllık İzin')
+      .neq('durum', 'İptal Edildi')
+      .order('id', { ascending: true })
+      .range(from, from + 999)
+    if (error || !data?.length) break
+    for (const r of data as { sicil_no: string; gun: number | null }[]) {
+      satirlar.push({ sicil_no: String(r.sicil_no ?? '').trim(), gun: Number(r.gun) || 0 })
+    }
+    if (data.length < 1000) break
+    from += 1000
+  }
+
+  const toplam = new Map<string, number>()
+  for (const r of satirlar) {
+    if (!r.sicil_no) continue
+    toplam.set(r.sicil_no, (toplam.get(r.sicil_no) ?? 0) + r.gun)
+  }
+  const siciller = [...toplam.entries()].filter(([, gun]) => gun >= 50).map(([sicil]) => sicil)
+  if (siciller.length === 0) return []
+
+  const { data: kisiler } = await db.from('calisan').select('sicil_no, ad_soyad').in('sicil_no', siciller)
+  const ad = new Map<string, string>(
+    ((kisiler ?? []) as { sicil_no: string; ad_soyad: string | null }[]).map(k => [k.sicil_no, k.ad_soyad ?? k.sicil_no]),
+  )
+  return siciller
+    .map(sicil => ({ sicil_no: sicil, ad_soyad: ad.get(sicil) ?? sicil, gun: toplam.get(sicil) ?? 0 }))
+    .sort((a, b) => a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }))
+}
+
 export async function donemEkle(fd: FormData): Promise<{ hata?: string }> {
   const yil              = parseInt(String(fd.get('yil') ?? '0'), 10)
   const baslangic_tarihi = str(fd, 'baslangic_tarihi')
