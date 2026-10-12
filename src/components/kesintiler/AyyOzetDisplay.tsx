@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import type { AyyHesapSonucu, AyyPersonelOzet, AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
+import { createPortal } from 'react-dom'
+import type { AyyHesapSatir, AyyHesapSonucu, AyyPersonelOzet, AyyStatuBazliPersonel } from '@/lib/ayy-hesap'
 import {
   AYY_OZET_BOLUM,
   AYY_OZET_BOLUM_SIRASI,
@@ -28,9 +29,69 @@ interface Props {
 
 type Sekme = 'ozet' | 'takipteki' | 'donemdeki' | 'askidaki'
 
-function tarih(t: string | null) {
+function tarih(t: string | null | undefined) {
   if (!t) return '—'
-  return new Date(t).toLocaleDateString('tr-TR')
+  const gun = t.slice(0, 10)
+  const [y, a, g] = gun.split('-')
+  if (!y || !a || !g) return '—'
+  return `${g}.${a}.${y}`
+}
+
+function kesilenIzinSatirlari(sicil: string, kaynaklar: AyyHesapSatir[], gosterilen: number) {
+  const ilgili = kaynaklar.filter(s => s.sicil_no === sicil && s.IZ > 0)
+  const liste = ilgili.map(s => ({
+    baslik: s.tur,
+    alt: `${tarih(s.kaynakBas)} başlangıç · dönüş ${tarih(s.kaynakDonus)} · bu döneme ${ayyGun(s.IZ)} gün`,
+  }))
+  const toplam = ilgili.reduce((t, s) => t + s.IZ, 0)
+  const fark = Math.round((gosterilen - toplam) * 10) / 10
+  if (fark > 0) {
+    liste.push({
+      baslik: 'Geçici görevlendirme',
+      alt: `Yemek hakkı yok · bu döneme ${ayyGun(fark)} gün`,
+    })
+  }
+  return liste
+}
+
+function KesilenIzinHucre({ sicil, gun, kaynaklar }: { sicil: string; gun: number; kaynaklar: AyyHesapSatir[] }) {
+  const [konum, setKonum] = useState<{ x: number; y: number } | null>(null)
+  const liste = kesilenIzinSatirlari(sicil, kaynaklar, gun)
+  if (gun <= 0) return <span>—</span>
+  const titleMetin = liste.map(s => `${s.baslik}: ${s.alt}`).join(' | ') || 'Kayıt yok'
+  return (
+    <>
+      <span
+        className="cursor-help underline decoration-dotted underline-offset-2"
+        title={titleMetin}
+        onMouseEnter={e => {
+          const r = e.currentTarget.getBoundingClientRect()
+          setKonum({ x: r.left + r.width / 2, y: r.top })
+        }}
+        onMouseLeave={() => setKonum(null)}
+      >
+        {ayyGun(gun)}
+      </span>
+      {konum && liste.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[200] pointer-events-none w-max max-w-[280px] px-3 py-2 rounded-lg bg-slate-800 text-[11px] leading-snug shadow-lg border border-slate-700"
+          style={{ left: konum.x, top: konum.y, transform: 'translate(-50%, calc(-100% - 8px))' }}
+        >
+          {liste.map((satir, i) => (
+            <div key={`${satir.baslik}-${i}`} className={i > 0 ? 'mt-2 border-t border-slate-700 pt-2' : ''}>
+              <p className="font-medium text-white">{satir.baslik}</p>
+              <p className="text-slate-200 mt-0.5">{satir.alt}</p>
+            </div>
+          ))}
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-800"
+            aria-hidden
+          />
+        </div>,
+        document.body,
+      )}
+    </>
+  )
 }
 
 /** Tam gün tam sayı; küsüratlı gün (yarı zamanlı 10,5) bir ondalık. */
@@ -41,7 +102,7 @@ function ayyGun(n: number): string {
     : n.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; etiket: string }) {
+function PersonelTablosu({ satirlar, etiket, kaynaklar }: { satirlar: AyyPersonelOzet[]; etiket: string; kaynaklar: AyyHesapSatir[] }) {
   const toplamK  = satirlar.reduce((s, p) => s + p.K,  0)
   const toplamSD = satirlar.reduce((s, p) => s + p.SD, 0)
   const toplamIZ = satirlar.reduce((s, p) => s + p.IZ, 0)
@@ -92,7 +153,9 @@ function PersonelTablosu({ satirlar, etiket }: { satirlar: AyyPersonelOzet[]; et
                 <td className="px-4 py-2.5 text-xs text-slate-500 hidden md:table-cell">{p.unvan || '—'}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-blue-700">{p.OD > 0 ? ayyGun(p.OD) : '—'}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{ayyGun(p.hamIzin ?? 0)}</td>
-                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-700">{p.IZ > 0 ? ayyGun(p.IZ) : '—'}</td>
+                <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-orange-700">
+                  <KesilenIzinHucre sicil={p.sicil_no} gun={p.IZ} kaynaklar={kaynaklar} />
+                </td>
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm text-slate-600">{ayyGun(p.YG)}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm font-semibold text-red-700">{ayyGun(p.K)}</td>
                 <td className="px-3 py-2.5 text-center tabular-nums text-sm font-medium text-amber-700">{p.SD > 0 ? ayyGun(p.SD) : '—'}</td>
@@ -260,14 +323,20 @@ export default function AyyOzetDisplay({ donem, sonuc, tatilSayisi, statuBazliPe
                   <h3 className="text-sm font-semibold text-slate-700 mb-3 px-3 py-2 bg-slate-100 rounded-lg border border-slate-200">
                     {AYY_OZET_BOLUM[key]}
                   </h3>
-                  <PersonelTablosu satirlar={satirlar} etiket={AYY_OZET_BOLUM[key]} />
+                  <PersonelTablosu satirlar={satirlar} etiket={AYY_OZET_BOLUM[key]} kaynaklar={sonuc.satirlar} />
                 </section>
               )
             })}
           </div>
         )
       ) : (
-        <PersonelTablosu satirlar={sekmeData[sekme]} etiket={sekmeler.find(s => s.key === sekme)?.label ?? ''} />
+        <PersonelTablosu
+          satirlar={sekmeData[sekme]}
+          etiket={sekmeler.find(s => s.key === sekme)?.label ?? ''}
+          kaynaklar={sonuc.satirlar.filter(s => s.kategori === (
+            sekme === 'takipteki' ? 'Takipteki İzinler' : sekme === 'donemdeki' ? 'Dönemdeki İzinler' : 'Askıdaki İzinler'
+          ))}
+        />
       )}
     </div>
   )

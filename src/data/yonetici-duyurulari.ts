@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-12-ayy-kesilen-izin-dokumu',
+    baslik: '12 Ekim 2026 — Aylık yemek kesilen izin',
+    maddeler: [
+      'Aylık yemek özetinde Kesilen İzin hücresinin üzerine gelince, o günün hangi izinlerden geldiği açılır.',
+    ],
+  },
+  {
     id: '2026-10-10-anket-aciklama-genislik',
     baslik: '10 Ekim 2026 — Anket açıklaması',
     maddeler: [

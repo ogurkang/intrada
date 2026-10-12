@@ -60,6 +60,10 @@ export interface AyyHesapSatir {
   kategori:   Kategori
   /** OD'nin kaynağı önceki dönem YG aşımıysa true (yeni Zabıta SD taşma kuralı devrede) */
   odYGAsimi:  boolean
+  /** İzin başlangıcı veya görev başlangıcı. Kesilen izin dökümünde gösterilir. */
+  kaynakBas?: string | null
+  /** İşe dönüş veya görev bitişi. */
+  kaynakDonus?: string | null
 }
 
 export interface AyyPersonelOzet {
@@ -510,7 +514,7 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
         : Math.max(0, yemekliGun - iz)
     }
 
-    satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori, odYGAsimi: odIsYGAsimi })
+    satirlar.push({ sira_no: iv.sira_no, sicil_no: iv.sicil_no, ad_soyad: iv.ad_soyad, unvan: iv.unvan, tur: iv.tur, isZabita: iv.isZabita, OD: od, IZ: iz, hamIzin: iv.gun, YG: yemekliGun, K, SD: sd, kategori, odYGAsimi: odIsYGAsimi, kaynakBas: iv.ayrilis, kaynakDonus: iv.baslama })
     odYazildi.add(iv.sira_no)
   }
 
@@ -537,6 +541,8 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       OD: 0, IZ: iz, hamIzin: iz, YG: yg, K: k, SD: 0,
       kategori:  'Dönemdeki İzinler',
       odYGAsimi: false,
+      kaynakBas: sp.gorev_turu_tarihi,
+      kaynakDonus: sp.gorev_turu_bitis_tarihi,
     })
   }
 
@@ -558,6 +564,8 @@ export function ayyHesapla(params: AyyHesapParams): AyyHesapSonucu {
       OD: 0, IZ: baseIz, hamIzin: 0, YG: yg, K: 0, SD: 0,
       kategori:  'Dönemdeki İzinler',
       odYGAsimi: false,
+      kaynakBas: sp.gorev_turu_tarihi,
+      kaynakDonus: sp.gorev_turu_bitis_tarihi,
     })
   }
 
