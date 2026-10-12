@@ -50,6 +50,21 @@ Aşağıdaki koşulların **tamamı** sağlanıyorsa izin "arada kalan" olarak i
 
 Bu durumda izin aktif döneme alınır; tam süresi bu dönemde kesilir, `SD = 0`.
 
+### Dönemden önce başlayıp dönemin içine taşan kayıt
+
+Arada kalan kuralı, izin yeni dönemden önce **bitmişse** geçerlidir. İzin yeni dönemden önce başlamış ama dönemden önce bitmemişse (dönemin içine veya ötesine taşıyorsa) ayrı işlenir. Şartlar:
+
+1. `OD = 0`,
+2. Kayıt, önceki dönemin `kapatildi_at` anından sonra,
+3. İzin, aktif dönemin başlangıcından önce başlamış,
+4. İzin, aktif dönemin başlangıcından önce bitmemiş.
+
+Bu izin kapalı döneme geri yazılmaz. Aktif dönemin kendi penceresine düşen günler kesilen izinde kalır; bu sayı değiştirilmez. Dönem başlangıcından önceki ve kapalı döneme girememiş günler kesilen izne eklenmez. Sonraki döneme eklenir. Zabıta takvim günü, diğer personel çalışma günü sayılır.
+
+Kesilen iznin yemekli günü aşan kısmı bu kaçan günün üzerine ikinci kez konmaz. Sonraki dönem, devreden süre içinden bu dönemin takviminde görünmeyen günleri kesilen iznine ekler. Yemek alacağı, o kesilen izin üzerinden olağan zabıta veya normal formülle hesaplanır. Aynı günler 24 günlük zabıta tavanından ikinci kez düşülmez.
+
+Örnek: heyet raporu 6 Ağustos–4 Ekim, kayıt 13 Ağustos, Ağustos 10 Ağustos’ta kapanmış. Eylül penceresi 15 Ağustos–14 Eylül 31 gün kesilen izin olarak kalır. 6–14 Ağustos 9 gündür ve sonraki döneme yazılır. 14 Eylül’den sonra süren 20 gün ile birlikte devir 29 gündür. Ekim kesilen izni 29 olur. 29, 6 günü aştığı için yemek alacağı 30 − 29 = 1 olur.
+
 ---
 
 ## 4) Zabıta ve normal kesinti kuralı
