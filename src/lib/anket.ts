@@ -1,5 +1,5 @@
 export const ANKET_BASLANGIC_UYARISI =
-  'Bu anket isimsizdir. Cevabınız adınız ve siciliniz olmadan kaydedilir. Az sayıda kişi cevapladığında sonuç grafiği bir kişiyi belli edebilir.'
+  'Bu anket isimsizdir. Cevabınız adınız ve siciliniz olmadan kaydedilir.'
 
 export const ANKET_PUAN_OLCEK = '1 çok kötü, 5 çok iyi anlamına gelir.'
 

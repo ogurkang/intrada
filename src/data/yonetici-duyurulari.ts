@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-14-anket-kucuk-grup-uyari',
+    baslik: '14 Ekim 2026 — Anket başlangıç uyarısı',
+    maddeler: [
+      'Anket sayfasındaki «az sayıda kişi cevapladığında sonuç grafiği bir kişiyi belli edebilir» uyarısı kaldırıldı. İsimsiz kayıt uyarısı duruyor.',
+    ],
+  },
+  {
     id: '2026-10-14-anket-kisa-ad',
     baslik: '14 Ekim 2026 — Anket kısa adı ve giriş',
     maddeler: [
