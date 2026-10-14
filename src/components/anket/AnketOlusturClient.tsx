@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { anketOlustur } from '@/app/(dashboard)/anket-yonetimi/actions'
+import { ANKET_KISA_AD_ACIKLAMA } from '@/lib/anket'
 import { anketDemografiEksikler, type AnketDemografiSoru } from '@/lib/anket-demografi-sablon'
 import { AnketSoruFormu, bosSoru, type SoruTaslak } from '@/components/anket/AnketSoruFormu'
 
@@ -13,6 +14,7 @@ export default function AnketOlusturClient({ demografiSablon }: { demografiSablo
   const router = useRouter()
   const [baslik, setBaslik] = useState('')
   const [aciklama, setAciklama] = useState('')
+  const [kisaAd, setKisaAd] = useState('')
   const [sorular, setSorular] = useState<SoruTaslak[]>([bosSoru('s1')])
   const [secili, setSecili] = useState<string[]>([])
   const [hata, setHata] = useState<string | null>(null)
@@ -53,6 +55,7 @@ export default function AnketOlusturClient({ demografiSablon }: { demografiSablo
     const sonuc = await anketOlustur({
       baslik,
       aciklama,
+      kisaAd,
       sorular: sorular.map(s => ({ metin: s.metin, tip: s.tip, secenekler: s.secenekler })),
     })
     setKaydediyor(false)
@@ -74,6 +77,11 @@ export default function AnketOlusturClient({ demografiSablon }: { demografiSablo
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Açıklama</span>
           <textarea value={aciklama} onChange={e => setAciklama(e.target.value)} rows={2} className={`${inputSinif} mt-1`} />
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Kısa ad</span>
+          <input value={kisaAd} onChange={e => setKisaAd(e.target.value)} className={`${inputSinif} mt-1 font-mono`} required placeholder="isg-egitimi" />
+          <p className="mt-1 text-xs text-slate-500">{ANKET_KISA_AD_ACIKLAMA}</p>
         </label>
         <p className="text-sm text-slate-500">
           Anket durdurulmuş olarak kaydolur. Yayınla düğmesine basılınca link cevap alır. Cevaplarda ad ve sicil tutulmaz.

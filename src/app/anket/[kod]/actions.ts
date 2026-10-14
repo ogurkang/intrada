@@ -42,8 +42,8 @@ export async function anketCevapGonder(
   }
   const { data: anket, error } = await sb
     .from('anketler')
-    .select('id, durum')
-    .eq('kod', kod)
+    .select('id, durum, kod')
+    .ilike('kod', kod)
     .maybeSingle()
   if (error || !anket) return { hata: 'Anket bulunamadı.' }
   if (anket.durum !== 'yayinda') return { hata: 'Bu anketin yayını durdurulmuş. Yeni cevap alınmıyor.' }
@@ -85,8 +85,9 @@ export async function anketCevapGonder(
     hazir.push({ soru_id: soru.id, secimler, puan: null, metin: null })
   }
 
+  const kayitKod = String(anket.kod ?? kod)
   const depo = await cookies()
-  const varOlan = depo.get(cerezAdi(kod))?.value
+  const varOlan = depo.get(cerezAdi(kayitKod))?.value
   const token = varOlan && varOlan.length >= 16 ? varOlan : randomUUID()
   const ozet = ozetle(token)
   const { data: once } = await sb
@@ -119,7 +120,7 @@ export async function anketCevapGonder(
     return { hata: 'Cevap kaydedilemedi.' }
   }
 
-  depo.set(cerezAdi(kod), token, {
+  depo.set(cerezAdi(kayitKod), token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

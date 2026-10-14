@@ -28,7 +28,7 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = sb as any
-  const { data: anket } = await db.from('anketler').select('id, baslik, aciklama, durum').eq('kod', kod).maybeSingle()
+  const { data: anket } = await db.from('anketler').select('id, baslik, aciklama, durum, kod').ilike('kod', kod).maybeSingle()
   if (!anket) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -45,7 +45,8 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
   }
 
   const depo = await cookies()
-  const token = depo.get(`intrada_anket_${kod}`)?.value
+  const kayitKod = String(anket.kod)
+  const token = depo.get(`intrada_anket_${kayitKod}`)?.value
   if (token) {
     const ozet = createHash('sha256').update(token).digest('hex')
     const { data: katilim } = await db
@@ -61,7 +62,7 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
             <h1 className="text-xl font-bold text-slate-800">{String(anket.baslik)}</h1>
             <p className="mt-3 text-sm text-slate-600">Bu anketi bu tarayıcıdan daha önce cevapladınız. Adınız tutulmadı.</p>
             <a
-              href={`/anket/${encodeURIComponent(kod)}/pdf`}
+              href={`/anket/${encodeURIComponent(kayitKod)}/pdf`}
               className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-emerald-700 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
             >
               Soruları PDF indir
@@ -92,7 +93,7 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
       <AnketCevapClient
-        kod={kod}
+        kod={kayitKod}
         baslik={String(anket.baslik)}
         aciklama={String(anket.aciklama ?? '')}
         sorular={sorular}

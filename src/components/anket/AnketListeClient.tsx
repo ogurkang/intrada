@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import {
+  CopKutusuSilDugmesi,
   GozDetayLink,
   IndirLink,
   KalemDuzenleLink,
@@ -12,13 +13,14 @@ import {
 } from '@/components/ui/TabloIslemIkonlari'
 import AnketGecmisPanel from '@/components/anket/AnketGecmisPanel'
 import { anketDurumEtiket } from '@/lib/anket'
-import { anketLogGetir, anketSifirla, anketYayinDegistir, type AnketLogSatir } from '@/app/(dashboard)/anket-yonetimi/actions'
+import { anketLogGetir, anketSifirla, anketSil, anketYayinDegistir, type AnketLogSatir } from '@/app/(dashboard)/anket-yonetimi/actions'
 
 export type AnketListeSatir = {
   id: string
   baslik: string
   kod: string
   durum: string
+  sira: number
   soruSayisi: number
   cevapSayisi: number
   logSayisi: number
@@ -40,6 +42,8 @@ export default function AnketListeClient({
   const [logHata, setLogHata] = useState<string | null>(null)
   const [logYukleniyor, setLogYukleniyor] = useState(false)
   const [sifirlanacak, setSifirlanacak] = useState<AnketListeSatir | null>(null)
+  const [silinecek, setSilinecek] = useState<AnketListeSatir | null>(null)
+  const [yayinSilUyari, setYayinSilUyari] = useState(false)
   const [mesgul, setMesgul] = useState(false)
   const [hata, setHata] = useState<string | null>(null)
 
@@ -61,6 +65,28 @@ export default function AnketListeClient({
     setHata(null)
     const sonuc = await anketYayinDegistir(satir.id, satir.durum !== 'yayinda')
     setMesgul(false)
+    if (sonuc.hata) {
+      setHata(sonuc.hata)
+      return
+    }
+    router.refresh()
+  }
+
+  function silIste(satir: AnketListeSatir) {
+    if (satir.durum === 'yayinda') {
+      setYayinSilUyari(true)
+      return
+    }
+    setSilinecek(satir)
+  }
+
+  async function sil() {
+    if (!silinecek || mesgul) return
+    setMesgul(true)
+    setHata(null)
+    const sonuc = await anketSil(silinecek.id)
+    setMesgul(false)
+    setSilinecek(null)
     if (sonuc.hata) {
       setHata(sonuc.hata)
       return
@@ -90,9 +116,10 @@ export default function AnketListeClient({
           <table className="w-full text-sm border-collapse min-w-[860px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-4 py-3 font-semibold text-slate-700 w-20">Sıra No</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Başlık</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Durum</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-700">Kod</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-700">Kısa ad</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Soru</th>
                 {tur === 'rapor' ? <th className="text-left px-4 py-3 font-semibold text-slate-700">Cevap</th> : null}
                 <th className="text-center px-4 py-3 font-semibold text-slate-700 w-52">İşlemler</th>
@@ -101,7 +128,7 @@ export default function AnketListeClient({
             <tbody className="divide-y divide-slate-100">
               {satirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={tur === 'rapor' ? 6 : 5} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={tur === 'rapor' ? 7 : 6} className="px-4 py-10 text-center text-slate-400">
                     Henüz anket yok.
                   </td>
                 </tr>
@@ -109,10 +136,11 @@ export default function AnketListeClient({
                 const detay = tur === 'rapor'
                   ? `/anket-yonetimi/raporlar/${satir.id}`
                   : `/anket-yonetimi/anketler/${satir.id}`
-                const duzenle = `/anket-yonetimi/anketler/${satir.id}?duzenle=1`
+                const duzenle = `/anket-yonetimi/anketler/${satir.id}/duzenle`
                 const yayinda = satir.durum === 'yayinda'
                 return (
                   <tr key={satir.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 text-slate-700">{satir.sira}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{satir.baslik}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${yayinda ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}>
@@ -140,7 +168,10 @@ export default function AnketListeClient({
                         <KalemDuzenleLink href={duzenle} title="Düzenle" />
                         <GozDetayLink href={detay} title="Detay" />
                         {tur === 'anket' ? (
-                          <YenidenHesaplaDugmesi onClick={() => setSifirlanacak(satir)} disabled={mesgul} title="Anketi sıfırla" />
+                          <>
+                            <YenidenHesaplaDugmesi onClick={() => setSifirlanacak(satir)} disabled={mesgul} title="Anketi sıfırla" />
+                            <CopKutusuSilDugmesi onClick={() => silIste(satir)} disabled={mesgul} title="Anketi sil" />
+                          </>
                         ) : (
                           <IndirLink href={`/api/anket-yonetimi/rapor/pdf?id=${satir.id}`} title="PDF indir" />
                         )}
@@ -162,6 +193,31 @@ export default function AnketListeClient({
         yukleniyor={logYukleniyor}
         hata={logHata}
       />
+
+      <Modal open={yayinSilUyari} onClose={() => setYayinSilUyari(false)} title="Anket silinemez" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          Bu anket yayındadır. Silmek için anketin sonuçlarını indirdiğinizden emin olun ve yayından kaldırın.
+        </p>
+        <div className="mt-5 flex justify-end">
+          <button type="button" onClick={() => setYayinSilUyari(false)} className="px-3 py-1.5 text-sm bg-blue-700 text-white rounded-lg">
+            Tamam
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={silinecek != null} onClose={() => !mesgul && setSilinecek(null)} title="Anketi sil" size="md">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          {silinecek ? `«${silinecek.baslik}» anketi, soruları ve cevapları silinir.` : ''}
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setSilinecek(null)} disabled={mesgul} className="px-3 py-1.5 text-sm text-slate-600">
+            Hayır
+          </button>
+          <button type="button" onClick={() => void sil()} disabled={mesgul} className="px-3 py-1.5 text-sm bg-red-700 text-white rounded-lg disabled:opacity-50">
+            {mesgul ? 'Siliniyor…' : 'Sil'}
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={sifirlanacak != null} onClose={() => !mesgul && setSifirlanacak(null)} title="Anketi sıfırla" size="md">
         <p className="text-sm text-slate-700 leading-relaxed">

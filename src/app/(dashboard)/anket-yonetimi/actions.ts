@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
-import { anketKodUret, anketSoruDogrula, type AnketSoruGirdi } from '@/lib/anket'
+import { anketKisaAdDogrula, anketSoruDogrula, type AnketSoruGirdi } from '@/lib/anket'
 import { anketDemografiEksikler, anketDemografiSorulariOlustur } from '@/lib/anket-demografi-sablon'
 
 type Sb = {
@@ -71,18 +71,16 @@ function tazele(anketId?: string) {
   }
 }
 
-async function benzersizKod(sb: Sb): Promise<string> {
-  for (let i = 0; i < 8; i += 1) {
-    const kod = anketKodUret()
-    const { data } = await sb.from('anketler').select('id').eq('kod', kod).maybeSingle()
-    if (!data) return kod
-  }
-  return anketKodUret() + anketKodUret().slice(0, 2)
+async function kisaAdKullanimda(sb: Sb, kod: string, haricId?: string): Promise<boolean> {
+  const { data } = await sb.from('anketler').select('id, kod')
+  const liste = (data as { id: string; kod: string }[] | null) ?? []
+  return liste.some(s => s.kod.toLowerCase() === kod.toLowerCase() && s.id !== haricId)
 }
 
 export async function anketOlustur(girdi: {
   baslik: string
   aciklama: string
+  kisaAd: string
   sorular: AnketSoruGirdi[]
 }): Promise<{ hata?: string; id?: string }> {
   const ot = await baglam()
@@ -94,16 +92,18 @@ export async function anketOlustur(girdi: {
   if (aciklama.length > 1000) return { hata: 'Açıklama 1000 karakteri geçemez.' }
   if (girdi.sorular.length < 1) return { hata: 'En az bir soru ekleyin.' }
   if (girdi.sorular.length > 40) return { hata: 'Bir ankette en fazla 40 soru olur.' }
+  const kisa = anketKisaAdDogrula(girdi.kisaAd)
+  if ('hata' in kisa) return { hata: kisa.hata }
+  if (await kisaAdKullanimda(ot.sb, kisa.kod)) return { hata: 'Bu kısa ad başka bir ankette kullanılıyor.' }
   const sorular = []
   for (const ham of girdi.sorular) {
     const dogru = anketSoruDogrula(ham)
     if ('hata' in dogru) return { hata: dogru.hata }
     sorular.push(dogru)
   }
-  const kod = await benzersizKod(ot.sb)
   const { data, error } = await ot.sb
     .from('anketler')
-    .insert({ baslik, aciklama, kod, durum: 'durduruldu' })
+    .insert({ baslik, aciklama, kod: kisa.kod, durum: 'durduruldu' })
     .select('id')
     .single()
   if (error || !data) {
@@ -139,6 +139,7 @@ export async function anketBaslikGuncelle(
   anketId: string,
   baslikHam: string,
   aciklamaHam: string,
+  kisaAdHam: string,
 ): Promise<{ hata?: string }> {
   const ot = await baglam()
   if ('hata' in ot) return { hata: ot.hata }
@@ -147,19 +148,39 @@ export async function anketBaslikGuncelle(
   if (baslik.length < 3) return { hata: 'Anket adı en az 3 karakter olmalı.' }
   if (baslik.length > 160) return { hata: 'Anket adı 160 karakteri geçemez.' }
   if (aciklama.length > 1000) return { hata: 'Açıklama 1000 karakteri geçemez.' }
+  const { data: kayit } = await ot.sb.from('anketler').select('kod').eq('id', anketId).maybeSingle()
+  const girilen = kisaAdHam.trim()
+  const ayniKod = girilen !== '' && girilen === String(kayit?.kod ?? '')
+  const kisa = ayniKod ? { kod: girilen } : anketKisaAdDogrula(kisaAdHam)
+  if ('hata' in kisa) return { hata: kisa.hata }
+  if (await kisaAdKullanimda(ot.sb, kisa.kod, anketId)) return { hata: 'Bu kısa ad başka bir ankette kullanılıyor.' }
   const { error } = await ot.sb
     .from('anketler')
-    .update({ baslik, aciklama, updated_at: new Date().toISOString() })
+    .update({ baslik, aciklama, kod: kisa.kod, updated_at: new Date().toISOString() })
     .eq('id', anketId)
   if (error) return { hata: error.message }
   await logYaz(ot.sb, {
     anket_id: anketId,
     islem: 'baslik_duzenlendi',
-    ozet: `Başlık «${baslik}» olarak düzenlendi.`,
+    ozet: `Başlık «${baslik}», kısa ad «${kisa.kod}» olarak düzenlendi.`,
     yapan_id: ot.userId,
     yapan_ad: ot.yapanAd,
   })
   tazele(anketId)
+  return {}
+}
+
+export async function anketSil(anketId: string): Promise<{ hata?: string }> {
+  const ot = await baglam()
+  if ('hata' in ot) return { hata: ot.hata }
+  const { data } = await ot.sb.from('anketler').select('baslik, durum').eq('id', anketId).maybeSingle()
+  if (!data) return { hata: 'Anket bulunamadı.' }
+  if (String(data.durum) === 'yayinda') {
+    return { hata: 'Bu anket yayındadır. Silmek için anketin sonuçlarını indirdiğinizden emin olun ve yayından kaldırın.' }
+  }
+  const { error } = await ot.sb.from('anketler').delete().eq('id', anketId)
+  if (error) return { hata: error.message }
+  tazele()
   return {}
 }
 

@@ -8,13 +8,10 @@ import type { AnketLogSatir } from '@/app/(dashboard)/anket-yonetimi/actions'
 
 export default async function AnketDetayPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ duzenle?: string }>
 }) {
   const { id } = await params
-  const { duzenle } = await searchParams
   const { supabase } = await anketYoneticiSayfasi()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
@@ -64,7 +61,6 @@ export default async function AnketDetayPage({
       kod={String(anket.kod)}
       durum={String(anket.durum)}
       link={`${proto}://${host}/anket/${anket.kod}`}
-      duzenleAcik={duzenle === '1'}
       sorular={sorular}
       loglar={loglar}
       demografiSablon={demografiSablon}

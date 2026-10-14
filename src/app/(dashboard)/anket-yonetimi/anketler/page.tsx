@@ -14,7 +14,7 @@ export default async function AnketlerPage() {
       </div>
       <div className="w-full space-y-3 text-sm leading-6 text-slate-600">
         <p>
-          Anketi yönetici oluşturur. Ad, açıklama ve sorular yazılır. Kayıt durdurulmuş açılır. İşlemler sütunundaki yayın düğmesi anketi açar; aynı düğme yayını kaldırır. Yayındaki anket, paylaşım linki veya giriş ekranındaki anket kodu ile açılır. Cevaplamak için oturum gerekmez.
+          Anketi yönetici oluşturur. Ad, açıklama, kısa ad ve sorular yazılır. Kısa ad linkin sonudur. Kayıt durdurulmuş açılır. İşlemler sütunundaki yayın düğmesi anketi açar; aynı düğme yayını kaldırır. Yayındaki anket, paylaşım linki veya giriş ekranındaki anket adı ile açılır. Cevaplamak için oturum gerekmez. Yayındaki anket silinemez.
         </p>
         <p>
           Cevap isimsizdir. Ad, sicil ve kullanıcı kimliği tutulmaz. Aynı tarayıcıdaki çerez ikinci gönderimi keser. Az sayıda kişi cevapladığında grafik bir kişiyi belli edebilir; bu uyarı ankete başlamadan önce gösterilir. Kurumda aynı çıkış hattı kullanıldığı için ikinci cevabı IP adresi ile kesmeyiz. IP saklamak isimsizliği bozar.

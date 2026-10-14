@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kod: string }>
     if (!sb || !kod) return NextResponse.json({ error: 'Anket bulunamadı.' }, { status: 404 })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = sb as any
-    const { data: anket } = await db.from('anketler').select('id, baslik, aciklama, durum').eq('kod', kod).maybeSingle()
+    const { data: anket } = await db.from('anketler').select('id, baslik, aciklama, durum, kod').ilike('kod', kod).maybeSingle()
     if (!anket || anket.durum !== 'yayinda') {
       return NextResponse.json({ error: 'Anket bulunamadı.' }, { status: 404 })
     }

@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { CopKutusuSilDugmesi, KalemDuzenleDugmesi, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import AnketGecmisPanel from '@/components/anket/AnketGecmisPanel'
 import { anketDurumEtiket, anketTipEtiket, type AnketSoruTipi } from '@/lib/anket'
 import {
-  anketBaslikGuncelle,
   anketDemografiSorulariEkle,
   anketSoruEkle,
   anketSoruGuncelle,
@@ -19,9 +19,6 @@ import {
 } from '@/app/(dashboard)/anket-yonetimi/actions'
 import { AnketSoruFormu, bosSoru, type SoruTaslak } from '@/components/anket/AnketSoruFormu'
 import { anketDemografiEksikler, type AnketDemografiSoru } from '@/lib/anket-demografi-sablon'
-
-const inputSinif =
-  'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-slate-800'
 
 export type AnketSoruSatir = {
   id: string
@@ -45,7 +42,6 @@ export default function AnketDetayClient({
   kod,
   durum,
   link,
-  duzenleAcik,
   sorular,
   loglar,
   demografiSablon,
@@ -56,15 +52,11 @@ export default function AnketDetayClient({
   kod: string
   durum: string
   link: string
-  duzenleAcik: boolean
   sorular: AnketSoruSatir[]
   loglar: AnketLogSatir[]
   demografiSablon: AnketDemografiSoru[]
 }) {
   const router = useRouter()
-  const [baslikAcik, setBaslikAcik] = useState(duzenleAcik)
-  const [baslikForm, setBaslikForm] = useState(baslik)
-  const [aciklamaForm, setAciklamaForm] = useState(aciklama)
   const [hata, setHata] = useState<string | null>(null)
   const [mesgul, setMesgul] = useState(false)
   const [kopya, setKopya] = useState(false)
@@ -125,9 +117,9 @@ export default function AnketDetayClient({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setBaslikAcik(v => !v)} className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 hover:bg-slate-50">
-            Düzenle
-          </button>
+          <Link href="/anket-yonetimi/anketler" className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 hover:bg-slate-50">
+            Geri Dön
+          </Link>
           <button type="button" onClick={() => { setSoruLog(null); setLogAcik(true) }} className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 hover:bg-slate-50">
             Log kaydı
           </button>
@@ -143,7 +135,7 @@ export default function AnketDetayClient({
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
-        <p className="text-slate-500">Paylaşım kodu</p>
+        <p className="text-slate-500">Kısa ad</p>
         <p className="mt-1 font-mono text-lg text-slate-900">{kod}</p>
         <p className="mt-3 text-slate-500">Link</p>
         <p className="mt-1 break-all text-slate-800">{link}</p>
@@ -163,30 +155,10 @@ export default function AnketDetayClient({
         </button>
         <p className="mt-2 text-slate-500">
           {yayinda
-            ? 'Giriş ekranındaki anket alanına bu kod yazılabilir.'
+            ? 'Giriş ekranında anketin adı görünür. Ankete Git o ada, Anketi İndir soruların PDF’ine gider.'
             : 'Yayın durdurulduğu için link yeni cevap almaz.'}
         </p>
       </div>
-
-      {baslikAcik ? (
-        <form
-          className="rounded-xl border border-slate-200 bg-white p-4 space-y-3"
-          onSubmit={e => {
-            e.preventDefault()
-            void calistir(() => anketBaslikGuncelle(id, baslikForm, aciklamaForm), () => setBaslikAcik(false))
-          }}
-        >
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Anket adı</span>
-            <input value={baslikForm} onChange={e => setBaslikForm(e.target.value)} className={`${inputSinif} mt-1`} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Açıklama</span>
-            <textarea value={aciklamaForm} onChange={e => setAciklamaForm(e.target.value)} rows={2} className={`${inputSinif} mt-1`} />
-          </label>
-          <button type="submit" disabled={mesgul} className="px-3 py-2 rounded-lg bg-blue-700 text-white text-sm font-medium hover:bg-blue-600 disabled:opacity-50">Kaydet</button>
-        </form>
-      ) : null}
 
       {hata ? <p className="text-sm text-red-700 bg-red-50 px-3 py-2 rounded-lg">{hata}</p> : null}
 
@@ -281,23 +253,23 @@ export default function AnketDetayClient({
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap items-center gap-4">
-          <button type="button" onClick={() => setEkleAcik(true)} className="text-sm font-medium text-blue-700 underline">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {secili.length > 0 ? (
+            <button type="button" onClick={() => setTopluAcik(true)} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50">
+              Seçilenleri sil ({secili.length})
+            </button>
+          ) : null}
+          <button type="button" onClick={() => setEkleAcik(true)} className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600">
             Soru ekle
           </button>
           <button
             type="button"
             disabled={mesgul || demografiEksik.length === 0}
             onClick={() => void calistir(() => anketDemografiSorulariEkle(id))}
-            className="text-sm font-medium text-blue-700 underline disabled:text-slate-400 disabled:no-underline"
+            className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
           >
             Demografik soruları ekle
           </button>
-          {secili.length > 0 ? (
-            <button type="button" onClick={() => setTopluAcik(true)} className="text-sm font-medium text-red-700 underline">
-              Seçilenleri sil ({secili.length})
-            </button>
-          ) : null}
         </div>
       )}
       <p className="text-xs text-slate-500">

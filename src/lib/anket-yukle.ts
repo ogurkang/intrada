@@ -51,11 +51,16 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
   for (const satir of (loglar.data as { anket_id: string }[] | null) ?? []) {
     logSay.set(satir.anket_id, (logSay.get(satir.anket_id) ?? 0) + 1)
   }
-  const satirlar = ((anketler.data as { id: string; baslik: string; kod: string; durum: string }[] | null) ?? []).map(a => ({
+  const ham = (anketler.data as { id: string; baslik: string; kod: string; durum: string; created_at?: string }[] | null) ?? []
+  const sira = new Map(
+    ham.slice().sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''))).map((a, i) => [a.id, i + 1]),
+  )
+  const satirlar = ham.map(a => ({
     id: a.id,
     baslik: a.baslik,
     kod: a.kod,
     durum: a.durum,
+    sira: sira.get(a.id) ?? 0,
     soruSayisi: soruSay.get(a.id) ?? 0,
     cevapSayisi: cevapSay.get(a.id) ?? 0,
     logSayisi: logSay.get(a.id) ?? 0,

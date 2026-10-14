@@ -24,8 +24,19 @@ export function anketKodUret(): string {
   return kod
 }
 
+export const ANKET_KISA_AD_ACIKLAMA =
+  'Kısa ad linkin sonuna yazılır. Yalnızca küçük İngilizce harf (a-z), rakam ve tire kullanılabilir. Türkçe karakter (ç, ğ, ı, ö, ş, ü), büyük harf, boşluk ve diğer işaretler olmaz. Örnek: isg-egitimi'
+
 export function anketKodTemizle(ham: string): string {
-  return ham.trim().toLocaleUpperCase('tr-TR').replace(/[^A-Z0-9]/g, '')
+  return ham.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+}
+
+export function anketKisaAdDogrula(ham: string): { hata: string } | { kod: string } {
+  const kod = ham.trim()
+  if (kod.length < 2) return { hata: 'Kısa ad en az 2 karakter olmalı.' }
+  if (kod.length > 40) return { hata: 'Kısa ad en fazla 40 karakter olabilir.' }
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(kod)) return { hata: ANKET_KISA_AD_ACIKLAMA }
+  return { kod }
 }
 
 export function anketTipEtiket(tip: string): string {
