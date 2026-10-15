@@ -5,6 +5,7 @@ import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import type { AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
 import { ayliktanKesmePdfBuffer } from '@/lib/ayliktan-kesme-pdf'
 import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
+import { ikImzaAdlari } from '@/lib/ik-imza-personel'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,8 @@ export async function GET(req: Request) {
       if (!izin) return NextResponse.json({ error: 'Bu işlem için yetkiniz yok.' }, { status: 403 })
     }
 
-    const id = Number(new URL(req.url).searchParams.get('id'))
+    const url = new URL(req.url)
+    const id = Number(url.searchParams.get('id'))
     if (!Number.isFinite(id) || id <= 0) {
       return NextResponse.json({ error: 'Kayıt bulunamadı.' }, { status: 400 })
     }
@@ -47,7 +49,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Kayıt bulunamadı.' }, { status: 404 })
     }
 
-    const pdf = await ayliktanKesmePdfBuffer(await ayliktanKesmeBordroGoster(supabase, data.bordro))
+    const imza = await ikImzaAdlari(
+      supabase,
+      url.searchParams.get('duzenleyen') ?? '',
+      url.searchParams.get('gorevli') ?? '',
+    )
+    const pdf = await ayliktanKesmePdfBuffer(await ayliktanKesmeBordroGoster(supabase, data.bordro), imza)
     const ad = String(data.ad_soyad ?? 'bordro').replace(/[^\p{L}\p{N}]+/gu, '_')
     const filename = `Ayliktan_Kesme_${ad}.pdf`
     const filenameAscii = filename.replace(/[^\x20-\x7E]/g, '_')

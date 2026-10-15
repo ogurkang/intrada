@@ -5,6 +5,8 @@ import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import { ayliktanKesmeDayanakMetni, ayliktanKesmeGenelToplam, bordroSdsKesintisi, paraTr, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
 import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
+import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
+import { EvrakPdfIndir } from '@/components/hesaplama/EvrakImzaSecimi'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -48,6 +50,7 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
   if (!izinli) notFound()
 
   const bordro = await ayliktanKesmeBordroGoster(supabase, kayit.bordro as AyliktanKesmeBordro)
+  const imzaPersonel = await ikGorevPersonelleri(supabase)
 
   const k = bordro.kaynak
   const satirlar: { etiket: string; deger: string }[] = [
@@ -75,19 +78,14 @@ export default async function AyliktanKesmeDetayPage({ params }: Props) {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Aylıktan Kesme Bordrosu</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-end gap-3">
           <Link
             href={`/kesintiler/ayliktan-kesme/${kayit.id}/duzenle`}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
             Düzenle
           </Link>
-          <a
-            href={`/api/kesintiler/ayliktan-kesme/pdf?id=${kayit.id}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700"
-          >
-            PDF İndir
-          </a>
+          <EvrakPdfIndir href={`/api/kesintiler/ayliktan-kesme/pdf?id=${kayit.id}`} personel={imzaPersonel} />
         </div>
       </div>
 

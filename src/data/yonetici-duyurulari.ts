@@ -7,6 +7,23 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-15-evrak-imza-iban',
+    baslik: '15 Ekim 2026 — Evrak imzası ve IBAN',
+    maddeler: [
+      'Aylıktan kesme, emeklilik tazminatı ve ölüm yardımı PDF’lerinde düzenleyen ile gerçekleştirme görevlisi, İnsan Kaynakları ve Eğitim Müdürlüğü personelinden seçilir.',
+      'Ölüm yardımı IBAN alanı biçimlenir ve hatalı numarada uyarır.',
+    ],
+  },
+  {
+    id: '2026-10-14-terfi-hesaplama-anket',
+    baslik: '14 Ekim 2026 — Terfi, hesaplama ve anket',
+    maddeler: [
+      'Terfi hareketlerinde iyi hal terfi tarihi ayrı sütundadır. Terfi ettir ve geri al sırasında tamamlanma yüzdesi görünür.',
+      'Emeklilik tazminatı ve ölüm yardımı, aylıktan kesmedeki gibi oluşturulur, önizlenir, düzenlenir, silinir ve PDF indirilir. Ölüm yardımı 657 m. 208’e göre iki kattır; varis paylarının toplamı yardım tutarına eşittir.',
+      'Anket raporlarında düzenle işareti yoktur. Rapor detayında Raporlara dön düğmesi PDF indirin yanındadır.',
+    ],
+  },
+  {
     id: '2026-10-14-anket-kucuk-grup-uyari',
     baslik: '14 Ekim 2026 — Anket başlangıç uyarısı',
     maddeler: [

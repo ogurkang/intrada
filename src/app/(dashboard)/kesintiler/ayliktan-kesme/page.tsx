@@ -7,6 +7,7 @@ import AyliktanKesmeListeClient, {
 } from '@/components/kesintiler/AyliktanKesmeListeClient'
 import { ayliktanKesmeGenelToplam, type AyliktanKesmeBordro } from '@/lib/ayliktan-kesme-hesap'
 import { ayliktanKesmeBordroGoster } from '@/lib/ayliktan-kesme-yukle'
+import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
 import { ayliktanKesmeSil } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -42,6 +43,7 @@ export default async function AyliktanKesmePage() {
     }),
   )
 
+  const imzaPersonel = await ikGorevPersonelleri(supabase)
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
     'ayliktan_kesme_bordrolari',
@@ -70,6 +72,7 @@ export default async function AyliktanKesmePage() {
         auditLoglarByRefId={auditLoglarByRefId}
         canDelete={canDelete}
         onSil={canDelete ? ayliktanKesmeSil : undefined}
+        imzaPersonel={imzaPersonel}
       />
     </div>
   )

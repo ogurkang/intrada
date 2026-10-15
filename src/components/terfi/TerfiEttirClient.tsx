@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ExcelJS from 'exceljs'
 import { terfiSatirAnahtari, type KazancPuan, type TerfiEttirOnizlemeSatir, type TerfiKaynak } from '@/lib/terfi-ettir-hesap'
@@ -31,7 +31,7 @@ interface Props {
   teknisyenEkGosterge?: TeknisyenEkGostergeBaglam | null
   memurPersoneller: PersonelAramaOge[]
   islemLoglari: { id: number; sicil_no: string; islem_tarihi: string; geri_alindi: boolean }[]
-  onGeriAlTek: (donemId: number, logId: number) => Promise<{ hata?: string }>
+  onGeriAlTek: (donemId: number, logId: number, secenek?: { yenile?: boolean }) => Promise<{ hata?: string }>
   onGeriAlToplu: (donemId: number, logIds: number[]) => Promise<{ hata?: string; geriAlinan?: number }>
 }
 
@@ -211,7 +211,6 @@ export default function TerfiEttirClient({
   memurPersoneller,
   islemLoglari,
   onGeriAlTek,
-  onGeriAlToplu,
 }: Props) {
   const router = useRouter()
   const [satirlar, setSatirlar] = useState<TerfiEttirOnizlemeSatir[]>(() => asilKariyeriniVekileYansit(initialRows))
@@ -219,10 +218,19 @@ export default function TerfiEttirClient({
   const [seciliGeriAl, setSeciliGeriAl] = useState<Record<number, boolean>>({})
   const [hata, setHata] = useState<string | null>(null)
   const [basari, setBasari] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [ilerleme, setIlerleme] = useState<{ baslik: string; yapilan: number; toplam: number } | null>(null)
   const [ogrenimModalAcik, setOgrenimModalAcik] = useState(false)
   const [ogrenimSeciliSicil, setOgrenimSeciliSicil] = useState('')
   const [ogrenimModalHata, setOgrenimModalHata] = useState<string | null>(null)
+  const mesgul = ilerleme != null
+  const satirImza = initialRows
+    .map(r => `${r.terfi_id ?? ''}|${r.payload.kha_tarihi}|${r.payload.kidem_tarihi}|${r.payload.iyi_hal_terfi_tarihi}|${r.dk_kha_yeni}|${r.durum}`)
+    .join(';')
+  useEffect(() => {
+    setSatirlar(asilKariyeriniVekileYansit(initialRows))
+    // Sunucu verisi değişince tablo yenilensin; imza aynı kaldıkça elle düzeltme silinmesin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [satirImza])
 
   const kaynakBySicil = useMemo(() => {
     const m = new Map<string, TerfiKaynak>()
@@ -415,6 +423,7 @@ export default function TerfiEttirClient({
       'EKEA tarihi (eski → yeni)',
       'Kıdem yılı (eski → yeni)',
       'Kıdem tarihi (eski → yeni)',
+      'İyi Hal terfi tarihi (eski → yeni)',
       'Ek Gösterge (eski → yeni)',
       'Ek Ödeme (eski → yeni)',
       'ÖHT (eski → yeni)',
@@ -488,7 +497,8 @@ export default function TerfiEttirClient({
         { v: richOk(r.dk_ekea_eski, r.dk_ekea_yeni) },
         { v: richOk(ekeaEski, ekeaYeni) },
         { v: richOk(String(r.kidem_yili_eski), String(r.kidem_yili_yeni)) },
-        { v: richOk(`${kidemEski} / ${iyiHalEski}`, `${kidemYeni} / ${iyiHalYeni}`) },
+        { v: richOk(kidemEski, kidemYeni) },
+        { v: richOk(iyiHalEski, iyiHalYeni) },
         { v: richOk(r.ek_gosterge_eski, r.ek_gosterge_yeni) },
         { v: richOk(r.ek_odeme_eski, r.ek_odeme_yeni) },
         { v: richOk(r.oht_eski, r.oht_yeni) },
@@ -497,7 +507,7 @@ export default function TerfiEttirClient({
         { v: r.durum, style: durumExcelStyle(r.durum, r.ogrenim_terfi) },
       ]
 
-      const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+      const centerCols = new Set([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
       cells.forEach((cell, i) => {
         const c = row.getCell(i + 1)
         c.value = cell.v
@@ -531,18 +541,19 @@ export default function TerfiEttirClient({
       9: excelWidth(8),   // I
       10: excelWidth(12), // J
       11: excelWidth(8),  // K
-      12: excelWidth(12), // L
-      13: excelWidth(9),  // M
-      14: excelWidth(8),  // N
-      15: excelWidth(8),  // O ÖHT
-      16: excelWidth(10), // P Yan Ödeme
-      17: excelWidth(8),  // Q SDS
-      18: excelWidth(18), // R durum
+      12: excelWidth(12), // L kıdem tarihi
+      13: excelWidth(14), // M iyi hal tarihi
+      14: excelWidth(9),  // N ek gösterge
+      15: excelWidth(8),  // O ek ödeme
+      16: excelWidth(8),  // P ÖHT
+      17: excelWidth(10), // Q Yan Ödeme
+      18: excelWidth(8),  // R SDS
+      19: excelWidth(18), // S durum
     }
     for (let i = 1; i <= colCount; i++) {
       ws.getColumn(i).width = colWidths[i] ?? 12
     }
-    const centerCols = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    const centerCols = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     for (const colIdx of centerCols) {
       ws.getColumn(colIdx).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     }
@@ -559,7 +570,30 @@ export default function TerfiEttirClient({
     URL.revokeObjectURL(url)
   }
 
-  function terfiEttirUygula() {
+  async function adimAdim<T>(
+    baslik: string,
+    adimlar: T[],
+    calistir: (adim: T, sonMu: boolean) => Promise<{ hata?: string }>,
+  ): Promise<boolean> {
+    setIlerleme({ baslik, yapilan: 0, toplam: adimlar.length })
+    for (let i = 0; i < adimlar.length; i++) {
+      const res = await calistir(adimlar[i], i === adimlar.length - 1)
+      if (res.hata) {
+        setHata(res.hata)
+        setIlerleme({ baslik, yapilan: i, toplam: adimlar.length })
+        await router.refresh()
+        setIlerleme(null)
+        return false
+      }
+      setIlerleme({ baslik, yapilan: i + 1, toplam: adimlar.length })
+    }
+    await router.refresh()
+    setIlerleme(null)
+    return true
+  }
+
+  async function terfiEttirUygula() {
+    if (mesgul) return
     setHata(null)
     setBasari(null)
     const yazilacak = satirlar.filter((r) => secili[satirKey(r)] && r.terfi_id != null)
@@ -576,32 +610,28 @@ export default function TerfiEttirClient({
       yeni_ogrenim_turu: r.yeni_ogrenim_turu,
       th_hizmet_notu: r.th_hizmet_notu ?? null,
     }))
-    startTransition(async () => {
-      const res = await terfiEttirKaydet(donemId, payload)
-      if (res.hata) setHata(res.hata)
-      else {
-        setBasari(`${payload.length} kayıt terfi ettirildi.`)
-        setSecili({})
-        router.refresh()
-      }
-    })
+    const oldu = await adimAdim('Terfi ettiriliyor', payload, (satir, sonMu) =>
+      terfiEttirKaydet(donemId, [satir], { yenile: sonMu }),
+    )
+    if (oldu) {
+      setBasari(`${payload.length} kayıt terfi ettirildi.`)
+      setSecili({})
+    }
   }
 
-  function handleGeriAlTek(logId: number) {
+  async function handleGeriAlTek(logId: number) {
+    if (mesgul) return
     if (!confirm('Bu terfi işlemi geri alınacak. Onaylıyor musunuz?')) return
     setHata(null)
     setBasari(null)
-    startTransition(async () => {
-      const res = await onGeriAlTek(donemId, logId)
-      if (res.hata) setHata(res.hata)
-      else {
-        setBasari('Terfi kaydı geri alındı.')
-        router.refresh()
-      }
-    })
+    const oldu = await adimAdim('Terfi geri alınıyor', [logId], (id, sonMu) =>
+      onGeriAlTek(donemId, id, { yenile: sonMu }),
+    )
+    if (oldu) setBasari('Terfi kaydı geri alındı.')
   }
 
-  function handleGeriAlToplu() {
+  async function handleGeriAlToplu() {
+    if (mesgul) return
     const logIds = Object.entries(seciliGeriAl)
       .filter(([, v]) => v)
       .map(([k]) => Number(k))
@@ -613,19 +643,35 @@ export default function TerfiEttirClient({
     if (!confirm(`${logIds.length} terfi kaydı geri alınacak. Onaylıyor musunuz?`)) return
     setHata(null)
     setBasari(null)
-    startTransition(async () => {
-      const res = await onGeriAlToplu(donemId, logIds)
-      if (res.hata) setHata(res.hata)
-      else {
-        setBasari(`${res.geriAlinan ?? logIds.length} kayıt geri alındı.`)
-        setSeciliGeriAl({})
-        router.refresh()
-      }
-    })
+    const oldu = await adimAdim('Terfi geri alınıyor', logIds, (id, sonMu) =>
+      onGeriAlTek(donemId, id, { yenile: sonMu }),
+    )
+    if (oldu) {
+      setBasari(`${logIds.length} kayıt geri alındı.`)
+      setSeciliGeriAl({})
+    }
   }
+
+  const yuzde = ilerleme && ilerleme.toplam > 0
+    ? Math.round((ilerleme.yapilan / ilerleme.toplam) * 100)
+    : 0
 
   return (
     <div className="mt-8">
+      {ilerleme ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+            <p className="text-sm font-medium text-slate-800">{ilerleme.baslik}</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full bg-slate-800 transition-all duration-300" style={{ width: `${yuzde}%` }} />
+            </div>
+            <p className="mt-3 text-center text-lg font-semibold tabular-nums text-slate-800">%{yuzde}</p>
+            <p className="mt-1 text-center text-xs text-slate-500">
+              {ilerleme.yapilan} / {ilerleme.toplam} adım
+            </p>
+          </div>
+        </div>
+      ) : null}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">Terfi Ettir — Önizleme</h2>
@@ -653,9 +699,9 @@ export default function TerfiEttirClient({
           <button
             type="button"
             onClick={terfiEttirUygula}
-            disabled={isPending}
+            disabled={mesgul}
             className="text-sm font-medium text-white bg-slate-800 px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 shadow-sm">
-            {isPending ? 'İşleniyor…' : 'Terfi Ettir'}
+            Terfi Ettir
           </button>
         </div>
       </div>
@@ -686,7 +732,7 @@ export default function TerfiEttirClient({
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto shadow-sm">
-        <table className="w-full text-sm min-w-[1420px]">
+        <table className="w-full text-sm min-w-[1580px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
               <th className="px-2 py-3 w-10" title="Seç">
@@ -698,6 +744,7 @@ export default function TerfiEttirClient({
               <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">Kadro derecesi</th>
               <th className="px-2 py-3 font-semibold text-slate-600 min-w-[8rem]">Terfi tarihleri</th>
               <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">Kıdem yılı</th>
+              <th className="px-2 py-3 font-semibold text-slate-600 whitespace-nowrap">İyi Hal terfi tarihi</th>
               <th className="px-2 py-3 font-semibold text-slate-600">KHA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">EKEA D/K</th>
               <th className="px-2 py-3 font-semibold text-slate-600">Ek Gösterge</th>
@@ -712,7 +759,7 @@ export default function TerfiEttirClient({
           <tbody className="divide-y divide-slate-100">
             {satirlar.length === 0 && (
               <tr>
-                <td colSpan={16} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={17} className="px-4 py-12 text-center text-slate-400">
                   Bu dönem penceresinde terfi tarihi (KHA/EKEA) bulunan memur yok.
                 </td>
               </tr>
@@ -729,9 +776,9 @@ export default function TerfiEttirClient({
                 alanMetni(r.payload.kha_tarihi, anchor.payload.kha_tarihi)
                 && alanMetni(r.payload.ekea_tarihi, anchor.payload.ekea_tarihi)
                 && alanMetni(r.payload.kidem_tarihi, anchor.payload.kidem_tarihi)
-                && alanMetni(r.payload.iyi_hal_terfi_tarihi, anchor.payload.iyi_hal_terfi_tarihi)
               )
               const ayniKidem = !ozet || alanMetni(r.payload.kidem_yili, anchor.payload.kidem_yili)
+              const ayniIyiHal = !ozet || alanMetni(r.payload.iyi_hal_terfi_tarihi, anchor.payload.iyi_hal_terfi_tarihi)
               const ayniDurum = !ozet || r.durum === anchor.durum
               const ayniYazi = anchor.kadro_rolu === 'Asil' ? 'Asıl ile aynı' : 'Aynı'
               return (
@@ -801,16 +848,18 @@ export default function TerfiEttirClient({
                           <span className="text-slate-400">Kıdem:</span> {fmtTarih(r.kidem_tarihi_eski)} → {fmtTarih(r.payload.kidem_tarihi)}
                         </div>
                       )}
-                      {(!ozet || !alanMetni(r.payload.iyi_hal_terfi_tarihi, anchor.payload.iyi_hal_terfi_tarihi)) && (
-                        <div className="mt-0.5">
-                          <span className="text-slate-400">İyi Hal:</span> {fmtTarih(r.iyi_hal_tarihi_eski)} → {fmtTarih(r.payload.iyi_hal_terfi_tarihi)}
-                        </div>
-                      )}
                     </>
                   )}
                 </td>
                 <td className="px-2 py-2 align-top text-slate-700 tabular-nums whitespace-nowrap">
                   {ayniKidem && ozet ? <span className="text-slate-400 text-[11px]">{ayniYazi}</span> : <>{r.kidem_yili_eski} → {r.kidem_yili_yeni}</>}
+                </td>
+                <td className="px-2 py-2 align-top text-[11px] leading-snug text-slate-700 whitespace-nowrap">
+                  {ayniIyiHal && ozet ? (
+                    <span className="text-slate-400">{ayniYazi}</span>
+                  ) : (
+                    <>{fmtTarih(r.iyi_hal_tarihi_eski)} → {fmtTarih(r.payload.iyi_hal_terfi_tarihi)}</>
+                  )}
                 </td>
                 <td className="px-2 py-2 align-top">
                   {ayniKha && ozet ? (
@@ -952,7 +1001,7 @@ export default function TerfiEttirClient({
                     <button
                       type="button"
                       onClick={() => handleGeriAlTek(aktifLogBySicil[r.sicil_no])}
-                      disabled={isPending}
+                      disabled={mesgul}
                       className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded hover:bg-red-100 disabled:opacity-50"
                     >
                       Terfiyi Geri Al
@@ -1006,10 +1055,10 @@ export default function TerfiEttirClient({
           <button
             type="button"
             onClick={handleGeriAlToplu}
-            disabled={isPending}
+            disabled={mesgul}
             className="text-sm font-medium text-white bg-slate-800 px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 shadow-sm"
           >
-            {isPending ? 'İşleniyor…' : 'Seçili Terfileri Geri Al'}
+            Seçili Terfileri Geri Al
           </button>
         </div>
         <table className="w-full text-sm">

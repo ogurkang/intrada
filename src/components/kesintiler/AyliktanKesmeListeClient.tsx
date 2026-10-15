@@ -11,6 +11,8 @@ import {
   SaatGecmisDugmesi,
 } from '@/components/ui/TabloIslemIkonlari'
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
+import { EvrakImzaAlanlari, pdfImzaSorgu } from '@/components/hesaplama/EvrakImzaSecimi'
+import type { IkImzaPersonel } from '@/lib/ik-imza-personel'
 import {
   ayliktanKesmeAuditDegerGoster,
   ayliktanKesmeAuditDiffSatirlari,
@@ -33,6 +35,7 @@ interface Props {
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
   canDelete?: boolean
   onSil?: (id: number) => Promise<{ hata?: string }>
+  imzaPersonel?: IkImzaPersonel[]
 }
 
 export default function AyliktanKesmeListeClient({
@@ -40,9 +43,12 @@ export default function AyliktanKesmeListeClient({
   auditLoglarByRefId,
   canDelete = false,
   onSil,
+  imzaPersonel = [],
 }: Props) {
   const router = useRouter()
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [duzenleyen, setDuzenleyen] = useState('')
+  const [gorevli, setGorevli] = useState('')
   const [isPending, startTransition] = useTransition()
 
   function handleSil(id: number) {
@@ -57,6 +63,13 @@ export default function AyliktanKesmeListeClient({
 
   return (
     <>
+      <EvrakImzaAlanlari
+        personel={imzaPersonel}
+        duzenleyen={duzenleyen}
+        gorevli={gorevli}
+        onDuzenleyen={setDuzenleyen}
+        onGorevli={setGorevli}
+      />
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse min-w-[960px]">
@@ -105,7 +118,7 @@ export default function AyliktanKesmeListeClient({
                           />
                           <GozDetayLink href={`/kesintiler/ayliktan-kesme/${k.id}`} title="Detay" />
                           <KalemDuzenleLink href={`/kesintiler/ayliktan-kesme/${k.id}/duzenle`} title="Düzenle" />
-                          <IndirLink href={`/api/kesintiler/ayliktan-kesme/pdf?id=${k.id}`} title="PDF İndir" />
+                          <IndirLink href={`/api/kesintiler/ayliktan-kesme/pdf?id=${k.id}${pdfImzaSorgu(duzenleyen, gorevli)}`} title="PDF İndir" />
                           {canDelete && onSil ? (
                             <CopKutusuSilDugmesi
                               onClick={() => handleSil(k.id)}

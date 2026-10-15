@@ -8,6 +8,7 @@ import {
   paraTr,
   type AyliktanKesmeBordro,
 } from '@/lib/ayliktan-kesme-hesap'
+import { evrakImzaCiz, type EvrakImzaAd } from '@/lib/hesaplama-evrak-pdf'
 
 const MARGIN = 40
 const PAGE_W = 595.28
@@ -55,7 +56,7 @@ function hucre(
   })
 }
 
-export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promise<Buffer> {
+export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro, imza?: EvrakImzaAd): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A4', margin: MARGIN })
   const done = pdfBuffer(doc)
   const { kaynak, katsayi, satirlar, toplam, gosterge, yarim_zamanli, sosyal_denge } = bordro
@@ -169,15 +170,7 @@ export async function ayliktanKesmePdfBuffer(bordro: AyliktanKesmeBordro): Promi
     align: 'left',
     lineGap: 2,
   })
-  imzaY = doc.y + 22
-  const imzaW = (icW - 16) / 2
-  font(doc, true)
-  doc.fontSize(9).text('DÜZENLEYEN', MARGIN, imzaY, { width: imzaW, align: 'center' })
-  doc.text('GERÇEKLEŞTİRME GÖREVLİSİ', MARGIN + imzaW + 16, imzaY, { width: imzaW, align: 'center' })
-  font(doc, false)
-  const yil = new Date().getFullYear()
-  doc.fontSize(9).text(`…... / …... / ${yil}`, MARGIN, imzaY + 36, { width: imzaW, align: 'center' })
-  doc.text(`…... / …... / ${yil}`, MARGIN + imzaW + 16, imzaY + 36, { width: imzaW, align: 'center' })
+  evrakImzaCiz(doc, doc.y + 22, imza)
 
   doc.end()
   return done

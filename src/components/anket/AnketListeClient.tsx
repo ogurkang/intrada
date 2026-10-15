@@ -165,7 +165,7 @@ export default function AnketListeClient({
                             {yayinda ? <DurdurSvg /> : <YayinSvg />}
                           </button>
                         ) : null}
-                        <KalemDuzenleLink href={duzenle} title="Düzenle" />
+                        {tur === 'anket' ? <KalemDuzenleLink href={duzenle} title="Düzenle" /> : null}
                         <GozDetayLink href={detay} title="Detay" />
                         {tur === 'anket' ? (
                           <>

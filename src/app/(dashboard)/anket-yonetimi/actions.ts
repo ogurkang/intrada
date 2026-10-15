@@ -20,6 +20,8 @@ type Sorgu = Promise<{ data: unknown; error: { message: string } | null }> & {
   eq: (kolon: string, deger: unknown) => Sorgu
   in: (kolon: string, deger: unknown[]) => Sorgu
   order: (kolon: string, opt?: { ascending: boolean }) => Sorgu
+  ilike: (kolon: string, deger: string) => Sorgu
+  neq: (kolon: string, deger: unknown) => Sorgu
   limit: (n: number) => Sorgu
   maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>
   single: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>
@@ -72,9 +74,11 @@ function tazele(anketId?: string) {
 }
 
 async function kisaAdKullanimda(sb: Sb, kod: string, haricId?: string): Promise<boolean> {
-  const { data } = await sb.from('anketler').select('id, kod')
-  const liste = (data as { id: string; kod: string }[] | null) ?? []
-  return liste.some(s => s.kod.toLowerCase() === kod.toLowerCase() && s.id !== haricId)
+  let sorgu = sb.from('anketler').select('id').ilike('kod', kod).limit(1)
+  if (haricId) sorgu = sorgu.neq('id', haricId)
+  const { data } = await sorgu
+  const liste = (data as { id: string }[] | null) ?? []
+  return liste.length > 0
 }
 
 export async function anketOlustur(girdi: {

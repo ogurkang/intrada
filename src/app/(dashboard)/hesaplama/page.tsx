@@ -7,6 +7,16 @@ const KARTLAR = [
     aciklama: 'Yevmiye ve sosyal hakların artış oranını artı-eksi ile değiştirin. Toplam maliyetin ne kadar kaydığını görün.',
   },
   {
+    href: '/hesaplama/emeklilik-tazminati',
+    baslik: 'Emeklilik Tazminatı Hesaplama',
+    aciklama: '375 sayılı KHK m. 1 (D). Memurda gösterge 13.558, işçide 12.105. Kesinti yalnız damga vergisidir.',
+  },
+  {
+    href: '/hesaplama/olum-yardimi',
+    baslik: 'Ölüm Yardımı Hesaplama',
+    aciklama: 'Vefat eden memurun varislerine ölüm yardımı. Tutar varis sayısına bölünür.',
+  },
+  {
     href: '/hesaplama/tanimlar',
     baslik: 'Tanımlar',
     aciklama: 'Kalem tabanları, görev grupları ve işveren oranları. Hesaplamanın dayandığı sabitler.',
@@ -19,7 +29,7 @@ export default function HesaplamaYonetimiPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Hesaplama Yönetimi</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          ADABEL personelinin sendika pazarlığında kullanılacak maliyet senaryosu. Memur hesabı ve bordro belgesi bu modülde yer almaz.
+          Personel maliyeti, emeklilik tazminatı ve memur ölüm yardımı hesapları. Katsayılar ekranda değiştirilebilir.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

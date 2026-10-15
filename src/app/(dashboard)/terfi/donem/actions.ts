@@ -304,6 +304,7 @@ async function ogrenimTerfiKaydet(
 export async function terfiEttirKaydet(
   donemId: number,
   satirlar: TerfiEttirKayitSatir[],
+  secenek?: { yenile?: boolean },
 ): Promise<{ hata?: string }> {
   if (!satirlar.length) return {}
   const supabase = await createClient()
@@ -366,12 +367,14 @@ export async function terfiEttirKaydet(
     if (ogRes.hata) return ogRes
   }
 
-  revalidatePath('/terfi')
-  revalidatePath('/terfi/bilgiler')
-  revalidatePath(`/terfi/donem/${donemId}`)
-  const siciller = [...new Set(satirlar.map((x) => x.sicil_no))]
-  for (const sicil of siciller) {
-    await revalidatePersonelDetayPaths(sicil)
+  if (secenek?.yenile !== false) {
+    revalidatePath('/terfi')
+    revalidatePath('/terfi/bilgiler')
+    revalidatePath(`/terfi/donem/${donemId}`)
+    const siciller = [...new Set(satirlar.map((x) => x.sicil_no))]
+    for (const sicil of siciller) {
+      await revalidatePersonelDetayPaths(sicil)
+    }
   }
   return {}
 }
@@ -388,6 +391,7 @@ async function revalidateTerfiDonemBaglantili(donemId: number, sicilNo: string[]
 export async function terfiGeriAlTek(
   donemId: number,
   logId: number,
+  secenek?: { yenile?: boolean },
 ): Promise<{ hata?: string }> {
   const supabase = await createClient()
   const { data: logRow, error: logErr } = await supabase
@@ -446,7 +450,9 @@ export async function terfiGeriAlTek(
     .eq('id', logId)
   if (markErr) return { hata: markErr.message }
 
-  await revalidateTerfiDonemBaglantili(donemId, [logRow.sicil_no])
+  if (secenek?.yenile !== false) {
+    await revalidateTerfiDonemBaglantili(donemId, [logRow.sicil_no])
+  }
   return {}
 }
 

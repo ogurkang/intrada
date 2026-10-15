@@ -362,6 +362,8 @@ function buildMenuGroups(
     items: [
       { href: '/hesaplama', label: 'Genel Bakış' },
       { href: '/hesaplama/personel-maliyeti', label: 'Personel Maliyeti Hesaplama' },
+      { href: '/hesaplama/emeklilik-tazminati', label: 'Emeklilik Tazminatı Hesaplama' },
+      { href: '/hesaplama/olum-yardimi', label: 'Ölüm Yardımı Hesaplama' },
       {
         href: '/hesaplama/tanimlar',
         label: 'Tanımlar',
