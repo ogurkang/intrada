@@ -5,7 +5,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ickHataMetni, ickYetkiYukle, type IckDb, type IckYetki } from '@/lib/ick/erisim'
 import { ickAktarimOnizle, type IckAktarimOnizleme } from '@/lib/ick/aktarim'
+import { ickKullaniciAdlari, ickTumMudurlukHaritasi } from '@/lib/ick/yukle'
 import {
+  ICK_PLAN_DURUM_ETIKET,
   ickKodNorm,
   ickTerminCoz,
   type IckBeyanDurum,
@@ -186,6 +188,65 @@ export async function ickPlanKaydet(g: IckPlanGirdi): Promise<Sonuc<{ id: number
   })
   tazele()
   return { id: Number(data.id) }
+}
+
+export type IckPlanGecmisSatir = { id: number; zaman: string; kim: string; ne: string; degisen: string[] }
+
+const PLAN_ALAN_ETIKET: Record<string, string> = {
+  ad: 'Plan adı',
+  kapsam: 'Kapsam',
+  mudurluk_id: 'Harcama birimi',
+  bas_yil: 'Başlangıç yılı',
+  bit_yil: 'Bitiş yılı',
+  koordinator_mudurluk_id: 'Koordinasyon birimi',
+  durum: 'Durum',
+  onay_tarihi: 'Onay tarihi',
+  onay_sayi: 'Onay sayısı',
+  bakanlik_gonderim_tarihi: 'Bakanlığa gönderim tarihi',
+  aciklama: 'Açıklama',
+}
+
+function planAlanDegeri(alan: string, v: unknown, mudAd: Map<number, string>): string {
+  if (v == null || v === '') return '—'
+  if (alan === 'durum') return ICK_PLAN_DURUM_ETIKET[v as IckPlanDurum] ?? String(v)
+  if (alan === 'kapsam') return v === 'idare' ? 'İdare' : 'Birim'
+  if (alan === 'mudurluk_id' || alan === 'koordinator_mudurluk_id') return mudAd.get(Number(v)) ?? String(v)
+  return String(v)
+}
+
+export async function ickPlanGecmisi(planId: number): Promise<Sonuc<{ satirlar: IckPlanGecmisSatir[] }>> {
+  const b = await baglam()
+  if ('hata' in b) return { hata: b.hata }
+  if (!(b.yetki.admin || b.yetki.koordinator || b.yetki.izleyici)) return { hata: 'Geçmişi koordinatör, izleyici ve yönetici görür.' }
+  const { data, error } = await b.db
+    .from('ick_audit_log')
+    .select('id, islem, onceki, sonraki, actor_id, created_at')
+    .eq('tablo', 'ick_plan')
+    .eq('kayit_id', String(planId))
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) return { hata: ickHataMetni(error.message) }
+  const kayitlar = (data as { id: number; islem: string; onceki: Record<string, unknown> | null; sonraki: Record<string, unknown> | null; actor_id: string | null; created_at: string }[] | null) ?? []
+  const [adlar, mudAd] = await Promise.all([
+    ickKullaniciAdlari(b.db, kayitlar.map(k => k.actor_id).filter((x): x is string => Boolean(x))),
+    ickTumMudurlukHaritasi(b.db),
+  ])
+  const satirlar = kayitlar.map(k => {
+    const degisen =
+      k.islem === 'UPDATE' && k.onceki && k.sonraki
+        ? Object.keys(PLAN_ALAN_ETIKET)
+            .filter(a => JSON.stringify(k.onceki?.[a] ?? null) !== JSON.stringify(k.sonraki?.[a] ?? null))
+            .map(a => `${PLAN_ALAN_ETIKET[a]}: ${planAlanDegeri(a, k.onceki?.[a], mudAd)} → ${planAlanDegeri(a, k.sonraki?.[a], mudAd)}`)
+        : []
+    return {
+      id: k.id,
+      zaman: k.created_at,
+      kim: k.actor_id ? adlar.get(k.actor_id) ?? 'Kullanıcı' : 'Sistem',
+      ne: k.islem === 'INSERT' ? 'Oluşturuldu' : k.islem === 'UPDATE' ? 'Düzenlendi' : 'Silindi',
+      degisen,
+    }
+  })
+  return { satirlar: satirlar.filter(s => s.ne !== 'Düzenlendi' || s.degisen.length > 0) }
 }
 
 export async function ickGenelSartDegerlendirmeKaydet(g: {

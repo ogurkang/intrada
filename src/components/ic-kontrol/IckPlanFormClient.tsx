@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import { KalemDuzenleDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { ickPlanKaydet, type IckPlanGirdi } from '@/app/(dashboard)/ic-kontrol/actions'
 import { ICK_BUTON, ICK_BUTON_IKINCIL, ICK_ETIKET, ICK_INPUT, IckUyari } from '@/components/ic-kontrol/IckUi'
 import { ICK_PLAN_DURUM_ETIKET, type IckPlanDurum } from '@/lib/ick/tanim'
@@ -14,11 +15,13 @@ export default function IckPlanFormClient({
   mudurlukler,
   dugmeMetni,
   ikincil,
+  kalem,
 }: {
   baslangic: IckPlanFormDeger
   mudurlukler: { id: number; ad: string }[]
   dugmeMetni: string
   ikincil?: boolean
+  kalem?: boolean
 }) {
   const router = useRouter()
   const [acik, setAcik] = useState(false)
@@ -42,19 +45,21 @@ export default function IckPlanFormClient({
     else router.refresh()
   }
 
+  function ac() {
+    setF(baslangic)
+    setHata(null)
+    setAcik(true)
+  }
+
   return (
     <>
-      <button
-        type="button"
-        className={ikincil ? ICK_BUTON_IKINCIL : ICK_BUTON}
-        onClick={() => {
-          setF(baslangic)
-          setHata(null)
-          setAcik(true)
-        }}
-      >
-        {dugmeMetni}
-      </button>
+      {kalem ? (
+        <KalemDuzenleDugmesi onClick={ac} title={dugmeMetni} />
+      ) : (
+        <button type="button" className={ikincil ? ICK_BUTON_IKINCIL : ICK_BUTON} onClick={ac}>
+          {dugmeMetni}
+        </button>
+      )}
       <Modal open={acik} onClose={() => setAcik(false)} title={f.id ? 'Planı düzenle' : 'Yeni eylem planı'} size="xl">
         <div className="space-y-3">
           {hata ? <IckUyari tur="hata" metin={hata} /> : null}

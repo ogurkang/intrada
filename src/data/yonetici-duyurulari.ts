@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-16-ic-kontrol-plan-liste',
+    baslik: '16 Ekim 2026 — Eylem planları listesi',
+    maddeler: [
+      'İç Kontrol Yönetimi › Eylem Planları listesinde sıra numarası var. İşlemler sütununda kalem plan bilgilerini düzenler, saat oluşturma ve düzenleme geçmişini gösterir, göz plan detayını açar.',
+    ],
+  },
+  {
     id: '2026-10-16-anket-tek-tarayici',
     baslik: '16 Ekim 2026 — Anket, aynı tarayıcı',
     maddeler: [
