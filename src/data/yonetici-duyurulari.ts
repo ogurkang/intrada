@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-16-anket-tek-tarayici',
+    baslik: '16 Ekim 2026 — Anket, aynı tarayıcı',
+    maddeler: [
+      'Anketler listesinde işlemler sütununa T işareti geldi. Düz T, aynı tarayıcıdan birden fazla cevaba izin verir. Üzeri çarpılı T, aynı tarayıcıdan ikinci cevabı keser.',
+      'Mevcut anketler çarpılı T ile durur. İşarete basınca kural değişir.',
+    ],
+  },
+  {
     id: '2026-10-16-ic-kontrol-faz1',
     baslik: '16 Ekim 2026 — İç Kontrol Yönetimi',
     maddeler: [

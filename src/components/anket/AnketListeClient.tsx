@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/TabloIslemIkonlari'
 import AnketGecmisPanel from '@/components/anket/AnketGecmisPanel'
 import { anketDurumEtiket } from '@/lib/anket'
-import { anketLogGetir, anketSifirla, anketSil, anketYayinDegistir, type AnketLogSatir } from '@/app/(dashboard)/anket-yonetimi/actions'
+import { anketLogGetir, anketSifirla, anketSil, anketTekTarayiciDegistir, anketYayinDegistir, type AnketLogSatir } from '@/app/(dashboard)/anket-yonetimi/actions'
 
 export type AnketListeSatir = {
   id: string
@@ -24,6 +24,7 @@ export type AnketListeSatir = {
   soruSayisi: number
   cevapSayisi: number
   logSayisi: number
+  tekTarayici: boolean
 }
 
 const IKON = 'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-40'
@@ -64,6 +65,19 @@ export default function AnketListeClient({
     setMesgul(true)
     setHata(null)
     const sonuc = await anketYayinDegistir(satir.id, satir.durum !== 'yayinda')
+    setMesgul(false)
+    if (sonuc.hata) {
+      setHata(sonuc.hata)
+      return
+    }
+    router.refresh()
+  }
+
+  async function tarayici(satir: AnketListeSatir) {
+    if (mesgul) return
+    setMesgul(true)
+    setHata(null)
+    const sonuc = await anketTekTarayiciDegistir(satir.id, !satir.tekTarayici)
     setMesgul(false)
     if (sonuc.hata) {
       setHata(sonuc.hata)
@@ -122,7 +136,7 @@ export default function AnketListeClient({
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Kısa ad</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Soru</th>
                 {tur === 'rapor' ? <th className="text-left px-4 py-3 font-semibold text-slate-700">Cevap</th> : null}
-                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-52">İşlemler</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-60">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -163,6 +177,18 @@ export default function AnketListeClient({
                             aria-label={yayinda ? 'Yayını kaldır' : 'Yayınla'}
                           >
                             {yayinda ? <DurdurSvg /> : <YayinSvg />}
+                          </button>
+                        ) : null}
+                        {tur === 'anket' ? (
+                          <button
+                            type="button"
+                            disabled={mesgul}
+                            onClick={() => tarayici(satir)}
+                            className={`${IKON} ${satir.tekTarayici ? 'text-slate-600 hover:bg-slate-100' : 'text-blue-700 hover:bg-blue-50'}`}
+                            title={satir.tekTarayici ? 'Aynı tarayıcıdan bir kez. Birden fazla cevaba açmak için tıklayın.' : 'Aynı tarayıcıdan birden fazla cevap alınır. Tek cevaba almak için tıklayın.'}
+                            aria-label={satir.tekTarayici ? 'Aynı tarayıcıdan bir kez' : 'Aynı tarayıcıdan birden fazla'}
+                          >
+                            <TarayiciIsareti engelli={satir.tekTarayici} />
                           </button>
                         ) : null}
                         {tur === 'anket' ? <KalemDuzenleLink href={duzenle} title="Düzenle" /> : null}
@@ -240,6 +266,20 @@ function YayinSvg() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v14l11-7L8 5z" />
+    </svg>
+  )
+}
+
+function TarayiciIsareti({ engelli }: { engelli: boolean }) {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 5h12M12 5v14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      {engelli ? (
+        <>
+          <path d="M5 5l14 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M19 5L5 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      ) : null}
     </svg>
   )
 }

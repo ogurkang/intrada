@@ -70,6 +70,7 @@ const LOG_ETIKET: Record<string, string> = {
   yayinlandi: 'Yayınlandı',
   durduruldu: 'Yayın durduruldu',
   sifirlandi: 'Cevaplar sıfırlandı',
+  tarayici_kurali: 'Tarayıcı kuralı',
 }
 
 export function anketLogEtiket(islem: string): string {

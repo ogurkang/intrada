@@ -17,7 +17,7 @@ export default async function AnketlerPage() {
           Anketi yönetici oluşturur. Ad, açıklama, kısa ad ve sorular yazılır. Kısa ad linkin sonudur. Kayıt durdurulmuş açılır. İşlemler sütunundaki yayın düğmesi anketi açar; aynı düğme yayını kaldırır. Yayındaki anket, paylaşım linki veya giriş ekranındaki anket adı ile açılır. Cevaplamak için oturum gerekmez. Yayındaki anket silinemez.
         </p>
         <p>
-          Cevap isimsizdir. Ad, sicil ve kullanıcı kimliği tutulmaz. Aynı tarayıcıdaki çerez ikinci gönderimi keser. Kurumda aynı çıkış hattı kullanıldığı için ikinci cevabı IP adresi ile kesmeyiz. IP saklamak isimsizliği bozar.
+          Cevap isimsizdir. Ad, sicil ve kullanıcı kimliği tutulmaz. İşlemler sütunundaki T, aynı tarayıcıdan birden fazla cevaba izin verir. Üzeri çarpılı T, aynı tarayıcıdan ikinci cevabı keser. Yeni anket çarpılı T ile açılır. Kurumda aynı çıkış hattı kullanıldığı için ikinci cevabı IP adresi ile kesmeyiz. IP saklamak isimsizliği bozar.
         </p>
         <p>
           Raporda her sorunun dağılımı okunur. Tek seçim, çoklu seçim ve evet/hayır pasta dilimi, puan renkli çubuk, serbest metin liste olarak durur. Yorum, sorunun metnini ve cevap dağılımını birlikte okur. Puan ölçeği 1 çok kötü, 5 çok iyidir. Yönetici raporu PDF indirir. Anket linkini açan kişi soruların boş PDF’ini indirebilir.

@@ -212,6 +212,35 @@ export async function anketYayinDegistir(anketId: string, yayinla: boolean): Pro
   return {}
 }
 
+export async function anketTekTarayiciDegistir(anketId: string, tek: boolean): Promise<{ hata?: string }> {
+  const ot = await baglam()
+  if ('hata' in ot) return { hata: ot.hata }
+  const { data: kayit } = await ot.sb.from('anketler').select('kod').eq('id', anketId).maybeSingle()
+  if (!kayit) return { hata: 'Anket bulunamadı.' }
+  const { error } = await ot.sb
+    .from('anketler')
+    .update({ tek_tarayici: tek, updated_at: new Date().toISOString() })
+    .eq('id', anketId)
+  if (error) {
+    if (String(error.message).includes('tek_tarayici')) {
+      return { hata: 'Veritabanı güncellemesi eksik. 20261016140000_anket_tek_tarayici dosyasını çalıştırın.' }
+    }
+    return { hata: error.message }
+  }
+  await logYaz(ot.sb, {
+    anket_id: anketId,
+    islem: 'tarayici_kurali',
+    ozet: tek
+      ? 'Aynı tarayıcıdan ikinci cevap kapatıldı.'
+      : 'Aynı tarayıcıdan birden fazla cevap açıldı.',
+    yapan_id: ot.userId,
+    yapan_ad: ot.yapanAd,
+  })
+  tazele(anketId)
+  revalidatePath(`/anket/${String(kayit.kod)}`)
+  return {}
+}
+
 export async function anketDemografiSorulariEkle(anketId: string): Promise<{ hata?: string }> {
   const ot = await baglam()
   if ('hata' in ot) return { hata: ot.hata }

@@ -28,7 +28,11 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = sb as any
-  const { data: anket } = await db.from('anketler').select('id, baslik, aciklama, durum, kod').ilike('kod', kod).maybeSingle()
+  let anketSorgu = await db.from('anketler').select('id, baslik, aciklama, durum, kod, tek_tarayici').ilike('kod', kod).maybeSingle()
+  if (anketSorgu.error && String(anketSorgu.error.message ?? '').includes('tek_tarayici')) {
+    anketSorgu = await db.from('anketler').select('id, baslik, aciklama, durum, kod').ilike('kod', kod).maybeSingle()
+  }
+  const anket = anketSorgu.data
   if (!anket) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -46,7 +50,8 @@ export default async function AnketCevapPage({ params }: { params: Promise<{ kod
 
   const depo = await cookies()
   const kayitKod = String(anket.kod)
-  const token = depo.get(`intrada_anket_${kayitKod}`)?.value
+  const tekTarayici = anket.tek_tarayici !== false
+  const token = tekTarayici ? depo.get(`intrada_anket_${kayitKod}`)?.value : undefined
   if (token) {
     const ozet = createHash('sha256').update(token).digest('hex')
     const { data: katilim } = await db

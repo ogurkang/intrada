@@ -40,12 +40,16 @@ export async function anketCevapGonder(
   } catch {
     return { hata: 'Anket şu anda kaydedilemiyor.' }
   }
-  const { data: anket, error } = await sb
+  let anketSorgu = await sb
     .from('anketler')
-    .select('id, durum, kod')
+    .select('id, durum, kod, tek_tarayici')
     .ilike('kod', kod)
     .maybeSingle()
-  if (error || !anket) return { hata: 'Anket bulunamadı.' }
+  if (anketSorgu.error && String(anketSorgu.error.message ?? '').includes('tek_tarayici')) {
+    anketSorgu = await sb.from('anketler').select('id, durum, kod').ilike('kod', kod).maybeSingle()
+  }
+  const anket = anketSorgu.data
+  if (anketSorgu.error || !anket) return { hata: 'Anket bulunamadı.' }
   if (anket.durum !== 'yayinda') return { hata: 'Bu anketin yayını durdurulmuş. Yeni cevap alınmıyor.' }
 
   const { data: soruData } = await sb
@@ -86,24 +90,33 @@ export async function anketCevapGonder(
   }
 
   const kayitKod = String(anket.kod ?? kod)
+  const tekTarayici = anket.tek_tarayici !== false
   const depo = await cookies()
-  const varOlan = depo.get(cerezAdi(kayitKod))?.value
-  const token = varOlan && varOlan.length >= 16 ? varOlan : randomUUID()
+  const varOlan = tekTarayici ? depo.get(cerezAdi(kayitKod))?.value : undefined
+  const token = tekTarayici && varOlan && varOlan.length >= 16 ? varOlan : randomUUID()
   const ozet = ozetle(token)
-  const { data: once } = await sb
-    .from('anket_katilim')
-    .select('id')
-    .eq('anket_id', anket.id)
-    .eq('tarayici_ozeti', ozet)
-    .maybeSingle()
-  if (once) return { hata: 'Bu anketi bu tarayıcıdan daha önce cevapladınız.' }
+  if (tekTarayici) {
+    const { data: once } = await sb
+      .from('anket_katilim')
+      .select('id')
+      .eq('anket_id', anket.id)
+      .eq('tarayici_ozeti', ozet)
+      .maybeSingle()
+    if (once) return { hata: 'Bu anketi bu tarayıcıdan daha önce cevapladınız.' }
+  }
 
   const { data: katilim, error: katilimHata } = await sb
     .from('anket_katilim')
     .insert({ anket_id: anket.id, tarayici_ozeti: ozet })
     .select('id')
     .single()
-  if (katilimHata || !katilim) return { hata: 'Cevap kaydedilemedi.' }
+  if (katilimHata || !katilim) {
+    const mesaj = String(katilimHata?.message ?? '')
+    if (mesaj.includes('anket_katilim_tekil') || mesaj.includes('duplicate')) {
+      return { hata: 'Bu anketi bu tarayıcıdan daha önce cevapladınız.' }
+    }
+    return { hata: 'Cevap kaydedilemedi.' }
+  }
 
   const { error: cevapHata } = await sb.from('anket_cevaplar').insert(
     hazir.map(c => ({
@@ -120,12 +133,14 @@ export async function anketCevapGonder(
     return { hata: 'Cevap kaydedilemedi.' }
   }
 
-  depo.set(cerezAdi(kayitKod), token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 400,
-  })
+  if (tekTarayici) {
+    depo.set(cerezAdi(kayitKod), token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 400,
+    })
+  }
   return {}
 }

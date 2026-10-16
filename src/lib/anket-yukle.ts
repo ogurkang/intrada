@@ -25,7 +25,12 @@ function tabloYok(mesaj: string): boolean {
 export async function anketListeYukle(): Promise<{ hata?: string; satirlar: AnketListeSatir[] }> {
   const { supabase } = await anketYoneticiSayfasi()
   const sb = supabase as unknown as Sb
-  const anketler = await sb.from('anketler').select('id, baslik, kod, durum, created_at').order('created_at', { ascending: false })
+  let kolonEksik = false
+  let anketler = await sb.from('anketler').select('id, baslik, kod, durum, created_at, tek_tarayici').order('created_at', { ascending: false })
+  if (anketler.error && String(anketler.error.message).includes('tek_tarayici')) {
+    kolonEksik = true
+    anketler = await sb.from('anketler').select('id, baslik, kod, durum, created_at').order('created_at', { ascending: false })
+  }
   if (anketler.error) {
     return {
       hata: tabloYok(anketler.error.message)
@@ -51,7 +56,7 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
   for (const satir of (loglar.data as { anket_id: string }[] | null) ?? []) {
     logSay.set(satir.anket_id, (logSay.get(satir.anket_id) ?? 0) + 1)
   }
-  const ham = (anketler.data as { id: string; baslik: string; kod: string; durum: string; created_at?: string }[] | null) ?? []
+  const ham = (anketler.data as { id: string; baslik: string; kod: string; durum: string; created_at?: string; tek_tarayici?: boolean }[] | null) ?? []
   const sira = new Map(
     ham.slice().sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''))).map((a, i) => [a.id, i + 1]),
   )
@@ -64,8 +69,14 @@ export async function anketListeYukle(): Promise<{ hata?: string; satirlar: Anke
     soruSayisi: soruSay.get(a.id) ?? 0,
     cevapSayisi: cevapSay.get(a.id) ?? 0,
     logSayisi: logSay.get(a.id) ?? 0,
+    tekTarayici: a.tek_tarayici !== false,
   }))
-  return { satirlar }
+  return {
+    hata: kolonEksik
+      ? 'Aynı tarayıcı kuralı için veritabanı güncellemesi eksik. 20261016140000_anket_tek_tarayici dosyasını çalıştırın. Anketler şimdilik tarayıcı başına bir cevap alır.'
+      : undefined,
+    satirlar,
+  }
 }
 
 export async function anketRaporYukle(anketId: string) {
