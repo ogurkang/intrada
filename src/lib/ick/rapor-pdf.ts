@@ -46,28 +46,28 @@ export async function ickRaporPdf(v: IckRaporVerisi): Promise<Buffer> {
     .moveDown(0.3)
     .fontSize(9)
     .fillColor(v.kilitli ? '#475569' : '#b91c1c')
-    .text(v.kilitli ? `Dönem ${v.kilitTarihi} tarihinde kilitlendi.` : 'TASLAK — dönem kilitlenmedi; veriler değişebilir.', { align: 'center' })
+    .text(v.kilitli ? `Dönem ${v.kilitTarihi} tarihinde kapatıldı (tamamlandı).` : 'TASLAK — dönem kapatılmadı; veriler değişebilir.', { align: 'center' })
   doc.fillColor('#0f172a')
 
   baslik(doc, '1. Dönem Gerçekleşme Özeti')
-  ozetSatirlari(doc, 'Termini bu izleme döneminde olan eylemler', v.donemOzet)
-  ozetSatirlari(doc, 'Termini dönem sonuna kadar gelen eylemler (kümülatif)', v.kumulatifOzet)
+  ozetSatirlari(doc, 'Dönem kapsamındaki eylemler (geciken eylemler dahil)', v.donemOzet)
+  ozetSatirlari(doc, 'Tamamlanma tarihi dönem sonuna kadar gelen eylemler (kümülatif)', v.kumulatifOzet)
 
   baslik(doc, '2. Bileşen Bazında Durum')
   for (const b of v.bilesenOzet) {
     doc
       .font(FONT_NORMAL)
       .fontSize(9.5)
-      .text(`${b.bilesen}: ${b.toplam} eylem — tamamlanan ${b.tamamlanan}, devam eden ${b.devam}, başlanmadı ${b.baslanmadi}, iptal ${b.iptal}, termini geçen ${b.geciken}`)
+      .text(`${b.bilesen}: ${b.toplam} eylem — tamamlanan ${b.tamamlanan}, devam eden ${b.devam}, başlanmadı ${b.baslanmadi}, iptal ${b.iptal}, tamamlanma tarihi geçen ${b.geciken}`)
   }
 
   baslik(doc, '3. Eylem Bazında Değerlendirme')
   for (const s of v.satirlar.filter(x => x.donemdeTerminli || x.kumulatifKapsam)) {
     if (doc.y > doc.page.height - 200) doc.addPage()
-    doc.font(FONT_BOLD).fontSize(10.5).fillColor('#1d4ed8').text(`${s.kod} / ${s.durumEtiket}${s.gecikti ? ' — termin geçti' : ''}`)
+    doc.font(FONT_BOLD).fontSize(10.5).fillColor('#1d4ed8').text(`${s.kod} / ${s.durumEtiket}${s.gecikti ? ' — tamamlanma tarihi geçti' : ''}`)
     doc.fillColor('#0f172a')
     alan(doc, 'Öngörülen Eylem', s.ongorulenEylem)
-    alan(doc, 'Sorumlu Birim / Termin', `${s.sorumlu} — ${s.termin}`)
+    alan(doc, 'Sorumlu Birim / Tamamlanma Tarihi', `${s.sorumlu}${s.muhatap ? ` (Müdürlük koordinatörü: ${s.muhatap})` : ''} — ${s.termin}`)
     alan(doc, 'Gerçekleştirilen Çalışma', s.calisma || 'Kesinleşmiş bildirim yok.')
     alan(doc, 'Kanıtlayıcı Belge / Çıktı', `${s.kanit || '—'}${s.kanitSayisi ? ` (sistemde ${s.kanitSayisi} belge)` : ''}`)
     alan(doc, 'İzleme Değerlendirmesi', s.degerlendirme)
@@ -80,7 +80,7 @@ export async function ickRaporPdf(v: IckRaporVerisi): Promise<Buffer> {
     doc
       .font(FONT_NORMAL)
       .fontSize(8.5)
-      .text(`${s.kod} (${s.genelSartKod}) — ${s.durumEtiket}${s.gecikti ? ', termin geçti' : ''} — ${s.termin} — ${s.sorumlu}`)
+      .text(`${s.kod} (${s.genelSartKod}) — ${s.durumEtiket}${s.gecikti ? ', tamamlanma tarihi geçti' : ''} — ${s.termin} — ${s.sorumlu}`)
   }
 
   baslik(doc, 'Açıklama')

@@ -6,7 +6,8 @@ import Modal from '@/components/ui/Modal'
 import { KalemDuzenleDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { ickPlanKaydet, type IckPlanGirdi } from '@/app/(dashboard)/ic-kontrol/actions'
 import { ICK_BUTON, ICK_BUTON_IKINCIL, ICK_ETIKET, ICK_INPUT, IckUyari } from '@/components/ic-kontrol/IckUi'
-import { ICK_PLAN_DURUM_ETIKET, type IckPlanDurum } from '@/lib/ick/tanim'
+import IckPersonelSecimClient from '@/components/ic-kontrol/IckPersonelSecimClient'
+import { ICK_IZLEME_SIKLIGI_ETIKET, ICK_PLAN_DURUM_ETIKET, type IckPlanDurum } from '@/lib/ick/tanim'
 
 export type IckPlanFormDeger = Omit<IckPlanGirdi, 'id'> & { id?: number }
 
@@ -98,20 +99,51 @@ export default function IckPlanFormClient({
               </select>
             </div>
           ) : null}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={ICK_ETIKET}>Koordinasyon müdürlüğü</label>
+              <select
+                className={ICK_INPUT}
+                value={f.koordinatorMudurlukId ?? ''}
+                onChange={e =>
+                  setF({
+                    ...f,
+                    koordinatorMudurlukId: e.target.value ? Number(e.target.value) : null,
+                    koordinatorSiciller: Number(e.target.value) === baslangic.koordinatorMudurlukId ? baslangic.koordinatorSiciller : [],
+                  })
+                }
+              >
+                <option value="">Seçin</option>
+                {mudurlukler.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.ad}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={ICK_ETIKET}>İzleme sıklığı</label>
+              <select className={ICK_INPUT} value={f.izlemeSikligi} onChange={e => setF({ ...f, izlemeSikligi: Number(e.target.value) })}>
+                {Object.entries(ICK_IZLEME_SIKLIGI_ETIKET).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">İzleme dönemleri plan yıllarına göre Raporlar ekranında kendiliğinden oluşur.</p>
+            </div>
+          </div>
           <div>
-            <label className={ICK_ETIKET}>Koordinasyon birimi</label>
-            <select
-              className={ICK_INPUT}
-              value={f.koordinatorMudurlukId ?? ''}
-              onChange={e => setF({ ...f, koordinatorMudurlukId: e.target.value ? Number(e.target.value) : null })}
-            >
-              <option value="">Seçin</option>
-              {mudurlukler.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.ad}
-                </option>
-              ))}
-            </select>
+            <label className={ICK_ETIKET}>İç kontrol koordinatörleri</label>
+            <p className="mb-2 text-xs text-slate-500">
+              Koordinasyon müdürlüğünün personeli arasından seçin. Koordinatörler bildirimleri inceler, kesinleştirir veya iade eder ve
+              dönemleri kapatır; kendi müdürlüklerinin eylemlerine bildirim girmezler.
+            </p>
+            <IckPersonelSecimClient
+              mudurlukId={f.koordinatorMudurlukId}
+              secili={f.koordinatorSiciller}
+              onChange={s => setF({ ...f, koordinatorSiciller: s })}
+            />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -123,6 +155,11 @@ export default function IckPlanFormClient({
                   </option>
                 ))}
               </select>
+              {f.durum === 'yururlukte' && baslangic.durum !== 'yururlukte' ? (
+                <p className="mt-1 text-xs text-amber-700">
+                  Plan yürürlüğe alınınca önceki planın tamamlanmayan eylemleri bu plana &quot;Önceki eylem planından&quot; notuyla devredilir.
+                </p>
+              ) : null}
             </div>
             <div>
               <label className={ICK_ETIKET}>Onay sayısı</label>

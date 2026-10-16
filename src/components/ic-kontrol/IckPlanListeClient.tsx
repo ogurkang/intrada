@@ -19,6 +19,8 @@ export type IckPlanListeSatir = {
   eylem: number
   tamam: number
   logSayisi: number
+  koordinatorler: string
+  duzenlenir: boolean
   form: IckPlanFormDeger
 }
 
@@ -38,12 +40,10 @@ function zaman(iso: string): string {
 export default function IckPlanListeClient({
   satirlar,
   mudurlukler,
-  duzenleyebilir,
   gecmisGorur,
 }: {
   satirlar: IckPlanListeSatir[]
   mudurlukler: { id: number; ad: string }[]
-  duzenleyebilir: boolean
   gecmisGorur: boolean
 }) {
   const [gecmisPlan, setGecmisPlan] = useState<IckPlanListeSatir | null>(null)
@@ -71,6 +71,7 @@ export default function IckPlanListeClient({
               <th className={`${ICK_TH} w-20`}>Sıra No</th>
               <th className={ICK_TH}>Plan</th>
               <th className={ICK_TH}>Kapsam</th>
+              <th className={ICK_TH}>Koordinatörler</th>
               <th className={ICK_TH}>Dönem</th>
               <th className={ICK_TH}>Durum</th>
               <th className={ICK_TH}>Eylem</th>
@@ -81,7 +82,7 @@ export default function IckPlanListeClient({
           <tbody>
             {satirlar.length === 0 ? (
               <tr>
-                <td className={ICK_TD} colSpan={8}>
+                <td className={ICK_TD} colSpan={9}>
                   Plan yok.
                 </td>
               </tr>
@@ -91,6 +92,7 @@ export default function IckPlanListeClient({
                 <td className={ICK_TD}>{p.sira}</td>
                 <td className={`${ICK_TD} font-medium text-slate-800`}>{p.ad}</td>
                 <td className={ICK_TD}>{p.kapsamMetni}</td>
+                <td className={ICK_TD}>{p.koordinatorler || <span className="text-red-700">Seçilmedi</span>}</td>
                 <td className={ICK_TD}>
                   {p.basYil}–{p.bitYil}
                 </td>
@@ -106,7 +108,7 @@ export default function IckPlanListeClient({
                 </td>
                 <td className={ICK_TD}>
                   <div className="flex items-center justify-center gap-1">
-                    {duzenleyebilir ? <IckPlanFormClient kalem dugmeMetni="Planı düzenle" mudurlukler={mudurlukler} baslangic={p.form} /> : null}
+                    {p.duzenlenir ? <IckPlanFormClient kalem dugmeMetni="Planı düzenle" mudurlukler={mudurlukler} baslangic={p.form} /> : null}
                     {gecmisGorur ? <SaatGecmisDugmesi sayi={p.logSayisi} onClick={() => void gecmisAc(p)} title="Oluşturma ve düzenleme geçmişi" /> : null}
                     <GozDetayLink href={`/ic-kontrol/planlar/${p.id}`} title="Plan detayı" />
                   </div>

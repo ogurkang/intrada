@@ -20,9 +20,9 @@ export async function ickRaporXlsx(v: IckRaporVerisi): Promise<Buffer> {
     { header: 'Başlanmadı', key: 'b', width: 14 },
     { header: 'Gerçekleşme Oranı', key: 'o', width: 18 },
   ]
-  oz.addRow({ k: 'Termini bu dönemde olan eylemler', e: v.donemOzet.eylem, t: v.donemOzet.tamamlanan, d: v.donemOzet.devam, b: v.donemOzet.baslanmadi, o: `%${v.donemOzet.oran}` })
+  oz.addRow({ k: 'Tamamlanma tarihi bu dönemde olan eylemler', e: v.donemOzet.eylem, t: v.donemOzet.tamamlanan, d: v.donemOzet.devam, b: v.donemOzet.baslanmadi, o: `%${v.donemOzet.oran}` })
   oz.addRow({
-    k: 'Termini dönem sonuna kadar gelen eylemler',
+    k: 'Tamamlanma tarihi dönem sonuna kadar gelen eylemler',
     e: v.kumulatifOzet.eylem,
     t: v.kumulatifOzet.tamamlanan,
     d: v.kumulatifOzet.devam,
@@ -32,7 +32,7 @@ export async function ickRaporXlsx(v: IckRaporVerisi): Promise<Buffer> {
   oz.addRow({})
   oz.addRow({ k: v.planAd })
   oz.addRow({ k: `${v.donemBaslik} (${v.donemAralik})` })
-  oz.addRow({ k: v.kilitli ? `Kilit: ${v.kilitTarihi}` : 'TASLAK — dönem kilitlenmedi' })
+  oz.addRow({ k: v.kilitli ? `Dönem kapatıldı (tamamlandı): ${v.kilitTarihi}` : 'TASLAK — dönem kapatılmadı' })
   for (const a of ICK_RAPOR_ACIKLAMA) oz.addRow({ k: a })
   baslikSatiri(oz)
 
@@ -44,7 +44,7 @@ export async function ickRaporXlsx(v: IckRaporVerisi): Promise<Buffer> {
     { header: 'Devam Eden', key: 'devam', width: 12 },
     { header: 'Başlanmadı', key: 'baslanmadi', width: 12 },
     { header: 'İptal', key: 'iptal', width: 10 },
-    { header: 'Termini Geçen', key: 'geciken', width: 14 },
+    { header: 'Tamamlanma Tarihi Geçen', key: 'geciken', width: 22 },
   ]
   v.bilesenOzet.forEach(b => bl.addRow(b))
   baslikSatiri(bl)
@@ -55,12 +55,13 @@ export async function ickRaporXlsx(v: IckRaporVerisi): Promise<Buffer> {
     { header: 'Genel Şart', key: 'genelSartKod', width: 10 },
     { header: 'Öngörülen Eylem', key: 'ongorulenEylem', width: 60 },
     { header: 'Sorumlu Birim', key: 'sorumlu', width: 30 },
+    { header: 'Müdürlük Koordinatörü', key: 'muhatap', width: 28 },
     { header: 'Çıktı / Sonuç', key: 'cikti', width: 30 },
-    { header: 'Termin', key: 'termin', width: 18 },
-    { header: 'Durum', key: 'durumEtiket', width: 20 },
+    { header: 'Tamamlanma Tarihi', key: 'termin', width: 20 },
+    { header: 'Durum', key: 'durumEtiket', width: 40 },
     { header: 'Dönem Kapsamı', key: 'donem', width: 12 },
     { header: 'Kümülatif Kapsam', key: 'kum', width: 12 },
-    { header: 'Termin Geçti', key: 'gec', width: 11 },
+    { header: 'Tamamlanma Tarihi Geçti', key: 'gec', width: 22 },
     { header: 'Gerçekleştirilen Çalışma', key: 'calisma', width: 60 },
     { header: 'Kanıtlayıcı Belge / Çıktı', key: 'kanit', width: 40 },
     { header: 'Sistemdeki Belge', key: 'kanitSayisi', width: 12 },
@@ -70,7 +71,7 @@ export async function ickRaporXlsx(v: IckRaporVerisi): Promise<Buffer> {
   for (const s of v.satirlar) {
     ey.addRow({ ...s, donem: s.donemdeTerminli ? 'Evet' : '', kum: s.kumulatifKapsam ? 'Evet' : '', gec: s.gecikti ? 'Evet' : '' })
   }
-  ey.autoFilter = { from: 'A1', to: 'O1' }
+  ey.autoFilter = { from: 'A1', to: 'P1' }
   baslikSatiri(ey)
 
   return Buffer.from(await wb.xlsx.writeBuffer())

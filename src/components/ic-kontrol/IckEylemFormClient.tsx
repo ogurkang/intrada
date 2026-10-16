@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { ickEylemKaydet, type IckEylemGirdi } from '@/app/(dashboard)/ic-kontrol/actions'
+import IckEylemKisiSecimClient from '@/components/ic-kontrol/IckEylemKisiSecimClient'
 import { ICK_BUTON, ICK_BUTON_IKINCIL, ICK_ETIKET, ICK_INPUT, IckUyari } from '@/components/ic-kontrol/IckUi'
+import { KalemDuzenleDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import { ickTerminCoz, ICK_TERMIN_TIPI_ETIKET, ickTarihMetni, type IckIsbirligiKapsam } from '@/lib/ick/tanim'
 
 export type IckGenelSartSecenek = { id: number; kod: string; metin: string }
@@ -16,6 +18,7 @@ export default function IckEylemFormClient({
   mudurlukler,
   dugmeMetni,
   ikincil,
+  kalem,
 }: {
   baslangic: IckEylemGirdi
   planBasYil: number
@@ -23,6 +26,7 @@ export default function IckEylemFormClient({
   mudurlukler: { id: number; ad: string }[]
   dugmeMetni: string
   ikincil?: boolean
+  kalem?: boolean
 }) {
   const router = useRouter()
   const [acik, setAcik] = useState(false)
@@ -52,19 +56,21 @@ export default function IckEylemFormClient({
     setF({ ...f, isbirligiMudurlukIdleri: liste })
   }
 
+  function ac() {
+    setF(baslangic)
+    setHata(null)
+    setAcik(true)
+  }
+
   return (
     <>
-      <button
-        type="button"
-        className={ikincil ? ICK_BUTON_IKINCIL : ICK_BUTON}
-        onClick={() => {
-          setF(baslangic)
-          setHata(null)
-          setAcik(true)
-        }}
-      >
-        {dugmeMetni}
-      </button>
+      {kalem ? (
+        <KalemDuzenleDugmesi onClick={ac} title={dugmeMetni} />
+      ) : (
+        <button type="button" className={ikincil ? ICK_BUTON_IKINCIL : ICK_BUTON} onClick={ac}>
+          {dugmeMetni}
+        </button>
+      )}
       <Modal open={acik} onClose={() => setAcik(false)} title={f.id ? 'Eylemi düzenle' : 'Eylem ekle'} size="xl">
         <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-1">
           {hata ? <IckUyari tur="hata" metin={hata} /> : null}
@@ -103,7 +109,14 @@ export default function IckEylemFormClient({
                 <select
                   className={ICK_INPUT}
                   value={f.sorumluMudurlukId ?? ''}
-                  onChange={e => setF({ ...f, sorumluMudurlukId: e.target.value ? Number(e.target.value) : null })}
+                  onChange={e =>
+                    setF({
+                      ...f,
+                      sorumluMudurlukId: e.target.value ? Number(e.target.value) : null,
+                      koordinatorSiciller: [],
+                      islemciSiciller: [],
+                    })
+                  }
                 >
                   <option value="">Seçin</option>
                   {mudurlukler.map(m => (
@@ -120,6 +133,35 @@ export default function IckEylemFormClient({
               </div>
             )}
           </div>
+          {f.sorumluTur === 'mudurluk' ? (
+            <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+              <div>
+                <p className="text-sm font-medium text-slate-700">Müdürlük koordinatörü ve müdürlük işlemcisi</p>
+                <p className="text-xs text-slate-500">
+                  Sorumlu müdürlüğün görevdeki personeli listelenir. Bu eyleme yalnızca seçilen kişiler bildirim girer; koordinatöre müdürlük koordinatörü gönderir.
+                </p>
+              </div>
+              <IckEylemKisiSecimClient
+                mudurlukId={f.sorumluMudurlukId}
+                koordinatorler={f.koordinatorSiciller}
+                islemciler={f.islemciSiciller}
+                onChange={(k, i) => setF({ ...f, koordinatorSiciller: k, islemciSiciller: i })}
+              />
+              {f.sorumluMudurlukId ? (
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={f.kisileriMudurlugeUygula}
+                    onChange={e => setF({ ...f, kisileriMudurlugeUygula: e.target.checked })}
+                  />
+                  Bu seçimi plandaki aynı müdürlüğün diğer açık eylemlerine de uygula (oradaki seçimlerin yerine geçer)
+                </label>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Üst yönetim eyleminde bildirimi planın iç kontrol koordinatörleri girer.</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className={ICK_ETIKET}>İşbirliği</label>
@@ -164,9 +206,9 @@ export default function IckEylemFormClient({
           </div>
           {terminDegisti ? (
             <div>
-              <label className={ICK_ETIKET}>Termin revizyon gerekçesi</label>
+              <label className={ICK_ETIKET}>Tamamlanma tarihi revizyon gerekçesi</label>
               <textarea rows={2} className={ICK_INPUT} value={f.revizyonNotu} onChange={e => setF({ ...f, revizyonNotu: e.target.value })} />
-              <p className="mt-1 text-xs text-slate-500">İlk termin korunur; güncel termin değişir ve geçmişe yazılır.</p>
+              <p className="mt-1 text-xs text-slate-500">İlk tamamlanma tarihi korunur; güncel tarih değişir ve geçmişe yazılır.</p>
             </div>
           ) : null}
           <div>

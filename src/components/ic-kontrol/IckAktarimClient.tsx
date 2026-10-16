@@ -50,7 +50,9 @@ export default function IckAktarimClient({ planId, mudurlukler }: { planId: numb
       setHata(s.hata)
       return
     }
-    setBilgi(`${s.eylem} eylem ve ${s.gerceklesme} gerçekleşme aktarıldı.`)
+    setBilgi(
+      `${s.eylem} eylem ve ${s.gerceklesme} gerçekleşme aktarıldı.${s.kapatilanDonem ? ` ${s.kapatilanDonem} geçmiş izleme dönemi "Tamamlandı" olarak kapatıldı.` : ''}`,
+    )
     router.push(`/ic-kontrol/planlar/${planId}`)
     router.refresh()
   }
@@ -168,7 +170,7 @@ export default function IckAktarimClient({ planId, mudurlukler }: { planId: numb
                     <th className={ICK_TH}>Öngörülen eylem</th>
                     <th className={ICK_TH}>Sorumlu</th>
                     <th className={ICK_TH}>İşbirliği</th>
-                    <th className={ICK_TH}>Termin</th>
+                    <th className={ICK_TH}>Tamamlanma Tarihi</th>
                   </tr>
                 </thead>
                 <tbody>

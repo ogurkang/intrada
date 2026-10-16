@@ -7,6 +7,24 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-16-ic-kontrol-ara-asama',
+    baslik: '16 Ekim 2026 — İç Kontrol rolleri ve raporlar',
+    maddeler: [
+      'Rol atama ekranı kalktı. Plan açılırken koordinasyon müdürlüğü ve o müdürlüğün personelinden iç kontrol koordinatörleri seçilir. Mevcut planları düzenleyip koordinatörleri seçin.',
+      'Müdürlük koordinatörü ve müdürlük işlemcisi her eylemde, sorumlu müdürlük seçilince gelen personel listesinden seçilir. Eyleme yalnızca seçilen kişiler bildirim girer; koordinatöre müdürlük koordinatörü gönderir. Seçim, plandaki aynı müdürlüğün diğer eylemlerine tek seferde uygulanabilir.',
+      'Eylem listesinde ilk sütun sıra numarası, son sütun işlemlerdir. Sıra saat, kalem, göz: saat değişiklik geçmişini, kalem eylemi, göz detayı açar. Tamamlanma tarihi sütunu "Termin" yerine bu adla yazılır.',
+      'Plan ekranındaki iç kontrol koordinatörleri, personel kaydındaki ad soyadla görünür.',
+      'Genel bakışta gerçekleşme halkası ve bileşen ile sorumlu birim çubukları var. Plana git, Eylem Planları ve eylem ekranındaki İKEP dönem ana sayfası düğme oldu.',
+      'Kişiler sicil veya kullanıcı adıyla değil, personel kaydındaki ad soyadla görünür. Vekil olarak müdür unvanı olan kişinin unvanı o müdür unvanıdır.',
+      'Plan ekranından Word indir, İKEP plan şablonunu sistemdeki eylemlerle doldurur. 2025-2026 planının dosya adı İKEP_2526.docx olur.',
+      'İç kontrol koordinatörü her eyleme "Müdürlük adına bildirim gir" ile bildirim girebilir, kanıt yükleyip gönderebilir ve kendisi kesinleştirebilir. Bilginin kaynağı zorunludur; kayıt, rapor ve geçmişte "Müdürlük adına iç kontrol koordinatörü girdi" ibaresi görünür.',
+      'Belediye Başkanı ve Başkan Yardımcıları aktif organizasyondan otomatik izleyicidir. Başkan yardımcısı genel bakışta bağlı müdürlüklerini vurgulu görür.',
+      'Menü: Genel Bakış, Eylem Planları, Raporlar, Tanımlar. İş Kutum ve İnceleme plan detayında sekmedir.',
+      'İzleme sıklığı plan başına yılda 1, 2 veya 4 dönemdir ve dönemler kendiliğinden oluşur. Koordinatör, süresi biten dönemi kapatır. Geciken eylem tamamlanana dek sonraki dönemlerde görünür; sürekli eylem her dönemde görünür ve orana katılmaz.',
+      'Yeni plan yürürlüğe girince önceki planın tamamlanmamış eylemleri "Önceki eylem planından" notuyla aktarılır. 2025 dönemleri aktarılan gerçekleşmelerle tamamlandı olarak kapanır.',
+    ],
+  },
+  {
     id: '2026-10-16-ic-kontrol-plan-liste',
     baslik: '16 Ekim 2026 — Eylem planları listesi',
     maddeler: [

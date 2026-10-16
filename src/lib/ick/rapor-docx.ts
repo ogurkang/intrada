@@ -59,10 +59,10 @@ function eylemKarti(s: IckRaporSatir): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
-      satir('Eylem Kodu / Durumu', `${s.kod} / ${s.durumEtiket}${s.gecikti ? ' — termin geçti' : ''}`),
+      satir('Eylem Kodu / Durumu', `${s.kod} / ${s.durumEtiket}${s.gecikti ? ' — tamamlanma tarihi geçti' : ''}`),
       satir('Öngörülen Eylem', s.ongorulenEylem),
-      satir('Sorumlu Birim', s.sorumlu),
-      satir('Termin', s.termin),
+      satir('Sorumlu Birim', s.muhatap ? `${s.sorumlu}\nMüdürlük koordinatörü: ${s.muhatap}` : s.sorumlu),
+      satir('Tamamlanma Tarihi', s.termin),
       satir('Gerçekleştirilen Çalışma', s.calisma || 'Kesinleşmiş bildirim yok.'),
       satir('Kanıtlayıcı Belge / Çıktı', `${s.kanit || '—'}${s.kanitSayisi ? `\nSistemde ${s.kanitSayisi} belge kayıtlı.` : ''}`),
       satir('İzleme Değerlendirmesi', s.degerlendirme),
@@ -78,23 +78,23 @@ export async function ickRaporDocx(v: IckRaporVerisi): Promise<Buffer> {
     p(v.donemBaslik, { bold: true, size: 26, align: AlignmentType.CENTER }),
     p(`İzleme dönemi: ${v.donemAralik}`, { align: AlignmentType.CENTER }),
     v.kilitli
-      ? p(`Dönem ${v.kilitTarihi} tarihinde kilitlenmiştir; rapor kilit anındaki kesinleşmiş verilerden üretilmiştir.`, { align: AlignmentType.CENTER, size: 18 })
-      : p('TASLAK — dönem kilitlenmedi; veriler değişebilir.', { bold: true, align: AlignmentType.CENTER }),
+      ? p(`Dönem ${v.kilitTarihi} tarihinde kapatılmıştır (tamamlandı); rapor kapanış anındaki kesinleşmiş verilerden üretilmiştir.`, { align: AlignmentType.CENTER, size: 18 })
+      : p('TASLAK — dönem kapatılmadı; veriler değişebilir.', { bold: true, align: AlignmentType.CENTER }),
     new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 }, children: [r('1. Dönem Gerçekleşme Özeti', true, 24)] }),
-    p('Termini bu izleme döneminde olan eylemler:'),
+    p('Bu izleme döneminin kapsamındaki eylemler (tamamlanma tarihi bu dönemde olanlar ve tamamlanmayan gecikmiş eylemler):'),
     ozetTablo(v.donemOzet),
     p(''),
-    p('Termini dönem sonuna kadar gelen eylemler (kümülatif):'),
+    p('Tamamlanma tarihi dönem sonuna kadar gelen eylemler (kümülatif):'),
     ozetTablo(v.kumulatifOzet),
     p(''),
     new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 }, children: [r('2. Bileşen Bazında Durum', true, 24)] }),
     tablo(
-      ['Bileşen', 'Eylem', 'Tamamlanan', 'Devam Eden', 'Başlanmadı', 'İptal', 'Termini Geçen'],
+      ['Bileşen', 'Eylem', 'Tamamlanan', 'Devam Eden', 'Başlanmadı', 'İptal', 'Tamamlanma Tarihi Geçen'],
       v.bilesenOzet.map(b => [b.bilesen, String(b.toplam), String(b.tamamlanan), String(b.devam), String(b.baslanmadi), String(b.iptal), String(b.geciken)]),
     ),
     new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 }, children: [r('3. Kapsamdaki Eylemler', true, 24)] }),
     tablo(
-      ['Genel Şart', 'Eylem Kodu', 'Öngörülen Eylem', 'Sorumlu Birim', 'Planlanan Çıktı', 'Termin', 'Durum'],
+      ['Genel Şart', 'Eylem Kodu', 'Öngörülen Eylem', 'Sorumlu Birim', 'Planlanan Çıktı', 'Tamamlanma Tarihi', 'Durum'],
       kapsam.map(s => [s.genelSartKod, s.kod, s.ongorulenEylem, s.sorumlu, s.cikti, s.termin, s.durumEtiket]),
       [8, 9, 33, 16, 14, 10, 10],
     ),
@@ -106,8 +106,8 @@ export async function ickRaporDocx(v: IckRaporVerisi): Promise<Buffer> {
   cocuklar.push(
     new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 }, children: [r('Ek: Tüm Eylemlerin Durumu', true, 24)] }),
     tablo(
-      ['Eylem Kodu', 'Genel Şart', 'Öngörülen Eylem', 'Sorumlu Birim', 'Termin', 'Durum'],
-      v.satirlar.map(s => [s.kod, s.genelSartKod, s.ongorulenEylem, s.sorumlu, s.termin, `${s.durumEtiket}${s.gecikti ? ' (termin geçti)' : ''}`]),
+      ['Eylem Kodu', 'Genel Şart', 'Öngörülen Eylem', 'Sorumlu Birim', 'Tamamlanma Tarihi', 'Durum'],
+      v.satirlar.map(s => [s.kod, s.genelSartKod, s.ongorulenEylem, s.sorumlu, s.termin, `${s.durumEtiket}${s.gecikti ? ' (tamamlanma tarihi geçti)' : ''}`]),
       [9, 8, 41, 18, 12, 12],
     ),
     new Paragraph({ spacing: { before: 240, after: 80 }, children: [r('Açıklama', true, 20)] }),

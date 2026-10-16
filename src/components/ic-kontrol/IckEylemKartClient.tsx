@@ -19,6 +19,10 @@ import {
   ICK_AKIS_ETIKET,
   ICK_EYLEM_DURUM_ETIKET,
   ICK_KANIT_ETIKET,
+  ICK_DOGRUDAN_IBARE,
+  ICK_VEKALET_IBARE,
+  ICK_VEKALET_KAYNAK_ETIKET,
+  type IckVekaletKaynak,
   type IckAkis,
   type IckBeyanDurum,
   type IckEylemDurum,
@@ -47,6 +51,10 @@ export type IckGerceklesmeSatir = {
   degerlendirme: string
   sonuc: string
   kaynak: 'sistem' | 'aktarim'
+  vekaleten?: boolean
+  vekalet_kaynak?: IckVekaletKaynak | ''
+  vekalet_aciklama?: string
+  dogrudan?: boolean
   created_at: string
 }
 
@@ -88,7 +96,17 @@ function boyut(b: number | null): string {
   return b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`
 }
 
-type Bildirim = { id?: number; donemYili: number | null; beyanDurum: IckBeyanDurum; beyanIlerleme: number; calisma: string; kanitAciklama: string }
+type Bildirim = {
+  id?: number
+  donemYili: number | null
+  beyanDurum: IckBeyanDurum
+  beyanIlerleme: number
+  calisma: string
+  kanitAciklama: string
+  vekalet: boolean
+  vekaletKaynak: IckVekaletKaynak | ''
+  vekaletAciklama: string
+}
 type Karar = {
   id: number
   karar: 'kesinlesti' | 'iade'
@@ -97,6 +115,7 @@ type Karar = {
   sonuc: string
   iadeGerekcesi: string
   istisnaGerekcesi: string
+  dogrudan: boolean
 }
 
 export default function IckEylemKartClient(p: {
@@ -109,7 +128,8 @@ export default function IckEylemKartClient(p: {
   belgeTurleri: { id: number; ad: string }[]
   gecmis: IckGecmisSatir[]
   gecmisGorur: boolean
-  yetki: { userId: string; koordinator: boolean; birimYetkili: boolean }
+  /** koordinator: bu planın koordinatörü (karar); yazabilir: taslak girer; gonderebilir: koordinatöre gönderir */
+  yetki: { userId: string; koordinator: boolean; yazabilir: boolean; gonderebilir: boolean }
 }) {
   const router = useRouter()
   const [hata, setHata] = useState<string | null>(null)
@@ -123,7 +143,10 @@ export default function IckEylemKartClient(p: {
   const acik = p.gerceklesmeler.find(g => g.akis !== 'kesinlesti')
   const yilSecenek: number[] = []
   for (let y = p.planYillari[0]; y <= p.planYillari[1]; y++) yilSecenek.push(y)
-  const yeniBildirimOlur = p.yetki.birimYetkili && !acik && p.eylemDurum !== 'iptal'
+  const eylemKapali = p.eylemDurum === 'iptal' || p.eylemDurum === 'devredildi'
+  /** Eylemde seçilmemiş plan koordinatörü bildirimi müdürlük adına girer */
+  const vekaletModu = p.yetki.koordinator && !p.yetki.yazabilir
+  const yeniBildirimOlur = (p.yetki.yazabilir || p.yetki.koordinator) && !acik && !eylemKapali
 
   async function calistir(is: () => Promise<{ hata?: string }>, kapat?: () => void) {
     if (mesgul) return
@@ -203,13 +226,16 @@ export default function IckEylemKartClient(p: {
                     beyanIlerleme: 50,
                     calisma: '',
                     kanitAciklama: '',
+                    vekalet: vekaletModu,
+                    vekaletKaynak: '',
+                    vekaletAciklama: '',
                   })
                 }
               >
-                Bildirim gir
+                {vekaletModu ? 'Müdürlük adına bildirim gir' : 'Bildirim gir'}
               </button>
             ) : null}
-            {p.yetki.koordinator && p.eylemDurum !== 'iptal' ? (
+            {p.yetki.koordinator && !eylemKapali ? (
               <button type="button" className={ICK_BUTON_IKINCIL} onClick={() => setIptal('')}>
                 Eylemi iptal et
               </button>
@@ -218,17 +244,32 @@ export default function IckEylemKartClient(p: {
         }
       >
         <p className="mb-3 text-sm text-slate-600">
-          Birim bildirimi taslak olarak girer, kanıt yükler ve incelemeye gönderir. Koordinatör kanıtı değerlendirir; kesinleştirir veya gerekçeyle iade eder. Kendi girdiğiniz veya gönderdiğiniz bildirime karar veremezsiniz. Kesinleşen bildirim değişmez; durum değişikliği yeni bildirimle yapılır. Tamamlandı bildirimi için en az bir kanıt belgesi gerekir.
+          Müdürlük işlemcisi veya müdürlük koordinatörü bildirimi taslak olarak girer ve kanıt yükler. Taslağı koordinatöre yalnızca müdürlük koordinatörü gönderir; gerekirse
+          işlemcinin taslağını düzeltir. İç kontrol koordinatörü kanıtı değerlendirir; kesinleştirir veya gerekçeyle iade eder. Kendi girdiğiniz veya gönderdiğiniz bildirime
+          karar veremezsiniz. Kesinleşen bildirim değişmez; durum değişikliği yeni bildirimle yapılır. Tamamlandı bildirimi için en az bir kanıt belgesi gerekir.
         </p>
-        {!p.yetki.birimYetkili && !p.yetki.koordinator ? (
-          <p className="mb-3 text-sm text-slate-500">Bu eylemin sorumlu müdürlüğünde rolünüz olmadığı için bildirim giremezsiniz.</p>
+        {p.eylemDurum === 'devredildi' ? (
+          <p className="mb-3 text-sm text-violet-700">Bu eylem yeni plana devredildi; bildirim yeni plandaki eyleme girilir.</p>
+        ) : vekaletModu ? (
+          <p className="mb-3 text-sm text-amber-800">
+            Bu eylemde seçili kişi değilsiniz; iç kontrol koordinatörü olarak bildirimi müdürlük adına girebilirsiniz. Bilginin kaynağı zorunludur; kayıt, rapor ve değişiklik
+            geçmişinde &quot;{ICK_VEKALET_IBARE}&quot; ibaresi görünür. Müdürlük adına girdiğiniz bildirimi kendiniz kesinleştirebilirsiniz; kayıt doğrudan işlendi olarak işaretlenir.
+          </p>
+        ) : !p.yetki.yazabilir && !p.yetki.koordinator ? (
+          <p className="mb-3 text-sm text-slate-500">Bu eylemin sorumlu müdürlüğünde yetkiniz olmadığı için bildirim giremezsiniz.</p>
+        ) : p.yetki.yazabilir && !p.yetki.gonderebilir ? (
+          <p className="mb-3 text-sm text-slate-500">Taslağı kaydedebilirsiniz; koordinatöre müdürlük koordinatörünüz gönderir.</p>
         ) : null}
         {p.gerceklesmeler.length === 0 ? <p className="text-sm text-slate-500">Bildirim yok.</p> : null}
         <div className="space-y-4">
           {p.gerceklesmeler.map(g => {
             const benim = g.olusturan_id === p.yetki.userId
-            const duzenlenir = benim && (g.akis === 'taslak' || g.akis === 'iade')
-            const kararVerir = p.yetki.koordinator && g.akis === 'incelemede' && !benim && g.gonderen_id !== p.yetki.userId
+            const acikAkis = g.akis === 'taslak' || g.akis === 'iade'
+            const duzenlenir = g.vekaleten
+              ? p.yetki.koordinator && acikAkis
+              : p.yetki.yazabilir && (benim || p.yetki.gonderebilir) && acikAkis
+            const gonderir = g.vekaleten ? p.yetki.koordinator : p.yetki.gonderebilir
+            const kararVerir = p.yetki.koordinator && g.akis === 'incelemede' && (Boolean(g.vekaleten) || (!benim && g.gonderen_id !== p.yetki.userId))
             const gb = belgelerOf(g.id)
             return (
               <div key={g.id} className="rounded-lg border border-slate-200 p-4 space-y-3">
@@ -240,10 +281,18 @@ export default function IckEylemKartClient(p: {
                   />
                   {g.donem_yili ? <span className="text-xs text-slate-500">{g.donem_yili} yılı</span> : null}
                   {g.kaynak === 'aktarim' ? <span className="text-xs text-slate-500">Aktarım</span> : null}
+                  {g.vekaleten ? <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">{ICK_VEKALET_IBARE}</span> : null}
+                  {g.dogrudan ? <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-900">{ICK_DOGRUDAN_IBARE}</span> : null}
                   <span className="text-xs text-slate-500">
                     {g.olusturan_ad} · {zaman(g.created_at)}
                   </span>
                 </div>
+                {g.vekaleten ? (
+                  <p className="text-xs text-amber-900">
+                    Bilginin kaynağı: {g.vekalet_kaynak ? ICK_VEKALET_KAYNAK_ETIKET[g.vekalet_kaynak] : '—'}
+                    {g.vekalet_aciklama ? ` · ${g.vekalet_aciklama}` : ''}
+                  </p>
+                ) : null}
                 <div className="text-sm space-y-2">
                   <div>
                     <p className="text-slate-500">Gerçekleştirilen çalışma</p>
@@ -308,14 +357,19 @@ export default function IckEylemKartClient(p: {
                             beyanIlerleme: Number(g.beyan_ilerleme),
                             calisma: g.calisma,
                             kanitAciklama: g.kanit_aciklama,
+                            vekalet: Boolean(g.vekaleten),
+                            vekaletKaynak: g.vekalet_kaynak ?? '',
+                            vekaletAciklama: g.vekalet_aciklama ?? '',
                           })
                         }
                       >
                         Düzenle
                       </button>
-                      <button type="button" className={ICK_BUTON} disabled={mesgul} onClick={() => calistir(() => ickGerceklesmeGonder(g.id))}>
-                        İncelemeye gönder
-                      </button>
+                      {gonderir ? (
+                        <button type="button" className={ICK_BUTON} disabled={mesgul} onClick={() => calistir(() => ickGerceklesmeGonder(g.id))}>
+                          Koordinatöre gönder
+                        </button>
+                      ) : null}
                       {g.akis === 'taslak' ? (
                         <button type="button" className={ICK_BUTON_TEHLIKE} disabled={mesgul} onClick={() => calistir(() => ickGerceklesmeSil(g.id))}>
                           Taslağı sil
@@ -337,6 +391,7 @@ export default function IckEylemKartClient(p: {
                             sonuc: '',
                             iadeGerekcesi: '',
                             istisnaGerekcesi: '',
+                            dogrudan: Boolean(g.vekaleten) && (benim || g.gonderen_id === p.yetki.userId),
                           })
                         }
                       >
@@ -357,7 +412,7 @@ export default function IckEylemKartClient(p: {
       <IckKart
         baslik="Eylem belgeleri"
         sag={
-          p.yetki.birimYetkili ? (
+          (p.yetki.yazabilir || p.yetki.koordinator) && !eylemKapali ? (
             <button type="button" className="text-sm text-blue-700 hover:underline" onClick={() => setYukleme({ baslik: '', turId: '', dosya: null })}>
               Belge yükle
             </button>
@@ -365,7 +420,10 @@ export default function IckEylemKartClient(p: {
         }
       >
         <p className="mb-3 text-sm text-slate-600">Belirli bir bildirime bağlı olmayan belgeler (prosedür, şablon, kurul kararı vb.).</p>
-        {belgeListe(p.belgeler.filter(b => b.eylem_id === p.eylemId), p.yetki.birimYetkili)}
+        {belgeListe(
+          p.belgeler.filter(b => b.eylem_id === p.eylemId),
+          (p.yetki.yazabilir || p.yetki.koordinator) && !eylemKapali,
+        )}
       </IckKart>
 
       {p.gecmisGorur ? (
@@ -439,6 +497,32 @@ export default function IckEylemKartClient(p: {
               <label className={ICK_ETIKET}>Kanıtlayıcı belge / çıktı açıklaması</label>
               <textarea rows={2} className={ICK_INPUT} value={bildirim.kanitAciklama} onChange={e => setBildirim({ ...bildirim, kanitAciklama: e.target.value })} />
             </div>
+            {bildirim.vekalet ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <p className="text-sm font-medium text-amber-900">{ICK_VEKALET_IBARE}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className={ICK_ETIKET}>Bilginin kaynağı</label>
+                    <select
+                      className={ICK_INPUT}
+                      value={bildirim.vekaletKaynak}
+                      onChange={e => setBildirim({ ...bildirim, vekaletKaynak: e.target.value as IckVekaletKaynak | '' })}
+                    >
+                      <option value="">Seçin</option>
+                      {(Object.keys(ICK_VEKALET_KAYNAK_ETIKET) as IckVekaletKaynak[]).map(k => (
+                        <option key={k} value={k}>
+                          {ICK_VEKALET_KAYNAK_ETIKET[k]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className={ICK_ETIKET}>Açıklama (tarih, sayı, kimden geldiği)</label>
+                    <input className={ICK_INPUT} value={bildirim.vekaletAciklama} onChange={e => setBildirim({ ...bildirim, vekaletAciklama: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <p className="text-xs text-slate-500">Kayıt taslak olarak açılır. Belgeleri yükledikten sonra incelemeye gönderin.</p>
             <div className="flex justify-end gap-2">
               <button type="button" className={ICK_BUTON_IKINCIL} onClick={() => setBildirim(null)}>
@@ -448,7 +532,23 @@ export default function IckEylemKartClient(p: {
                 type="button"
                 className={ICK_BUTON}
                 disabled={mesgul}
-                onClick={() => calistir(() => ickGerceklesmeKaydet({ ...bildirim, eylemId: p.eylemId }), () => setBildirim(null))}
+                onClick={() =>
+                  calistir(
+                    () =>
+                      ickGerceklesmeKaydet({
+                        id: bildirim.id,
+                        eylemId: p.eylemId,
+                        donemYili: bildirim.donemYili,
+                        beyanDurum: bildirim.beyanDurum,
+                        beyanIlerleme: bildirim.beyanIlerleme,
+                        calisma: bildirim.calisma,
+                        kanitAciklama: bildirim.kanitAciklama,
+                        vekaletKaynak: bildirim.vekaletKaynak,
+                        vekaletAciklama: bildirim.vekaletAciklama,
+                      }),
+                    () => setBildirim(null),
+                  )
+                }
               >
                 Taslağı kaydet
               </button>
@@ -461,6 +561,12 @@ export default function IckEylemKartClient(p: {
         {karar ? (
           <div className="space-y-3">
             {hata ? <IckUyari tur="hata" metin={hata} /> : null}
+            {karar.dogrudan ? (
+              <IckUyari
+                tur="uyari"
+                metin="Bu bildirimi müdürlük adına siz girdiniz. Kesinleştirirseniz kayıt rapor ve geçmişte doğrudan işlendi olarak işaretlenir; izleme değerlendirmesi zorunludur."
+              />
+            ) : null}
             <div className="flex gap-4 text-sm">
               <label className="flex items-center gap-2">
                 <input type="radio" checked={karar.karar === 'kesinlesti'} onChange={() => setKarar({ ...karar, karar: 'kesinlesti' })} />
@@ -568,7 +674,7 @@ export default function IckEylemKartClient(p: {
             <input
               type="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-              className="text-sm"
+              className="block w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-blue-800 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
               onChange={e => setYukleme({ ...yukleme, dosya: e.target.files?.[0] ?? null })}
             />
             <p className="text-xs text-slate-500">PDF, Word, Excel, PNG veya JPEG; en fazla 20 MB. Belge silinmez, gerekçeyle pasife alınır.</p>

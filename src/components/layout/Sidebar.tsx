@@ -472,9 +472,7 @@ function buildMenuGroups(
     items: [
       { href: '/ic-kontrol/genel-bakis', label: 'Genel Bakış' },
       { href: '/ic-kontrol/planlar', label: 'Eylem Planları' },
-      { href: '/ic-kontrol/is-kutusu', label: 'İş Kutum' },
-      { href: '/ic-kontrol/inceleme', label: 'İnceleme' },
-      { href: '/ic-kontrol/izleme', label: 'İzleme Dönemleri' },
+      { href: '/ic-kontrol/raporlar', label: 'Raporlar' },
       { href: '/ic-kontrol/tanimlar', label: 'Tanımlar' },
     ],
   },

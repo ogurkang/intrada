@@ -1,8 +1,9 @@
 import { trNormalize } from '@/lib/turkce-search'
 
-export type IckRol = 'koordinator' | 'birim_yonetici' | 'birim_irtibat' | 'izleyici'
+export type IckRol = 'koordinator' | 'mudurluk_koordinatoru' | 'mudurluk_islemcisi' | 'izleyici'
+export type IckEylemKisiRol = 'mudurluk_koordinatoru' | 'mudurluk_islemcisi'
 export type IckPlanDurum = 'taslak' | 'kurulda' | 'onay_bekliyor' | 'yururlukte' | 'tamamlandi' | 'arsiv'
-export type IckEylemDurum = 'baslanmadi' | 'devam' | 'tamamlandi' | 'iptal'
+export type IckEylemDurum = 'baslanmadi' | 'devam' | 'tamamlandi' | 'iptal' | 'devredildi'
 export type IckBeyanDurum = 'baslanmadi' | 'devam' | 'tamamlandi'
 export type IckAkis = 'taslak' | 'incelemede' | 'iade' | 'kesinlesti'
 export type IckTerminTipi = 'tek' | 'yillik' | 'alti_aylik' | 'surekli'
@@ -11,16 +12,46 @@ export type IckIsbirligiKapsam = 'yok' | 'tum_mudurlukler' | 'ilgili_mudurlukler
 
 export const ICK_ROL_ETIKET: Record<IckRol, string> = {
   koordinator: 'İç kontrol koordinatörü',
-  birim_yonetici: 'Birim yöneticisi',
-  birim_irtibat: 'Birim iç kontrol ve risk koordinatörü',
+  mudurluk_koordinatoru: 'Müdürlük koordinatörü',
+  mudurluk_islemcisi: 'Müdürlük işlemcisi',
   izleyici: 'İzleyici',
 }
 
 export const ICK_ROL_ACIKLAMA: Record<IckRol, string> = {
-  koordinator: 'Planı ve eylemleri yönetir, birim bildirimlerini inceler, kesinleştirir veya iade eder, dönemi kilitler.',
-  birim_yonetici: 'Kendi müdürlüğünün eylemlerinde bildirim girer ve incelemeye gönderir.',
-  birim_irtibat: 'Harcama yetkilisinin görevlendirdiği kişi. Kendi müdürlüğünün eylemlerinde bildirim girer ve gönderir.',
-  izleyici: 'Tüm kayıtları ve geçmişi okur; değişiklik yapmaz.',
+  koordinator:
+    'Plan oluşturulurken koordinasyon müdürlüğünün personeli arasından seçilir. Planı ve eylemleri yönetir, bildirimleri inceler, kesinleştirir veya iade eder, dönemi kapatır. Kendi müdürlüğünün eylemlerine bildirim girmez.',
+  mudurluk_koordinatoru:
+    'Eylem eklenirken veya düzenlenirken sorumlu müdürlüğün personeli arasından seçilir. O eylemin bildirimini koordinatöre yalnızca o gönderir, işlemcinin taslağını düzeltebilir. Eylem kartında ve raporlarda muhatap olarak görünür.',
+  mudurluk_islemcisi:
+    'Eylem eklenirken veya düzenlenirken sorumlu müdürlüğün personeli arasından seçilir. O eyleme bildirim taslağı girer ve kanıt yükler; gönderemez.',
+  izleyici: 'Belediye başkanı ve başkan yardımcıları; aktif organizasyondan kendiliğinden gelir. Tüm planları okur, değişiklik yapmaz.',
+}
+
+/** Eylem ekranındaki dönüş düğmesi: İKEP 25-26 */
+export function ickPlanKisaAd(basYil: number, bitYil: number): string {
+  const son = (y: number) => String(y).slice(-2)
+  return `İKEP ${son(basYil)}-${son(bitYil)}`
+}
+
+export const ICK_IZLEME_SIKLIGI_ETIKET: Record<number, string> = {
+  1: 'Yılda 1 kez (yıllık)',
+  2: 'Yılda 2 kez (altı aylık)',
+  4: 'Yılda 4 kez (üç aylık)',
+}
+
+const SIRA_ADI = ['Birinci', 'İkinci', 'Üçüncü', 'Dördüncü']
+
+/** "2026 Yılı Birinci Altı Aylık İzleme Raporu" */
+export function ickDonemBaslik(yil: number, sira: number, siklik: number): string {
+  if (siklik === 1) return `${yil} Yılı İzleme Raporu`
+  const tur = siklik === 4 ? 'Üç Aylık' : 'Altı Aylık'
+  return `${yil} Yılı ${SIRA_ADI[sira - 1] ?? `${sira}.`} ${tur} İzleme Raporu`
+}
+
+/** "2026 / 1. dönem" kısa adı */
+export function ickDonemKisaAd(yil: number, sira: number, siklik: number): string {
+  if (siklik === 1) return `${yil}`
+  return `${yil} / ${sira}. ${siklik === 4 ? 'çeyrek' : 'yarı'}`
 }
 
 export const ICK_PLAN_DURUM_ETIKET: Record<IckPlanDurum, string> = {
@@ -37,6 +68,7 @@ export const ICK_EYLEM_DURUM_ETIKET: Record<IckEylemDurum, string> = {
   devam: 'Devam ediyor',
   tamamlandi: 'Tamamlandı',
   iptal: 'İptal',
+  devredildi: 'Devredildi',
 }
 
 export const ICK_AKIS_ETIKET: Record<IckAkis, string> = {
@@ -59,11 +91,25 @@ export const ICK_KANIT_ETIKET: Record<IckKanitYeterlilik, string> = {
   yetersiz: 'Yetersiz',
 }
 
+export type IckVekaletKaynak = 'resmi_yazi' | 'eposta' | 'toplanti' | 'telefon' | 'diger'
+
+export const ICK_VEKALET_KAYNAK_ETIKET: Record<IckVekaletKaynak, string> = {
+  resmi_yazi: 'Resmî yazı',
+  eposta: 'E-posta',
+  toplanti: 'Toplantı',
+  telefon: 'Telefon',
+  diger: 'Diğer',
+}
+
+export const ICK_VEKALET_IBARE = 'Müdürlük adına iç kontrol koordinatörü girdi'
+export const ICK_DOGRUDAN_IBARE = 'Doğrudan işlendi (girişi ve kararı aynı koordinatör verdi)'
+
 export const ICK_DURUM_RENK: Record<string, string> = {
   baslanmadi: 'bg-slate-100 text-slate-700',
   devam: 'bg-amber-100 text-amber-800',
   tamamlandi: 'bg-emerald-100 text-emerald-800',
   iptal: 'bg-slate-200 text-slate-500',
+  devredildi: 'bg-violet-100 text-violet-800',
   taslak: 'bg-slate-100 text-slate-700',
   incelemede: 'bg-blue-100 text-blue-800',
   iade: 'bg-red-100 text-red-700',
@@ -108,7 +154,7 @@ export type IckTerminCozum =
 export function ickTerminCoz(metin: string, planBasYil: number): IckTerminCozum {
   const ham = (metin ?? '').trim()
   const n = trNormalize(ham)
-  if (!n) return { ok: false, metin: ham, hata: 'Termin boş.' }
+  if (!n) return { ok: false, metin: ham, hata: 'Tamamlanma tarihi boş.' }
   if (/^surekli\b/.test(n)) return { ok: true, tip: 'surekli', ilk: null, metin: ham }
 
   const tarih = n.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
@@ -119,14 +165,14 @@ export function ickTerminCoz(metin: string, planBasYil: number): IckTerminCozum 
 
   const ay = ayBul(n)
   if (/\bher yil\b/.test(n)) {
-    if (!ay) return { ok: false, metin: ham, hata: 'Her yıl tekrarlanan terminde ay okunamadı.' }
+    if (!ay) return { ok: false, metin: ham, hata: 'Her yıl tekrarlanan tamamlanma tarihinde ay okunamadı.' }
     const tip: IckTerminTipi = /6 ayl|alti ayl/.test(n) ? 'alti_aylik' : 'yillik'
     return { ok: true, tip, ilk: ayinSonGunu(planBasYil, ay), metin: ham }
   }
 
   const yil = n.match(/\b(20\d{2})\b/)
   if (ay && yil) return { ok: true, tip: 'tek', ilk: ayinSonGunu(Number(yil[1]), ay), metin: ham }
-  return { ok: false, metin: ham, hata: 'Termin "Ay Yıl", "Her yıl Ay" veya "Sürekli" biçiminde olmalı.' }
+  return { ok: false, metin: ham, hata: 'Tamamlanma tarihi "Ay Yıl", "Her yıl Ay" veya "Sürekli" biçiminde olmalı.' }
 }
 
 /** Plan belgelerindeki durum ifadeleri */
@@ -155,7 +201,7 @@ export function ickTerminGoster(e: { termin_tipi: string; termin_guncel: string 
 
 /** Tek tarihli eylem: bugün termin geçti ve kesinleşmiş tamamlanma yok */
 export function ickGecikti(e: { termin_tipi: string; termin_guncel: string | null; durum: string }, bugun: string): boolean {
-  if (e.durum === 'tamamlandi' || e.durum === 'iptal') return false
+  if (e.durum === 'tamamlandi' || e.durum === 'iptal' || e.durum === 'devredildi') return false
   if (e.termin_tipi !== 'tek' || !e.termin_guncel) return false
   return e.termin_guncel < bugun
 }

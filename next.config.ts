@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
       './node_modules/pdfkit/js/data/**/*',
       './node_modules/dejavu-fonts-ttf/ttf/**/*',
     ],
+    '/api/ic-kontrol/plan/[id]/word': ['./src/lib/ick/sablon/**/*'],
   },
 };
 

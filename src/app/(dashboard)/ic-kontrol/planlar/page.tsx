@@ -1,9 +1,9 @@
 import IckPlanFormClient from '@/components/ic-kontrol/IckPlanFormClient'
 import IckPlanListeClient, { type IckPlanListeSatir } from '@/components/ic-kontrol/IckPlanListeClient'
 import { IckBaslik, IckUyari } from '@/components/ic-kontrol/IckUi'
-import { ICK_YETKI_YOK, ickHataMetni, ickSayfa } from '@/lib/ick/erisim'
+import { ICK_YETKI_YOK, ickHataMetni, ickPlanKoordinatoru, ickSayfa } from '@/lib/ick/erisim'
 import type { IckPlanDurum } from '@/lib/ick/tanim'
-import { ickMudurlukler, ickTumMudurlukHaritasi } from '@/lib/ick/yukle'
+import { ickMudurlukler, ickPlanKoordinatorleri, ickTumMudurlukHaritasi } from '@/lib/ick/yukle'
 
 type PlanKayit = {
   id: number
@@ -13,6 +13,7 @@ type PlanKayit = {
   bas_yil: number
   bit_yil: number
   koordinator_mudurluk_id: number | null
+  izleme_sikligi: number | null
   durum: IckPlanDurum
   onay_tarihi: string | null
   onay_sayi: string | null
@@ -40,10 +41,14 @@ export default async function IckPlanlarPage() {
     gecmisGorur ? db.from('ick_audit_log').select('kayit_id').eq('tablo', 'ick_plan') : Promise.resolve({ data: [] }),
   ])
   const planlar = (planSorgu.data as PlanKayit[] | null) ?? []
+  const koordinatorler = await ickPlanKoordinatorleri(
+    db,
+    planlar.map(p => p.id),
+  )
   const sayac = new Map<number, { toplam: number; tamam: number }>()
   for (const e of (eylemler.data as { plan_id: number; durum: string }[] | null) ?? []) {
     const s = sayac.get(e.plan_id) ?? { toplam: 0, tamam: 0 }
-    if (e.durum !== 'iptal') s.toplam++
+    if (e.durum !== 'iptal' && e.durum !== 'devredildi') s.toplam++
     if (e.durum === 'tamamlandi') s.tamam++
     sayac.set(e.plan_id, s)
   }
@@ -68,6 +73,8 @@ export default async function IckPlanlarPage() {
       eylem: s.toplam,
       tamam: s.tamam,
       logSayisi: logSay.get(String(p.id)) ?? 0,
+      koordinatorler: (koordinatorler.get(p.id) ?? []).map(k => k.ad).join(', '),
+      duzenlenir: yetki.admin || ickPlanKoordinatoru(yetki, p.id),
       form: {
         id: p.id,
         ad: p.ad,
@@ -76,6 +83,8 @@ export default async function IckPlanlarPage() {
         basYil: p.bas_yil,
         bitYil: p.bit_yil,
         koordinatorMudurlukId: p.koordinator_mudurluk_id,
+        koordinatorSiciller: (koordinatorler.get(p.id) ?? []).map(k => k.sicil),
+        izlemeSikligi: p.izleme_sikligi ?? 2,
         durum: p.durum,
         onayTarihi: p.onay_tarihi ?? '',
         onaySayi: p.onay_sayi ?? '',
@@ -89,7 +98,7 @@ export default async function IckPlanlarPage() {
   return (
     <div className="space-y-6">
       <IckBaslik baslik="Eylem Planları">
-        {yetki.koordinator ? (
+        {yetki.admin || yetki.koordinator ? (
           <IckPlanFormClient
             dugmeMetni="Plan oluştur"
             mudurlukler={mudurlukler}
@@ -100,6 +109,8 @@ export default async function IckPlanlarPage() {
               basYil: yil + 1,
               bitYil: yil + 2,
               koordinatorMudurlukId: null,
+              koordinatorSiciller: [],
+              izlemeSikligi: 2,
               durum: 'taslak',
               onayTarihi: '',
               onaySayi: '',
@@ -114,11 +125,14 @@ export default async function IckPlanlarPage() {
           İdare eylem planı en fazla iki yıllıktır ve ilk yılın ocak ayının ilk haftasında yürürlükte olmalıdır. Üst yönetici onayından sonra on iş günü içinde Bakanlığa gönderilir. Birim uyum eylem planları harcama birimi bazında ayrı plan olarak açılır.
         </p>
         <p>
+          Plan oluşturulurken koordinasyon müdürlüğü, bu müdürlüğün personelinden iç kontrol koordinatörleri ve yılda kaç izleme yapılacağı seçilir; izleme dönemleri plan yıllarına göre kendiliğinden oluşur. Plan yürürlüğe alındığında önceki planın tamamlanmayan eylemleri bu plana devredilir.
+        </p>
+        <p>
           Mevcut planın eylemleri Excel şablonundan aktarılır. Aktarım yalnızca eylemi olmayan plana yapılır. İşlemler sütununda kalem plan bilgilerini düzenler, saat oluşturma ve düzenleme geçmişini gösterir, göz plan detayını açar.
         </p>
       </div>
       {planSorgu.error ? <IckUyari tur="hata" metin={ickHataMetni(planSorgu.error.message)} /> : null}
-      <IckPlanListeClient satirlar={satirlar} mudurlukler={mudurlukler} duzenleyebilir={yetki.koordinator} gecmisGorur={gecmisGorur} />
+      <IckPlanListeClient satirlar={satirlar} mudurlukler={mudurlukler} gecmisGorur={gecmisGorur} />
     </div>
   )
 }

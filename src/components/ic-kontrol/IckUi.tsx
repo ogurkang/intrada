@@ -49,6 +49,8 @@ export const ICK_BUTON =
   'inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap disabled:opacity-50'
 export const ICK_BUTON_IKINCIL =
   'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors whitespace-nowrap disabled:opacity-50'
+export const ICK_BUTON_GEZINTI =
+  'inline-flex items-center gap-2 rounded-lg bg-teal-700 text-white px-4 py-2 text-sm font-medium hover:bg-teal-600 transition-colors whitespace-nowrap disabled:opacity-50'
 export const ICK_BUTON_TEHLIKE =
   'inline-flex items-center gap-2 rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-500 transition-colors whitespace-nowrap disabled:opacity-50'
 export const ICK_INPUT =
