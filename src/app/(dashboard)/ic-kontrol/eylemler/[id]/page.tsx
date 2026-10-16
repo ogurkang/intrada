@@ -1,0 +1,248 @@
+import { notFound } from 'next/navigation'
+import IckEylemFormClient from '@/components/ic-kontrol/IckEylemFormClient'
+import IckEylemKartClient, {
+  type IckBelgeSatir,
+  type IckBelgeVersiyon,
+  type IckGecmisSatir,
+  type IckGerceklesmeSatir,
+} from '@/components/ic-kontrol/IckEylemKartClient'
+import { IckBaslik, IckKart, IckRozet, IckUyari } from '@/components/ic-kontrol/IckUi'
+import { ICK_YETKI_YOK, ickHataMetni, ickSayfa } from '@/lib/ick/erisim'
+import {
+  ICK_EYLEM_DURUM_ETIKET,
+  ICK_TERMIN_TIPI_ETIKET,
+  ickBugun,
+  ickGecikti,
+  ickGenelSartSiralama,
+  ickTarihMetni,
+  ickTerminGoster,
+} from '@/lib/ick/tanim'
+import { ICK_EYLEM_KOLON, ickKullaniciAdlari, ickMudurlukler, ickSorumluAdi, ickTumMudurlukHaritasi, type IckEylemKayit } from '@/lib/ick/yukle'
+
+const ALAN_ETIKET: Record<string, string> = {
+  akis: 'Akış',
+  beyan_durum: 'Bildirilen durum',
+  beyan_ilerleme: 'İlerleme',
+  calisma: 'Çalışma',
+  kanit_aciklama: 'Kanıt açıklaması',
+  kanit_yeterlilik: 'Kanıt yeterliliği',
+  degerlendirme: 'Değerlendirme',
+  sonuc: 'Sonuç',
+  iade_gerekcesi: 'İade gerekçesi',
+  istisna_gerekcesi: 'İstisna gerekçesi',
+  durum: 'Durum',
+  ilerleme: 'İlerleme',
+  termin_guncel: 'Güncel termin',
+  revizyon_notu: 'Revizyon notu',
+  ongorulen_eylem: 'Öngörülen eylem',
+  sorumlu_mudurluk_id: 'Sorumlu müdürlük',
+  cikti: 'Çıktı',
+  aktif: 'Aktif',
+  pasif_gerekce: 'Pasif gerekçesi',
+}
+
+const TABLO_ETIKET: Record<string, string> = {
+  ick_eylem: 'Eylem',
+  ick_gerceklesme: 'Bildirim',
+  ick_belge: 'Belge',
+  ick_belge_versiyon: 'Belge sürümü',
+}
+
+export default async function IckEylemPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const eylemId = Number(id)
+  const { db, yetki, hata } = await ickSayfa()
+  if (!yetki.okuyabilir) {
+    return (
+      <div className="space-y-6">
+        <IckBaslik baslik="Eylem" />
+        <IckUyari metin={hata ?? ICK_YETKI_YOK} />
+      </div>
+    )
+  }
+  const { data: eRaw, error } = await db.from('ick_eylem').select(ICK_EYLEM_KOLON).eq('id', eylemId).maybeSingle()
+  if (error) return <IckUyari tur="hata" metin={ickHataMetni(error.message)} />
+  if (!eRaw) notFound()
+  const eylem = eRaw as IckEylemKayit
+
+  const [planR, gsR, isbR, gerR, turR, mudAd, mudurlukler] = await Promise.all([
+    db.from('ick_plan').select('id, ad, bas_yil, bit_yil, surum_id').eq('id', eylem.plan_id).maybeSingle(),
+    db.from('ick_genel_sart').select('id, kod, metin, surum_id'),
+    db.from('ick_eylem_isbirligi').select('mudurluk_id').eq('eylem_id', eylemId),
+    db.from('ick_gerceklesme').select('*').eq('eylem_id', eylemId).order('created_at', { ascending: false }),
+    db.from('ick_belge_turu').select('id, ad, aktif').order('sira'),
+    ickTumMudurlukHaritasi(db),
+    ickMudurlukler(db),
+  ])
+  const plan = planR.data as { id: number; ad: string; bas_yil: number; bit_yil: number; surum_id: number }
+  const tumGs = (gsR.data as { id: number; kod: string; metin: string; surum_id: number }[] | null) ?? []
+  const gs = tumGs.find(g => g.id === eylem.genel_sart_id)
+  const isbirligiIdleri = ((isbR.data as { mudurluk_id: number }[] | null) ?? []).map(r => Number(r.mudurluk_id))
+  const gerceklesmeler = (gerR.data as IckGerceklesmeSatir[] | null) ?? []
+  const gerIdleri = gerceklesmeler.map(g => g.id)
+
+  const belgeSorgu = db
+    .from('ick_belge')
+    .select('id, belge_turu_id, eylem_id, gerceklesme_id, baslik, aktif, pasif_gerekce, created_by, created_by_ad, created_at')
+  const { data: belgeHam } = gerIdleri.length
+    ? await belgeSorgu.or(`eylem_id.eq.${eylemId},gerceklesme_id.in.(${gerIdleri.join(',')})`)
+    : await belgeSorgu.eq('eylem_id', eylemId)
+  const belgeler = (belgeHam as Omit<IckBelgeSatir, 'versiyonlar' | 'tur'>[] | null) ?? []
+  const belgeIdleri = belgeler.map(b => b.id)
+  const { data: versiyonHam } = belgeIdleri.length
+    ? await db
+        .from('ick_belge_versiyon')
+        .select('id, belge_id, versiyon, dosya_adi, boyut_byte, sha256, yukleyen_ad, created_at')
+        .in('belge_id', belgeIdleri)
+        .order('versiyon', { ascending: false })
+    : { data: [] }
+  const turAd = new Map(((turR.data as { id: number; ad: string }[] | null) ?? []).map(t => [t.id, t.ad]))
+  const versiyonlar = (versiyonHam as IckBelgeVersiyon[] | null) ?? []
+  const belgeSatirlari: IckBelgeSatir[] = belgeler.map(b => ({
+    ...b,
+    tur: turAd.get(b.belge_turu_id) ?? '',
+    versiyonlar: versiyonlar.filter(v => v.belge_id === b.id),
+  }))
+
+  let gecmis: IckGecmisSatir[] = []
+  const gecmisGorur = yetki.admin || yetki.koordinator || yetki.izleyici
+  if (gecmisGorur) {
+    const kayitlar = [
+      `and(tablo.eq.ick_eylem,kayit_id.eq.${eylemId})`,
+      ...(gerIdleri.length ? [`and(tablo.eq.ick_gerceklesme,kayit_id.in.(${gerIdleri.join(',')}))`] : []),
+      ...(belgeIdleri.length ? [`and(tablo.eq.ick_belge,kayit_id.in.(${belgeIdleri.join(',')}))`] : []),
+    ]
+    const { data: log } = await db
+      .from('ick_audit_log')
+      .select('id, tablo, kayit_id, islem, onceki, sonraki, actor_id, created_at')
+      .or(kayitlar.join(','))
+      .order('created_at', { ascending: false })
+      .limit(200)
+    const satirlar = (log as { id: number; tablo: string; kayit_id: string; islem: string; onceki: Record<string, unknown> | null; sonraki: Record<string, unknown> | null; actor_id: string | null; created_at: string }[] | null) ?? []
+    const adlar = await ickKullaniciAdlari(db, satirlar.map(s => s.actor_id).filter((x): x is string => Boolean(x)))
+    gecmis = satirlar.map(s => {
+      const degisen =
+        s.islem === 'UPDATE' && s.onceki && s.sonraki
+          ? Object.keys(ALAN_ETIKET)
+              .filter(k => JSON.stringify(s.onceki?.[k]) !== JSON.stringify(s.sonraki?.[k]))
+              .map(k => {
+                const once = s.onceki?.[k]
+                const sonra = s.sonraki?.[k]
+                return `${ALAN_ETIKET[k]}: ${once == null || once === '' ? '—' : String(once)} → ${sonra == null || sonra === '' ? '—' : String(sonra)}`
+              })
+          : []
+      return {
+        id: s.id,
+        zaman: s.created_at,
+        kim: s.actor_id ? adlar.get(s.actor_id) ?? 'Kullanıcı' : 'Sistem',
+        ne: `${TABLO_ETIKET[s.tablo] ?? s.tablo} #${s.kayit_id} ${s.islem === 'INSERT' ? 'oluşturuldu' : s.islem === 'UPDATE' ? 'güncellendi' : 'silindi'}`,
+        degisen,
+      }
+    })
+  }
+
+  const birimYetkili = yetki.koordinator || (eylem.sorumlu_mudurluk_id != null && yetki.birimler.includes(eylem.sorumlu_mudurluk_id))
+  const bugun = ickBugun()
+  const gecikti = ickGecikti(eylem, bugun)
+  const tekrarlayan = eylem.termin_tipi === 'yillik' || eylem.termin_tipi === 'alti_aylik'
+  const gsSecenek = tumGs.filter(g => g.surum_id === plan.surum_id).sort((a, b) => ickGenelSartSiralama(a.kod, b.kod))
+
+  return (
+    <div className="space-y-6">
+      <IckBaslik baslik={`${eylem.kod_norm} — ${gs?.kod ?? ''}`} geri={{ href: `/ic-kontrol/planlar/${plan.id}`, label: plan.ad }}>
+        {yetki.koordinator ? (
+          <IckEylemFormClient
+            ikincil
+            dugmeMetni="Eylemi düzenle"
+            planBasYil={plan.bas_yil}
+            genelSartlar={gsSecenek}
+            mudurlukler={mudurlukler}
+            baslangic={{
+              id: eylem.id,
+              planId: plan.id,
+              genelSartId: eylem.genel_sart_id,
+              kod: eylem.kod_norm,
+              ongorulenEylem: eylem.ongorulen_eylem,
+              sorumluTur: eylem.sorumlu_tur,
+              sorumluMudurlukId: eylem.sorumlu_mudurluk_id,
+              sorumluMetin: eylem.sorumlu_metin,
+              isbirligiKapsam: eylem.isbirligi_kapsam,
+              isbirligiMudurlukIdleri: isbirligiIdleri,
+              isbirligiMetin: eylem.isbirligi_metin,
+              cikti: eylem.cikti,
+              terminMetin: eylem.termin_metin || ickTerminGoster(eylem),
+              aciklama: eylem.aciklama,
+              revizyonNotu: '',
+            }}
+          />
+        ) : null}
+      </IckBaslik>
+
+      <IckKart>
+        <div className="space-y-4 text-sm">
+          <div>
+            <p className="text-slate-500">Genel şart {gs?.kod}</p>
+            <p className="text-slate-800">{gs?.metin}</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Öngörülen eylem</p>
+            <p className="text-slate-800 font-medium">{eylem.ongorulen_eylem}</p>
+          </div>
+          <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <dt className="text-slate-500">Sorumlu</dt>
+              <dd className="text-slate-800">{ickSorumluAdi(eylem, mudAd)}</dd>
+            </div>
+            <div className="md:col-span-2">
+              <dt className="text-slate-500">İşbirliği</dt>
+              <dd className="text-slate-800">
+                {eylem.isbirligi_metin || '—'}
+                {isbirligiIdleri.length ? (
+                  <span className="block text-xs text-slate-500">Bağlı müdürlükler: {isbirligiIdleri.map(i => mudAd.get(i)).join('; ')}</span>
+                ) : null}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Çıktı / sonuç</dt>
+              <dd className="text-slate-800">{eylem.cikti || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Termin</dt>
+              <dd className="text-slate-800">
+                {ickTerminGoster(eylem)} <span className="text-xs text-slate-500">({ICK_TERMIN_TIPI_ETIKET[eylem.termin_tipi]})</span>
+                {eylem.termin_ilk && eylem.termin_guncel !== eylem.termin_ilk ? (
+                  <span className="block text-xs text-slate-500">İlk termin: {ickTarihMetni(eylem.termin_ilk)}</span>
+                ) : null}
+                {gecikti ? <span className="block text-xs font-medium text-red-700">Termin geçti</span> : null}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Kesinleşmiş durum</dt>
+              <dd>
+                <IckRozet
+                  durum={eylem.durum}
+                  etiket={eylem.durum === 'devam' ? `Devam %${Math.round(Number(eylem.ilerleme))}` : ICK_EYLEM_DURUM_ETIKET[eylem.durum]}
+                />
+              </dd>
+            </div>
+          </dl>
+          {eylem.revizyon_notu ? <p className="text-xs text-slate-500">Son revizyon: {eylem.revizyon_notu}</p> : null}
+          {eylem.aciklama ? <p className="text-xs text-slate-500">Açıklama: {eylem.aciklama}</p> : null}
+        </div>
+      </IckKart>
+
+      <IckEylemKartClient
+        eylemId={eylem.id}
+        eylemDurum={eylem.durum}
+        tekrarlayan={tekrarlayan}
+        planYillari={[plan.bas_yil, plan.bit_yil]}
+        gerceklesmeler={gerceklesmeler}
+        belgeler={belgeSatirlari}
+        belgeTurleri={((turR.data as { id: number; ad: string; aktif: boolean }[] | null) ?? []).filter(t => t.aktif)}
+        gecmis={gecmis}
+        gecmisGorur={gecmisGorur}
+        yetki={{ userId: yetki.userId, koordinator: yetki.koordinator, birimYetkili }}
+      />
+    </div>
+  )
+}

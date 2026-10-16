@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
       './node_modules/pdfkit/js/data/**/*',
       './node_modules/dejavu-fonts-ttf/ttf/**/*',
     ],
+    '/api/ic-kontrol/rapor/[donemId]': [
+      './node_modules/pdfkit/js/data/**/*',
+      './node_modules/dejavu-fonts-ttf/ttf/**/*',
+    ],
   },
 };
 

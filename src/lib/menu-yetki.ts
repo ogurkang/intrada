@@ -22,6 +22,7 @@ export type MenuModulKey =
   | 'isgYonetimi'
   | 'denetimYonetimi'
   | 'kysYonetimi'
+  | 'icKontrolYonetimi'
   | 'yetkilendirme'
   | 'hayaletProfil'
   | 'tanimlar'
@@ -50,6 +51,7 @@ export const MENU_MODUL_TANIMLARI: {
   { key: 'isgYonetimi', labelKisa: 'İSG', label: 'İSG Yönetimi', pathPrefixes: ['/isg'] },
   { key: 'denetimYonetimi', labelKisa: 'Denetim', label: 'Denetim Yönetimi', pathPrefixes: ['/denetim'] },
   { key: 'kysYonetimi', labelKisa: 'KYS', label: 'KYS Yönetimi', pathPrefixes: ['/kys'] },
+  { key: 'icKontrolYonetimi', labelKisa: 'İç Kontrol', label: 'İç Kontrol Yönetimi', pathPrefixes: ['/ic-kontrol'] },
   { key: 'yetkilendirme', labelKisa: 'Yetki', label: 'Yetkilendirme', pathPrefixes: ['/yetkilendirme'] },
   { key: 'hayaletProfil', labelKisa: 'Hayalet', label: 'Hayalet Profil', pathPrefixes: ['/yetkilendirme/hayalet-profil'] },
   { key: 'tanimlar', labelKisa: 'Tanım', label: 'Tanımlar', pathPrefixes: ['/tanimlar'] },
@@ -223,6 +225,10 @@ export function kullaniciPathAllowed(
     return menuModulAcik('kysYonetimi', menuIzinleri)
   }
 
+  if (path === '/ic-kontrol' || path.startsWith('/ic-kontrol/')) {
+    return menuModulAcik('icKontrolYonetimi', menuIzinleri)
+  }
+
   return false
 }
 
@@ -272,6 +278,7 @@ export function sidebarGrupGoster(
     'İSG Yönetimi': 'isgYonetimi',
     'Denetim Yönetimi': 'denetimYonetimi',
     'KYS Yönetimi': 'kysYonetimi',
+    'İç Kontrol Yönetimi': 'icKontrolYonetimi',
     'Yetkilendirme Yönetimi': 'yetkilendirme',
     'Tanımlar Yönetimi': 'tanimlar',
   }

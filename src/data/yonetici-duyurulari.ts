@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-16-ic-kontrol-faz1',
+    baslik: '16 Ekim 2026 — İç Kontrol Yönetimi',
+    maddeler: [
+      'Sol menüde İç Kontrol Yönetimi açıldı. Kamu iç kontrol standartlarına uyum eylem planı, eylemler, birim bildirimleri, kanıt belgeleri ve altı aylık izleme raporu buradadır.',
+      'Rolü yönetici verir: İç Kontrol Yönetimi › Tanımlar › Rol Atama. Koordinatör, birim yöneticisi, birim iç kontrol ve risk koordinatörü, izleyici. Kullanıcıya ayrıca Yetkilendirme ekranında İç Kontrol Yönetimi menüsü açılır.',
+      'Birim bildirimi girer ve gönderir; koordinatör kesinleştirir veya gerekçeyle iade eder. Kendi bildirimine kimse karar veremez. Kesinleşen bildirim ve belge silinmez; her değişiklik geçmişe yazılır.',
+      'İzleme dönemi kilitlenince eylemlerin durumu dondurulur. Rapor Word, PDF ve Excel olarak iner; gerçekleşme oranı eylem sayısına göre hesaplanır.',
+    ],
+  },
+  {
     id: '2026-10-15-evrak-imza-iban',
     baslik: '15 Ekim 2026 — Evrak imzası ve IBAN',
     maddeler: [

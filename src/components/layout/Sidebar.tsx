@@ -466,6 +466,19 @@ function buildMenuGroups(
     items: kysItems,
   },
   {
+    grup: 'İç Kontrol Yönetimi',
+    icon: '🛡️',
+    accordion: true,
+    items: [
+      { href: '/ic-kontrol/genel-bakis', label: 'Genel Bakış' },
+      { href: '/ic-kontrol/planlar', label: 'Eylem Planları' },
+      { href: '/ic-kontrol/is-kutusu', label: 'İş Kutum' },
+      { href: '/ic-kontrol/inceleme', label: 'İnceleme' },
+      { href: '/ic-kontrol/izleme', label: 'İzleme Dönemleri' },
+      { href: '/ic-kontrol/tanimlar', label: 'Tanımlar' },
+    ],
+  },
+  {
     grup: 'Stratejik Yönetim',
     icon: '🎯',
     accordion: true,
@@ -679,6 +692,9 @@ export default function Sidebar({
     }
     if (pathname === '/kys' || pathname.startsWith('/kys/')) {
       setAciklar(prev => (prev['KYS Yönetimi'] ? prev : { ...prev, 'KYS Yönetimi': true }))
+    }
+    if (pathname === '/ic-kontrol' || pathname.startsWith('/ic-kontrol/')) {
+      setAciklar(prev => (prev['İç Kontrol Yönetimi'] ? prev : { ...prev, 'İç Kontrol Yönetimi': true }))
     }
   }, [pathname])
 
