@@ -14,7 +14,9 @@ export interface SmsLogOlaySatir {
 const DURUM_ETIKET: Record<string, string> = {
   '0': 'Beklemede (sağlayıcı)',
   '1': 'İletildi',
-  '2': 'Başarısız (sağlayıcı)',
+  '2': 'Beklemede (sağlayıcı)',
+  '3': 'Zaman aşımı',
+  '4': 'İletilmedi',
 }
 
 function saglayiciDurumAciklama(kod: string | undefined): string {
@@ -46,7 +48,11 @@ export async function smsLogDurumSenkronize(
   const ayar = await fetchSmsAyar(supabase)
   if (!smsAyarHazirMi(ayar)) return { guncellendi: false, hata: 'SMS ayarları hazır değil.' }
 
-  const sonuc = await smsMesajDurumSorgula(smsAyarToConfig(ayar), String(kayit.saglayici_mesaj_id))
+  const sonuc = await smsMesajDurumSorgula(
+    smsAyarToConfig(ayar),
+    String(kayit.saglayici_mesaj_id),
+    String(kayit.telefon ?? ''),
+  )
   const now = new Date().toISOString()
 
   if (!sonuc.ok) {
@@ -76,13 +82,13 @@ export async function smsLogDurumSenkronize(
     yeniDurum = 'gonderildi'
     olayTipi = 'gonderildi'
     aciklama = `Mesaj iletildi.${sonuc.telefon ? ` (${sonuc.telefon})` : ''}`
-  } else if (kod === '2') {
+  } else if (kod === '3' || kod === '4') {
     yeniDurum = 'basarisiz'
     olayTipi = 'basarisiz'
-    aciklama = 'Sağlayıcı: iletim başarısız.'
-  } else if (kod === '0') {
+    aciklama = kod === '3' ? 'Sağlayıcı: zaman aşımı.' : 'Sağlayıcı: iletilmedi.'
+  } else if (kod === '2' || kod === '0') {
     olayTipi = 'beklemede'
-    aciklama = `Sağlayıcı: gönderim henüz beklemede (planlı).${sonuc.telefon ? ` Numara: ${sonuc.telefon}` : ''}`
+    aciklama = `Sağlayıcı: gönderim henüz beklemede.${sonuc.telefon ? ` Numara: ${sonuc.telefon}` : ''}`
   }
 
   const durumDegisti = yeniDurum !== kayit.durum
@@ -93,11 +99,11 @@ export async function smsLogDurumSenkronize(
     .update({
       durum: yeniDurum,
       gonderim_kontrol_at: now,
-      hata_mesaji: kod === '2' ? 'Sağlayıcı iletim raporu: başarısız.' : null,
+      hata_mesaji: kod === '3' || kod === '4' ? aciklama : null,
     })
     .eq('id', logId)
 
-  if (durumDegisti || (kod === '0' && opts?.manuel)) {
+  if (durumDegisti || ((kod === '0' || kod === '2') && opts?.manuel)) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from('iletisim_sms_log_olay').insert({
       log_id: logId,
@@ -107,7 +113,7 @@ export async function smsLogDurumSenkronize(
     })
   }
 
-  return { guncellendi: durumDegisti || (kod === '0' && Boolean(opts?.manuel)), durum: yeniDurum }
+  return { guncellendi: durumDegisti || ((kod === '0' || kod === '2') && Boolean(opts?.manuel)), durum: yeniDurum }
 }
 
 /** Planlanmış ve süresi geçmiş kayıtların durumunu toplu sorgular. */
@@ -215,7 +221,7 @@ export async function smsLogIptalEt(
     log_id: logId,
     olay_tipi: 'iptal',
     aciklama:
-      `${iptalEdenEmail} tarafından iptal edildi.${saglayiciNotu} Mesajpaketi API'sinde iptal uç noktası olmadığı için sağlayıcı kuyruğundaki mesaj otomatik iptal edilmeyebilir; gerekirse Mesajpaketi panelinden kontrol edin.`,
+      `${iptalEdenEmail} tarafından iptal edildi.${saglayiciNotu} Sağlayıcıda iptal uç noktası olmadığı için kuyruktaki mesaj kendiliğinden silinmeyebilir; gerekirse SMS panelinden kontrol edin.`,
     saglayici_durum: null,
   })
 

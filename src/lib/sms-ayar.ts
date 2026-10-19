@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database'
-import type { SmsAyarConfig } from '@/lib/sms-mesajpaketi'
+import { smsGatewayAdresi, type SmsAyarConfig } from '@/lib/sms-mesajpaketi'
 
 export type SmsAyarRow = Tables<'iletisim_sms_ayar'>
 
@@ -15,8 +15,9 @@ export async function fetchSmsAyar(supabase: SupabaseClient): Promise<SmsAyarRow
 
 export function smsAyarToConfig(row: SmsAyarRow | null): SmsAyarConfig {
   return {
-    apiBaseUrl: String(row?.api_base_url ?? 'https://www.mesajpaketi.com').trim(),
+    apiBaseUrl: smsGatewayAdresi(row?.api_base_url),
     kullaniciAdi: String(row?.kullanici_adi ?? '').trim(),
+    bayiKodu: String(row?.bayi_kodu ?? '').trim(),
     sifre: String(row?.sifre ?? '').trim(),
     originator: String(row?.originator ?? '').trim(),
     turkceKarakter: row?.turkce_karakter !== false,
@@ -35,9 +36,12 @@ export function smsOriginatorListesi(row: SmsAyarRow | null): string[] {
 }
 
 export function smsAyarHazirMi(row: SmsAyarRow | null): boolean {
+  const ad = String(row?.kullanici_adi ?? '').trim()
+  const bayi = String(row?.bayi_kodu ?? '').trim()
   return Boolean(
     row?.aktif &&
-      String(row?.kullanici_adi ?? '').trim() &&
+      ad &&
+      (bayi || ad.includes('-')) &&
       String(row?.sifre ?? '').trim() &&
       String(row?.originator ?? '').trim(),
   )

@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-19-sms-iletimx',
+    baslik: '19 Ekim 2026 — SMS gönderim adresi',
+    maddeler: [
+      'SMS, İletimX adresine gider. Tanımlar ekranında kullanıcı adının yanına bayi kodu girilir; gönderimde ikisi kullaniciadi-bayikodu olarak birleşir.',
+      'Türkçe karakter açıksa metin buna göre gider. İletim raporu: iletildi, beklemede, zaman aşımı, iletilmedi.',
+    ],
+  },
+  {
     id: '2026-10-16-ic-kontrol-ara-asama',
     baslik: '16 Ekim 2026 — İç Kontrol rolleri ve raporlar',
     maddeler: [

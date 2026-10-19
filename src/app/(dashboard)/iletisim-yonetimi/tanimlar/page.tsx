@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { fetchSmsAyar } from '@/lib/sms-ayar'
+import { smsGatewayAdresi } from '@/lib/sms-mesajpaketi'
 import { fetchSmsSablonlari } from '@/lib/sms-sablon'
 import SmsAyarTanimClient from '@/components/iletisim/SmsAyarTanimClient'
 import SmsSablonTanimClient, { type SablonGorunum } from '@/components/iletisim/SmsSablonTanimClient'
@@ -40,7 +41,7 @@ export default async function IletisimTanimlarPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">İletişim Tanımları</h1>
         <p className="text-sm text-slate-500 mt-1">
-          SMS sağlayıcı (mesajpaketi.com) API bilgilerini buradan tanımlayın. Bilgiler yalnızca yöneticiler tarafından
+          SMS sağlayıcı bilgilerini buradan tanımlayın. Bilgiler yalnızca yöneticiler tarafından
           görüntülenip düzenlenebilir.
         </p>
       </div>
@@ -48,8 +49,9 @@ export default async function IletisimTanimlarPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         <SmsAyarTanimClient
           ayar={{
-            api_base_url: ayar?.api_base_url ?? 'https://www.mesajpaketi.com',
+            api_base_url: smsGatewayAdresi(ayar?.api_base_url),
             kullanici_adi: ayar?.kullanici_adi ?? '',
+            bayi_kodu: ayar?.bayi_kodu ?? '',
             originator: ayar?.originator ?? '',
             originator2: ayar?.originator2 ?? '',
             originator3: ayar?.originator3 ?? '',

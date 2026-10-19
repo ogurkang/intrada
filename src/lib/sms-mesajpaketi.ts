@@ -1,15 +1,26 @@
 /**
- * mesajpaketi.com SMS API entegrasyonu.
- * Doküman: https://www.mesajpaketi.com/api_dokuman.php
- *
- * Gönderim: POST {base}/api/mesaj_gonder  (form-urlencoded, data=<xml>)
- * Başarılı yanıt: "ID: 345678"  → mesajId
- * Hata: 01..10 kodları (bkz. SMS_HATA_KODLARI)
+ * İletimX SMS gateway.
+ * Örnek: docs/sms/XMLOrnek.php ve Form1.cs
+ * Adres: http://g3.iletimx.com/?anabayi=1
+ * Gövde: ham XML, Content-Type text/xml. Kullanıcı adı: kullanici-bayikodu.
+ * Tek metin Action 0, Türkçe 12. Kişisel metin Action 1, Türkçe 13.
+ * Kredi Action 4, iletim raporu Action 3 (MainReportRoot).
+ * Başarılı yanıt: "ID: 27765"
  */
+
+export const SMS_GATEWAY_ADRESI = 'http://g3.iletimx.com/?anabayi=1'
+
+/** Eski adres kayıtlıysa bu hesabın gateway kapısına çevirir. g3 olduğu gibi kalır. */
+export function smsGatewayAdresi(raw: string | null | undefined): string {
+  const s = String(raw ?? '').trim()
+  if (!s || /mesajpaketi\.com/i.test(s) || /^https?:\/\/g\.iletimx\.com/i.test(s)) return SMS_GATEWAY_ADRESI
+  return s
+}
 
 export interface SmsAyarConfig {
   apiBaseUrl: string
   kullaniciAdi: string
+  bayiKodu: string
   sifre: string
   originator: string
   turkceKarakter: boolean
@@ -24,10 +35,9 @@ export interface SmsGonderSonuc {
 }
 
 export const SMS_HATA_KODLARI: Record<string, string> = {
-  '01': 'Hatalı kullanıcı adı ya da şifre.',
-  '02': 'Numara tanımlanmamış.',
+  '01': 'Hatalı kullanıcı adı, şifre ya da bayi kodu.',
+  '02': 'Yetersiz kredi veya ödenmemiş fatura.',
   '03': 'Tanımsız action parametresi.',
-  '04': 'Yetersiz kredi.',
   '05': 'XML düğümü eksik ya da hatalı.',
   '06': 'Tanımsız originator (gönderici başlığı).',
   '07': 'Mesaj kodu (ID) yok.',
@@ -82,35 +92,64 @@ function sdateNode(sdate?: string | null): string {
   return `<SDate>${xmlEscape(String(sdate ?? '').trim())}</SDate>`
 }
 
-function singleTextXml(cfg: SmsAyarConfig, mesaj: string, numaralar: string[], sdate?: string | null): string {
-  const action = cfg.turkceKarakter ? 2 : 1
+/** Örneklerdeki kullanıcı adı: kullaniciadi-bayikodu. Bayi ayrıysa sona eklenir. */
+export function smsGatewayKullanici(cfg: SmsAyarConfig): string | null {
+  const ad = cfg.kullaniciAdi.trim()
+  const bayi = cfg.bayiKodu.trim()
+  if (!ad) return null
+  if (bayi) return ad.endsWith(`-${bayi}`) ? ad : `${ad}-${bayi}`
+  if (ad.includes('-')) return ad
+  return null
+}
+
+function cdata(v: string): string {
+  return `<![CDATA[${String(v ?? '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`
+}
+
+function mesgbody(cfg: SmsAyarConfig, mesaj: string): string {
+  return cfg.turkceKarakter ? cdata(mesaj) : xmlEscape(mesaj)
+}
+
+function singleTextXml(cfg: SmsAyarConfig, kullanici: string, mesaj: string, numaralar: string[], sdate?: string | null): string {
+  const action = cfg.turkceKarakter ? 12 : 0
   return [
-    '<SingleTextSMS>',
-    `<UserName>${xmlEscape(cfg.kullaniciAdi)}</UserName>`,
+    '<MainmsgBody>',
+    `<UserName>${xmlEscape(kullanici)}</UserName>`,
     `<PassWord>${xmlEscape(cfg.sifre)}</PassWord>`,
     `<Action>${action}</Action>`,
-    `<Mesgbody>${xmlEscape(mesaj)}</Mesgbody>`,
+    `<Mesgbody>${mesgbody(cfg, mesaj)}</Mesgbody>`,
     `<Numbers>${numaralar.join(',')}</Numbers>`,
     `<Originator>${xmlEscape(cfg.originator)}</Originator>`,
     sdateNode(sdate),
-    '</SingleTextSMS>',
+    '</MainmsgBody>',
   ].join('')
 }
 
-function multiTextXml(cfg: SmsAyarConfig, ciftler: { telefon: string; mesaj: string }[], sdate?: string | null): string {
-  const action = cfg.turkceKarakter ? 22 : 11
+function multiTextXml(cfg: SmsAyarConfig, kullanici: string, ciftler: { telefon: string; mesaj: string }[], sdate?: string | null): string {
+  const action = cfg.turkceKarakter ? 13 : 1
   const mesajlar = ciftler
-    .map(c => `<Message><Mesgbody>${xmlEscape(c.mesaj)}</Mesgbody><Number>${c.telefon}</Number></Message>`)
+    .map(c => `<Message><Mesgbody>${mesgbody(cfg, c.mesaj)}</Mesgbody><Number>${c.telefon}</Number></Message>`)
     .join('')
   return [
-    '<MultiTextSMS>',
-    `<UserName>${xmlEscape(cfg.kullaniciAdi)}</UserName>`,
+    '<MainmsgBody>',
+    `<UserName>${xmlEscape(kullanici)}</UserName>`,
     `<PassWord>${xmlEscape(cfg.sifre)}</PassWord>`,
     `<Action>${action}</Action>`,
     `<Messages>${mesajlar}</Messages>`,
     `<Originator>${xmlEscape(cfg.originator)}</Originator>`,
     sdateNode(sdate),
-    '</MultiTextSMS>',
+    '</MainmsgBody>',
+  ].join('')
+}
+
+function raporXml(kullanici: string, sifre: string, action: 3 | 4, mesajId?: string): string {
+  return [
+    '<MainReportRoot>',
+    `<UserName>${xmlEscape(kullanici)}</UserName>`,
+    `<PassWord>${xmlEscape(sifre)}</PassWord>`,
+    `<Action>${action}</Action>`,
+    mesajId ? `<MsgID>${xmlEscape(mesajId)}</MsgID>` : '',
+    '</MainReportRoot>',
   ].join('')
 }
 
@@ -128,12 +167,11 @@ function yanitYorumla(text: string): SmsGonderSonuc {
   return { ok: false, hata: ham ? `Beklenmeyen yanıt: ${ham}` : 'Sağlayıcıdan boş yanıt alındı.', ham }
 }
 
-async function xmlPost(cfg: SmsAyarConfig, path: string, xml: string): Promise<string> {
-  const base = cfg.apiBaseUrl.replace(/\/+$/, '')
-  const res = await fetch(`${base}${path}`, {
+async function xmlPost(cfg: SmsAyarConfig, xml: string): Promise<string> {
+  const res = await fetch(smsGatewayAdresi(cfg.apiBaseUrl), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(xml)}`,
+    headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+    body: xml,
     cache: 'no-store',
     signal: AbortSignal.timeout(20_000),
   })
@@ -144,6 +182,12 @@ async function xmlPost(cfg: SmsAyarConfig, path: string, xml: string): Promise<s
   return text
 }
 
+function ayarEksik(cfg: SmsAyarConfig): string | null {
+  if (!cfg.sifre.trim()) return 'SMS ayarları eksik (şifre).'
+  if (!smsGatewayKullanici(cfg)) return 'Kullanıcı adı ve bayi kodu gerekli. Biçim: kullaniciadi-bayikodu.'
+  return null
+}
+
 /** Aynı mesajı bir veya birden çok normalize edilmiş numaraya gönderir. */
 export async function smsGonderTekMetin(
   cfg: SmsAyarConfig,
@@ -151,15 +195,15 @@ export async function smsGonderTekMetin(
   numaralar: string[],
   sdate?: string | null,
 ): Promise<SmsGonderSonuc> {
-  if (!cfg.kullaniciAdi || !cfg.sifre || !cfg.originator) {
-    return { ok: false, hata: 'SMS ayarları eksik (kullanıcı adı, şifre veya originator).' }
-  }
+  const eksik = ayarEksik(cfg)
+  if (eksik) return { ok: false, hata: eksik }
+  if (!cfg.originator.trim()) return { ok: false, hata: 'Gönderici başlığı (originator) tanımlı değil.' }
   if (!mesaj.trim()) return { ok: false, hata: 'Mesaj boş olamaz.' }
   if (!numaralar.length) return { ok: false, hata: 'Geçerli alıcı numarası yok.' }
 
   try {
-    const xml = singleTextXml(cfg, mesaj, numaralar, sdate)
-    const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
+    const xml = singleTextXml(cfg, smsGatewayKullanici(cfg)!, mesaj, numaralar, sdate)
+    const text = await xmlPost(cfg, xml)
     return yanitYorumla(text)
   } catch (err) {
     return { ok: false, hata: err instanceof Error ? err.message : 'SMS gönderimi başarısız.' }
@@ -172,15 +216,15 @@ export async function smsGonderCokluMetin(
   ciftler: { telefon: string; mesaj: string }[],
   sdate?: string | null,
 ): Promise<SmsGonderSonuc> {
-  if (!cfg.kullaniciAdi || !cfg.sifre || !cfg.originator) {
-    return { ok: false, hata: 'SMS ayarları eksik (kullanıcı adı, şifre veya originator).' }
-  }
+  const eksik = ayarEksik(cfg)
+  if (eksik) return { ok: false, hata: eksik }
+  if (!cfg.originator.trim()) return { ok: false, hata: 'Gönderici başlığı (originator) tanımlı değil.' }
   const gecerli = ciftler.filter(c => c.telefon && c.mesaj.trim())
   if (!gecerli.length) return { ok: false, hata: 'Geçerli alıcı/mesaj yok.' }
 
   try {
-    const xml = multiTextXml(cfg, gecerli, sdate)
-    const text = await xmlPost(cfg, '/api/mesaj_gonder', xml)
+    const xml = multiTextXml(cfg, smsGatewayKullanici(cfg)!, gecerli, sdate)
+    const text = await xmlPost(cfg, xml)
     return yanitYorumla(text)
   } catch (err) {
     return { ok: false, hata: err instanceof Error ? err.message : 'SMS gönderimi başarısız.' }
@@ -195,8 +239,8 @@ export interface SmsKrediSonuc {
 
 export interface SmsMesajDurumSonuc {
   ok: boolean
-  /** 0 beklemede, 1 iletildi, 2 başarısız */
-  durumKodu?: '0' | '1' | '2'
+  /** 1 iletildi, 2 beklemede, 3 zaman aşımı, 4 iletilmedi. 0 eski yanıtlar için beklemede. */
+  durumKodu?: '0' | '1' | '2' | '3' | '4'
   telefon?: string
   hata?: string
   ham?: string
@@ -242,76 +286,71 @@ export function planliGonderimSDate(
   return { sdate, aninda: false, planlananAt: sdateToPlanlananAt(sdate) }
 }
 
-/** mesaj_raporu yanıtını yorumlar (düz metin veya XML). */
-function mesajRaporuYorumla(text: string): Pick<SmsMesajDurumSonuc, 'telefon' | 'durumKodu'> | null {
-  const ham = String(text ?? '').trim()
+type RaporSatiri = { telefon: string; durumKodu: '0' | '1' | '2' | '3' | '4' }
 
-  // XML: <TextRapor><MessageNo>5462863030-0</MessageNo></TextRapor>
-  const xmlMatch = ham.match(/<MessageNo>\s*([^<]+?)\s*<\/MessageNo>/i)
-  const payload = xmlMatch ? xmlMatch[1].trim() : ham
-
-  const parca = payload.split('-')
-  if (parca.length < 2) return null
-
-  const durumRaw = parca[parca.length - 1]?.trim()
-  if (durumRaw !== '0' && durumRaw !== '1' && durumRaw !== '2') return null
-
-  const telefon = parca.slice(0, -1).join('-').trim()
-  return { telefon, durumKodu: durumRaw }
+function sonOnHane(tel: string): string {
+  const n = String(tel ?? '').replace(/\D+/g, '')
+  return n.length >= 10 ? n.slice(-10) : n
 }
 
-/** Sağlayıcı mesaj ID ile iletim durumu sorgular. */
+/** Gateway raporu: her satır "905321234567 1". 1 iletildi, 2 beklemede, 3 zaman aşımı, 4 iletilmedi. */
+function mesajRaporuYorumla(text: string, telefon?: string): RaporSatiri | null {
+  const ham = String(text ?? '').trim()
+  const satirlar: RaporSatiri[] = []
+  for (const satir of ham.split(/\r?\n/)) {
+    const m = satir.trim().match(/^(\d{10,12})[\s\-]+([0-4])$/)
+    if (!m) continue
+    satirlar.push({ telefon: m[1], durumKodu: m[2] as RaporSatiri['durumKodu'] })
+  }
+  if (!satirlar.length) return null
+  if (satirlar.length === 1) return satirlar[0]
+  const hedef = sonOnHane(telefon ?? '')
+  if (hedef) {
+    const bulunan = satirlar.find(s => sonOnHane(s.telefon) === hedef)
+    if (bulunan) return bulunan
+  }
+  return null
+}
+
+function hataKoduMu(text: string): string | null {
+  return text.trim().match(/^(0[1-9]|10)$/)?.[1] ?? null
+}
+
+/** Sağlayıcı mesaj ID ile iletim durumu sorgular. telefon, pakette birden fazla numara varsa doğru satırı seçer. */
 export async function smsMesajDurumSorgula(
   cfg: SmsAyarConfig,
   mesajId: string,
+  telefon?: string,
 ): Promise<SmsMesajDurumSonuc> {
-  if (!cfg.kullaniciAdi || !cfg.sifre) {
-    return { ok: false, hata: 'SMS ayarları eksik.' }
-  }
+  const eksik = ayarEksik(cfg)
+  if (eksik) return { ok: false, hata: eksik }
   const id = String(mesajId ?? '').trim()
   if (!id) return { ok: false, hata: 'Mesaj ID yok.' }
 
   try {
-    const base = cfg.apiBaseUrl.replace(/\/+$/, '')
-    const url = `${base}/api/mesaj_raporu?UserName=${encodeURIComponent(cfg.kullaniciAdi)}&PassWord=${encodeURIComponent(cfg.sifre)}&MsgId=${encodeURIComponent(id)}`
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
-    const text = (await res.text()).trim()
-    if (!res.ok) return { ok: false, hata: `Sağlayıcı HTTP ${res.status}`, ham: text }
+    const text = (await xmlPost(cfg, raporXml(smsGatewayKullanici(cfg)!, cfg.sifre, 3, id))).trim()
+    const kod = hataKoduMu(text)
+    if (kod) return { ok: false, hata: SMS_HATA_KODLARI[kod] ?? `Hata kodu: ${kod}`, ham: text }
 
-    const hataKodu = text.match(/^\s*(0[1-9]|10)\s*$/)
-    if (hataKodu) {
-      const kod = hataKodu[1]
-      return { ok: false, hata: SMS_HATA_KODLARI[kod] ?? `Hata kodu: ${kod}`, ham: text }
-    }
-
-    const rapor = mesajRaporuYorumla(text)
-    if (rapor) {
-      return { ok: true, telefon: rapor.telefon, durumKodu: rapor.durumKodu, ham: text }
-    }
-
+    const rapor = mesajRaporuYorumla(text, telefon)
+    if (rapor) return { ok: true, telefon: rapor.telefon, durumKodu: rapor.durumKodu, ham: text }
     return { ok: false, hata: `Beklenmeyen yanıt: ${text}`, ham: text }
   } catch (err) {
     return { ok: false, hata: err instanceof Error ? err.message : 'Durum sorgulanamadı.' }
   }
 }
 
-/** Kalan SMS kredisini sorgular. */
+/** Kalan SMS kredisini sorgular. İlk satır kontör, sonrakiler originator başlıklarıdır. */
 export async function smsKrediSorgula(cfg: SmsAyarConfig): Promise<SmsKrediSonuc> {
-  if (!cfg.kullaniciAdi || !cfg.sifre) {
-    return { ok: false, hata: 'Kullanıcı adı veya şifre tanımlı değil.' }
-  }
+  const eksik = ayarEksik(cfg)
+  if (eksik) return { ok: false, hata: eksik }
   try {
-    const base = cfg.apiBaseUrl.replace(/\/+$/, '')
-    const url = `${base}/api/kredi_raporu?UserName=${encodeURIComponent(cfg.kullaniciAdi)}&PassWord=${encodeURIComponent(cfg.sifre)}`
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
-    const text = (await res.text()).trim()
-    if (!res.ok) return { ok: false, hata: `Sağlayıcı HTTP ${res.status}` }
-    const hataKodu = text.match(/^\s*(0[1-9]|10)\s*$/)
-    if (hataKodu) {
-      const kod = hataKodu[1]
-      return { ok: false, hata: SMS_HATA_KODLARI[kod] ?? `Hata kodu: ${kod}` }
-    }
-    return { ok: true, kredi: text }
+    const text = (await xmlPost(cfg, raporXml(smsGatewayKullanici(cfg)!, cfg.sifre, 4))).trim()
+    const kod = hataKoduMu(text)
+    if (kod) return { ok: false, hata: SMS_HATA_KODLARI[kod] ?? `Hata kodu: ${kod}` }
+    const kredi = text.split(/\r?\n/).map(s => s.trim()).find(Boolean) ?? ''
+    if (!kredi) return { ok: false, hata: 'Sağlayıcıdan boş yanıt alındı.' }
+    return { ok: true, kredi }
   } catch (err) {
     return { ok: false, hata: err instanceof Error ? err.message : 'Kredi sorgulanamadı.' }
   }

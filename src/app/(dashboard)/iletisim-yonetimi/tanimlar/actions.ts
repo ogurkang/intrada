@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 import { fetchSmsAyar, smsAyarToConfig } from '@/lib/sms-ayar'
+import { SMS_GATEWAY_ADRESI } from '@/lib/sms-mesajpaketi'
 import { smsKrediSorgula } from '@/lib/sms-mesajpaketi'
 import {
   writePersonelAuditLogSafe,
@@ -17,6 +18,7 @@ const SAYFA = '/iletisim-yonetimi/tanimlar'
 const SMS_AYAR_ALAN_ETIKETLERI: Record<string, string> = {
   api_base_url: 'API Adresi',
   kullanici_adi: 'Kullanıcı Adı',
+  bayi_kodu: 'Bayi Kodu',
   originator: 'Gönderici Başlığı 1',
   originator2: 'Gönderici Başlığı 2',
   originator3: 'Gönderici Başlığı 3',
@@ -40,8 +42,9 @@ export async function smsAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?:
   const supabase = await createClient()
   const onceki = await fetchSmsAyar(supabase)
 
-  const api_base_url = str(fd, 'api_base_url') || 'https://www.mesajpaketi.com'
+  const api_base_url = str(fd, 'api_base_url') || SMS_GATEWAY_ADRESI
   const kullanici_adi = str(fd, 'kullanici_adi') || null
+  const bayi_kodu = str(fd, 'bayi_kodu') || null
   const originator = str(fd, 'originator') || null
   const originator2 = str(fd, 'originator2') || null
   const originator3 = str(fd, 'originator3') || null
@@ -57,6 +60,7 @@ export async function smsAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?:
     .update({
       api_base_url,
       kullanici_adi,
+      bayi_kodu,
       sifre,
       originator,
       originator2,
@@ -73,6 +77,7 @@ export async function smsAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?:
   const oncekiSnap = {
     api_base_url: onceki?.api_base_url ?? '',
     kullanici_adi: onceki?.kullanici_adi ?? '',
+    bayi_kodu: onceki?.bayi_kodu ?? '',
     originator: onceki?.originator ?? '',
     originator2: onceki?.originator2 ?? '',
     originator3: onceki?.originator3 ?? '',
@@ -82,6 +87,7 @@ export async function smsAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?:
   const sonrakiSnap = {
     api_base_url,
     kullanici_adi: kullanici_adi ?? '',
+    bayi_kodu: bayi_kodu ?? '',
     originator: originator ?? '',
     originator2: originator2 ?? '',
     originator3: originator3 ?? '',

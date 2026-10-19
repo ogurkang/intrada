@@ -148,6 +148,7 @@ export interface Database {
           saglayici: string
           api_base_url: string
           kullanici_adi: string | null
+          bayi_kodu: string | null
           sifre: string | null
           originator: string | null
           originator2: string | null
@@ -161,6 +162,7 @@ export interface Database {
           saglayici?: string
           api_base_url?: string
           kullanici_adi?: string | null
+          bayi_kodu?: string | null
           sifre?: string | null
           originator?: string | null
           originator2?: string | null
@@ -174,6 +176,7 @@ export interface Database {
           saglayici?: string
           api_base_url?: string
           kullanici_adi?: string | null
+          bayi_kodu?: string | null
           sifre?: string | null
           originator?: string | null
           originator2?: string | null

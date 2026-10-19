@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 export interface SmsAyarGorunum {
   api_base_url: string
   kullanici_adi: string
+  bayi_kodu: string
   originator: string
   originator2: string
   originator3: string
@@ -58,9 +59,9 @@ export default function SmsAyarTanimClient({ ayar, onKaydet, onKrediSorgula }: P
     <div>
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">SMS Sağlayıcı (mesajpaketi.com)</h2>
+          <h2 className="text-sm font-semibold text-slate-800">SMS Sağlayıcı</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Kullanıcı adı genellikle hesabınıza tanımlı GSM numarasıdır. Şifre alanı boş bırakılırsa mevcut şifre korunur.
+            Kullanıcı adı ve bayi kodu gönderimde kullaniciadi-bayikodu olarak birleşir. Şifre alanı boş bırakılırsa mevcut şifre korunur.
           </p>
         </div>
 
@@ -69,19 +70,29 @@ export default function SmsAyarTanimClient({ ayar, onKaydet, onKrediSorgula }: P
           <input
             name="api_base_url"
             defaultValue={ayar.api_base_url}
-            placeholder="https://www.mesajpaketi.com"
+            placeholder="http://g3.iletimx.com/?anabayi=1"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kullanıcı Adı (GSM)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kullanıcı Adı</label>
             <input
               name="kullanici_adi"
               defaultValue={ayar.kullanici_adi}
               autoComplete="off"
-              placeholder="5XXXXXXXXX"
+              placeholder="kullaniciadi"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Bayi Kodu</label>
+            <input
+              name="bayi_kodu"
+              defaultValue={ayar.bayi_kodu}
+              autoComplete="off"
+              placeholder="bayikodu"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
             />
           </div>
