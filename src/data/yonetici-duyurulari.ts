@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-19-eposta-gonderilmis',
+    baslik: '19 Ekim 2026 — Gönderilmiş kutusu ve alıcı',
+    maddeler: [
+      'Gönderilen mektubun kopyası Gönderilmiş klasörüne de yazılır. Daha önce giden mektuplar bu kutuda görünmez; bundan sonraki gönderimler görünür.',
+      'Yeni mektup ve iletmede Kime, Bilgi veya Gizli alanına personelin adı yazılırsa mektup sistemdeki e-posta adresine gider. Yazarken eşleşen kişiler listelenir.',
+    ],
+  },
+  {
     id: '2026-10-19-eposta-dosya-sec',
     baslik: '19 Ekim 2026 — E-posta eki',
     maddeler: [

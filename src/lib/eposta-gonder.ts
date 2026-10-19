@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer'
+import MailComposer from 'nodemailer/lib/mail-composer'
 import type { EpostaAyarRow } from '@/lib/eposta-ayar'
 import { EPOSTA_VARSAYILAN } from '@/lib/eposta-ayar'
+import { epostaGonderileneEkle } from '@/lib/eposta-kutu'
 
 const ADRES = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -35,7 +37,7 @@ export async function epostaGonder(input: {
   ekler: { ad: string; icerik: Buffer }[]
   inReplyTo?: string
   references?: string
-}): Promise<{ ok?: true; hata?: string }> {
+}): Promise<{ ok?: true; hata?: string; uyari?: string }> {
   const adres = String(input.ayar.adres || EPOSTA_VARSAYILAN.adres).trim()
   const gorunen = String(input.ayar.gorunen_ad || EPOSTA_VARSAYILAN.gorunenAd).trim()
   const transporter = nodemailer.createTransport({
@@ -46,24 +48,35 @@ export async function epostaGonder(input: {
     connectionTimeout: 20_000,
     greetingTimeout: 20_000,
   })
+  const mektup = {
+    from: { name: gorunen, address: adres },
+    to: input.kime,
+    cc: input.bilgi.length ? input.bilgi : undefined,
+    bcc: input.gizli.length ? input.gizli : undefined,
+    subject: input.konu,
+    text: input.metin,
+    html: `<div style="font-family:Calibri,Arial,sans-serif;font-size:14px;color:#1e293b">${metinHtml(input.metin)}</div>`,
+    attachments: input.ekler.map(e => ({ filename: e.ad, content: e.icerik })),
+    inReplyTo: input.inReplyTo || undefined,
+    references: input.references || undefined,
+  }
   try {
-    await transporter.sendMail({
-      from: { name: gorunen, address: adres },
-      to: input.kime,
-      cc: input.bilgi.length ? input.bilgi : undefined,
-      bcc: input.gizli.length ? input.gizli : undefined,
-      subject: input.konu,
-      text: input.metin,
-      html: `<div style="font-family:Calibri,Arial,sans-serif;font-size:14px;color:#1e293b">${metinHtml(input.metin)}</div>`,
-      attachments: input.ekler.map(e => ({ filename: e.ad, content: e.icerik })),
-      inReplyTo: input.inReplyTo || undefined,
-      references: input.references || undefined,
-    })
-    return { ok: true }
+    await transporter.sendMail(mektup)
   } catch (err) {
     const mesaj = err instanceof Error ? err.message : 'E-posta gönderilemedi.'
     if (/auth|invalid credentials|authentication/i.test(mesaj)) return { hata: 'Kullanıcı adı veya şifre kabul edilmedi.' }
     if (/timeout|ETIMEDOUT|ENOTFOUND|ECONNREFUSED/i.test(mesaj)) return { hata: 'Giden posta sunucusuna ulaşılamadı.' }
     return { hata: mesaj }
   }
+
+  try {
+    const derlenmis = new MailComposer(mektup).compile()
+    derlenmis.keepBcc = true
+    const ham = await derlenmis.build()
+    const kopya = await epostaGonderileneEkle(input.ayar, ham)
+    if (kopya.hata) return { ok: true, uyari: `Mektup iletildi. Gönderilmiş kutusuna yazılamadı: ${kopya.hata}` }
+  } catch {
+    return { ok: true, uyari: 'Mektup iletildi. Gönderilmiş kutusuna kopyası yazılamadı.' }
+  }
+  return { ok: true }
 }

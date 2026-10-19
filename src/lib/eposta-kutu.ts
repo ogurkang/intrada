@@ -44,7 +44,7 @@ function klasorSec(kutular: { path: string; specialUse?: string; name?: string }
   if (hazir) return hazir.path
   const adlar =
     kutu === 'giden'
-      ? ['sent', 'sent items', 'sent messages', 'gönderilmiş', 'gonderilmis', 'gönderilen', 'gönderilmiş öğeler', 'gonderilmis ogeler']
+      ? ['sent', 'sent items', 'sent messages', 'sent mail', 'gönderilmiş', 'gonderilmis', 'gönderilen', 'gönderilenler', 'gonderilenler', 'gönderilmiş öğeler', 'gonderilmis ogeler']
       : ['spam', 'junk', 'junk e-mail', 'junk email', 'gereksiz', 'istenmeyen', 'bulk mail']
   const bulunan = kutular.find(k => adlar.includes(klasorAdi(k.path)) || adlar.includes(String(k.name ?? '').toLocaleLowerCase('tr-TR')))
   return bulunan?.path ?? null
@@ -77,6 +77,25 @@ function tarihYazi(d: Date | string | undefined): string {
   const tarih = d instanceof Date ? d : new Date(d)
   if (Number.isNaN(tarih.getTime())) return ''
   return tarih.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+/** SMTP kopya bırakmaz. İletilen mektubun ham halini Gönderilmiş klasörüne yazar. */
+export async function epostaGonderileneEkle(row: EpostaAyarRow, ham: Buffer): Promise<{ ok?: true; hata?: string }> {
+  try {
+    return await baglan(row, async client => {
+      const kutular = await client.list()
+      let yol = klasorSec(kutular, 'giden')
+      if (!yol) {
+        const olusan = await client.mailboxCreate('Sent')
+        yol = olusan.path || 'Sent'
+      }
+      const sonuc = await client.append(yol, ham, ['\\Seen'], new Date())
+      if (sonuc === false) return { hata: 'Sunucu kopyayı kabul etmedi.' }
+      return { ok: true }
+    })
+  } catch (err) {
+    return { hata: hataMetni(err) }
+  }
 }
 
 export async function epostaKlasorListele(row: EpostaAyarRow, kutu: EpostaKutu): Promise<{ satirlar: EpostaOzet[]; hata?: string; klasorYok?: boolean }> {

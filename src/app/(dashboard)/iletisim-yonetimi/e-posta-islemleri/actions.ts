@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { epostaAyarHazirMi, fetchEpostaAyar } from '@/lib/eposta-ayar'
 import { epostaImzaOlustur } from '@/lib/eposta-imza'
-import { epostaAdresleri, epostaGonder } from '@/lib/eposta-gonder'
+import { epostaGonder } from '@/lib/eposta-gonder'
+import { epostaAlicilariCoz, epostaKisiAra, type EpostaKisi } from '@/lib/eposta-alici'
 import { epostaKlasorListele, epostaMesajOku } from '@/lib/eposta-kutu'
 import type { EpostaKutu, EpostaMesaj, EpostaOzet } from '@/lib/eposta-tipler'
 import { EPOSTA_EK_LIMIT_BAYT, EPOSTA_EK_LIMIT_YAZI, epostaBoyutYazi } from '@/lib/eposta-limit'
@@ -40,16 +41,16 @@ export async function epostaOkuAction(kutu: string, uid: string): Promise<{ mesa
   return epostaMesajOku(g.ayar, kutu, uid)
 }
 
-export async function epostaGonderAction(fd: FormData): Promise<{ ok?: true; hata?: string }> {
+export async function epostaGonderAction(fd: FormData): Promise<{ ok?: true; hata?: string; uyari?: string }> {
   const g = await yetki()
   if ('hata' in g) return { hata: g.hata }
 
-  const kime = epostaAdresleri(String(fd.get('kime') ?? ''))
+  const kime = await epostaAlicilariCoz(g.supabase, String(fd.get('kime') ?? ''))
   if (kime.hata) return { hata: kime.hata }
   if (!kime.adresler.length) return { hata: 'En az bir alıcı yazın.' }
-  const bilgi = epostaAdresleri(String(fd.get('bilgi') ?? ''))
+  const bilgi = await epostaAlicilariCoz(g.supabase, String(fd.get('bilgi') ?? ''))
   if (bilgi.hata) return { hata: bilgi.hata }
-  const gizli = epostaAdresleri(String(fd.get('gizli') ?? ''))
+  const gizli = await epostaAlicilariCoz(g.supabase, String(fd.get('gizli') ?? ''))
   if (gizli.hata) return { hata: gizli.hata }
 
   const konu = String(fd.get('konu') ?? '').trim()
@@ -93,6 +94,12 @@ export async function epostaGonderAction(fd: FormData): Promise<{ ok?: true; hat
   } finally {
     if (yollar.length) await g.supabase.storage.from('eposta-ek').remove(yollar)
   }
+}
+
+export async function epostaKisiAraAction(sorgu: string): Promise<{ kisiler: EpostaKisi[] }> {
+  const g = await yetki()
+  if ('hata' in g) return { kisiler: [] }
+  return { kisiler: await epostaKisiAra(g.supabase, sorgu) }
 }
 
 export async function epostaEkAdresiAction(

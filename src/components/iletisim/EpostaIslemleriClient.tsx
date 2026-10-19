@@ -2,10 +2,71 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { epostaEkAdresiAction, epostaGonderAction, epostaListeAction, epostaOkuAction } from '@/app/(dashboard)/iletisim-yonetimi/e-posta-islemleri/actions'
+import { epostaEkAdresiAction, epostaGonderAction, epostaKisiAraAction, epostaListeAction, epostaOkuAction } from '@/app/(dashboard)/iletisim-yonetimi/e-posta-islemleri/actions'
 import { createClient } from '@/lib/supabase/client'
 import type { EpostaKutu, EpostaMesaj, EpostaOzet } from '@/lib/eposta-tipler'
 import { EPOSTA_EK_LIMIT_BAYT, EPOSTA_EK_LIMIT_YAZI, epostaBoyutYazi } from '@/lib/eposta-limit'
+
+function AliciKutusu({
+  etiket,
+  value,
+  onChange,
+  placeholder,
+}: {
+  etiket: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  const [oneriler, setOneriler] = useState<{ ad: string; eposta: string }[]>([])
+  const parca = value.split(/[;,\n]/).pop()?.trim() ?? ''
+
+  useEffect(() => {
+    if (parca.length < 2 || parca.includes('@')) {
+      setOneriler([])
+      return
+    }
+    const zaman = setTimeout(() => {
+      void epostaKisiAraAction(parca).then(res => setOneriler(res.kisiler))
+    }, 250)
+    return () => clearTimeout(zaman)
+  }, [parca])
+
+  function sec(kisi: { ad: string; eposta: string }) {
+    const oncekiler = value
+      .split(/[;,\n]/)
+      .slice(0, -1)
+      .map(s => s.trim())
+      .filter(Boolean)
+    onChange([...oncekiler, `${kisi.ad} <${kisi.eposta}>`].join(', ') + ', ')
+    setOneriler([])
+  }
+
+  return (
+    <label className="relative block text-sm">
+      <span className="text-slate-600">{etiket}</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+        autoComplete="off"
+      />
+      {oneriler.length > 0 && (
+        <ul className="absolute z-10 left-0 right-0 mt-1 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          {oneriler.map(kisi => (
+            <li key={kisi.eposta}>
+              <button type="button" onClick={() => sec(kisi)} className="w-full px-3 py-2 text-left hover:bg-slate-50">
+                <span className="block text-sm text-slate-800">{kisi.ad}</span>
+                <span className="block text-xs text-slate-500">{kisi.eposta}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </label>
+  )
+}
 
 const KUTULAR: { id: EpostaKutu; ad: string }[] = [
   { id: 'gelen', ad: 'Gelen' },
@@ -164,7 +225,7 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
         setGonderHata(res.hata)
         return
       }
-      setGonderOk('Mektup gönderildi.')
+      setGonderOk(res.uyari ?? 'Mektup gönderildi.')
       setYaz(null)
       if (kutu === 'giden') listeyiYukle('giden')
     })
@@ -243,19 +304,15 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
               <h2 className="text-base font-semibold text-slate-800">
                 {yaz === 'yeni' ? 'Yeni e-posta' : yaz === 'yanit' ? 'Yanıtla' : 'İlet'}
               </h2>
-              <label className="block text-sm">
-                <span className="text-slate-600">Kime</span>
-                <input value={kime} onChange={e => setKime(e.target.value)} placeholder="birden fazla adres için virgül kullanın" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-              </label>
+              <AliciKutusu
+                etiket="Kime"
+                value={kime}
+                onChange={setKime}
+                placeholder="personel adı veya e-posta; birden fazlaysa virgül"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="block text-sm">
-                  <span className="text-slate-600">Bilgi</span>
-                  <input value={bilgi} onChange={e => setBilgi(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-                </label>
-                <label className="block text-sm">
-                  <span className="text-slate-600">Gizli</span>
-                  <input value={gizli} onChange={e => setGizli(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-                </label>
+                <AliciKutusu etiket="Bilgi" value={bilgi} onChange={setBilgi} placeholder="ad veya e-posta" />
+                <AliciKutusu etiket="Gizli" value={gizli} onChange={setGizli} placeholder="ad veya e-posta" />
               </div>
               <label className="block text-sm">
                 <span className="text-slate-600">Konu</span>
