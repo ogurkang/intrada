@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 import { fetchSmsAyar, smsAyarToConfig } from '@/lib/sms-ayar'
+import { EPOSTA_VARSAYILAN, fetchEpostaAyar } from '@/lib/eposta-ayar'
 import { SMS_GATEWAY_ADRESI } from '@/lib/sms-mesajpaketi'
 import { smsKrediSorgula } from '@/lib/sms-mesajpaketi'
 import {
@@ -116,6 +117,59 @@ export async function smsAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?:
 
   revalidatePath(SAYFA)
   revalidatePath('/iletisim-yonetimi/sms-islemleri')
+  return { ok: true }
+}
+
+export async function epostaAyarKaydet(fd: FormData): Promise<{ hata?: string; ok?: boolean }> {
+  const g = await requireTanimlarYazma()
+  if (!g.ok) return { hata: g.hata }
+
+  const supabase = await createClient()
+  const onceki = await fetchEpostaAyar(supabase)
+  const adres = str(fd, 'adres') || EPOSTA_VARSAYILAN.adres
+  const gorunen_ad = str(fd, 'gorunen_ad') || EPOSTA_VARSAYILAN.gorunenAd
+  const imap_host = str(fd, 'imap_host') || EPOSTA_VARSAYILAN.imapHost
+  const smtp_host = str(fd, 'smtp_host') || EPOSTA_VARSAYILAN.smtpHost
+  const imap_port = Number(str(fd, 'imap_port')) || EPOSTA_VARSAYILAN.imapPort
+  const smtp_port = Number(str(fd, 'smtp_port')) || EPOSTA_VARSAYILAN.smtpPort
+  const imza_metin = String(fd.get('imza_metin') ?? '')
+  const aktif = boolVal(fd, 'aktif')
+  const sifreGirilen = str(fd, 'sifre')
+  const sifre = sifreGirilen || onceki?.sifre || null
+
+  const { error } = await supabase
+    .from('iletisim_eposta_ayar')
+    .upsert(
+      {
+        id: 1,
+        adres,
+        gorunen_ad,
+        imap_host,
+        imap_port,
+        smtp_host,
+        smtp_port,
+        imza_metin,
+        aktif,
+        sifre,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    )
+  if (error) return { hata: error.message }
+
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: null,
+    modul: 'iletisim_eposta',
+    islem: 'Ayar Güncelle',
+    ozet: sifreGirilen ? 'E-posta ayarları güncellendi; şifre güncellendi' : 'E-posta ayarları güncellendi',
+    ref_table: 'iletisim_eposta_ayar',
+    ref_id: '1',
+    onceki: null,
+    sonraki: null,
+  })
+
+  revalidatePath(SAYFA)
+  revalidatePath('/iletisim-yonetimi/e-posta-islemleri')
   return { ok: true }
 }
 

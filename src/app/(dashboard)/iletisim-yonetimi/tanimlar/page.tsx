@@ -7,7 +7,9 @@ import { smsGatewayAdresi } from '@/lib/sms-mesajpaketi'
 import { fetchSmsSablonlari } from '@/lib/sms-sablon'
 import SmsAyarTanimClient from '@/components/iletisim/SmsAyarTanimClient'
 import SmsSablonTanimClient, { type SablonGorunum } from '@/components/iletisim/SmsSablonTanimClient'
-import { smsAyarKaydet, smsKrediSorgulaAction, sablonKaydet, sablonSil } from './actions'
+import EpostaAyarTanimClient from '@/components/iletisim/EpostaAyarTanimClient'
+import { EPOSTA_VARSAYILAN, fetchEpostaAyar } from '@/lib/eposta-ayar'
+import { epostaAyarKaydet, smsAyarKaydet, smsKrediSorgulaAction, sablonKaydet, sablonSil } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +21,11 @@ export default async function IletisimTanimlarPage() {
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
   if (!isAdminLike(access)) notFound()
 
-  const [ayar, sablonlar] = await Promise.all([fetchSmsAyar(supabase), fetchSmsSablonlari(supabase)])
+  const [ayar, sablonlar, eposta] = await Promise.all([
+    fetchSmsAyar(supabase),
+    fetchSmsSablonlari(supabase),
+    fetchEpostaAyar(supabase),
+  ])
   const sablonGorunum: SablonGorunum[] = sablonlar.map(s => ({
     id: s.id,
     tur: s.tur,
@@ -41,7 +47,7 @@ export default async function IletisimTanimlarPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">İletişim Tanımları</h1>
         <p className="text-sm text-slate-500 mt-1">
-          SMS sağlayıcı bilgilerini buradan tanımlayın. Bilgiler yalnızca yöneticiler tarafından
+          SMS ve e-posta bilgilerini buradan tanımlayın. Bilgiler yalnızca yöneticiler tarafından
           görüntülenip düzenlenebilir.
         </p>
       </div>
@@ -64,6 +70,23 @@ export default async function IletisimTanimlarPage() {
         />
 
         <SmsSablonTanimClient sablonlar={sablonGorunum} onKaydet={sablonKaydet} onSil={sablonSil} />
+      </div>
+
+      <div className="mt-6">
+        <EpostaAyarTanimClient
+          ayar={{
+            adres: eposta?.adres || EPOSTA_VARSAYILAN.adres,
+            gorunen_ad: eposta?.gorunen_ad || EPOSTA_VARSAYILAN.gorunenAd,
+            imap_host: eposta?.imap_host || EPOSTA_VARSAYILAN.imapHost,
+            imap_port: eposta?.imap_port || EPOSTA_VARSAYILAN.imapPort,
+            smtp_host: eposta?.smtp_host || EPOSTA_VARSAYILAN.smtpHost,
+            smtp_port: eposta?.smtp_port || EPOSTA_VARSAYILAN.smtpPort,
+            imza_metin: eposta?.imza_metin ?? '',
+            aktif: eposta?.aktif ?? false,
+            sifre_var: Boolean(eposta?.sifre),
+          }}
+          onKaydet={epostaAyarKaydet}
+        />
       </div>
     </div>
   )

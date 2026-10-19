@@ -187,6 +187,48 @@ export interface Database {
         }
         Relationships: []
       }
+      iletisim_eposta_ayar: {
+        Row: {
+          id: number
+          adres: string
+          gorunen_ad: string
+          imap_host: string
+          imap_port: number
+          smtp_host: string
+          smtp_port: number
+          sifre: string | null
+          imza_metin: string
+          aktif: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          adres?: string
+          gorunen_ad?: string
+          imap_host?: string
+          imap_port?: number
+          smtp_host?: string
+          smtp_port?: number
+          sifre?: string | null
+          imza_metin?: string
+          aktif?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          adres?: string
+          gorunen_ad?: string
+          imap_host?: string
+          imap_port?: number
+          smtp_host?: string
+          smtp_port?: number
+          sifre?: string | null
+          imza_metin?: string
+          aktif?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       iletisim_sms_sablon: {
         Row: {
           id: number

@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-19-eposta-kutusu',
+    baslik: '19 Ekim 2026 — E-posta kutusu',
+    maddeler: [
+      'İletişim Yönetimi › E-posta İşlemleri gelen, gönderilmiş ve spam kutularını açar. Yeni mektup tek kişiye veya virgülle ayrılmış birden çok kişiye gider. Yanıtla ve ilet vardır. Ek, belge yüklemesindeki gibi doğrudan depoya gider; sınır 20 MB ve gönderim kutusunda yazılır.',
+      'Görünen ad Adapazarı Belediyesi İnsan Kaynakları ve Eğitim Müdürlüğüdür. Mektubun altında gönderen personelin ad soyadı, müdürlüğü ve görev unvanı durur. Vekil olarak müdür unvanı varsa imzada o unvan yer alır. Tanımlar’daki E-posta imzası bu bilgilerin altında durur. Şifre Tanımlar ekranına yazılır.',
+    ],
+  },
+  {
     id: '2026-10-19-sms-iletimx',
     baslik: '19 Ekim 2026 — SMS gönderim adresi',
     maddeler: [
