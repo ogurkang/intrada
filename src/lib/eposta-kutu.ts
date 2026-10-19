@@ -76,7 +76,7 @@ function tarihYazi(d: Date | string | undefined): string {
   if (!d) return ''
   const tarih = d instanceof Date ? d : new Date(d)
   if (Number.isNaN(tarih.getTime())) return ''
-  return tarih.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+  return tarih.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })
 }
 
 /** SMTP kopya bırakmaz. İletilen mektubun ham halini Gönderilmiş klasörüne yazar. */

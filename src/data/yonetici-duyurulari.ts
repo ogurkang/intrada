@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-19-eposta-saat',
+    baslik: '19 Ekim 2026 — E-posta saati',
+    maddeler: [
+      'E-posta listesindeki saat Türkiye saatine göre görünür. Eski mektuplar da ekranda gerçek saate döner; kayıtların içindeki an değişmez.',
+    ],
+  },
+  {
     id: '2026-10-19-eposta-gonderilmis',
     baslik: '19 Ekim 2026 — Gönderilmiş kutusu ve alıcı',
     maddeler: [
