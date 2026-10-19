@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-19-eposta-dosya-sec',
+    baslik: '19 Ekim 2026 — E-posta eki',
+    maddeler: [
+      'E-posta yazarken Dosya seç düğmesinin çerçevesi ve zemini var; ek seçmek daha belirgin.',
+    ],
+  },
+  {
     id: '2026-10-19-eposta-kutusu',
     baslik: '19 Ekim 2026 — E-posta kutusu',
     maddeler: [

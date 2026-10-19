@@ -271,7 +271,7 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
                   type="file"
                   multiple
                   onChange={e => setEkler(Array.from(e.target.files ?? []))}
-                  className="block w-full text-sm text-slate-600"
+                  className="block w-full cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-blue-800 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
                 />
                 <p className={`mt-1 text-xs ${ekAsildi ? 'text-red-600 font-medium' : 'text-slate-500'}`}>
                   Ek sınırı {EPOSTA_EK_LIMIT_YAZI}. Seçilen: {epostaBoyutYazi(ekToplam)}.
