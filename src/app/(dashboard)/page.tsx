@@ -6,7 +6,8 @@ import { getGelistirmelerCount } from '@/lib/gelistirmeler-server'
 import { getAppAccess } from '@/lib/app-access'
 import { dashboardStatuSayilariHesapla, dashboardKadroSatirlariYukle } from '@/lib/dashboard-statu-sayilari'
 import { fetchAllIzinHareketleriByYil } from '@/lib/izin-hareketleri-load'
-import { fetchAllPaged } from '@/lib/supabase-sayfala'
+import { fetchAllFirmaCalisanlar, fetchAllPaged } from '@/lib/supabase-sayfala'
+import { isFirmaCalisanAktif } from '@/lib/firma-calisan-durum'
 import { izinDurumDegistir } from './izin/actions'
 import { izinHakkiAuditRefId } from '@/lib/izin-hakki-audit'
 import { personelAktifMi, sonAyrilisHaritasiOlustur } from '@/lib/personel-ayrilis'
@@ -17,7 +18,7 @@ import {
   type IzinHakKural,
 } from '@/lib/izin-hakki-artis'
 import type {
-  KadroDoluluk, IzinIstatistik, BekleyenIzin,
+  IzinIstatistik, BekleyenIzin,
   YaklaşanTatil, IzindekiPersonel, IzinArtisAdayi,
 } from '@/components/dashboard/DashboardClient'
 
@@ -46,6 +47,7 @@ export default async function DashboardPage() {
     bekleyenRes,
     { data: tatilRaw },
     { data: izindekiRaw },
+    firmaRaw,
   ] = await Promise.all([
     dashboardKadroSatirlariYukle(supabase),
 
@@ -87,6 +89,8 @@ export default async function DashboardPage() {
       .lte('baslama', bugun)
       .gte('ayrilis', bugun)
       .limit(10),
+
+    fetchAllFirmaCalisanlar<{ ayrilis_tarihi: string | null }>(supabase, 'ayrilis_tarihi'),
   ])
 
   // 7b) Görev bitiş hatırlatıcıları: gorev_turu_bitis_tarihi veya engelli_bitis bugün+15 gün içinde
@@ -195,14 +199,8 @@ export default async function DashboardPage() {
     }
   })
 
-  // Kadro doluluk + statü sayıları (asil kadro)
-  const kadroDoluluk: KadroDoluluk = { dolu: 0, vekil: 0, bos: 0 }
-  ;(kadroRaw ?? []).forEach(k => {
-    if (k.durumu === 'Dolu') kadroDoluluk.dolu++
-    if (k.durumu === 'Vekil') kadroDoluluk.vekil++
-    if (k.durumu === 'Boş') kadroDoluluk.bos++
-  })
   const statuSayilari = dashboardStatuSayilariHesapla(kadroRaw)
+  const adabelSayisi = (firmaRaw.data ?? []).filter(k => isFirmaCalisanAktif(k.ayrilis_tarihi, bugun)).length
 
   // İzin istatistik
   const izinIstatistik: IzinIstatistik = { taslak: 0, onaylandi: 0, iptal: 0, degistirildi: 0 }
@@ -363,7 +361,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <DashboardClient
         statuSayilari={statuSayilari}
-        kadroDoluluk={kadroDoluluk}
+        adabelSayisi={adabelSayisi}
         izinIstatistik={izinIstatistik}
         bekleyenIzinler={bekleyenIzinler}
         yaklaşanTatiller={yaklaşanTatiller}

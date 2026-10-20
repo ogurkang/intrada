@@ -11,12 +11,6 @@ import { DASHBOARD_STATU_ETIKETLERI } from '@/lib/dashboard-statu-sayilari'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 
-export interface KadroDoluluk {
-  dolu:  number
-  vekil: number
-  bos:   number
-}
-
 export interface IzinIstatistik {
   taslak:       number
   onaylandi:    number
@@ -68,7 +62,7 @@ export interface IzinArtisAdayi {
 
 interface Props {
   statuSayilari: Record<DashboardStatuEtiket, number>
-  kadroDoluluk:        KadroDoluluk
+  adabelSayisi:        number
   izinIstatistik:      IzinIstatistik
   bekleyenIzinler:     BekleyenIzin[]
   yaklaşanTatiller:    YaklaşanTatil[]
@@ -134,7 +128,7 @@ function KpiKart({ baslik, deger, alt, renk, href }: {
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 
 export default function DashboardClient({
-  statuSayilari, kadroDoluluk, izinIstatistik,
+  statuSayilari, adabelSayisi, izinIstatistik,
   bekleyenIzinler, yaklaşanTatiller, izindekiler, izinArtisAdaylari,
   gorevHatirlaticilar,
   mihenkTasiSayisi,
@@ -157,8 +151,6 @@ export default function DashboardClient({
     })
   }
 
-  const kadroToplam = kadroDoluluk.dolu + kadroDoluluk.vekil + kadroDoluluk.bos || 1
-  const dolulukYuzde = Math.round(((kadroDoluluk.dolu + kadroDoluluk.vekil) / kadroToplam) * 100)
   const aktifToplam = DASHBOARD_STATU_ETIKETLERI.reduce((s, e) => s + statuSayilari[e], 0)
 
   return (
@@ -172,7 +164,7 @@ export default function DashboardClient({
         </p>
       </div>
 
-      {/* Statü KPI + Kadro Doluluk + Mihenk Taşları */}
+      {/* Statü KPI + ADABEL + Mihenk Taşları */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
           Aktif personel (asil kadro) · toplam {aktifToplam}
@@ -189,11 +181,11 @@ export default function DashboardClient({
             />
           ))}
           <KpiKart
-            baslik="Kadro Doluluk"
-            deger={`%${dolulukYuzde}`}
-            alt={`${kadroDoluluk.dolu + kadroDoluluk.vekil} / ${kadroToplam} kadro dolu`}
-            renk="bg-indigo-50 border-indigo-200 text-indigo-800"
-            href="/kadro"
+            baslik="ADABEL Personeli"
+            deger={adabelSayisi}
+            alt="ayrılmamış kayıt"
+            renk="bg-teal-50 border-teal-200 text-teal-800"
+            href="/firma-calisanlar"
           />
           <KpiKart
             baslik="Mihenk Taşları"

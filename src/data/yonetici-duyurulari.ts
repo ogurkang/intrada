@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-20-dashboard-adabel',
+    baslik: '20 Ekim 2026 — Ana sayfa',
+    maddeler: [
+      'Genel bakıştaki kadro doluluk kartı kalktı. Aynı yerde ayrılmamış ADABEL personel sayısı durur ve ADABEL listesine gider.',
+    ],
+  },
+  {
     id: '2026-10-19-eposta-saat',
     baslik: '19 Ekim 2026 — E-posta saati',
     maddeler: [
