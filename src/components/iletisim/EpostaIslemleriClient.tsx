@@ -112,7 +112,9 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
   const [ekler, setEkler] = useState<File[]>([])
   const [gonderHata, setGonderHata] = useState<string | null>(null)
   const [gonderOk, setGonderOk] = useState<string | null>(null)
-  const [listeBekliyor, listeBaslat] = useTransition()
+  const [listeYukleniyor, setListeYukleniyor] = useState(hazir)
+  const [gelenOkunmamis, setGelenOkunmamis] = useState(0)
+  const [, listeBaslat] = useTransition()
   const [okuBekliyor, okuBaslat] = useTransition()
   const [gonderBekliyor, gonderBaslat] = useTransition()
 
@@ -120,25 +122,32 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
   const ekAsildi = ekToplam > EPOSTA_EK_LIMIT_BAYT
 
   function listeyiYukle(hedef: EpostaKutu) {
-    if (!hazir) return
+    if (!hazir) {
+      setListeYukleniyor(false)
+      return
+    }
+    setListeYukleniyor(true)
+    setSatirlar([])
+    setMesaj(null)
     setListeHata(null)
     setKlasorYok(false)
     listeBaslat(async () => {
       const res = await epostaListeAction(hedef)
+      setListeYukleniyor(false)
       if (res.hata) {
-        setSatirlar([])
         setListeHata(res.hata)
         return
       }
-      setSatirlar(res.satirlar ?? [])
+      const gelen = res.satirlar ?? []
+      setSatirlar(gelen)
       setKlasorYok(Boolean(res.klasorYok))
+      if (hedef === 'gelen') setGelenOkunmamis(gelen.filter(s => s.okunmadi).length)
     })
   }
 
   useEffect(() => {
     listeyiYukle(kutu)
-    setMesaj(null)
-    // kutu değişince liste yenilenir
+    // kutu değişince liste boşalır ve yeniden yüklenir
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kutu, hazir])
 
@@ -154,6 +163,10 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
       }
       setMesaj(res.mesaj)
       setSatirlar(once => once.map(s => (s.uid === uid ? { ...s, okunmadi: false } : s)))
+      if (kutu === 'gelen') {
+        const acilan = satirlar.find(s => s.uid === uid)
+        if (acilan?.okunmadi) setGelenOkunmamis(n => Math.max(0, n - 1))
+      }
     })
   }
 
@@ -240,9 +253,14 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
               key={k.id}
               type="button"
               onClick={() => setKutu(k.id)}
-              className={`px-4 py-2 text-sm font-medium ${kutu === k.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+              className={`px-4 py-2 text-sm font-medium inline-flex items-center gap-2 ${kutu === k.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
             >
               {k.ad}
+              {k.id === 'gelen' && gelenOkunmamis > 0 && (
+                <span className={`min-w-5 rounded-full px-1.5 text-xs font-semibold ${kutu === 'gelen' ? 'bg-white text-slate-800' : 'bg-sky-600 text-white'}`}>
+                  {gelenOkunmamis}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -273,10 +291,13 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden min-h-80">
-          {listeBekliyor && <p className="px-4 py-3 text-sm text-slate-500">Yükleniyor…</p>}
+          {listeYukleniyor ? (
+            <p className="px-4 py-16 text-center text-sm text-slate-500">Yükleniyor…</p>
+          ) : (
+            <>
           {listeHata && <p className="px-4 py-3 text-sm text-red-600">{listeHata}</p>}
           {klasorYok && <p className="px-4 py-3 text-sm text-slate-500">Sunucuda bu klasör yok.</p>}
-          {!listeBekliyor && !listeHata && !klasorYok && satirlar.length === 0 && hazir && (
+          {!listeHata && !klasorYok && satirlar.length === 0 && hazir && (
             <p className="px-4 py-3 text-sm text-slate-500">Bu kutuda mektup yok.</p>
           )}
           <ul className="divide-y divide-slate-100 max-h-[36rem] overflow-auto">
@@ -296,6 +317,8 @@ export default function EpostaIslemleriClient({ hazir, imza, adres }: Props) {
               </li>
             ))}
           </ul>
+            </>
+          )}
         </div>
 
         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-xl p-5 min-h-80">

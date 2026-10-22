@@ -80,7 +80,8 @@ export default async function IckPlanDetayPage({
     db.from('ick_standart').select('id, no, ad').eq('surum_id', plan.surum_id),
     db.from('ick_genel_sart_degerlendirme').select('genel_sart_id, mevcut_durum, guvence, aciklama').eq('plan_id', planId),
   ])
-  const { satirlar: eylemler, hata: eHata } = await ickPlanEylemleri(db, planId, mudAd)
+  const { satirlar: tumEylemler, hata: eHata } = await ickPlanEylemleri(db, planId, mudAd)
+  const eylemler = yetki.onizleme ? tumEylemler.filter(e => yetki.eylemRolleri[e.id]) : tumEylemler
   const eylemIdler = eylemler.map(e => e.id)
   const gecmisGorur = yetki.admin || yetki.koordinator || yetki.izleyici
   const [kisiler, isbirligi, logSayilari] = await Promise.all([

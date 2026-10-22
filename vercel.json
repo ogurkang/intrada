@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/ic-kontrol/hatirlatma",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

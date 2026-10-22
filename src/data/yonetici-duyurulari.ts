@@ -7,6 +7,30 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-22-ick-izrapor',
+    baslik: '22 Ekim 2026 — İzleme raporu',
+    maddeler: [
+      'İzleme raporunun Word çıktısı kurum şablonundan üretilir. Özet, dönem eylemleri ve değerlendirme tabloları dönemin kayıtlarından dolar. PDF ve Excel aynı kalır.',
+      'Raporlar listesinde indirme ve dönem kapatma İşlemler sütunundadır. İndirme düğmesi Word, PDF ve Excel seçeneklerini açar.',
+    ],
+  },
+  {
+    id: '2026-10-21-ick-onizleme-hatirlatma',
+    baslik: '21 Ekim 2026 — İç kontrol hatırlatma ve bakış',
+    maddeler: [
+      'Tamamlanma tarihine 10 gün kalan eylem için müdürlük koordinatörüne ve işlemciye SMS kendiliğinden gider. Aynı gün ikinci kez gitmez.',
+      'İç kontrol koordinatörü, İç Kontrol ekranında bir personeli seçip onun eylemlerini salt okunur görür. Kayıt değişmez.',
+      'Gelen mektup uyarısı, e-posta sayfası kapalıyken de sağ altta çıkar. Sistemde oturum açıkken kontrol edilir.',
+    ],
+  },
+  {
+    id: '2026-10-21-eposta-gelen-bildirim',
+    baslik: '21 Ekim 2026 — Gelen mektup',
+    maddeler: [
+      'E-posta İşlemleri açıkken gelen kutuya yeni mektup düşünce uyarı çıkar. Gelen düğmesinde okunmamış sayısı durur. Kutu değiştirilirken liste boşalır ve Yükleniyor yazar.',
+    ],
+  },
+  {
     id: '2026-10-20-dashboard-adabel',
     baslik: '20 Ekim 2026 — Ana sayfa',
     maddeler: [

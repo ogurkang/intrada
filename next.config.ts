@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     '/api/ic-kontrol/rapor/[donemId]': [
       './node_modules/pdfkit/js/data/**/*',
       './node_modules/dejavu-fonts-ttf/ttf/**/*',
+      './src/lib/ick/sablon/ikep-izrapor.docx',
     ],
     '/api/ic-kontrol/plan/[id]/word': ['./src/lib/ick/sablon/**/*'],
   },

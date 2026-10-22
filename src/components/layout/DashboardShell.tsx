@@ -5,9 +5,10 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import PermissionGate from '@/components/auth/PermissionGate'
 import IntradaAsistanWidget from '@/components/asistan/IntradaAsistanWidget'
+import EpostaGelenBildirim from '@/components/iletisim/EpostaGelenBildirim'
 import HayaletProfilBanner from '@/components/layout/HayaletProfilBanner'
 import TarayiciGeriIleriKilidi from '@/components/layout/TarayiciGeriIleriKilidi'
-import type { AppAccess } from '@/lib/app-access'
+import { isAdminLike, type AppAccess } from '@/lib/app-access'
 import type { HayaletProfilDurum } from '@/lib/hayalet-profil'
 
 interface DashboardShellProps {
@@ -105,6 +106,7 @@ export default function DashboardShell({
         </div>
       </div>
       {!hayaletDurum?.aktif && access.mode !== 'dis_denetci' ? <IntradaAsistanWidget access={access} /> : null}
+      {isAdminLike(access) ? <EpostaGelenBildirim /> : null}
     </div>
   )
 }

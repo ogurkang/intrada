@@ -1,5 +1,6 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ickSicilAdlari } from '@/lib/ick/yukle'
+import { ickGorunenAd, ickSicilAdlari } from '@/lib/ick/yukle'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import type { IckEylemKisiRol } from '@/lib/ick/tanim'
@@ -27,7 +28,13 @@ export type IckYetki = {
   birimler: number[]
   okuyabilir: boolean
   yukleyebilir: boolean
+  /** Koordinatör bir personelin ekranına salt okunur bakıyor */
+  onizleme: { sicil: string; adSoyad: string } | null
+  /** Gerçek oturum koordinatör veya yönetici; önizleme sırasında da durur */
+  onizlemeAcabilir: boolean
 }
+
+const ICK_ONIZLEME = 'ick_onizleme'
 
 function tabloYok(mesaj: string): boolean {
   return (
@@ -98,22 +105,68 @@ export async function ickYetkiYukle(db: IckDb, userId: string, _email?: string |
     birimler,
     okuyabilir: admin || Boolean(r?.okuyabilir),
     yukleyebilir: koordinatorPlanlar.length > 0 || birimler.length > 0,
+    onizleme: null,
+    onizlemeAcabilir: admin || koordinatorPlanlar.length > 0,
+  }
+  if (yetki.onizlemeAcabilir) {
+    const hedef = (await cookies()).get(ICK_ONIZLEME)?.value?.trim()
+    if (hedef) await ickOnizlemeUygula(db, yetki, hedef)
   }
   return { yetki, hata: error ? ickHataMetni(error.message) : undefined }
 }
 
+async function ickOnizlemeUygula(db: IckDb, yetki: IckYetki, sicil: string): Promise<boolean> {
+  const { data: kisiler } = await db.from('ick_eylem_kisi').select('eylem_id, rol, ad_soyad').eq('sicil_no', sicil)
+  const liste = (kisiler ?? []) as { eylem_id: number; rol: IckEylemKisiRol; ad_soyad: string }[]
+  if (!liste.length) return false
+  const idler = [...new Set(liste.map(k => Number(k.eylem_id)))]
+  const { data: eylemler } = await db.from('ick_eylem').select('id, sorumlu_mudurluk_id').in('id', idler)
+  const mudurluk = new Map(((eylemler ?? []) as { id: number; sorumlu_mudurluk_id: number | null }[]).map(e => [Number(e.id), e.sorumlu_mudurluk_id]))
+  const roller: Record<number, IckEylemKisiRol> = {}
+  const mk = new Set<number>()
+  const islem = new Set<number>()
+  for (const k of liste) {
+    const id = Number(k.eylem_id)
+    const onceki = roller[id]
+    if (onceki === 'mudurluk_koordinatoru') continue
+    roller[id] = k.rol
+    const birim = mudurluk.get(id)
+    if (birim == null) continue
+    if (k.rol === 'mudurluk_koordinatoru') mk.add(Number(birim))
+    else islem.add(Number(birim))
+  }
+  const adlar = await ickSicilAdlari(db, [sicil])
+  yetki.onizleme = { sicil, adSoyad: ickGorunenAd(sicil, liste[0].ad_soyad, adlar) }
+  yetki.sicil = sicil
+  yetki.adSoyad = yetki.onizleme.adSoyad
+  yetki.admin = false
+  yetki.koordinator = false
+  yetki.koordinatorPlanlar = []
+  yetki.izleyici = false
+  yetki.eylemRolleri = roller
+  yetki.mudurlukKoordinatoru = [...mk]
+  yetki.islemci = [...islem].filter(m => !mk.has(m))
+  yetki.birimler = [...new Set([...mk, ...islem])]
+  yetki.okuyabilir = true
+  yetki.yukleyebilir = false
+  return true
+}
+
 export function ickPlanKoordinatoru(yetki: IckYetki, planId: number): boolean {
+  if (yetki.onizleme) return false
   return yetki.koordinatorPlanlar.includes(Number(planId))
 }
 
 /** Eyleme bildirim taslağı girebilir mi (veritabanındaki ick_eylem_yazabilir ile aynı kural) */
 export function ickEylemYazabilir(yetki: IckYetki, e: { id: number; plan_id: number; sorumlu_tur: string }): boolean {
+  if (yetki.onizleme) return false
   if (e.sorumlu_tur === 'ust_yonetim') return ickPlanKoordinatoru(yetki, e.plan_id)
   return yetki.eylemRolleri[Number(e.id)] != null
 }
 
 /** Bildirimi koordinatöre gönderebilir mi (ick_eylem_gonderebilir ile aynı kural) */
 export function ickEylemGonderebilir(yetki: IckYetki, e: { id: number; plan_id: number; sorumlu_tur: string }): boolean {
+  if (yetki.onizleme) return false
   if (e.sorumlu_tur === 'ust_yonetim') return ickPlanKoordinatoru(yetki, e.plan_id)
   return yetki.eylemRolleri[Number(e.id)] === 'mudurluk_koordinatoru'
 }
