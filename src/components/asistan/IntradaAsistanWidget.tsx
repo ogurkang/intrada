@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { AppAccess } from '@/lib/app-access'
+import { isAdminLike } from '@/lib/app-access'
 
 type Mesaj = { role: 'user' | 'assistant'; content: string }
 
@@ -15,7 +16,9 @@ export default function IntradaAsistanWidget({ access }: Props) {
     {
       role: 'assistant',
       content:
-        'Merhaba, ben INTRADA Asistan. Modül kullanımı ve (yetkiniz varsa) izin hakkı sorabilirsiniz — tam ad gerekmez; örn. "Gürkan kaç gün izni var".',
+        isAdminLike(access)
+          ? 'Merhaba, ben burada. Bir personelin adını yazın. Birden fazla eşleşme olursa hangisi olduğunu sorarım, sonra kalan izin, kullanılan izin veya kan grubu gibi ne istediğinizi. İzin iptali ve rapor menüsü de sorulabilir.'
+          : 'Merhaba, ben burada. Modül kullanımı ve kendi izin hakkınız sorulabilir.',
     },
   ])
   const [girdi, setGirdi] = useState('')
@@ -76,8 +79,8 @@ export default function IntradaAsistanWidget({ access }: Props) {
         <div className="w-[min(100vw-2rem,380px)] h-[min(70vh,520px)] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 bg-slate-800 text-white">
             <div>
-              <p className="text-sm font-semibold">INTRADA Asistan</p>
-              <p className="text-[10px] text-slate-300">Kullanım rehberi · izin sorgusu</p>
+              <p className="text-sm font-semibold">burada</p>
+              <p className="text-[10px] text-slate-300">Personel sorgusu · kullanım</p>
             </div>
             <button
               type="button"
@@ -147,7 +150,7 @@ export default function IntradaAsistanWidget({ access }: Props) {
         onClick={() => setAcik(a => !a)}
         className="flex items-center gap-2 rounded-full bg-slate-800 text-white px-4 py-3 shadow-lg hover:bg-slate-700 transition-colors"
         aria-expanded={acik}
-        aria-label="INTRADA Asistan"
+        aria-label="burada"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path
@@ -156,7 +159,7 @@ export default function IntradaAsistanWidget({ access }: Props) {
             d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"
           />
         </svg>
-        <span className="text-sm font-medium hidden sm:inline">Asistan</span>
+        <span className="text-sm font-medium hidden sm:inline">burada</span>
       </button>
     </div>
   )

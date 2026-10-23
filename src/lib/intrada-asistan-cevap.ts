@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AppAccess } from '@/lib/app-access'
+import { isAdminLike } from '@/lib/app-access'
 import { loadTanitimMetni } from '@/lib/intrada-asistan-bilgi'
+import { adminKonusma, kanGrubuRaporCevabi, kullanimCevabi } from '@/lib/intrada-asistan-konusma'
 import {
   type AsistanMesaj,
   izinOzetMetni,
@@ -14,7 +16,7 @@ export type { AsistanMesaj }
 const MODEL = 'gpt-4o-mini'
 
 function sistemPrompt(veriEk: string): string {
-  return `Sen INTRADA belediye personel yönetim uygulamasının Türkçe yardım asistanısın.
+  return `Senin adın burada. Intrada belediye personel yönetim uygulamasının Türkçe yardım asistanısın. Kullanıcı sana adınla hitap ederse burada diye yanıt ver.
 
 Kurallar:
 - Yalnızca Intrada, personel, izin, rapor, kadro ve menü kullanımı hakkında konuş.
@@ -46,7 +48,7 @@ function basitYardimCevabi(mesaj: string, veriEk: string): string {
   if (soruIzinIleIlgili(mesaj) && !veriEk) {
     return 'İzin hakkı için adın bir kısmını yazmanız yeterli (ör. "Gürkan kaç gün izni var"). Birden fazla eşleşme varsa listeden seçmenizi isteyeceğim.'
   }
-  return 'INTRADA kullanımı hakkında sorularınızı Türkçe sorabilirsiniz. Örnek: "İzin nasıl girilir?", "Rapor Excel nerede?", veya "Gürkan kaç gün izni var".'
+  return 'burada, Intrada kullanımı hakkında Türkçe soruları yanıtlar. Örnek: "İzin nasıl girilir?", "Rapor Excel nerede?", veya "Gürkan kaç gün izni var".'
 }
 
 async function openaiCevap(
@@ -96,6 +98,20 @@ export async function intradaAsistanCevapla(input: {
   if (!mesaj) return { cevap: 'Lütfen bir soru yazın.', veriKullanildi: false }
 
   const yil = new Date().getFullYear()
+  const kullanim = kullanimCevabi(mesaj)
+  if (kullanim) return { cevap: kullanim, veriKullanildi: false }
+  const kanRapor = kanGrubuRaporCevabi(mesaj)
+  if (kanRapor) return { cevap: kanRapor, veriKullanildi: false }
+
+  if (isAdminLike(input.access)) {
+    const konusma = await adminKonusma({
+      supabase: input.supabase,
+      mesaj,
+      gecmis: input.gecmis,
+      yil,
+    })
+    if (konusma) return { cevap: konusma, veriKullanildi: true }
+  }
   let veriEk = ''
 
   const kendiSorusu =

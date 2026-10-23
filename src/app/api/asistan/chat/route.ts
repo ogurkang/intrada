@@ -43,6 +43,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ cevap, veriKullanildi })
   } catch (e) {
     console.error('ASISTAN_CHAT', e)
-    return NextResponse.json({ hata: 'Asistan yanıt üretemedi.' }, { status: 500 })
+    return NextResponse.json({ hata: 'burada yanıt üretemedi.' }, { status: 500 })
   }
 }

@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-23-burada',
+    baslik: '23 Ekim 2026 — burada',
+    maddeler: [
+      'Sağ alttaki sohbetin adı burada oldu.',
+      'Yönetici bir personelin adını yazınca kayıt aranır. Birden fazla kişi varsa hangisi olduğu sorulur; sonra kalan izin, kullanılan izin, kan grubu veya müdürlük istenir.',
+      'Kan grubuna göre personel sorusunda ilgili raporun menüsü anlatılır. İzin iptali ve müdürlük değişiminin yolu da yazılır.',
+    ],
+  },
+  {
     id: '2026-10-23-rapor-sihirbazi-excel',
     baslik: '23 Ekim 2026 — Rapor Sihirbazı',
     maddeler: [

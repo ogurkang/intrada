@@ -35,6 +35,25 @@ const STOP = new Set(
     'için',
     'olan',
     'olanın',
+    'iptal',
+    'ederim',
+    'edebilirim',
+    'nasil',
+    'mudurluk',
+    'mudurlugu',
+    'mudurlugunu',
+    'kan',
+    'grubu',
+    'grup',
+    'personel',
+    'personelin',
+    'bilgi',
+    'bilgisi',
+    'lazim',
+    'bana',
+    'soyle',
+    'yazdi',
+    'yazdı',
   ].map(w => trNormalize(w)),
 )
 
@@ -57,8 +76,11 @@ export type PersonelAday = {
   sicil_no: string
   ad_soyad: string
   gorev_mudurlugu?: string | null
+  gorev_unvani?: string | null
   skor: number
 }
+
+export type PersonelKonu = 'kalan_izin' | 'kullanilan_izin' | 'izin_belirsiz' | 'kan' | 'mudurluk' | 'yok'
 
 export type IzinSorguSonuc =
   | { tur: 'ozet'; ozet: PersonelIzinOzet }
@@ -135,14 +157,41 @@ async function adaylaraMudurlukEkle(
 
   const { data: ozetler } = await supabase
     .from('personel_kadro_ozet')
-    .select('sicil_no, gorev_mudurlugu')
+    .select('sicil_no, gorev_mudurlugu, gorev_unvani')
     .in('sicil_no', siciller)
 
-  const mudMap = new Map((ozetler ?? []).map(o => [o.sicil_no, o.gorev_mudurlugu]))
+  const mudMap = new Map((ozetler ?? []).map(o => [o.sicil_no, o]))
   return adaylar.map(a => ({
     ...a,
-    gorev_mudurlugu: mudMap.get(a.sicil_no) ?? null,
+    gorev_mudurlugu: mudMap.get(a.sicil_no)?.gorev_mudurlugu ?? null,
+    gorev_unvani: mudMap.get(a.sicil_no)?.gorev_unvani ?? null,
   }))
+}
+
+export function adaylariNetlestir(adaylar: PersonelAday[]): PersonelAday[] {
+  if (adaylar.length <= 1) return adaylar
+  const enYuksek = adaylar[0].skor
+  const ust = adaylar.filter(a => a.skor >= enYuksek - 8)
+  return (ust.length > 0 ? ust : adaylar).slice(0, MAX_SECIM)
+}
+
+export function mesajBuKisiMi(mesaj: string, adSoyad: string): boolean {
+  const terimler = olasiAramaTerimleri(mesaj)
+  if (terimler.length === 0) return true
+  const ad = trNormalize(adSoyad)
+  return terimler.every(t => skorIsim(trNormalize(t), ad) >= 50)
+}
+
+export function konuBul(mesaj: string): PersonelKonu {
+  const n = trNormalize(mesaj)
+  if (/kan\s*grub/.test(n) || n === 'kan' || n === 'kan grubu') return 'kan'
+  if (/izin/.test(n) && (/kac\s*gun/.test(n) || /kalan/.test(n))) return 'kalan_izin'
+  if (/izin/.test(n) && /kullan/.test(n)) return 'kullanilan_izin'
+  if (n === 'kalan' || n === 'kalan izin') return 'kalan_izin'
+  if (n === 'kullanilan' || n === 'kullanilan izin' || n === 'kullandigi') return 'kullanilan_izin'
+  if (/izin/.test(n)) return 'izin_belirsiz'
+  if (/mudurl/.test(n)) return 'mudurluk'
+  return 'yok'
 }
 
 export async function personelAdaylariBul(
@@ -178,8 +227,6 @@ export async function personelAdaylariBul(
   return { adaylar: zengin, aranan: terimler[0] }
 }
 
-const SECIM_SATIR = /^\s*(\d+)\.\s+(.+?)\s+—\s+sicil\s+(\S+)/
-
 /** Son asistan mesajındaki numaralı personel listesini okur. */
 export function sonSecimListesi(gecmis: AsistanMesaj[]): PersonelAday[] | null {
   const son = [...gecmis].reverse().find(
@@ -189,11 +236,12 @@ export function sonSecimListesi(gecmis: AsistanMesaj[]): PersonelAday[] | null {
 
   const adaylar: PersonelAday[] = []
   for (const satir of son.content.split('\n')) {
-    const m = satir.match(SECIM_SATIR)
-    if (!m) continue
+    const sicil = satir.match(/sicil\s+(\S+)/)
+    const bas = satir.match(/^\s*\d+\.\s+(.+)$/)
+    if (!sicil || !bas) continue
     adaylar.push({
-      sicil_no: m[3].trim(),
-      ad_soyad: m[2].trim(),
+      sicil_no: sicil[1].replace(/[).,]+$/g, ''),
+      ad_soyad: bas[1].split('—')[0].trim(),
       skor: 100,
     })
   }
@@ -228,8 +276,9 @@ export function secimdenSicilBul(mesaj: string, adaylar: PersonelAday[]): string
 
 export function secimListesiMetni(adaylar: PersonelAday[], aranan: string): string {
   const satirlar = adaylar.map((a, i) => {
-    const mud = a.gorev_mudurlugu ? ` (${a.gorev_mudurlugu})` : ''
-    return `${i + 1}. ${a.ad_soyad} — sicil ${a.sicil_no}${mud}`
+    const yer = [a.gorev_mudurlugu, a.gorev_unvani].filter(Boolean).join(', ')
+    const ayrim = yer ? ` — ${yer}` : ''
+    return `${i + 1}. ${a.ad_soyad}${ayrim} — sicil ${a.sicil_no}`
   })
   return [
     `"${aranan}" için ${adaylar.length} personel bulundu. Hangisini kastediyorsunuz?`,
