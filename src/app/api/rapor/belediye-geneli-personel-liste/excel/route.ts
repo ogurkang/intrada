@@ -9,6 +9,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import {
   belediyeGeneliPersonelListeSnapshot,
+  varsayilanOgrenimHaritasi,
   type BelediyeCalisanRow,
 } from '@/lib/rapor-belediye-geneli-personel-liste'
 
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
       supabase
         .from('calisan')
       .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, e_posta, kan_grubu'),
-      fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
+      fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, okul_adi, bolum, meslegi, varsayilan'),
     ])
 
     const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -82,14 +83,7 @@ export async function GET(req: Request) {
         kan_grubu: c.kan_grubu,
       })
     }
-    const varsayilanOgrenimBySicil = new Map<string, string>()
-    for (const o of ogrenimRaw ?? []) {
-      if (!o?.varsayilan) continue
-      const sicil = String(o.sicil_no ?? '').trim()
-      if (!sicil) continue
-      const ogrenimTuru = String(o.ogrenim_turu ?? '').trim()
-      varsayilanOgrenimBySicil.set(sicil, ogrenimTuru || '—')
-    }
+    const varsayilanOgrenimBySicil = varsayilanOgrenimHaritasi(ogrenimRaw)
 
     const D = periyotSonGunu(yil, periyot)
     const label = periyot === 'yillik' ? 'YILLIK' : AYLAR_TR[(periyot as number) - 1]
@@ -100,7 +94,7 @@ export async function GET(req: Request) {
       varsayilanOgrenimBySicil,
     })
 
-    const cols = 21
+    const cols = 23
     const rows: (string | number)[][] = [
       padRow(cols, ['Belediye Geneli Personel Listesi']),
       padRow(cols, [`Yıl: ${yil} · Sekme: ${label}`]),
@@ -117,6 +111,8 @@ export async function GET(req: Request) {
         'Kadro Müdürlüğü',
         'Görev Müdürlüğü',
         'Öğrenim',
+        'Okul / Bölüm',
+        'Mesleği',
         'TC Kimlik No',
         'SGK/SSK Sicil No',
         'Kuruma Giriş Tarihi',
@@ -141,6 +137,8 @@ export async function GET(req: Request) {
           r.kadro_mudurlugu,
           r.gorev_mudurlugu,
           r.ogrenim,
+          r.okul_bolum,
+          r.meslegi,
           r.tckn,
           r.sgk_ssk_sicil_no,
           r.kuruma_giris_tarihi,
@@ -154,7 +152,7 @@ export async function GET(req: Request) {
           r.kan_grubu,
         ]),
       ),
-      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
+      padRow(cols, ['Toplam', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', satirlar.length]),
     ]
 
     const ws = XLSX.utils.aoa_to_sheet(rows)
@@ -168,7 +166,7 @@ export async function GET(req: Request) {
     ]
     ws['!cols'] = [
       { wch: 8 }, { wch: 12 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
-      { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
+      { wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 28 }, { wch: 12 },
     ]
 
@@ -187,7 +185,7 @@ export async function GET(req: Request) {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 || c === 12 || c === 13 ? 'center' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 || c === 14 || c === 15 ? 'center' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),

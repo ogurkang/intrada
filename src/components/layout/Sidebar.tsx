@@ -30,7 +30,7 @@ function itemPathActive(pathname: string, item: MenuItem): boolean {
     if (item.children.some(c => itemOrSubtreeActive(pathname, c))) return false
   }
   // Denetim: Genel Bakış derin rotalarda yanlış vurgulanmasın
-  if (item.href === '/hesaplama' || item.href === '/denetim' || item.href === '/denetim/donemler' || item.href === '/kys') {
+  if (item.href === '/hesaplama' || item.href === '/denetim' || item.href === '/denetim/donemler' || item.href === '/kys' || item.href === '/rapor') {
     return pathname === item.href
   }
   // Dönem özeti: yalnızca tam dönem kökü (alt menüler ayrı vurgulanır)
@@ -259,6 +259,7 @@ function buildMenuGroups(
     accordion: true,
     items: [
       { href: '/rapor', label: 'Genel Bakış' },
+      { href: '/rapor/sihirbaz', label: 'Rapor Sihirbazı' },
       { href: '/rapor/izin-hareketleri', label: 'İzin Hareketleri Raporu' },
       { href: '/rapor/memur-izinleri', label: 'Memur İzinleri Raporu' },
       { href: '/rapor/isci-izinleri', label: 'İşçi İzinleri Raporu' },

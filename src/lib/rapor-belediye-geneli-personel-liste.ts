@@ -15,6 +15,8 @@ export interface BelediyeGeneliPersonelSatir {
   kadro_mudurlugu: string
   gorev_mudurlugu: string
   ogrenim: string
+  okul_bolum: string
+  meslegi: string
   tckn: string
   sgk_ssk_sicil_no: string
   kuruma_giris_tarihi: string
@@ -46,6 +48,40 @@ function txt(v: string | null | undefined) {
   return s || '—'
 }
 
+export interface VarsayilanOgrenim {
+  ogrenim: string
+  okulBolum: string
+  meslegi: string
+}
+
+/** Öğrenim Bildirimindeki varsayılan kayıttan tür, okul/bölüm ve meslek. */
+export function varsayilanOgrenimHaritasi(
+  rows: Array<{
+    sicil_no?: string | null
+    varsayilan?: boolean | null
+    ogrenim_turu?: string | null
+    okul_adi?: string | null
+    bolum?: string | null
+    meslegi?: string | null
+  }> | null | undefined,
+): Map<string, VarsayilanOgrenim> {
+  const map = new Map<string, VarsayilanOgrenim>()
+  for (const o of rows ?? []) {
+    if (!o?.varsayilan) continue
+    const sicil = String(o.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const okul = String(o.okul_adi ?? '').trim()
+    const bolum = String(o.bolum ?? '').trim()
+    const okulBolum = okul && bolum ? `${okul} / ${bolum}` : okul || bolum || '—'
+    map.set(sicil, {
+      ogrenim: String(o.ogrenim_turu ?? '').trim() || '—',
+      okulBolum,
+      meslegi: String(o.meslegi ?? '').trim() || '—',
+    })
+  }
+  return map
+}
+
 function tarih(v: string | null | undefined) {
   if (!v) return '—'
   return new Date(v).toLocaleDateString('tr-TR')
@@ -55,7 +91,7 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
   D: string
   kadro: KadroRaporRow[]
   calisanBySicil: Map<string, BelediyeCalisanRow>
-  varsayilanOgrenimBySicil?: Map<string, string>
+  varsayilanOgrenimBySicil?: Map<string, VarsayilanOgrenim>
 }): BelediyeGeneliPersonelSatir[] {
   const { D, kadro, calisanBySicil, varsayilanOgrenimBySicil } = input
   const byAsil = new Map<string, KadroRaporRow[]>()
@@ -85,7 +121,9 @@ export function belediyeGeneliPersonelListeSnapshot(input: {
       gorev_unvani: txt(secilen.gorev_unvani),
       kadro_mudurlugu: txt(secilen.kadro_mudurlugu),
       gorev_mudurlugu: txt(secilen.gorev_mudurlugu),
-      ogrenim: txt(varsayilanOgrenimBySicil?.get(sicil)),
+      ogrenim: varsayilanOgrenimBySicil?.get(sicil)?.ogrenim ?? '—',
+      okul_bolum: varsayilanOgrenimBySicil?.get(sicil)?.okulBolum ?? '—',
+      meslegi: varsayilanOgrenimBySicil?.get(sicil)?.meslegi ?? '—',
       tckn: txt(calisan.tckn),
       sgk_ssk_sicil_no: txt(calisan.sgk_ssk_sicil_no),
       kuruma_giris_tarihi: tarih(kadroBaslangic(secilen)),

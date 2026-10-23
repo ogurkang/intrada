@@ -10,6 +10,7 @@ import {
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import {
   belediyeGeneliPersonelListeSnapshot,
+  varsayilanOgrenimHaritasi,
   type BelediyeCalisanRow,
 } from '@/lib/rapor-belediye-geneli-personel-liste'
 
@@ -54,7 +55,7 @@ export default async function IsgBelediyeGeneliPersonelListePage({
     supabase
       .from('calisan')
       .select('sicil_no, ad_soyad, cinsiyet, tckn, sgk_ssk_sicil_no, dogum_tarihi, dogum_yeri, baba_adi, anne_adi, adresi, telefon, e_posta, kan_grubu'),
-    fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, varsayilan'),
+    fetchAllCalisanOgrenim(supabase, 'sicil_no, ogrenim_turu, okul_adi, bolum, meslegi, varsayilan'),
   ])
 
   const kadro: KadroRaporRow[] = (kadroRaw ?? []) as KadroRaporRow[]
@@ -76,14 +77,7 @@ export default async function IsgBelediyeGeneliPersonelListePage({
       kan_grubu: c.kan_grubu,
     })
   }
-  const varsayilanOgrenimBySicil = new Map<string, string>()
-  for (const o of ogrenimRaw ?? []) {
-    if (!o?.varsayilan) continue
-    const sicil = String(o.sicil_no ?? '').trim()
-    if (!sicil) continue
-    const ogrenimTuru = String(o.ogrenim_turu ?? '').trim()
-    varsayilanOgrenimBySicil.set(sicil, ogrenimTuru || '—')
-  }
+  const varsayilanOgrenimBySicil = varsayilanOgrenimHaritasi(ogrenimRaw)
 
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   const tabs: BelediyeGeneliPersonelTabVerisi[] = periyotlar.map(p => {

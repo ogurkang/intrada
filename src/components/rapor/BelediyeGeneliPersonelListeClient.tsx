@@ -191,7 +191,7 @@ export default function BelediyeGeneliPersonelListeClient({
               onScroll={onTableScroll}
               className="overflow-auto max-h-[min(70vh,720px)]"
             >
-              <table className="w-full text-sm border-collapse min-w-[2840px]">
+              <table className="w-full text-sm border-collapse min-w-[3280px]">
                 <thead>
                   <tr>
                     <th className={`${TH_CLASS} text-center w-20`}>Sıra No</th>
@@ -204,6 +204,8 @@ export default function BelediyeGeneliPersonelListeClient({
                     <th className={`${TH_CLASS} text-left min-w-[180px]`}>Kadro Müdürlüğü</th>
                     <th className={`${TH_CLASS} text-left min-w-[180px]`}>Görev Müdürlüğü</th>
                     <th className={`${TH_CLASS} text-left min-w-[140px]`}>Öğrenim</th>
+                    <th className={`${TH_CLASS} text-left min-w-[220px]`}>Okul / Bölüm</th>
+                    <th className={`${TH_CLASS} text-left min-w-[160px]`}>Mesleği</th>
                     <th className={`${TH_CLASS} text-left w-36`}>TC Kimlik No</th>
                     <th className={`${TH_CLASS} text-left w-36`}>SGK/SSK Sicil No</th>
                     <th className={`${TH_CLASS} text-center w-28`}>Kuruma Giriş Tarihi</th>
@@ -220,7 +222,7 @@ export default function BelediyeGeneliPersonelListeClient({
                 <tbody className="divide-y divide-slate-100">
                   {aktif.satirlar.length === 0 ? (
                     <tr>
-                      <td colSpan={21} className="px-4 py-10 text-center text-slate-500">
+                      <td colSpan={23} className="px-4 py-10 text-center text-slate-500">
                         Kayıt bulunamadı.
                       </td>
                     </tr>
@@ -237,6 +239,8 @@ export default function BelediyeGeneliPersonelListeClient({
                         <td className="px-3 py-2.5 text-slate-700">{r.kadro_mudurlugu}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.gorev_mudurlugu}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.ogrenim}</td>
+                        <td className="px-3 py-2.5 text-slate-700 whitespace-normal break-words">{r.okul_bolum}</td>
+                        <td className="px-3 py-2.5 text-slate-700">{r.meslegi}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.tckn}</td>
                         <td className="px-3 py-2.5 text-slate-700">{r.sgk_ssk_sicil_no}</td>
                         <td className="px-3 py-2.5 text-center text-slate-700">{r.kuruma_giris_tarihi}</td>

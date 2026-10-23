@@ -7,6 +7,20 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-23-rapor-sihirbazi',
+    baslik: '23 Ekim 2026 — Rapor Sihirbazı',
+    maddeler: [
+      'Rapor Yönetiminde Genel Bakışın altında Rapor Sihirbazı var. İstihdam türü, listelenecek personelin havuzunu belirler. Veri giriş başlıkları tiklenir; Adı Soyadı de bu başlıklar arasındadır. Önizlemede Sıra No ilk sütunda kalır, diğer sütunlar sürüklenerek yer değiştirir. Excel, yazılan dosya adıyla iner. Yatay ve dikey, sayfanın basım yönüdür.',
+    ],
+  },
+  {
+    id: '2026-10-23-belediye-geneli-okul-meslek',
+    baslik: '23 Ekim 2026 — Belediye geneli personel listesi',
+    maddeler: [
+      'Belediye Geneli Personel Listesinde Öğrenim sütunundan sonra Okul / Bölüm ve Mesleği gelir. Değerler, Öğrenim Bildirimindeki varsayılan kayıttan okunur. Excel çıktısında da aynı sütunlar vardır.',
+    ],
+  },
+  {
     id: '2026-10-22-ick-izrapor',
     baslik: '22 Ekim 2026 — İzleme raporu',
     maddeler: [
