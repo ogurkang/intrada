@@ -96,12 +96,14 @@ export interface SihirbazSatir {
   deger: Record<string, string>
 }
 
-export function sihirbazBasliklari(istihdam: Istihdam): SihirbazBaslik[] {
-  if (istihdam === 'adabel') return SIHIRBAZ_BASLIKLARI.filter(b => b.adabel)
+export function sihirbazBasliklari(istihdam: Istihdam | Istihdam[]): SihirbazBaslik[] {
+  const liste = Array.isArray(istihdam) ? istihdam : [istihdam]
+  const yalnizAdabel = liste.length > 0 && liste.every(s => s === 'adabel')
+  if (yalnizAdabel) return SIHIRBAZ_BASLIKLARI.filter(b => b.adabel)
   return SIHIRBAZ_BASLIKLARI
 }
 
-export function sihirbazGruplari(istihdam: Istihdam): { grup: string; basliklar: SihirbazBaslik[] }[] {
+export function sihirbazGruplari(istihdam: Istihdam | Istihdam[]): { grup: string; basliklar: SihirbazBaslik[] }[] {
   const liste = sihirbazBasliklari(istihdam)
   const gruplar: { grup: string; basliklar: SihirbazBaslik[] }[] = []
   for (const b of liste) {
