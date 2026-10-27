@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-27-egitim-sendika',
+    baslik: '27 Ekim 2026 — Eğitim takvimi ve sendika raporları',
+    maddeler: [
+      'Eğitim istatistiğinde işaretlenen katılımcılar, eğitim takvimindeki katılımcı sayısına ve Excel çıktısına da yansır.',
+      'Sendika raporlarında üyeliği olmayan aktif personel Sendikasız olarak görünür. Sayı raporunun Excel toplamı personel sayısıdır.',
+    ],
+  },
+  {
     id: '2026-10-23-burada',
     baslik: '23 Ekim 2026 — burada',
     maddeler: [

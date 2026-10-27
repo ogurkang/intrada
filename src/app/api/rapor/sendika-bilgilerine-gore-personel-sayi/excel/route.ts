@@ -47,6 +47,7 @@ export async function GET(req: Request) {
       anlikTarihEtiket: `Anlık görüntü tarihi: ${new Date(D + 'T12:00:00').toLocaleDateString('tr-TR')}`,
       kolonlar: ['Sıra No', 'Statü', 'Kısa Ad', 'Uzun Ad', 'Personel Sayısı'],
       satirlar: satirlar.map((r, i) => [i + 1, r.statu, r.kisa_ad, r.uzun_ad, r.sayi]),
+      totalValue: satirlar.reduce((a, r) => a + r.sayi, 0),
       sheetName: 'Sendika Sayi',
       downloadFileName: 'Sendika_Bilgilerine_Gore_Personel_Sayisi.xlsx',
     })

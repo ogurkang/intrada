@@ -85,7 +85,7 @@ export default function SendikaBilgilerineGorePersonelListeClient({
             ← Rapor Yönetimi
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Sendika Bilgilerine Göre Personel Listesi</h1>
-          <p className="text-sm text-slate-600 mt-1">Seçili anlık görüntü tarihinde sendika üyeliği olan aktif personel listesi.</p>
+          <p className="text-sm text-slate-600 mt-1">Seçili anlık görüntü tarihinde aktif personel. Üyeliği olmayanlar Sendikasız yazılır.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 justify-end">
           {aktif && (
@@ -120,7 +120,7 @@ export default function SendikaBilgilerineGorePersonelListeClient({
                         )
                       }
                     />
-                    [{s.statu}] {s.kisa_ad}
+                    {s.statu ? `[${s.statu}] ${s.kisa_ad}` : s.kisa_ad}
                   </label>
                 ))}
               </div>

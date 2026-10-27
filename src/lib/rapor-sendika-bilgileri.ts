@@ -5,6 +5,9 @@ import type { KadroRaporRow, RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsi
 import { sortTanimSendika } from '@/lib/sendika-sira'
 import type { Tables } from '@/types/database'
 
+export const SENDIKASIZ_ID = 0
+export const SENDIKASIZ_AD = 'Sendikasız'
+
 export type SendikaPersonelListeSatir = {
   sicil_no: string
   ad_soyad: string
@@ -45,6 +48,7 @@ export function sendikaBilgilerineGorePersonelListe(
 ): SendikaPersonelListeSatir[] {
   const calisanBySicil = new Map(calisanlar.map(c => [c.sicil_no, c]))
   const out: SendikaPersonelListeSatir[] = []
+  const eklenen = new Set<string>()
 
   for (const [sicil, uyelik] of sendikaBySicil) {
     if (!uyelik?.tanim_sendika) continue
@@ -59,6 +63,24 @@ export function sendikaBilgilerineGorePersonelListe(
       telefon: String(c.telefon ?? '').trim() || '—',
       sendika_id: uyelik.sendika_id,
       kisa_ad: uyelik.tanim_sendika.kisa_ad,
+    })
+    eklenen.add(sicil)
+  }
+
+  for (const [sicil, rows] of kadroByAsil) {
+    if (eklenen.has(sicil)) continue
+    const kadro = secilenKadroSatirAsil(rows, D)
+    if (!kadro) continue
+    const c = calisanBySicil.get(sicil)
+    if (!c) continue
+    out.push({
+      sicil_no: sicil,
+      ad_soyad: c.ad_soyad,
+      mudurluk: raporKadroMudurluk(kadro, mudurlukById),
+      statu: raporKadroStatu(kadro, null),
+      telefon: String(c.telefon ?? '').trim() || '—',
+      sendika_id: SENDIKASIZ_ID,
+      kisa_ad: SENDIKASIZ_AD,
     })
   }
 
@@ -96,6 +118,13 @@ export function sendikaBilgilerineGorePersonelSayi(
       sayi: sayim.get(s.id) ?? 0,
     }),
   )
+  rows.push({
+    sendika_id: SENDIKASIZ_ID,
+    statu: '—',
+    kisa_ad: SENDIKASIZ_AD,
+    uzun_ad: SENDIKASIZ_AD,
+    sayi: liste.filter(r => r.sendika_id === SENDIKASIZ_ID).length,
+  })
   rows.sort((a, b) => {
     if (b.sayi !== a.sayi) return b.sayi - a.sayi
     return a.kisa_ad.localeCompare(b.kisa_ad, 'tr')
@@ -125,7 +154,7 @@ export function parseSendikaIdsParam(raw: string | undefined): number[] {
   return raw
     .split(',')
     .map(s => parseInt(s.trim(), 10))
-    .filter(n => Number.isFinite(n) && n > 0)
+    .filter(n => Number.isFinite(n) && n >= 0)
 }
 
 export function parseStatuParam(raw: string | undefined): string[] {

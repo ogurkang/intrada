@@ -43,7 +43,7 @@ export default function SendikaBilgilerineGorePersonelSayiClient({ yil, minYil, 
           </Link>
           <h1 className="text-2xl font-bold text-slate-800">Sendika Bilgilerine Göre Personel Sayısı</h1>
           <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-            Sendika başına üye sayısı; en fazla üyesi olan sendika en üstte.
+            Sendika başına personel sayısı. Üyeliği olmayanlar Sendikasız satırında sayılır. En kalabalık satır en üstte.
           </p>
         </div>
         <div className="flex items-center gap-2">

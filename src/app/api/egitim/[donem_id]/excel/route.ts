@@ -1,3 +1,4 @@
+import { fetchAllPaged } from '@/lib/supabase-sayfala'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/server'
@@ -43,10 +44,14 @@ export async function GET(
         .select('id, egitim_adi, kanal, program, egitim_baslangic, egitim_bitis, sure_dakika')
         .eq('donem_id', donemId)
         .order('egitim_baslangic', { ascending: true }),
-      supabase
-        .from('egitim_istatistik_katilim')
-        .select('egitim_id, sicil_no')
-        .eq('donem_id', donemId),
+      fetchAllPaged<{ egitim_id: number; sicil_no: string }>((from, to) =>
+        supabase
+          .from('egitim_istatistik_katilim')
+          .select('egitim_id, sicil_no')
+          .eq('donem_id', donemId)
+          .order('id')
+          .range(from, to),
+      ),
     ])
 
     if (!donem) return NextResponse.json({ error: 'Dönem bulunamadı.' }, { status: 404 })

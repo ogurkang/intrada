@@ -7,6 +7,8 @@ import { fetchPersonelSendikaAtDate } from '@/lib/personel-sendika-load'
 import {
   parseSendikaIdsParam,
   parseStatuParam,
+  SENDIKASIZ_AD,
+  SENDIKASIZ_ID,
   sendikaBilgilerineGorePersonelListe,
 } from '@/lib/rapor-sendika-bilgileri'
 import { periyotSonGunu, type KadroRaporRow, type RaporPeriyot } from '@/lib/rapor-statuye-gore-cinsiyet'
@@ -54,11 +56,14 @@ export default async function SendikaBilgilerineGorePersonelListePage({
     ad_soyad: c.ad_soyad ?? c.sicil_no,
     telefon: c.telefon,
   }))
-  const tumSendikalar = sortTanimSendika((sendikaRaw ?? []) as Tables<'tanim_sendika'>[]).map(s => ({
-    id: s.id,
-    kisa_ad: s.kisa_ad,
-    statu: s.statu,
-  }))
+  const tumSendikalar = [
+    ...sortTanimSendika((sendikaRaw ?? []) as Tables<'tanim_sendika'>[]).map(s => ({
+      id: s.id,
+      kisa_ad: s.kisa_ad,
+      statu: s.statu,
+    })),
+    { id: SENDIKASIZ_ID, kisa_ad: SENDIKASIZ_AD, statu: '' },
+  ]
 
   const periyotlar: RaporPeriyot[] = ['yillik', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   const tabs: SendikaPersonelListeTabVerisi[] = []
