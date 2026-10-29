@@ -11,7 +11,7 @@ export interface PpAltProgram {
   kodu: string
   alt_program_adi: string
   aktif: boolean
-  faaliyet_sayisi: number
+  hedef_sayisi: number
 }
 
 interface Props {
@@ -81,10 +81,8 @@ export default function PerformansProgramiAltProgramClient({
                 <tr key={a.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-center text-slate-600">{a.sira_no ?? i + 1}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-700">{a.kodu}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${a.id}`} className="hover:underline">{a.alt_program_adi}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{a.faaliyet_sayisi} faaliyet bağlı.</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{a.alt_program_adi}</td>
+                  <td className="px-4 py-3 text-slate-600">{a.hedef_sayisi} alt hedef bağlı.</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-2">
                       <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${a.id}`} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-indigo-600 hover:bg-indigo-50" title="Detay">

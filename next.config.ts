@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
      * Vercel'de fonksiyon istek gövdesi zaten 4.5 MB ile sınırlıdır.
      */
     serverActions: { bodySizeLimit: "20mb" },
+    globalNotFound: true,
   },
   async redirects() {
     return [{ source: '/personel/gorev-bilgileri', destination: '/personel', permanent: true }]

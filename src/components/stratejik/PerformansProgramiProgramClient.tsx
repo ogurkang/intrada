@@ -96,14 +96,7 @@ export default function PerformansProgramiProgramClient({
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-center text-slate-600">{p.sira_no ?? i + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">{p.kodu}</td>
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      <Link
-                        href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${p.id}`}
-                        className="hover:underline"
-                      >
-                        {p.program_adi}
-                      </Link>
-                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-800">{p.program_adi}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         <Link

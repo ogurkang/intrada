@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-10-29-performans-programi',
+    baslik: '29 Ekim 2026 — Performans programı',
+    maddeler: [
+      'Alt program satırındaki göz, Alt Program Hedefi ekranını açar. Bilgi sütunu bağlı alt hedef sayısını yazar.',
+      'Hedef Ekle penceresinden stratejik plandaki performans hedefi seçilir. Faaliyet kodu amaç, hedef, performans hedefi ve faaliyet numarasındandır.',
+      'Faaliyet Ekle, seçilen hedefe o yılın özel faaliyetini yazar. İşlemlerde kayıt geçmişi, girilen ödenekler ve maliyet düzenleme vardır.',
+      'Olmayan bir adres 404 ekranı açar. Önceki sayfaya dön, geldiğiniz sayfaya götürür.',
+    ],
+  },
+  {
     id: '2026-10-27-egitim-sendika',
     baslik: '27 Ekim 2026 — Eğitim takvimi ve sendika raporları',
     maddeler: [
