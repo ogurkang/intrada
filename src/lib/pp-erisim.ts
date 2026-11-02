@@ -28,7 +28,7 @@ export async function ppMaliyetSeciciMi(
   if (isAdminLike(access)) return true
   if (access.mode !== 'kullanici') return false
   const { mudurlukler } = await getKullaniciGorevMudurlukleri(supabase, access.sicilNo)
-  return mudurlukler.some(stratejiGelistirmeMudurluguMi)
+  return mudurlukler.some(stratejiGelistirmeMudurluguMu)
 }
 
 export async function ppOturum(supabase: SupabaseClient) {
