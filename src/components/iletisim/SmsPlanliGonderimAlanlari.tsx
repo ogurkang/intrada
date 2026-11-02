@@ -51,7 +51,7 @@ export default function SmsPlanliGonderimAlanlari({
         </div>
       ) : dogumGunuModu ? (
         <p className="text-xs text-slate-500">
-          İşaretlenmezse her alıcı kendi doğum gününde (09:00) alır.
+          İşaretlenmezse her alıcı kendi doğum gününde (09:00) alır. Bugün ve saat 09:00’ı geçtiyse hemen gider.
         </p>
       ) : (
         <p className="text-xs text-slate-500">İşaretlenmezse mesaj hemen gönderilir.</p>

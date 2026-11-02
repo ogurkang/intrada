@@ -141,7 +141,7 @@ export default function SmsDogumGunuClient({ personeller, sablonlar, originatorl
       <div className="rounded-xl border border-slate-200 bg-sky-50/60 px-4 py-3 text-sm text-sky-800">
         <strong>{AYLAR[ay]}</strong> ayında doğan personel listeleniyor. Seçilenlere, <strong>Tanımlar</strong> ekranında
         ayarladığınız doğum günü şablonu varsayılan olarak <strong>kendi doğum günlerinde (09:00)</strong> iletilmek üzere
-        planlanır. İsterseniz aşağıdan ortak bir tarih/saat de seçebilirsiniz.
+        planlanır. Doğum günü bugünse ve saat 09:00’ı geçtiyse mesaj hemen gider. İsterseniz aşağıdan ortak bir tarih/saat de seçebilirsiniz.
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 flex flex-wrap items-end gap-3">

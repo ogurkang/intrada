@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-02-dogum-gunu-sms',
+    baslik: '2 Kasım 2026 — Doğum günü SMS',
+    maddeler: [
+      'Doğum günü bugünse ve saat 09:00’ı geçtiyse mesaj hemen gider. Saat henüz 09:00 olmamışsa bugün 09:00’a planlanır.',
+      'Başka günlerdeki doğum günleri yine o gün saat 09:00’da kalır.',
+    ],
+  },
+  {
     id: '2026-10-29-performans-programi',
     baslik: '29 Ekim 2026 — Performans programı',
     maddeler: [

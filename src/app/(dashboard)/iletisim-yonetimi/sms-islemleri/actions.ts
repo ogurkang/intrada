@@ -124,7 +124,7 @@ export async function smsGonderAction(input: SmsGonderInput): Promise<SmsGonderA
       let sdate = ortakSdate
       if (!sdate && dogumGunuOtomatik && c.dogum_tarihi) {
         const plan = dogumGunuSDate(String(c.dogum_tarihi).slice(0, 10))
-        if (plan && !plan.bugun) sdate = plan.sdate
+        if (plan?.sdate) sdate = plan.sdate
       }
       alicilar.push({ sicil_no: c.sicil_no, ad: c.ad_soyad, telefon: gsm, mesaj: hitapla(c.ad_soyad, govde), sdate })
     }

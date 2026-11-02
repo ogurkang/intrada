@@ -57,23 +57,41 @@ export function gsmNormalize(raw: string | null | undefined): string | null {
   return null
 }
 
+/** Türkiye saati: YYYY-MM-DD ve HHMM. */
+function turkiyeTarihSaat(now: Date): { ymd: string; hhmm: string } {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+  const p = Object.fromEntries(fmt.formatToParts(now).map(x => [x.type, x.value]))
+  const saat = p.hour === '24' ? '00' : p.hour
+  return { ymd: `${p.year}-${p.month}-${p.day}`, hhmm: `${saat}${p.minute}` }
+}
+
 /**
  * Doğum gününe göre zamanlama tarihi (SDate, biçim GGAAYYYYSSdd) üretir.
- * dogumTarihi: YYYY-MM-DD. Bugünse anında gönderim için boş sdate döner.
+ * dogumTarihi: YYYY-MM-DD. Saat Türkiye saatidir.
+ * Doğum günü bugün ve saat 09:00'ı geçmişse anında gönderim (boş sdate).
+ * Bugün henüz 09:00 olmamışsa bugün 09:00. Diğer günler o gün 09:00.
  * Geçmiş bir güne denk gelirse gelecek yıla planlanır.
  */
-export function dogumGunuSDate(dogumTarihi: string, saat = '0900'): { sdate: string; bugun: boolean } | null {
+export function dogumGunuSDate(dogumTarihi: string, saat = '0900', simdi = new Date()): { sdate: string; bugun: boolean } | null {
   const mm = String(dogumTarihi ?? '').slice(5, 7)
   const dd = String(dogumTarihi ?? '').slice(8, 10)
   if (mm.length !== 2 || dd.length !== 2) return null
-  const now = new Date()
-  const ay = String(now.getMonth() + 1).padStart(2, '0')
-  const gun = String(now.getDate()).padStart(2, '0')
-  const bugunStr = `${now.getFullYear()}-${ay}-${gun}`
-  let yil = now.getFullYear()
+  const { ymd, hhmm } = turkiyeTarihSaat(simdi)
+  let yil = Number(ymd.slice(0, 4))
   const buYilStr = `${yil}-${mm}-${dd}`
-  if (buYilStr === bugunStr) return { sdate: '', bugun: true }
-  if (buYilStr < bugunStr) yil += 1
+  if (buYilStr === ymd) {
+    if (hhmm > saat) return { sdate: '', bugun: true }
+    return { sdate: `${dd}${mm}${yil}${saat}`, bugun: true }
+  }
+  if (buYilStr < ymd) yil += 1
   return { sdate: `${dd}${mm}${yil}${saat}`, bugun: false }
 }
 
