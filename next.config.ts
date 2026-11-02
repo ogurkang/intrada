@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
       './src/lib/ick/sablon/ikep-izrapor.docx',
     ],
     '/api/ic-kontrol/plan/[id]/word': ['./src/lib/ick/sablon/**/*'],
+    '/api/performans-programi/raporlar/mudurluk-performans/excel': ['./src/lib/pp/sablon/ornek.xlsx'],
   },
 };
 

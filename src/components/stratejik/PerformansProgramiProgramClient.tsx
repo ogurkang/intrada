@@ -11,6 +11,7 @@ export interface PpProgram {
   kodu: string
   program_adi: string
   aktif: boolean
+  alt_program_sayisi: number
 }
 
 interface Props {
@@ -81,13 +82,14 @@ export default function PerformansProgramiProgramClient({
                 <th className="px-4 py-3 text-center w-20">Sıra No</th>
                 <th className="px-4 py-3 text-left w-32">Kodu</th>
                 <th className="px-4 py-3 text-left">Program Adı</th>
+                <th className="px-4 py-3 text-left w-48">Bilgi</th>
                 <th className="px-4 py-3 text-center w-28">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {programlar.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
                     Bu yıl için program kaydı bulunamadı.
                   </td>
                 </tr>
@@ -97,6 +99,7 @@ export default function PerformansProgramiProgramClient({
                     <td className="px-4 py-3 text-center text-slate-600">{p.sira_no ?? i + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">{p.kodu}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{p.program_adi}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.alt_program_sayisi} alt program bağlı.</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         <Link

@@ -59,9 +59,14 @@ export default async function AltProgramHedefiPage({
     : { data: [] }
   const faaliyetler = faaliyetRaw ?? []
   const { data: gostergeRaw } = altHedefIds.length
-    ? await sb.from('stratejik_plan_gosterge').select('faaliyet_id, gosterge_adi').in('alt_hedef_id', altHedefIds)
+    ? await sb.from('stratejik_plan_gosterge').select('id, faaliyet_id, gosterge_adi, birim').in('alt_hedef_id', altHedefIds).eq('aktif', true).order('sira_no')
     : { data: [] }
-  const gostergeler = (gostergeRaw ?? []) as { faaliyet_id: number | null; gosterge_adi: string }[]
+  const gostergeler = (gostergeRaw ?? []) as { id: number; faaliyet_id: number | null; gosterge_adi: string; birim: string }[]
+  const gostergeIds = gostergeler.map(g => g.id)
+  const { data: metinRaw } = gostergeIds.length
+    ? await sb.from('performans_programi_veri_giris').select('gosterge_id, mudurluk, gosterge_aciklama, hesaplama_yontemi').eq('yil', yil).in('gosterge_id', gostergeIds)
+    : { data: [] }
+  const metinler = (metinRaw ?? []) as { gosterge_id: number; mudurluk: string; gosterge_aciklama: string | null; hesaplama_yontemi: string | null }[]
   const { data: ozelRaw } = await sb
     .from('performans_programi_ozel_faaliyet')
     .select('id, alt_hedef_id, sira_no, faaliyet_adi')
@@ -158,10 +163,28 @@ export default async function AltProgramHedefiPage({
     const kok = [sayiParcasi(amac?.kodu, amac?.sira_no), sayiParcasi(hedef?.kodu, hedef?.sira_no), sayiParcasi(h.kodu, h.sira_no)]
     const planSatir: PpFaaliyetSatir[] = faaliyetler
       .filter((f: { alt_hedef_id: number }) => f.alt_hedef_id === h.id)
-      .map((f: { id: number; sira_no: number | null; faaliyet_adi: string }, i: number) => satirYap(f.id, false, f.sira_no ?? i + 1, kok, f.faaliyet_adi, gostergeler.filter(g => g.faaliyet_id === f.id).map(g => g.gosterge_adi), maliyetAcik))
+      .map((f: { id: number; sira_no: number | null; faaliyet_adi: string }, i: number) => satirYap(
+        f.id,
+        false,
+        f.sira_no ?? i + 1,
+        kok,
+        f.faaliyet_adi,
+        gostergeler.filter(g => g.faaliyet_id === f.id).map(g => g.gosterge_adi),
+        maliyetAcik ? gostergeler.filter(g => g.faaliyet_id === f.id).map(g => {
+          const v = metinler.find(m => m.gosterge_id === g.id && ppNorm(m.mudurluk) === ppNorm(h.mudurluk))
+          return {
+            id: g.id,
+            ad: g.gosterge_adi,
+            birim: g.birim,
+            aciklama: String(v?.gosterge_aciklama ?? ''),
+            hesaplama: String(v?.hesaplama_yontemi ?? ''),
+          }
+        }) : [],
+        maliyetAcik,
+      ))
     const ozelSatir: PpFaaliyetSatir[] = ozelFaaliyetler
       .filter(f => f.alt_hedef_id === h.id)
-      .map(f => satirYap(f.id, true, f.sira_no ?? 0, kok, f.faaliyet_adi, [], maliyetAcik))
+      .map(f => satirYap(f.id, true, f.sira_no ?? 0, kok, f.faaliyet_adi, [], [], maliyetAcik))
     return {
       id: h.id,
       kodu: h.kodu,
@@ -172,7 +195,7 @@ export default async function AltProgramHedefiPage({
     }
   }
 
-  function satirYap(id: number, ozel: boolean, sira: number, kok: string[], ad: string, gosterge: string[], maliyetAcik: boolean): PpFaaliyetSatir {
+  function satirYap(id: number, ozel: boolean, sira: number, kok: string[], ad: string, gosterge: string[], gostergeDetay: PpFaaliyetSatir['gostergeDetay'], maliyetAcik: boolean): PpFaaliyetSatir {
     const anahtar = `${ozel ? 'o' : 's'}-${id}`
     return {
       id,
@@ -181,6 +204,7 @@ export default async function AltProgramHedefiPage({
       kod: [...kok, String(sira)].filter(Boolean).join('.'),
       ad,
       gostergeler: gosterge,
+      gostergeDetay,
       toplam: maliyetAcik ? (toplamByAnahtar.get(anahtar) ?? 0) : 0,
       girilen: maliyetAcik ? (girilenByAnahtar.get(anahtar) ?? []) : [],
       loglar: maliyetAcik ? (logByAnahtar.get(anahtar) ?? []) : [],

@@ -191,3 +191,70 @@ export async function ppFaaliyetMaliyetKaydet(
   revalidatePath(`${kok}/maliyet/${faaliyetId}`)
   return {}
 }
+
+export async function ppGostergeMetinKaydet(
+  altProgramId: number,
+  yil: number,
+  programId: number,
+  faaliyetId: number,
+  satirlar: {
+    gosterge_id: number
+    gerceklesme: number | null
+    planlanan: number | null
+    yilSonu: number | null
+    hedef: number | null
+    tahmin1: number | null
+    tahmin2: number | null
+    aciklama: string
+    hesaplama: string
+  }[],
+): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  const ot = await ppOturum(supabase)
+  if (!ot) return { hata: 'Oturum gerekli.' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data: faaliyet } = await sb.from('stratejik_plan_faaliyet').select('id, alt_hedef_id').eq('id', faaliyetId).maybeSingle()
+  const altHedefId = Number(faaliyet?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId)) return { hata: 'Faaliyet bulunamadı.' }
+  const { data: bag } = await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_program_id', altProgramId).eq('alt_hedef_id', altHedefId).maybeSingle()
+  if (!bag) return { hata: 'Bu faaliyet bu alt programa bağlı değil.' }
+  const { data: altHedef } = await sb.from('stratejik_plan_alt_hedef').select('mudurluk').eq('id', altHedefId).maybeSingle()
+  const mudurluk = String(altHedef?.mudurluk ?? '').trim()
+  if (!mudurluk) return { hata: 'Müdürlük bilgisi bulunamadı.' }
+  const secici = await ppMaliyetSeciciMi(supabase, ot.access)
+  if (!secici) {
+    if (ot.access.mode !== 'kullanici') return { hata: 'Bu kayıt için yetkiniz yok.' }
+    const { mudurlukler } = await getKullaniciGorevMudurlukleri(supabase, ot.access.sicilNo)
+    if (!mudurlukler.some(m => ppNorm(m) === ppNorm(mudurluk))) return { hata: 'Bu müdürlük için yetkiniz yok.' }
+  }
+  const temiz = satirlar.filter(s => Number.isFinite(s.gosterge_id))
+  if (!temiz.length) return { hata: 'Kaydedilecek gösterge yok.' }
+  const ortak = { faaliyet_id: faaliyetId, mudurluk, updated_by: ot.user.id, updated_at: new Date().toISOString() }
+  const { error } = await sb.from('performans_programi_veri_giris').upsert(
+    [
+      ...temiz.map(s => ({
+        ...ortak,
+        gosterge_id: s.gosterge_id,
+        yil,
+        planlanan_cari_yil: s.hedef,
+        tahmin_sonraki_yil_1: s.tahmin1,
+        tahmin_sonraki_yil_2: s.tahmin2,
+        gosterge_aciklama: s.aciklama.trim() || null,
+        hesaplama_yontemi: s.hesaplama.trim() || null,
+      })),
+      ...temiz.map(s => ({
+        ...ortak,
+        gosterge_id: s.gosterge_id,
+        yil: yil - 1,
+        onceki_yil_gerceklesme: s.gerceklesme,
+        planlanan_cari_yil: s.planlanan,
+        gerceklesme_tahmini_cari_yil: s.yilSonu,
+      })),
+    ],
+    { onConflict: 'gosterge_id,yil,mudurluk' },
+  )
+  if (error) return { hata: error.message }
+  revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}`)
+  return {}
+}

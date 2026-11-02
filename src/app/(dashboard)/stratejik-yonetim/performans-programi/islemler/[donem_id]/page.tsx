@@ -23,7 +23,17 @@ export default async function PerformansProgramiDonemDetayPage({
     .eq('yil', yil)
     .order('sira_no', { ascending: true, nullsFirst: false })
     .order('id', { ascending: true })
-  const programlar = (data ?? []) as PpProgram[]
+  const programlarHam = (data ?? []) as Omit<PpProgram, 'alt_program_sayisi'>[]
+  const programIds = programlarHam.map(p => p.id)
+  const { data: altRaw } = programIds.length
+    ? await sb.from('performans_programi_alt_program').select('program_id').in('program_id', programIds)
+    : { data: [] }
+  const sayac = new Map<number, number>()
+  for (const a of altRaw ?? []) {
+    const id = Number((a as { program_id?: number }).program_id)
+    if (Number.isFinite(id)) sayac.set(id, (sayac.get(id) ?? 0) + 1)
+  }
+  const programlar: PpProgram[] = programlarHam.map(p => ({ ...p, alt_program_sayisi: sayac.get(p.id) ?? 0 }))
 
   return (
     <div className="space-y-4">

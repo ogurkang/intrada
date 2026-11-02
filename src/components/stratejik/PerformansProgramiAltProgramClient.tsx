@@ -10,6 +10,7 @@ export interface PpAltProgram {
   sira_no: number | null
   kodu: string
   alt_program_adi: string
+  gerekce: string | null
   aktif: boolean
   hedef_sayisi: number
 }
@@ -100,7 +101,7 @@ export default function PerformansProgramiAltProgramClient({
         </div>
       </div>
 
-      <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Alt Program Düzenle' : 'Alt Program Ekle'} size="sm">
+      <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Alt Program Düzenle' : 'Alt Program Ekle'} size="lg">
         <form onSubmit={async e => { e.preventDefault(); await kaydet(new FormData(e.currentTarget)) }} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -115,6 +116,10 @@ export default function PerformansProgramiAltProgramClient({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Alt Program Adı *</label>
             <input name="alt_program_adi" required defaultValue={secili?.alt_program_adi ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gerekçe ve Açıklamalar</label>
+            <textarea name="gerekce" rows={5} defaultValue={secili?.gerekce ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
           </div>
           {hata && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{hata}</p>}
           <div className="flex justify-end gap-3 pt-1"><button type="button" onClick={() => setFormAcik(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg">İptal</button><button type="submit" disabled={isPending} className="px-4 py-2 text-sm text-white bg-slate-800 rounded-lg disabled:opacity-50">{isPending ? 'Kaydediliyor…' : secili ? 'Güncelle' : 'Kaydet'}</button></div>

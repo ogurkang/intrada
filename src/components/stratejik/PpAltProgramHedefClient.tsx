@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { ppAltProgramHedefEkle, ppOzelFaaliyetEkle } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/[alt_program_id]/actions'
 
+export type PpGostergeDetay = {
+  id: number
+  ad: string
+  birim: string
+  aciklama: string
+  hesaplama: string
+}
+
 export type PpFaaliyetSatir = {
   id: number
   ozel: boolean
@@ -13,6 +21,7 @@ export type PpFaaliyetSatir = {
   kod: string
   ad: string
   gostergeler: string[]
+  gostergeDetay: PpGostergeDetay[]
   toplam: number
   girilen: { kod: string; ad: string; tutar: number }[]
   loglar: { id: number; zaman: string; kisi: string; metin: string }[]
@@ -109,8 +118,8 @@ export default function PpAltProgramHedefClient({
           <p className="text-sm text-slate-500 mt-1">{baslik}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700">
-            <span className="mr-1" aria-hidden>{'<'}</span>
+          <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`} className="inline-flex items-center gap-2 bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-600">
+            <span aria-hidden>{'<'}</span>
             Alt programlar
           </Link>
           <button type="button" onClick={() => { setHedefAcik(true); setHata(null) }} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
@@ -220,7 +229,7 @@ function HedefGovde({
             <th className="px-3 py-2.5 text-left font-medium w-28">Kod</th>
             <th className="px-3 py-2.5 text-left font-medium">Faaliyet</th>
             <th className="px-3 py-2.5 text-right font-medium w-40">Faaliyet Maliyeti</th>
-            <th className="px-3 py-2.5 text-center font-medium w-32">İşlemler</th>
+            <th className="px-3 py-2.5 text-center font-medium w-40">İşlemler</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200">
@@ -248,6 +257,16 @@ function HedefGovde({
                     <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/maliyet/${f.id}${f.ozel ? '?ozel=1' : ''}`} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-700 hover:bg-emerald-50" title="Düzenle">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </Link>
+                    {!f.ozel && (
+                      <button
+                        type="button"
+                        onClick={() => window.open(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/gosterge/${f.id}`, '_blank')}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-700 hover:bg-amber-50"
+                        title="Performans göstergeleri"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </td>

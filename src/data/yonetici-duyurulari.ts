@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-02-pp-rapor',
+    baslik: '2 Kasım 2026 — Performans programı raporu',
+    maddeler: [
+      'Raporlar, Müdürlük Performans Bilgisi tablosunu doğrudan açar. Müdürlük sekmeleri ve yıl seçimi vardır.',
+      'Excel, örnek formun satır yüksekliği, sütun genişliği ve birleştirmeleriyle iner.',
+      'Alt programda gerekçe yazılır. Faaliyetin performans göstergesinde açıklama, hesaplama yöntemi ve yıl değerleri girilir.',
+    ],
+  },
+  {
     id: '2026-11-02-dogum-gunu-sms',
     baslik: '2 Kasım 2026 — Doğum günü SMS',
     maddeler: [

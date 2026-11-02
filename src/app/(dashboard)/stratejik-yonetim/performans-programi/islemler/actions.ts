@@ -62,6 +62,7 @@ export async function altProgramEkle(programId: number, yil: number, fd: FormDat
   const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_program_adi = txt(fd.get('alt_program_adi'))
+  const gerekce = txt(fd.get('gerekce')) || null
   if (!kodu || !alt_program_adi) return { hata: 'Kod ve alt program adı zorunludur.' }
   const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
   if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
@@ -73,6 +74,7 @@ export async function altProgramEkle(programId: number, yil: number, fd: FormDat
     sira_no,
     kodu,
     alt_program_adi,
+    gerekce,
     aktif: true,
   })
   if (error) return { hata: error.message }
@@ -84,13 +86,14 @@ export async function altProgramGuncelle(id: number, programId: number, yil: num
   const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_program_adi = txt(fd.get('alt_program_adi'))
+  const gerekce = txt(fd.get('gerekce')) || null
   if (!kodu || !alt_program_adi) return { hata: 'Kod ve alt program adı zorunludur.' }
   const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
   if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_alt_program').update({ sira_no, kodu, alt_program_adi }).eq('id', id)
+  const { error } = await sb.from('performans_programi_alt_program').update({ sira_no, kodu, alt_program_adi, gerekce }).eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`)
   return {}

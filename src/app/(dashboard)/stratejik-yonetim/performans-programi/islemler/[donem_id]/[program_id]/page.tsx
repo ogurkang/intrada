@@ -20,7 +20,7 @@ export default async function PerformansProgramiProgramDetayPage({
   const sb = supabase as any
   const [{ data: program }, { data: altRaw }] = await Promise.all([
     sb.from('performans_programi_program').select('id, yil, program_adi').eq('id', programId).eq('yil', yil).maybeSingle(),
-    sb.from('performans_programi_alt_program').select('id, program_id, sira_no, kodu, alt_program_adi, aktif').eq('program_id', programId).order('sira_no', { ascending: true, nullsFirst: false }).order('id', { ascending: true }),
+    sb.from('performans_programi_alt_program').select('id, program_id, sira_no, kodu, alt_program_adi, gerekce, aktif').eq('program_id', programId).order('sira_no', { ascending: true, nullsFirst: false }).order('id', { ascending: true }),
   ])
   if (!program) notFound()
   const altIds = (altRaw ?? []).map((a: { id: number }) => a.id)
