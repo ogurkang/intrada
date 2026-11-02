@@ -63,7 +63,7 @@ function sutunHarf(col: number): string {
 export async function ppPerformansExcelOlustur(
   bloklar: PpPerformansBlok[],
   yil: number,
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const sablon = new ExcelJS.Workbook()
   await sablon.xlsx.readFile(SABLON)
   const kaynak = sablon.worksheets[0]
@@ -186,5 +186,5 @@ export async function ppPerformansExcelOlustur(
   })
 
   const buf = await wb.xlsx.writeBuffer()
-  return Buffer.from(buf)
+  return new Uint8Array(buf)
 }

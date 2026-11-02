@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   if (!sekme) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
 
   const buf = await ppPerformansExcelOlustur(sekme.bloklar, rapor.yil)
-  return new NextResponse(buf, {
+  return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="Mudurluk_Performans_Bilgisi_${rapor.yil}.xlsx"`,
