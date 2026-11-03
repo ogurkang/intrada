@@ -156,37 +156,55 @@ function kurustanTl(k: number): number {
 
 export function odemePlaniOlustur(girdi: {
   anaTutar: number
-  taksitTutari: number
+  taksitSayisi: number
   odemeGunu: number
   faizBaslangic: string
   satirlar: TcmbFaizSatir[]
 }): OdemePlani | { hata: string } {
   const ana = Math.round(girdi.anaTutar * 100)
-  const taksit = Math.round(girdi.taksitTutari * 100)
+  const adet = girdi.taksitSayisi
   if (!Number.isFinite(ana) || ana <= 0) return { hata: 'Ana tutar sıfırdan büyük olmalıdır.' }
-  if (!Number.isFinite(taksit) || taksit <= 0) return { hata: 'Taksit tutarı sıfırdan büyük olmalıdır.' }
+  if (!Number.isInteger(adet) || adet < 1 || adet > 240) return { hata: 'Taksit sayısı 1 ile 240 arasında olmalıdır.' }
   if (!Number.isInteger(girdi.odemeGunu) || girdi.odemeGunu < 1 || girdi.odemeGunu > 31) {
     return { hata: 'Ödeme günü 1 ile 31 arasında olmalıdır.' }
   }
   if (!isoGecerli(girdi.faizBaslangic)) return { hata: 'Faiz başlangıcını seçin.' }
   if (girdi.faizBaslangic < EN_ERKEN) return { hata: 'Faiz başlangıcı 1 Mayıs 2005 öncesi olamaz.' }
-  if (Math.ceil(ana / taksit) > 240) return { hata: 'Taksit tutarı çok küçük. En fazla 240 taksit hesaplanır.' }
+  if (ana < adet) return { hata: 'Taksit sayısı, ana tutarın kuruş sayısından büyük olamaz.' }
+
+  const taban = Math.floor(ana / adet)
+  const artik = ana - taban * adet
+  const dilim = (index: number) => (index === adet - 1 ? taban + artik : taban)
 
   const satirlar: PlanSatir[] = []
   let kalan = ana
   let faizToplam = 0
-  let onceki = girdi.faizBaslangic
   let vade = ilkVade(girdi.faizBaslangic, girdi.odemeGunu)
-  while (kalan > 0) {
+  const ilkAnapara = dilim(0)
+  kalan -= ilkAnapara
+  satirlar.push({
+    sira: 1,
+    vade,
+    gun: 0,
+    oran: '—',
+    faiz: 0,
+    anapara: kurustanTl(ilkAnapara),
+    odeme: kurustanTl(ilkAnapara),
+    kalan: kurustanTl(kalan),
+  })
+
+  for (let i = 1; i < adet; i += 1) {
+    const onceki = vade
+    vade = sonrakiVade(vade, girdi.odemeGunu)
     const parca = donemParcalari(girdi.satirlar, onceki, vade)
     if ('hata' in parca) return parca
     const faiz = faizKurus(kalan, parca.parcalar)
-    const anapara = Math.min(kalan, taksit)
+    const anapara = dilim(i)
     kalan -= anapara
     faizToplam += faiz
     const oranlar = [...new Set(parca.parcalar.map(p => yuzdeTr(p.yuzde)))]
     satirlar.push({
-      sira: satirlar.length + 1,
+      sira: i + 1,
       vade,
       gun: parca.parcalar.reduce((n, p) => n + p.gun, 0),
       oran: oranlar.map(o => `%${o}`).join(' + '),
@@ -195,9 +213,6 @@ export function odemePlaniOlustur(girdi: {
       odeme: kurustanTl(anapara + faiz),
       kalan: kurustanTl(kalan),
     })
-    onceki = vade
-    vade = sonrakiVade(vade, girdi.odemeGunu)
-    if (satirlar.length > 240) return { hata: 'Ödeme planı 240 taksidi aştı.' }
   }
 
   return {

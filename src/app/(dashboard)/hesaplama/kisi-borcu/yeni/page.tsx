@@ -14,7 +14,7 @@ export default async function KisiBorcuYeniPage() {
       </Link>
       <h1 className="text-2xl font-bold text-slate-800">Form Oluştur</h1>
       <p className="max-w-3xl text-sm text-slate-600">
-        Kanuni faiz 3095 sayılı Kanunun 1. maddesine, temerrüt faizi sözleşmede ayrı oran yoksa aynı maddeye göre hesaplanır. Oran, tarihe göre TCMB reeskont tablosundan okunur.
+        Ana tutar taksit sayısına bölünür. İlk taksit faizsizdir. Sonraki taksitlere, 3095 sayılı Kanunun 1. maddesindeki oranla faiz eklenir. Oran TCMB reeskont tablosundan okunur.
       </p>
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}
       <KisiBorcuClient adaylar={adaylar} tcmb={tcmb.satirlar} kaynak={tcmb.kaynak} />

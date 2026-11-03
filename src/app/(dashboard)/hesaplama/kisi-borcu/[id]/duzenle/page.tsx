@@ -44,7 +44,7 @@ export default async function KisiBorcuDuzenlePage({ params }: { params: Promise
           unvan: belge.unvan,
           statu,
           ana: katsayiTr(belge.ana_tutar),
-          taksit: katsayiTr(belge.taksit_tutari),
+          taksit: String(belge.taksit_sayisi),
           odemeGunu: String(belge.odeme_gunu),
           baslangic: belge.faiz_baslangic,
           faizTuru: belge.faiz_turu,

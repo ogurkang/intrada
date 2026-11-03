@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
+import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
 import { faizTuruEtiket, type FaizTuru } from '@/lib/kanuni-faiz'
 import KisiBorcuListe, { type KisiBorcuListeSatir } from '@/components/hesaplama/KisiBorcuListe'
 import { kisiBorcuSil } from './actions'
@@ -38,6 +39,7 @@ export default async function KisiBorcuPage() {
     tutar: Number(k.toplam_odeme),
   }))
 
+  const imzaPersonel = await ikGorevPersonelleri(supabase)
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
     'kisi_borcu_kayitlari',
@@ -51,7 +53,7 @@ export default async function KisiBorcuPage() {
           <Link href="/hesaplama" className="text-sm text-slate-500 hover:text-slate-800">← Hesaplama Yönetimi</Link>
           <h1 className="mt-1 text-2xl font-bold text-slate-800">Kişi Borcu Hesaplama</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
-            Personelin borcu, taksit tutarı ve ödeme gününe göre kanuni veya temerrüt faiziyle ödeme planına bağlanır.
+            Personelin borcu taksit sayısına bölünür. İlk taksit faizsizdir. Sonraki taksitlere kanuni veya temerrüt faizi eklenir.
           </p>
         </div>
         <Link
@@ -71,6 +73,7 @@ export default async function KisiBorcuPage() {
         auditLoglarByRefId={auditLoglarByRefId}
         canDelete={canDelete}
         onSil={canDelete ? kisiBorcuSil : undefined}
+        imzaPersonel={imzaPersonel}
       />
     </div>
   )

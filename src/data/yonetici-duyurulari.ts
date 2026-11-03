@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-kisi-borcu-taksit',
+    baslik: '3 Kasım 2026 — Kişi borcu taksit ve PDF',
+    maddeler: [
+      'Kişi borcunda taksit tutarı yerine taksit sayısı girilir. Ana tutar bu sayıya bölünür.',
+      'İlk taksitte faiz tahakkuk etmez. Tutar doğrudan anaparadan düşer. Sonraki taksitlere kalan anapara üzerinden faiz eklenir.',
+      'Kayıt listesinden ve kaydın kendisinden ödeme planı PDF olarak indirilir.',
+    ],
+  },
+  {
     id: '2026-11-03-kisi-borcu',
     baslik: '3 Kasım 2026 — Stratejik kartlar ve kişi borcu',
     maddeler: [

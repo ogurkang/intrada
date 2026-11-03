@@ -57,8 +57,8 @@ export type BelgeTablo = {
 
 export type EvrakImzaAd = { duzenleyen?: string; gerceklestirme?: string }
 
-export function evrakImzaCiz(doc: PdfDoc, y: number, imza?: EvrakImzaAd) {
-  const icW = PAGE_W - MARGIN * 2
+export function evrakImzaCiz(doc: PdfDoc, y: number, imza?: EvrakImzaAd, sayfaGenislik = PAGE_W) {
+  const icW = sayfaGenislik - MARGIN * 2
   const imzaW = (icW - 16) / 2
   const yil = new Date().getFullYear()
   const ciz = (etiket: string, ad: string, x: number) => {
@@ -157,6 +157,89 @@ export async function hesaplamaBelgePdf(girdi: {
   doc.fontSize(8).fillColor('#0f172a').text(girdi.not, MARGIN, y, { width: icW, align: 'left', lineGap: 2 })
   evrakImzaCiz(doc, doc.y + 22, girdi.imza)
 
+  doc.end()
+  return done
+}
+
+const YATAY_W = 841.89
+const YATAY_H = 595.28
+
+export async function kisiBorcuFormPdf(girdi: {
+  kimlik: BelgeHucre[]
+  satirlar: string[][]
+  not: string
+  imza?: EvrakImzaAd
+}): Promise<Buffer> {
+  const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: MARGIN })
+  const done = pdfBuffer(doc)
+  const icW = YATAY_W - MARGIN * 2
+  const basliklar = ['Sıra', 'Vade', 'Gün', 'Oran', 'Faiz', 'Anapara', 'Ödeme', 'Kalan']
+  const pay = [0.06, 0.12, 0.07, 0.16, 0.145, 0.145, 0.15, 0.15]
+  const genislikler = pay.map(p => icW * p)
+  const saga = new Set([2, 4, 5, 6, 7])
+  const satirH = 16
+
+  const tabloBaslik = (y: number) => {
+    basliklar.forEach((baslik, i) => {
+      const x = MARGIN + genislikler.slice(0, i).reduce((a, b) => a + b, 0)
+      hucre(doc, x, y, genislikler[i], satirH, baslik, {
+        bold: true,
+        size: 7,
+        fill: '#e2e8f0',
+        align: saga.has(i) ? 'right' : 'left',
+      })
+    })
+    return y + satirH
+  }
+
+  let y = MARGIN
+  font(doc, true)
+  doc.fontSize(11).fillColor('#0f172a').text('T.C.', MARGIN, y, { width: icW, align: 'center' })
+  y = doc.y + 2
+  doc.fontSize(12).text('ADAPAZARI BELEDİYE BAŞKANLIĞI', MARGIN, y, { width: icW, align: 'center' })
+  y = doc.y + 2
+  font(doc, false)
+  doc.fontSize(10).text('İnsan Kaynakları ve Eğitim Müdürlüğü', MARGIN, y, { width: icW, align: 'center' })
+  y = doc.y + 8
+  font(doc, true)
+  doc.fontSize(13).text('KİŞİ BORCU ÖDEME PLANI', MARGIN, y, { width: icW, align: 'center' })
+  y = doc.y + 12
+
+  const kimlikH = 16
+  const etiketW = 160
+  girdi.kimlik.forEach((satir, i) => {
+    const yy = y + i * kimlikH
+    hucre(doc, MARGIN, yy, etiketW, kimlikH, satir.etiket, { size: 8, fill: '#f8fafc' })
+    hucre(doc, MARGIN + etiketW, yy, icW - etiketW, kimlikH, satir.deger, { size: 8, bold: true })
+  })
+  y += girdi.kimlik.length * kimlikH + 10
+  y = tabloBaslik(y)
+
+  girdi.satirlar.forEach(satir => {
+    if (y + satirH > YATAY_H - MARGIN) {
+      doc.addPage({ size: 'A4', layout: 'landscape', margin: MARGIN })
+      y = tabloBaslik(MARGIN)
+    }
+    satir.forEach((metin, i) => {
+      const x = MARGIN + genislikler.slice(0, i).reduce((a, b) => a + b, 0)
+      hucre(doc, x, y, genislikler[i], satirH, metin, {
+        size: 7,
+        align: saga.has(i) ? 'right' : 'left',
+      })
+    })
+    y += satirH
+  })
+
+  y += 12
+  font(doc, false)
+  doc.fontSize(8)
+  const notH = doc.heightOfString(girdi.not, { width: icW, lineGap: 2 })
+  if (y + notH + 78 > YATAY_H - MARGIN) {
+    doc.addPage({ size: 'A4', layout: 'landscape', margin: MARGIN })
+    y = MARGIN
+  }
+  doc.fillColor('#0f172a').text(girdi.not, MARGIN, y, { width: icW, align: 'left', lineGap: 2 })
+  evrakImzaCiz(doc, doc.y + 18, girdi.imza, YATAY_W)
   doc.end()
   return done
 }

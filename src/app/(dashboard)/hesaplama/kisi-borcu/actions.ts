@@ -54,7 +54,7 @@ export type KisiBorcuKaydetGirdi = {
   unvan: string
   statu: string
   ana_tutar: number
-  taksit_tutari: number
+  taksit_sayisi: number
   odeme_gunu: number
   faiz_baslangic: string
   faiz_turu: FaizTuru
@@ -68,7 +68,7 @@ export async function kisiBorcuKaydet(
   const tcmb = await tcmbReeskontGetir()
   const hesap = kisiBorcuHesapla({
     anaTutar: Number(girdi.ana_tutar),
-    taksitTutari: Number(girdi.taksit_tutari),
+    taksitSayisi: Number(girdi.taksit_sayisi),
     odemeGunu: Number(girdi.odeme_gunu),
     faizBaslangic: girdi.faiz_baslangic,
     faizTuru: girdi.faiz_turu,

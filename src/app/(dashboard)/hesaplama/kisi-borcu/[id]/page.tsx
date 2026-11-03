@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { faizTuruEtiket, tarihTr } from '@/lib/kanuni-faiz'
 import { kisiBorcuBelgeCoz } from '@/lib/kisi-borcu'
+import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
+import { EvrakPdfIndir } from '@/components/hesaplama/EvrakImzaSecimi'
 import KisiBorcuPlan from '@/components/hesaplama/KisiBorcuPlan'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +23,7 @@ export default async function KisiBorcuDetayPage({ params }: { params: Promise<{
     .maybeSingle()
   const belge = kisiBorcuBelgeCoz(data?.belge)
   if (!belge) notFound()
+  const imzaPersonel = await ikGorevPersonelleri(supabase)
 
   return (
     <div className="space-y-6">
@@ -34,20 +37,22 @@ export default async function KisiBorcuDetayPage({ params }: { params: Promise<{
             {belge.sicil_no}{belge.tckn ? ` · ${belge.tckn}` : ''}{belge.unvan ? ` · ${belge.unvan}` : ''}
           </p>
         </div>
-        <Link
-          href={`/hesaplama/kisi-borcu/${kayitId}/duzenle`}
-          className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-        >
-          Düzenle
-        </Link>
+        <div className="flex flex-wrap items-end gap-3">
+          <Link
+            href={`/hesaplama/kisi-borcu/${kayitId}/duzenle`}
+            className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            Düzenle
+          </Link>
+          <EvrakPdfIndir href={`/api/hesaplama/kisi-borcu/pdf?id=${kayitId}`} personel={imzaPersonel} />
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Bilgi etiket="Faiz" deger={faizTuruEtiket(belge.faiz_turu)} />
         <Bilgi etiket="Ana tutar" deger={paraTr(belge.ana_tutar)} />
-        <Bilgi etiket="Taksit tutarı" deger={paraTr(belge.taksit_tutari)} />
+        <Bilgi etiket="Taksit sayısı" deger={String(belge.taksit_sayisi)} />
         <Bilgi etiket="Ödeme günü" deger={String(belge.odeme_gunu)} />
         <Bilgi etiket="Faiz başlangıcı" deger={tarihTr(belge.faiz_baslangic)} />
-        <Bilgi etiket="Taksit sayısı" deger={String(belge.taksit_sayisi)} />
         <Bilgi etiket="Toplam faiz" deger={paraTr(belge.toplam_faiz)} />
         <Bilgi etiket="Toplam ödeme" deger={paraTr(belge.toplam_odeme)} />
       </div>

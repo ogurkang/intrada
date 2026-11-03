@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { CopKutusuSilDugmesi, GozDetayLink, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { CopKutusuSilDugmesi, GozDetayLink, IndirLink, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import { EvrakImzaAlanlari, pdfImzaSorgu } from '@/components/hesaplama/EvrakImzaSecimi'
+import type { IkImzaPersonel } from '@/lib/ik-imza-personel'
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { kisiBorcuAuditDegerGoster, kisiBorcuAuditDiffSatirlari } from '@/lib/kisi-borcu'
 import type { Tables } from '@/types/database'
@@ -22,13 +24,17 @@ export default function KisiBorcuListe({
   auditLoglarByRefId,
   canDelete,
   onSil,
+  imzaPersonel = [],
 }: {
   kayitlar: KisiBorcuListeSatir[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
   canDelete?: boolean
   onSil?: (id: number) => Promise<{ hata?: string }>
+  imzaPersonel?: IkImzaPersonel[]
 }) {
   const router = useRouter()
+  const [duzenleyen, setDuzenleyen] = useState('')
+  const [gorevli, setGorevli] = useState('')
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -44,6 +50,13 @@ export default function KisiBorcuListe({
 
   return (
     <>
+      <EvrakImzaAlanlari
+        personel={imzaPersonel}
+        duzenleyen={duzenleyen}
+        gorevli={gorevli}
+        onDuzenleyen={setDuzenleyen}
+        onGorevli={setGorevli}
+      />
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead>
@@ -79,6 +92,7 @@ export default function KisiBorcuListe({
                       <SaatGecmisDugmesi sayi={auditLoglar.length} onClick={() => setGecmisRefId(refId)} title="İşlem geçmişi" />
                       <GozDetayLink href={`/hesaplama/kisi-borcu/${k.id}`} title="Önizleme" />
                       <KalemDuzenleLink href={`/hesaplama/kisi-borcu/${k.id}/duzenle`} title="Düzenle" />
+                      <IndirLink href={`/api/hesaplama/kisi-borcu/pdf?id=${k.id}${pdfImzaSorgu(duzenleyen, gorevli)}`} title="PDF İndir" />
                       {canDelete && onSil ? (
                         <CopKutusuSilDugmesi onClick={() => handleSil(k.id)} disabled={isPending} title="Sil" />
                       ) : null}

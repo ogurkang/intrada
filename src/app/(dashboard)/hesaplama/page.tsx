@@ -19,7 +19,7 @@ const KARTLAR = [
   {
     href: '/hesaplama/kisi-borcu',
     baslik: 'Kişi Borcu Hesaplama',
-    aciklama: 'Ana tutar, taksit ve ödeme gününe göre kanuni veya temerrüt faizi. Oran TCMB reeskont tablosundan okunur.',
+    aciklama: 'Ana tutar taksit sayısına bölünür. İlk taksit faizsizdir. Sonraki taksitlere kanuni veya temerrüt faizi eklenir.',
   },
   {
     href: '/hesaplama/tanimlar',

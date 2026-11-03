@@ -21,6 +21,13 @@ function sayiEsnek(raw: string): number | null {
   return n
 }
 
+function taksitSayisiOku(raw: string): number | null {
+  const t = raw.trim()
+  if (!/^\d+$/.test(t)) return null
+  const n = Number(t)
+  return n >= 1 && n <= 240 ? n : null
+}
+
 export type KisiBorcuFormBaslangic = {
   id?: number
   sicil: string
@@ -94,11 +101,11 @@ export default function KisiBorcuClient({
   const hesap = useMemo(() => {
     if (!sicil || !baslangicTarih) return null
     const anaTutar = sayiEsnek(ana)
-    const taksitTutari = sayiEsnek(taksit)
-    if (anaTutar == null || taksitTutari == null) return null
+    const taksitSayisi = taksitSayisiOku(taksit)
+    if (anaTutar == null || taksitSayisi == null) return null
     return kisiBorcuHesapla({
       anaTutar,
-      taksitTutari,
+      taksitSayisi,
       odemeGunu: Number(odemeGunu),
       faizBaslangic: baslangicTarih,
       faizTuru,
@@ -123,7 +130,7 @@ export default function KisiBorcuClient({
       unvan,
       statu,
       ana_tutar: sonuc.belge.ana_tutar,
-      taksit_tutari: sonuc.belge.taksit_tutari,
+      taksit_sayisi: sonuc.belge.taksit_sayisi,
       odeme_gunu: sonuc.belge.odeme_gunu,
       faiz_baslangic: sonuc.belge.faiz_baslangic,
       faiz_turu: faizTuru,
@@ -190,8 +197,8 @@ export default function KisiBorcuClient({
               <input value={ana} onChange={e => setAna(e.target.value)} inputMode="decimal" className={inputSinif} placeholder="0,00" />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Taksit tutarı</label>
-              <input value={taksit} onChange={e => setTaksit(e.target.value)} inputMode="decimal" className={inputSinif} placeholder="0,00" />
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Taksit sayısı</label>
+              <input value={taksit} onChange={e => setTaksit(e.target.value)} inputMode="numeric" className={inputSinif} placeholder="12" />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Ödeme günü</label>
@@ -216,7 +223,7 @@ export default function KisiBorcuClient({
           </div>
 
           <p className="text-sm text-slate-600">
-            Taksit tutarı anaparadan düşülür. Dönem faizi bu tutara eklenir. İlk vade, faiz başlangıcından sonraki ilk ödeme günüdür.
+            Ana tutar taksit sayısına bölünür. İlk taksit faizsizdir ve doğrudan anaparadan düşer. Sonraki taksitlere, kalan anapara üzerinden faiz eklenir.
           </p>
 
           {kaynak === 'yedek' ? (
@@ -249,7 +256,7 @@ export default function KisiBorcuClient({
               <p className="text-sm leading-relaxed text-slate-600">{sonuc.belge.dayanak}</p>
             </>
           ) : (
-            <p className="text-sm text-slate-500">Personel, tutarlar ve faiz başlangıcı girilince plan burada görünür.</p>
+            <p className="text-sm text-slate-500">Personel, ana tutar, taksit sayısı ve faiz başlangıcı girilince plan burada görünür.</p>
           )}
         </div>
       </div>
