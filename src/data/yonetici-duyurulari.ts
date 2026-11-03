@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-kisi-borcu',
+    baslik: '3 Kasım 2026 — Stratejik kartlar ve kişi borcu',
+    maddeler: [
+      'Stratejik plan, performans programı ve faaliyet raporu başlıkları, tanımlardaki gibi kartlarla açılır.',
+      'Kişi borcu formunda personel, ana tutar, taksit, ödeme günü ve kanuni veya temerrüt faizi seçilir.',
+      'Faiz, 3095 sayılı Kanunun 1. maddesine göre basit faizdir. 31 Temmuz 2026 sonrası oran TCMB reeskont tablosundan okunur.',
+    ],
+  },
+  {
     id: '2026-11-03-strateji-gelistirme',
     baslik: '3 Kasım 2026 — Strateji geliştirme yetkisi',
     maddeler: [

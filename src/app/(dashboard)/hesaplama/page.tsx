@@ -17,6 +17,11 @@ const KARTLAR = [
     aciklama: 'Vefat eden memurun varislerine ölüm yardımı. Tutar varis sayısına bölünür.',
   },
   {
+    href: '/hesaplama/kisi-borcu',
+    baslik: 'Kişi Borcu Hesaplama',
+    aciklama: 'Ana tutar, taksit ve ödeme gününe göre kanuni veya temerrüt faizi. Oran TCMB reeskont tablosundan okunur.',
+  },
+  {
     href: '/hesaplama/tanimlar',
     baslik: 'Tanımlar',
     aciklama: 'Kalem tabanları, görev grupları ve işveren oranları. Hesaplamanın dayandığı sabitler.',
@@ -29,7 +34,7 @@ export default function HesaplamaYonetimiPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Hesaplama Yönetimi</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Personel maliyeti, emeklilik tazminatı ve memur ölüm yardımı hesapları. Katsayılar ekranda değiştirilebilir.
+          Personel maliyeti, emeklilik tazminatı, memur ölüm yardımı ve kişi borcu hesapları.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

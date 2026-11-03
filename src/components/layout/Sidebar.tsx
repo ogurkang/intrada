@@ -365,6 +365,7 @@ function buildMenuGroups(
       { href: '/hesaplama/personel-maliyeti', label: 'Personel Maliyeti Hesaplama' },
       { href: '/hesaplama/emeklilik-tazminati', label: 'Emeklilik Tazminatı Hesaplama' },
       { href: '/hesaplama/olum-yardimi', label: 'Ölüm Yardımı Hesaplama' },
+      { href: '/hesaplama/kisi-borcu', label: 'Kişi Borcu Hesaplama' },
       {
         href: '/hesaplama/tanimlar',
         label: 'Tanımlar',
