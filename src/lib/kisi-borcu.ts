@@ -26,6 +26,9 @@ export type KisiBorcuBelge = {
   dayanak: string
 }
 
+export const KISI_BORCU_SONRAKI_YIL =
+  'Ödemelerin bir sonraki yıl da devam etmesi durumunda 3095 sayılı Kanun hükümleri gereğince TCMB’nin ilgili yıl için ilan edeceği reeskonta göre Kanuni/Temerrüt Faizi ilgili yıl için yeniden hesaplanacaktır.'
+
 export function kisiBorcuDayanak(tur: FaizTuru): string {
   const ortak =
     'Basit faiz, yıl 365 gün. Oran değişen günlerde dönem bölünür. 1 Mayıs 2005–31 Aralık 2005 %12, 1 Ocak 2006–31 Mayıs 2024 %9, 1 Haziran 2024–30 Temmuz 2026 %24. 31 Temmuz 2026’dan sonra 3095 sayılı Kanun m.1: TCMB’nin önceki yıl 31 Aralık reeskontunun %80’i. 30 Haziran reeskontu bu orandan 5 puan veya daha çok farklıysa yılın ikinci yarısında 30 Haziran reeskontunun %80’i uygulanır. Ana tutar taksit sayısına bölünür. İlk taksitte faiz tahakkuk etmez. Sonraki taksitlerde kalan anapara üzerinden, bir önceki taksit tarihinden itibaren faiz eklenir.'

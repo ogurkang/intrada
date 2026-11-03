@@ -5,7 +5,7 @@ import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { kisiBorcuFormPdf } from '@/lib/hesaplama-evrak-pdf'
 import { faizTuruEtiket, tarihTr } from '@/lib/kanuni-faiz'
-import { kisiBorcuBelgeCoz } from '@/lib/kisi-borcu'
+import { KISI_BORCU_SONRAKI_YIL, kisiBorcuBelgeCoz } from '@/lib/kisi-borcu'
 import { ikImzaAdlari } from '@/lib/ik-imza-personel'
 
 export const runtime = 'nodejs'
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       paraTr(s.odeme),
       paraTr(s.kalan),
     ]),
-    not: belge.dayanak,
+    not: `${KISI_BORCU_SONRAKI_YIL}\n\n${belge.dayanak}`,
     imza,
   })
   return new NextResponse(new Uint8Array(pdf), {

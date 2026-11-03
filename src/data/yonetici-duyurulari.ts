@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-kisi-borcu-sonraki-yil',
+    baslik: '3 Kasım 2026 — Kişi borcu sonraki yıl notu',
+    maddeler: [
+      'Ödeme planının altında, ödemeler sonraki yıla taşarsa kanuni veya temerrüt faizinin TCMB’nin o yıl ilan edeceği reeskonta göre yeniden hesaplanacağı yazar.',
+      'Aynı cümle PDF çıktısında da planın hemen altındadır.',
+    ],
+  },
+  {
     id: '2026-11-03-kisi-borcu-taksit',
     baslik: '3 Kasım 2026 — Kişi borcu taksit ve PDF',
     maddeler: [

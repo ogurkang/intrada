@@ -1,8 +1,10 @@
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { tarihTr, type PlanSatir } from '@/lib/kanuni-faiz'
+import { KISI_BORCU_SONRAKI_YIL } from '@/lib/kisi-borcu'
 
 export default function KisiBorcuPlan({ satirlar }: { satirlar: PlanSatir[] }) {
   return (
+    <div className="space-y-3">
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="min-w-full text-sm">
         <thead>
@@ -32,6 +34,8 @@ export default function KisiBorcuPlan({ satirlar }: { satirlar: PlanSatir[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+    <p className="max-w-4xl text-sm leading-relaxed text-slate-600">{KISI_BORCU_SONRAKI_YIL}</p>
     </div>
   )
 }
