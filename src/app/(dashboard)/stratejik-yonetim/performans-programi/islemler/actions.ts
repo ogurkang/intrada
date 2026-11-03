@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 
 function txt(v: FormDataEntryValue | null): string {
@@ -179,9 +180,9 @@ export async function performansVeriGirisKaydet(
 
   const access = await getAppAccess(supabase, user.id)
   if (access.mode === 'blocked') return { hata: 'Yetkiniz yok.' }
-  const adminLike = isAdminLike(access)
-  const km = access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
-  const izinMudSet = new Set((adminLike ? [] : km.mudurlukler).map(normMud))
+  const yonetici = await stratejikYoneticiMi(supabase, access)
+  const km = !yonetici && access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
+  const izinMudSet = new Set(km.mudurlukler.map(normMud))
 
   const { data: faaliyet } = await sb
     .from('stratejik_plan_faaliyet')
@@ -198,7 +199,7 @@ export async function performansVeriGirisKaydet(
     .maybeSingle()
   const mudurluk = String((alt as { mudurluk?: string } | null)?.mudurluk ?? '').trim()
   if (!mudurluk) return { hata: 'Müdürlük bilgisi bulunamadı.' }
-  if (!adminLike && !izinMudSet.has(normMud(mudurluk))) return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
+  if (!yonetici && !izinMudSet.has(normMud(mudurluk))) return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
 
   const temiz = satirlar
     .filter(s => Number.isFinite(s.gosterge_id))
@@ -254,9 +255,9 @@ export async function performansFaaliyetButceKaydet(
 
   const access = await getAppAccess(supabase, user.id)
   if (access.mode === 'blocked') return { hata: 'Yetkiniz yok.' }
-  const adminLike = isAdminLike(access)
-  const km = access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
-  const izinMudSet = new Set((adminLike ? [] : km.mudurlukler).map(normMud))
+  const yonetici = await stratejikYoneticiMi(supabase, access)
+  const km = !yonetici && access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
+  const izinMudSet = new Set(km.mudurlukler.map(normMud))
 
   const { data: faaliyet } = await sb
     .from('stratejik_plan_faaliyet')
@@ -273,7 +274,7 @@ export async function performansFaaliyetButceKaydet(
     .maybeSingle()
   const mudurluk = String((alt as { mudurluk?: string } | null)?.mudurluk ?? '').trim()
   if (!mudurluk) return { hata: 'Müdürlük bilgisi bulunamadı.' }
-  if (!adminLike && !izinMudSet.has(normMud(mudurluk))) return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
+  if (!yonetici && !izinMudSet.has(normMud(mudurluk))) return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
 
   const temiz = kalemler
     .filter(k => Number.isFinite(k.butce_kodu_id))

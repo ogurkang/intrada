@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-strateji-gelistirme',
+    baslik: '3 Kasım 2026 — Strateji geliştirme yetkisi',
+    maddeler: [
+      'Görev müdürlüğü strateji geliştirme olan personel, stratejik planda ve performans programında yönetici gibi tüm müdürlüklerin verisine girer.',
+      'Diğer personel yalnızca kendi görev müdürlüğünün verisini görür ve kaydeder.',
+    ],
+  },
+  {
     id: '2026-11-02-pp-rapor',
     baslik: '2 Kasım 2026 — Performans programı raporu',
     maddeler: [

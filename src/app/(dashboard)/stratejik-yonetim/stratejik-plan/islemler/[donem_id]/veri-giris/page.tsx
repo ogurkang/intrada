@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanVeriGirisClient, { type StratejikVeriRow } from '@/components/stratejik/StratejikPlanVeriGirisClient'
 import { stratejikVeriDonemDurumAyarla, stratejikVeriGirisKaydet } from '../../actions'
@@ -69,9 +70,9 @@ export default async function StratejikPlanVeriGirisPage({
     .map(r => String((r as { mudurluk_adi?: string }).mudurluk_adi ?? '').trim())
     .filter(Boolean)
 
-  const adminLike = isAdminLike(access)
+  const yonetici = await stratejikYoneticiMi(supabase, access)
   const km = access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
-  const tumunuGorebilir = adminLike || km.mudurlukler.some(m => yoneticiMudurlukler.some(y => normMud(y) === normMud(m)))
+  const tumunuGorebilir = yonetici || km.mudurlukler.some(m => yoneticiMudurlukler.some(y => normMud(y) === normMud(m)))
   const donemYonetebilir = tumunuGorebilir
 
   const [{ data: amacRows }, { data: hedefRows }] = await Promise.all([

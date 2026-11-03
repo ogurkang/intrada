@@ -15,13 +15,14 @@ export function ppNorm(v: string | null | undefined): string {
     .replace(/ç/g, 'c')
 }
 
-/** Görev müdürlüğü strateji geliştirme olan personel, maliyet için müdürlük seçer. */
+/** Görev müdürlüğü strateji geliştirme olan personel, yönetici gibi tüm müdürlüklerde işlem yapar. */
 export function stratejiGelistirmeMudurluguMu(ad: string): boolean {
   const n = ppNorm(ad)
   return n.includes('strateji') && n.includes('gelistirme')
 }
 
-export async function ppMaliyetSeciciMi(
+/** Yönetici veya strateji geliştirme görev müdürlüğü. */
+export async function stratejikYoneticiMi(
   supabase: SupabaseClient,
   access: AppAccess,
 ): Promise<boolean> {
@@ -29,6 +30,13 @@ export async function ppMaliyetSeciciMi(
   if (access.mode !== 'kullanici') return false
   const { mudurlukler } = await getKullaniciGorevMudurlukleri(supabase, access.sicilNo)
   return mudurlukler.some(stratejiGelistirmeMudurluguMu)
+}
+
+export async function ppMaliyetSeciciMi(
+  supabase: SupabaseClient,
+  access: AppAccess,
+): Promise<boolean> {
+  return stratejikYoneticiMi(supabase, access)
 }
 
 export async function ppOturum(supabase: SupabaseClient) {

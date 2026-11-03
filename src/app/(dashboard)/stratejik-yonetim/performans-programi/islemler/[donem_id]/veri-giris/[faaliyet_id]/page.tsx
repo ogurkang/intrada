@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
 import PerformansProgramiVeriGirisFaaliyetDetayClient, {
@@ -32,9 +33,9 @@ export default async function PerformansProgramiVeriGirisFaaliyetDetayPage({
   if (!user) notFound()
   const access = await getAppAccess(supabase, user.id)
   if (access.mode === 'blocked') notFound()
-  const adminLike = isAdminLike(access)
-  const km = access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
-  const izinMudSet = new Set((adminLike ? [] : km.mudurlukler).map(normMud))
+  const yonetici = await stratejikYoneticiMi(supabase, access)
+  const km = !yonetici && access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
+  const izinMudSet = new Set(km.mudurlukler.map(normMud))
 
   const { data: faaliyet } = await sb
     .from('stratejik_plan_faaliyet')
@@ -49,7 +50,7 @@ export default async function PerformansProgramiVeriGirisFaaliyetDetayPage({
     .eq('id', Number((faaliyet as { alt_hedef_id?: number }).alt_hedef_id))
     .maybeSingle()
   const mudurluk = String((alt as { mudurluk?: string } | null)?.mudurluk ?? '')
-  if (!adminLike && !izinMudSet.has(normMud(mudurluk))) notFound()
+  if (!yonetici && !izinMudSet.has(normMud(mudurluk))) notFound()
 
   const { data: gostergeRaw } = await sb
     .from('stratejik_plan_gosterge')

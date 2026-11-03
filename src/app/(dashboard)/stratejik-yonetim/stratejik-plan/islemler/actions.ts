@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 
 function txt(v: FormDataEntryValue | null): string {
@@ -363,7 +364,7 @@ async function veriGirisAyar(
     .map(r => String((r as { mudurluk_adi?: string }).mudurluk_adi ?? '').trim())
     .filter(Boolean)
 
-  if (isAdminLike(access)) {
+  if (await stratejikYoneticiMi(supabase, access)) {
     return { yoneticiMudurlukler, kullaniciMudurlukler: [], tumunuGorebilir: true }
   }
   if (access.mode !== 'kullanici') {

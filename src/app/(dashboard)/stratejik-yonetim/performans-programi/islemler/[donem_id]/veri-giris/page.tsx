@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAppAccess, isAdminLike } from '@/lib/app-access'
+import { getAppAccess } from '@/lib/app-access'
+import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
 
@@ -27,9 +28,9 @@ export default async function PerformansProgramiVeriGirisPage({
   if (!user) notFound()
   const access = await getAppAccess(supabase, user.id)
   if (access.mode === 'blocked') notFound()
-  const adminLike = isAdminLike(access)
-  const km = access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
-  const izinMudSet = new Set((adminLike ? [] : km.mudurlukler).map(normMud))
+  const yonetici = await stratejikYoneticiMi(supabase, access)
+  const km = !yonetici && access.mode === 'kullanici' ? await getKullaniciGorevMudurlukleri(supabase, access.sicilNo) : { mudurlukler: [] }
+  const izinMudSet = new Set(km.mudurlukler.map(normMud))
 
   const { data: programRaw } = await sb.from('performans_programi_program').select('id').eq('yil', yil)
   const programIds = (programRaw ?? []).map((r: { id?: number }) => Number(r.id)).filter(Number.isFinite)
@@ -43,7 +44,7 @@ export default async function PerformansProgramiVeriGirisPage({
   const { data: hedefRaw } = amacIds.length ? await sb.from('stratejik_plan_hedef').select('id, amac_id').in('amac_id', amacIds) : { data: [] }
   const hedefIds = (hedefRaw ?? []).map((r: { id?: number }) => Number(r.id)).filter(Number.isFinite)
   const { data: altHedefRaw } = hedefIds.length ? await sb.from('stratejik_plan_alt_hedef').select('id, hedef_id, mudurluk').in('hedef_id', hedefIds) : { data: [] }
-  const altHedefler = (altHedefRaw ?? []).filter((a: { mudurluk?: string }) => adminLike || izinMudSet.has(normMud(a.mudurluk)))
+  const altHedefler = (altHedefRaw ?? []).filter((a: { mudurluk?: string }) => yonetici || izinMudSet.has(normMud(a.mudurluk)))
   const altHedefIds = altHedefler.map((a: { id?: number }) => Number(a.id)).filter(Number.isFinite)
 
   const { data: faaliyetRaw } = altHedefIds.length
