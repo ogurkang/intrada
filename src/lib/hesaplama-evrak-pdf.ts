@@ -168,7 +168,6 @@ export async function kisiBorcuFormPdf(girdi: {
   kimlik: BelgeHucre[]
   satirlar: string[][]
   not: string
-  imza?: EvrakImzaAd
 }): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: MARGIN })
   const done = pdfBuffer(doc)
@@ -206,13 +205,21 @@ export async function kisiBorcuFormPdf(girdi: {
   y = doc.y + 12
 
   const kimlikH = 16
-  const etiketW = 160
-  girdi.kimlik.forEach((satir, i) => {
-    const yy = y + i * kimlikH
-    hucre(doc, MARGIN, yy, etiketW, kimlikH, satir.etiket, { size: 8, fill: '#f8fafc' })
-    hucre(doc, MARGIN + etiketW, yy, icW - etiketW, kimlikH, satir.deger, { size: 8, bold: true })
-  })
-  y += girdi.kimlik.length * kimlikH + 10
+  const kolonW = icW / 2
+  const etiketW = kolonW * 0.38
+  const degerW = kolonW - etiketW
+  const kimlikSatir = Math.ceil(girdi.kimlik.length / 2)
+  for (let r = 0; r < kimlikSatir; r += 1) {
+    const yy = y + r * kimlikH
+    const cift = [girdi.kimlik[r * 2], girdi.kimlik[r * 2 + 1]]
+    cift.forEach((satir, c) => {
+      if (!satir) return
+      const x = MARGIN + c * kolonW
+      hucre(doc, x, yy, etiketW, kimlikH, satir.etiket, { size: 8, fill: '#f8fafc' })
+      hucre(doc, x + etiketW, yy, degerW, kimlikH, satir.deger, { size: 8, bold: true })
+    })
+  }
+  y += kimlikSatir * kimlikH + 10
   y = tabloBaslik(y)
 
   girdi.satirlar.forEach(satir => {
@@ -234,12 +241,11 @@ export async function kisiBorcuFormPdf(girdi: {
   font(doc, false)
   doc.fontSize(8)
   const notH = doc.heightOfString(girdi.not, { width: icW, lineGap: 2 })
-  if (y + notH + 78 > YATAY_H - MARGIN) {
+  if (y + notH + 8 > YATAY_H - MARGIN) {
     doc.addPage({ size: 'A4', layout: 'landscape', margin: MARGIN })
     y = MARGIN
   }
   doc.fillColor('#0f172a').text(girdi.not, MARGIN, y, { width: icW, align: 'left', lineGap: 2 })
-  evrakImzaCiz(doc, doc.y + 18, girdi.imza, YATAY_W)
   doc.end()
   return done
 }

@@ -6,7 +6,6 @@ import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { kisiBorcuFormPdf } from '@/lib/hesaplama-evrak-pdf'
 import { faizTuruEtiket, tarihTr } from '@/lib/kanuni-faiz'
 import { KISI_BORCU_SONRAKI_YIL, kisiBorcuBelgeCoz } from '@/lib/kisi-borcu'
-import { ikImzaAdlari } from '@/lib/ik-imza-personel'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,11 +28,6 @@ export async function GET(req: Request) {
   const belge = kisiBorcuBelgeCoz(data?.belge)
   if (!belge) return NextResponse.json({ error: 'Kayıt bulunamadı.' }, { status: 404 })
 
-  const imza = await ikImzaAdlari(
-    supabase,
-    url.searchParams.get('duzenleyen') ?? '',
-    url.searchParams.get('gorevli') ?? '',
-  )
   const pdf = await kisiBorcuFormPdf({
     kimlik: [
       { etiket: 'T.C. Kimlik No', deger: belge.tckn || '—' },
@@ -60,7 +54,6 @@ export async function GET(req: Request) {
       paraTr(s.kalan),
     ]),
     not: `${KISI_BORCU_SONRAKI_YIL}\n\n${belge.dayanak}`,
-    imza,
   })
   return new NextResponse(new Uint8Array(pdf), {
     headers: {

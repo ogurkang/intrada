@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-kisi-borcu-pdf-duzen',
+    baslik: '3 Kasım 2026 — Kişi borcu PDF düzeni',
+    maddeler: [
+      'Kişi borcu PDF’inde personel bilgisi iki sütun ve altı satırdır.',
+      'Düzenleyen ve gerçekleştirme görevlisi alanı ekrandan ve PDF’ten kalktı.',
+    ],
+  },
+  {
     id: '2026-11-03-kisi-borcu-sonraki-yil',
     baslik: '3 Kasım 2026 — Kişi borcu sonraki yıl notu',
     maddeler: [

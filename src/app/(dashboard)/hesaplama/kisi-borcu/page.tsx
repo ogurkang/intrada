@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
-import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
 import { faizTuruEtiket, type FaizTuru } from '@/lib/kanuni-faiz'
 import KisiBorcuListe, { type KisiBorcuListeSatir } from '@/components/hesaplama/KisiBorcuListe'
 import { kisiBorcuSil } from './actions'
@@ -39,7 +38,6 @@ export default async function KisiBorcuPage() {
     tutar: Number(k.toplam_odeme),
   }))
 
-  const imzaPersonel = await ikGorevPersonelleri(supabase)
   const auditLoglarByRefId = await loadAuditLoglarGroupedByRefId(
     supabase,
     'kisi_borcu_kayitlari',
@@ -73,7 +71,6 @@ export default async function KisiBorcuPage() {
         auditLoglarByRefId={auditLoglarByRefId}
         canDelete={canDelete}
         onSil={canDelete ? kisiBorcuSil : undefined}
-        imzaPersonel={imzaPersonel}
       />
     </div>
   )

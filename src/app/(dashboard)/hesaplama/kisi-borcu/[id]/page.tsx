@@ -4,8 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { paraTr } from '@/lib/ayliktan-kesme-hesap'
 import { faizTuruEtiket, tarihTr } from '@/lib/kanuni-faiz'
 import { kisiBorcuBelgeCoz } from '@/lib/kisi-borcu'
-import { ikGorevPersonelleri } from '@/lib/ik-imza-personel'
-import { EvrakPdfIndir } from '@/components/hesaplama/EvrakImzaSecimi'
 import KisiBorcuPlan from '@/components/hesaplama/KisiBorcuPlan'
 
 export const dynamic = 'force-dynamic'
@@ -23,7 +21,6 @@ export default async function KisiBorcuDetayPage({ params }: { params: Promise<{
     .maybeSingle()
   const belge = kisiBorcuBelgeCoz(data?.belge)
   if (!belge) notFound()
-  const imzaPersonel = await ikGorevPersonelleri(supabase)
 
   return (
     <div className="space-y-6">
@@ -44,7 +41,12 @@ export default async function KisiBorcuDetayPage({ params }: { params: Promise<{
           >
             Düzenle
           </Link>
-          <EvrakPdfIndir href={`/api/hesaplama/kisi-borcu/pdf?id=${kayitId}`} personel={imzaPersonel} />
+          <a
+            href={`/api/hesaplama/kisi-borcu/pdf?id=${kayitId}`}
+            className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+          >
+            PDF İndir
+          </a>
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
