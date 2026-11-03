@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-03-kisi-borcu-odeme-baslangic',
+    baslik: '3 Kasım 2026 — Ödeme başlama tarihi',
+    maddeler: [
+      'Kişi borcu formuna ödeme başlama tarihi eklendi. İlk taksit bu tarihtedir ve faizsizdir. Sonraki taksitler ödeme gününe gelir.',
+      'Faiz başlangıcı alanı Faiz işlemeye başlama tarihi oldu. Faiz bu tarihten itibaren kalan anapara üzerinden işler.',
+    ],
+  },
+  {
     id: '2026-11-03-kisi-borcu-pdf-duzen',
     baslik: '3 Kasım 2026 — Kişi borcu PDF düzeni',
     maddeler: [

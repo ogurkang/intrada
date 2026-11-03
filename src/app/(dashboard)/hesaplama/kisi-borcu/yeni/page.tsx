@@ -14,7 +14,7 @@ export default async function KisiBorcuYeniPage() {
       </Link>
       <h1 className="text-2xl font-bold text-slate-800">Form Oluştur</h1>
       <p className="max-w-3xl text-sm text-slate-600">
-        Ana tutar taksit sayısına bölünür. İlk taksit faizsizdir. Sonraki taksitlere, 3095 sayılı Kanunun 1. maddesindeki oranla faiz eklenir. Oran TCMB reeskont tablosundan okunur.
+        İlk taksit ödeme başlama tarihindedir ve faizsizdir. Faiz, faiz işlemeye başlama tarihinden itibaren 3095 sayılı Kanunun 1. maddesindeki oranla eklenir.
       </p>
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}
       <KisiBorcuClient adaylar={adaylar} tcmb={tcmb.satirlar} kaynak={tcmb.kaynak} />

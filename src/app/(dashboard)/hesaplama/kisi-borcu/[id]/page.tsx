@@ -54,7 +54,8 @@ export default async function KisiBorcuDetayPage({ params }: { params: Promise<{
         <Bilgi etiket="Ana tutar" deger={paraTr(belge.ana_tutar)} />
         <Bilgi etiket="Taksit sayısı" deger={String(belge.taksit_sayisi)} />
         <Bilgi etiket="Ödeme günü" deger={String(belge.odeme_gunu)} />
-        <Bilgi etiket="Faiz başlangıcı" deger={tarihTr(belge.faiz_baslangic)} />
+        <Bilgi etiket="Ödeme başlama tarihi" deger={tarihTr(belge.odeme_baslangic || belge.satirlar[0]?.vade || '')} />
+        <Bilgi etiket="Faiz işlemeye başlama tarihi" deger={tarihTr(belge.faiz_baslangic)} />
         <Bilgi etiket="Toplam faiz" deger={paraTr(belge.toplam_faiz)} />
         <Bilgi etiket="Toplam ödeme" deger={paraTr(belge.toplam_odeme)} />
       </div>

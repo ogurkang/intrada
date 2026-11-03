@@ -38,6 +38,7 @@ export type KisiBorcuFormBaslangic = {
   ana: string
   taksit: string
   odemeGunu: string
+  odemeBaslangic: string
   baslangic: string
   faizTuru: FaizTuru
 }
@@ -64,6 +65,7 @@ export default function KisiBorcuClient({
   const [ana, setAna] = useState(baslangic?.ana ?? '')
   const [taksit, setTaksit] = useState(baslangic?.taksit ?? '')
   const [odemeGunu, setOdemeGunu] = useState(baslangic?.odemeGunu ?? '1')
+  const [odemeBaslangic, setOdemeBaslangic] = useState(baslangic?.odemeBaslangic ?? '')
   const [baslangicTarih, setBaslangicTarih] = useState(baslangic?.baslangic ?? '')
   const [faizTuru, setFaizTuru] = useState<FaizTuru>(baslangic?.faizTuru ?? 'kanuni')
   const [hata, setHata] = useState<string | null>(null)
@@ -99,7 +101,7 @@ export default function KisiBorcuClient({
   }
 
   const hesap = useMemo(() => {
-    if (!sicil || !baslangicTarih) return null
+    if (!sicil || !baslangicTarih || !odemeBaslangic) return null
     const anaTutar = sayiEsnek(ana)
     const taksitSayisi = taksitSayisiOku(taksit)
     if (anaTutar == null || taksitSayisi == null) return null
@@ -107,13 +109,14 @@ export default function KisiBorcuClient({
       anaTutar,
       taksitSayisi,
       odemeGunu: Number(odemeGunu),
+      odemeBaslangic,
       faizBaslangic: baslangicTarih,
       faizTuru,
       kaynak,
       tcmb,
       kisi: { sicil_no: sicil, ad_soyad: ad, tckn, unvan, statu },
     })
-  }, [sicil, ad, tckn, unvan, statu, ana, taksit, odemeGunu, baslangicTarih, faizTuru, kaynak, tcmb])
+  }, [sicil, ad, tckn, unvan, statu, ana, taksit, odemeGunu, odemeBaslangic, baslangicTarih, faizTuru, kaynak, tcmb])
 
   const sonuc = hesap && !('hata' in hesap) ? hesap : null
   const hesapHatasi = hesap && 'hata' in hesap ? hesap.hata : null
@@ -132,6 +135,7 @@ export default function KisiBorcuClient({
       ana_tutar: sonuc.belge.ana_tutar,
       taksit_sayisi: sonuc.belge.taksit_sayisi,
       odeme_gunu: sonuc.belge.odeme_gunu,
+      odeme_baslangic: sonuc.belge.odeme_baslangic,
       faiz_baslangic: sonuc.belge.faiz_baslangic,
       faiz_turu: faizTuru,
     }
@@ -209,7 +213,11 @@ export default function KisiBorcuClient({
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Faiz başlangıcı</label>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Ödeme başlama tarihi</label>
+              <input type="date" value={odemeBaslangic} onChange={e => setOdemeBaslangic(e.target.value)} className={inputSinif} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Faiz işlemeye başlama tarihi</label>
               <input type="date" value={baslangicTarih} onChange={e => setBaslangicTarih(e.target.value)} className={inputSinif} />
             </div>
           </div>
@@ -223,7 +231,7 @@ export default function KisiBorcuClient({
           </div>
 
           <p className="text-sm text-slate-600">
-            Ana tutar taksit sayısına bölünür. İlk taksit faizsizdir ve doğrudan anaparadan düşer. Sonraki taksitlere, kalan anapara üzerinden faiz eklenir.
+            İlk taksit, ödeme başlama tarihindedir ve faizsizdir. Sonraki taksitler ödeme gününe gelir. Faiz, faiz işlemeye başlama tarihinden itibaren kalan anapara üzerinden eklenir.
           </p>
 
           {kaynak === 'yedek' ? (
@@ -256,7 +264,7 @@ export default function KisiBorcuClient({
               <p className="text-sm leading-relaxed text-slate-600">{sonuc.belge.dayanak}</p>
             </>
           ) : (
-            <p className="text-sm text-slate-500">Personel, ana tutar, taksit sayısı ve faiz başlangıcı girilince plan burada görünür.</p>
+            <p className="text-sm text-slate-500">Personel, tutarlar ve tarihler girilince plan burada görünür.</p>
           )}
         </div>
       </div>

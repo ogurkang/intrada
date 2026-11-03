@@ -56,6 +56,7 @@ export type KisiBorcuKaydetGirdi = {
   ana_tutar: number
   taksit_sayisi: number
   odeme_gunu: number
+  odeme_baslangic: string
   faiz_baslangic: string
   faiz_turu: FaizTuru
 }
@@ -70,6 +71,7 @@ export async function kisiBorcuKaydet(
     anaTutar: Number(girdi.ana_tutar),
     taksitSayisi: Number(girdi.taksit_sayisi),
     odemeGunu: Number(girdi.odeme_gunu),
+    odemeBaslangic: girdi.odeme_baslangic,
     faizBaslangic: girdi.faiz_baslangic,
     faizTuru: girdi.faiz_turu,
     kaynak: tcmb.kaynak,

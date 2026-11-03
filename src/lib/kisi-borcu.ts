@@ -15,6 +15,7 @@ export type KisiBorcuBelge = {
   statu: string
   ana_tutar: number
   odeme_gunu: number
+  odeme_baslangic: string
   faiz_baslangic: string
   faiz_turu: FaizTuru
   kaynak: 'tcmb' | 'yedek'
@@ -31,7 +32,7 @@ export const KISI_BORCU_SONRAKI_YIL =
 
 export function kisiBorcuDayanak(tur: FaizTuru): string {
   const ortak =
-    'Basit faiz, yıl 365 gün. Oran değişen günlerde dönem bölünür. 1 Mayıs 2005–31 Aralık 2005 %12, 1 Ocak 2006–31 Mayıs 2024 %9, 1 Haziran 2024–30 Temmuz 2026 %24. 31 Temmuz 2026’dan sonra 3095 sayılı Kanun m.1: TCMB’nin önceki yıl 31 Aralık reeskontunun %80’i. 30 Haziran reeskontu bu orandan 5 puan veya daha çok farklıysa yılın ikinci yarısında 30 Haziran reeskontunun %80’i uygulanır. Ana tutar taksit sayısına bölünür. İlk taksitte faiz tahakkuk etmez. Sonraki taksitlerde kalan anapara üzerinden, bir önceki taksit tarihinden itibaren faiz eklenir.'
+    'Basit faiz, yıl 365 gün. Oran değişen günlerde dönem bölünür. 1 Mayıs 2005–31 Aralık 2005 %12, 1 Ocak 2006–31 Mayıs 2024 %9, 1 Haziran 2024–30 Temmuz 2026 %24. 31 Temmuz 2026’dan sonra 3095 sayılı Kanun m.1: TCMB’nin önceki yıl 31 Aralık reeskontunun %80’i. 30 Haziran reeskontu bu orandan 5 puan veya daha çok farklıysa yılın ikinci yarısında 30 Haziran reeskontunun %80’i uygulanır. Ana tutar taksit sayısına bölünür. İlk taksit ödeme başlama tarihindedir ve faizsizdir. Sonraki taksitler ödeme gününe gelir. Faiz, faiz işlemeye başlama tarihinden itibaren kalan anapara üzerinden işler.'
   if (tur === 'temerrut') {
     return `Temerrüt faizi, 3095 sayılı Kanun m.2 uyarınca sözleşmede ayrı oran kararlaştırılmamışsa m.1 oranıdır. ${ortak}`
   }
@@ -42,6 +43,7 @@ export function kisiBorcuHesapla(girdi: {
   anaTutar: number
   taksitSayisi: number
   odemeGunu: number
+  odemeBaslangic: string
   faizBaslangic: string
   faizTuru: FaizTuru
   kaynak: 'tcmb' | 'yedek'
@@ -53,6 +55,7 @@ export function kisiBorcuHesapla(girdi: {
     anaTutar: girdi.anaTutar,
     taksitSayisi: girdi.taksitSayisi,
     odemeGunu: girdi.odemeGunu,
+    odemeBaslangic: girdi.odemeBaslangic,
     faizBaslangic: girdi.faizBaslangic,
     satirlar: girdi.tcmb,
   })
@@ -65,6 +68,7 @@ export function kisiBorcuHesapla(girdi: {
     statu: girdi.kisi.statu.trim(),
     ana_tutar: Math.round(girdi.anaTutar * 100) / 100,
     odeme_gunu: girdi.odemeGunu,
+    odeme_baslangic: girdi.odemeBaslangic,
     faiz_baslangic: girdi.faizBaslangic,
     faiz_turu: girdi.faizTuru,
     kaynak: girdi.kaynak,
@@ -94,6 +98,7 @@ export function kisiBorcuAuditGovde(b: KisiBorcuBelge): Record<string, unknown> 
     ana_tutar: b.ana_tutar,
     taksit: b.taksit_sayisi,
     odeme_gunu: b.odeme_gunu,
+    odeme_baslangic: b.odeme_baslangic,
     baslangic: b.faiz_baslangic,
     toplam: b.toplam_odeme,
   }
@@ -105,7 +110,8 @@ const KISI_BORCU_AUDIT = [
   { alan: 'ana_tutar', etiket: 'Ana tutar' },
   { alan: 'taksit', etiket: 'Taksit sayısı' },
   { alan: 'odeme_gunu', etiket: 'Ödeme günü' },
-  { alan: 'baslangic', etiket: 'Faiz başlangıcı' },
+  { alan: 'odeme_baslangic', etiket: 'Ödeme başlama tarihi' },
+  { alan: 'baslangic', etiket: 'Faiz işlemeye başlama tarihi' },
   { alan: 'toplam', etiket: 'Toplam ödeme' },
 ]
 
