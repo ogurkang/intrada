@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import { ppAltProgramHedefEkle, ppOzelFaaliyetEkle } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/[alt_program_id]/actions'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
+import PpFaaliyetGostergeYonet, { type PpGostergeKayit, type PpYilSutun } from '@/components/stratejik/PpFaaliyetGostergeYonet'
 
 export type PpGostergeDetay = {
   id: number
@@ -21,6 +23,7 @@ export type PpFaaliyetSatir = {
   kod: string
   ad: string
   gostergeler: string[]
+  gostergeKayit: PpGostergeKayit[]
   gostergeDetay: PpGostergeDetay[]
   toplam: number
   girilen: { kod: string; ad: string; tutar: number }[]
@@ -53,6 +56,7 @@ export default function PpAltProgramHedefClient({
   altProgramId,
   yil,
   programId,
+  yillar,
 }: {
   baslik: string
   baglilar: PpHedefKart[]
@@ -60,6 +64,7 @@ export default function PpAltProgramHedefClient({
   altProgramId: number
   yil: number
   programId: number
+  yillar: PpYilSutun[]
 }) {
   const router = useRouter()
   const [hedefAcik, setHedefAcik] = useState(false)
@@ -114,7 +119,18 @@ export default function PpAltProgramHedefClient({
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Alt Program Hedefi</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Alt Program Hedefi</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Hedef Ekle', metin: 'Stratejik plandaki performans hedefini bu alt programa bağlar. Hedefin faaliyetleri ve göstergeleri gelir. Ayrı bir faaliyet listesi oluşturulmaz.' },
+              { baslik: 'Faaliyet Ekle', metin: 'Yalnızca bu performans programı yılına özel faaliyet yazar. Stratejik plandaki faaliyet listesine girmez.' },
+              { baslik: 'Saat', metin: 'Bu faaliyetin maliyet kayıt geçmişini açar. Tutarları değiştirmez.' },
+              { baslik: 'Göz', metin: 'Yalnızca teklif girilmiş ödenekleri gösterir.' },
+              { baslik: 'Kalem', metin: '4. düzey ekonomik kodlara bu yılın maliyetini yazar. Faaliyet satırındaki toplam bu kayıttan gelir.' },
+              { baslik: 'Grafik', metin: 'Gösterge açıklaması, hesaplama yöntemi ve yıl değerlerini yeni sekmede açar. Kaydet o sekmeyi kapatır.' },
+              { baslik: 'Gösterge Ekle, Düzenle, Sil', metin: 'Stratejik plandaki göstergeyi değiştirir. Yıl değeri yalnızca bu performans programı yılı ve sonrası için girilir. Silinen gösterge planda ve bu programda görünmez.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">{baslik}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -184,7 +200,7 @@ export default function PpAltProgramHedefClient({
               Faaliyet Ekle
             </button>
           </div>
-          <HedefGovde kart={h} yil={yil} programId={programId} altProgramId={altProgramId} maliyet />
+          <HedefGovde kart={h} yil={yil} programId={programId} altProgramId={altProgramId} yillar={yillar} maliyet />
         </section>
       ))}
     </div>
@@ -196,12 +212,14 @@ function HedefGovde({
   yil,
   programId,
   altProgramId,
+  yillar = [],
   maliyet = false,
 }: {
   kart: PpHedefKart
   yil?: number
   programId?: number
   altProgramId?: number
+  yillar?: PpYilSutun[]
   maliyet?: boolean
 }) {
   const [pencere, setPencere] = useState<PpFaaliyetSatir | null>(null)
@@ -240,7 +258,18 @@ function HedefGovde({
               <td className="px-3 py-3 text-slate-800">
                 <span className="block text-base font-semibold">{f.ad}</span>
                 {f.ozel && <span className="mt-1 block text-xs text-slate-500">Bu yıla özel</span>}
-                {f.gostergeler.length > 0 && <span className="mt-1 block text-xs text-slate-500">{f.gostergeler.join(' · ')}</span>}
+                {f.ozel || !kart.maliyetAcik || yil == null || programId == null || altProgramId == null ? (
+                  f.gostergeler.length > 0 && <span className="mt-1 block text-xs text-slate-500">{f.gostergeler.join(' · ')}</span>
+                ) : (
+                  <PpFaaliyetGostergeYonet
+                    faaliyetId={f.id}
+                    kayitlar={f.gostergeKayit}
+                    yillar={yillar}
+                    yil={yil}
+                    programId={programId}
+                    altProgramId={altProgramId}
+                  />
+                )}
               </td>
               <td className="px-3 py-3 text-right tabular-nums font-medium text-slate-800">
                 {kart.maliyetAcik ? para(f.toplam) : '—'}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { ppGostergeMetinKaydet } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/[alt_program_id]/actions'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export type PpGostergeForm = {
   id: number
@@ -110,7 +111,14 @@ export default function PpFaaliyetGostergeClient({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">{faaliyetAdi}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-800">{faaliyetAdi}</h1>
+          <PpEkranBilgi maddeler={[
+            { baslik: 'Yıl kutuları', metin: 't−2, t−1 ve t hedefi ile sonraki tahminler stratejik plandaki gösterge yıllarından gelir. Burada yazılan değer o yılın performans programı raporuna gider.' },
+            { baslik: 'Açıklama ve hesaplama', metin: 'Excel’deki gösterge açıklaması ve hesaplama yöntemi alanlarını doldurur. Sorumlu idareye müdürlük adı yazılır.' },
+            { baslik: 'Kaydet', metin: 'Bu faaliyetin gösterge metinlerini ve yıl değerlerini kaydeder, sekmeyi kapatır. Göstergenin kendisini silmez.' },
+          ]} />
+        </div>
         <p className="text-sm font-normal text-slate-500 mt-1">Performans göstergeleri</p>
       </div>
       {hata && <p className="text-sm text-red-700">{hata}</p>}

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export interface PpButceKoduRow {
   id: number
@@ -102,7 +103,13 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Bütçe Kodu Tanımı</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Bütçe Kodu Tanımı</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Excel', metin: 'Bütçe kodu listesini toplu yükler. Maliyet ekranındaki 4. düzey kodlar bu listeden gelir.' },
+              { baslik: 'Ekle ve kalem', metin: 'Tek bir ekonomik kodu ekler veya adını günceller. Daha önce girilmiş maliyet tutarını silmez.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">Excel ile toplu yükleyebilir veya tek tek bütçe kodu ekleyebilirsiniz.</p>
         </div>
         <div className="flex items-center gap-2">

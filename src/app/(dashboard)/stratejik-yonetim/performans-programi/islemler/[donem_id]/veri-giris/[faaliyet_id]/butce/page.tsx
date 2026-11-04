@@ -4,6 +4,7 @@ import { getAppAccess } from '@/lib/app-access'
 import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 import PerformansProgramiVeriGirisButceClient, {
   type PpButceDetaySatir,
 } from '@/components/stratejik/PerformansProgramiVeriGirisButceClient'
@@ -99,7 +100,13 @@ export default async function PerformansProgramiVeriGirisButcePage({
         ]}
       />
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">{String((faaliyet as { faaliyet_adi?: string }).faaliyet_adi ?? `Faaliyet #${faaliyetId}`)}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-800">{String((faaliyet as { faaliyet_adi?: string }).faaliyet_adi ?? `Faaliyet #${faaliyetId}`)}</h1>
+          <PpEkranBilgi maddeler={[
+            { baslik: 'Bütçe satırı', metin: 'Faaliyetin ekonomik kod tutarını bu yıl için yazar. Alt program hedefindeki maliyet ekranıyla aynı kayda gider.' },
+            { baslik: 'Kaydet', metin: 'Girilen tutarları saklar. Boş bırakılan ve daha önce kaydı olmayan satır yazılmaz.' },
+          ]} />
+        </div>
         <p className="text-sm text-slate-500 mt-1">Faaliyet bütçe kalemleri</p>
       </div>
       <PerformansProgramiVeriGirisButceClient

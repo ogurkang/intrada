@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PpPerformansBlok, PpPerformansRaporYil } from '@/lib/pp-mudurluk-rapor'
 import { ppGostergeBaslik, ppMaliyetBaslik, ppRaporGosterge, ppRaporPara } from '@/lib/pp-mudurluk-rapor'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerformansRaporYil }) {
   const router = useRouter()
@@ -19,7 +20,14 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Müdürlük Performans Bilgisi</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Müdürlük Performans Bilgisi</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Yıl', metin: 'Raporun bütçe yılını değiştirir. Kayıt girişi yapmaz.' },
+              { baslik: 'Müdürlük sekmesi', metin: 'Seçilen müdürlüğün alt program bloklarını açar. Her blok o müdürlüğe bağlı hedefin göstergesini ve maliyetini gösterir.' },
+              { baslik: 'Excel İndir', metin: 'Açık müdürlüğün tablosunu örnek formun düzeniyle indirir. Ekrandaki veriyi değiştirmez.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-600 mt-1">Seçilen yıl ve müdürlüğün performans programı tablosu.</p>
         </div>
         <div className="flex items-center gap-2">

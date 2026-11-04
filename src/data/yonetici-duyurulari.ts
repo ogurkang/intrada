@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-04-pp-gosterge',
+    baslik: '4 Kasım 2026 — Performans göstergesi',
+    maddeler: [
+      'Alt program hedefindeki faaliyete gösterge eklenebilir, düzenlenebilir ve silinebilir. Kayıt stratejik plandaki göstergedir.',
+      'Yıl değeri, stratejik plan döneminde ve işlem yapılan performans programı yılı ile sonrasında girilir.',
+      'Performans programı ekranlarındaki bilgi düğmesi, o sayfadaki düğmenin ne yaptığını anlatır.',
+    ],
+  },
+  {
     id: '2026-11-03-kisi-borcu-odeme-baslangic',
     baslik: '3 Kasım 2026 — Ödeme başlama tarihi',
     maddeler: [

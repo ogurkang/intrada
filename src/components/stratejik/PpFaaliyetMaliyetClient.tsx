@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ppFaaliyetMaliyetKaydet } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/[alt_program_id]/actions'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export type PpMaliyetKod = {
   id: number
@@ -93,9 +94,16 @@ export default function PpFaaliyetMaliyetClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">
+        <div className="flex items-center gap-2">
+          <PpEkranBilgi maddeler={[
+            { baslik: 'Kod satırı', metin: '4. düzey ekonomik koda bu yılın faaliyet maliyetini yazar. 1. düzey tutar, kodun ilk parçasının toplamıdır; ayrı girilmez.' },
+            { baslik: 'Kaydet', metin: 'Yazılan tutarları bu faaliyet ve yıl için saklar. Alt program hedefindeki faaliyet maliyeti sütunu bu toplamı gösterir.' },
+            { baslik: 'Arama', metin: 'Listedeki kodu veya hesap adını süzer. Kayıtlı tutarı değiştirmez.' },
+          ]} />
+          <p className="text-sm text-slate-600">
           Toplam <span className="font-semibold tabular-nums text-slate-800">{para(toplam)}</span>
-        </p>
+          </p>
+        </div>
         <button type="button" disabled={bekliyor} onClick={kaydet} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm disabled:opacity-50">
           {bekliyor ? 'Kaydediliyor…' : 'Kaydet'}
         </button>

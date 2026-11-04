@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export interface PpProgram {
   id: number
@@ -60,7 +61,15 @@ export default function PerformansProgramiProgramClient({
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{yil} Yılı Performans Programı</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">{yil} Yılı Performans Programı</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Program Ekle', metin: 'Bu yıla yeni program yazar. Stratejik plan amaçlarını değiştirmez.' },
+              { baslik: 'Göz', metin: 'Programın alt program listesini açar.' },
+              { baslik: 'Kalem', metin: 'Programın kodunu ve adını günceller. Bağlı alt programlar durur.' },
+              { baslik: 'Bilgi', metin: 'Programa bağlı alt program sayısını gösterir.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">Programları ekleyip düzenleyebilirsiniz.</p>
         </div>
         <button

@@ -5,6 +5,7 @@ import { getAppAccess } from '@/lib/app-access'
 import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 function normMud(v: string | null | undefined): string {
   return String(v ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
@@ -111,7 +112,13 @@ export default async function PerformansProgramiVeriGirisPage({
       />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Performans Programı Veri Girişi</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Performans Programı Veri Girişi</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Faaliyet satırı', metin: 'Görev müdürlüğünüzün stratejik plan faaliyetini açar. Başka müdürlüğün verisini göstermez.' },
+              { baslik: 'Faaliyet Ekle', metin: 'Bu yılın program listesine döner. Yeni faaliyet stratejik plandan veya alt program hedefinden eklenir.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">Görev müdürlüğünüz ile ilişkili stratejik plan faaliyetleri listelenir.</p>
         </div>
         <Link

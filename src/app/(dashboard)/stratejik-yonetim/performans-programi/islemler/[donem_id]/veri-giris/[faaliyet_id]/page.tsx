@@ -4,6 +4,7 @@ import { getAppAccess } from '@/lib/app-access'
 import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 import PerformansProgramiVeriGirisFaaliyetDetayClient, {
   type PpVeriGirisSatir,
 } from '@/components/stratejik/PerformansProgramiVeriGirisFaaliyetDetayClient'
@@ -111,7 +112,13 @@ export default async function PerformansProgramiVeriGirisFaaliyetDetayPage({
       />
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">{String((faaliyet as { faaliyet_adi?: string }).faaliyet_adi ?? `Faaliyet #${faaliyetId}`)}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-800">{String((faaliyet as { faaliyet_adi?: string }).faaliyet_adi ?? `Faaliyet #${faaliyetId}`)}</h1>
+          <PpEkranBilgi maddeler={[
+            { baslik: 'Gösterge satırı', metin: 'Stratejik plandaki göstergenin bu yılki gerçekleşme ve hedef alanlarını doldurur. Göstergenin adını değiştirmez.' },
+            { baslik: 'Kaydet', metin: 'Yalnızca bu faaliyet ve müdürlük için veri girişini yazar. Rapor bu değerleri kullanır.' },
+          ]} />
+        </div>
         <p className="text-sm text-slate-500 mt-1">Faaliyete bağlı göstergeler listesi</p>
       </div>
 

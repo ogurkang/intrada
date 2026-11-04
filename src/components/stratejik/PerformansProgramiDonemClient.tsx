@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export interface PpDonem {
   id: number
@@ -25,7 +26,12 @@ export default function PerformansProgramiDonemClient({ donemler }: Props) {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Performans Programı İşlemler</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Performans Programı İşlemler</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Yıl satırı', metin: 'Aktif stratejik plan dönemindeki her yıl bir performans programıdır. Satıra girmek o yılın program listesini açar. Stratejik plan kaydını değiştirmez.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">Stratejik plan dönemlerine göre performans programı kaydı oluşturabilirsiniz.</p>
         </div>
       </div>

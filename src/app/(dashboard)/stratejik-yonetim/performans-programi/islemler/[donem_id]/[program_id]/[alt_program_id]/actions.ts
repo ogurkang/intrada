@@ -258,3 +258,119 @@ export async function ppGostergeMetinKaydet(
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}`)
   return {}
 }
+
+const GOSTERGE_BIRIM = new Set(['Yüzde', 'Adet', 'Kişi', 'Gün', 'Hektar', 'Ton', 'Metre', 'Metrekare', 'Saat'])
+
+async function gostergeDonemIndeks(
+  sb: any,
+  ppYil: number,
+): Promise<{ bas: number; izin: number[] } | { hata: string }> {
+  const { data } = await sb.from('stratejik_plan_donem').select('baslangic_tarihi, bitis_tarihi')
+  const donem = ((data ?? []) as { baslangic_tarihi: string; bitis_tarihi: string }[]).find(d => {
+    const a = Number(String(d.baslangic_tarihi).slice(0, 4))
+    const b = Number(String(d.bitis_tarihi).slice(0, 4))
+    return ppYil >= a && ppYil <= b
+  })
+  if (!donem) return { hata: 'Bu yıl için stratejik plan dönemi yok.' }
+  const bas = Number(String(donem.baslangic_tarihi).slice(0, 4))
+  const bit = Number(String(donem.bitis_tarihi).slice(0, 4))
+  const izin: number[] = []
+  for (let i = 0; i < 5 && bas + i <= bit; i += 1) {
+    if (bas + i >= ppYil) izin.push(i)
+  }
+  if (!izin.length) return { hata: 'Bu yıl için gösterge girişi açık değil.' }
+  return { bas, izin }
+}
+
+async function gostergeYazabilir(sb: any, altHedefId: number): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  const ot = await ppOturum(supabase)
+  if (!ot) return { hata: 'Oturum gerekli.' }
+  const { data: hedef } = await sb.from('stratejik_plan_alt_hedef').select('id, mudurluk').eq('id', altHedefId).maybeSingle()
+  if (!hedef) return { hata: 'Performans hedefi bulunamadı.' }
+  const secici = await ppMaliyetSeciciMi(supabase, ot.access)
+  if (secici) return {}
+  if (ot.access.mode !== 'kullanici') return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
+  const km = await getKullaniciGorevMudurlukleri(supabase, ot.access.sicilNo)
+  if (!km.mudurlukler.some(m => ppNorm(m) === ppNorm(String(hedef.mudurluk ?? '')))) {
+    return { hata: 'Bu müdürlük için kayıt yetkiniz yok.' }
+  }
+  return {}
+}
+
+function gostergeYol(yil: number, programId: number, altProgramId: number) {
+  revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}`)
+  revalidatePath(`/stratejik-yonetim/performans-programi/raporlar`)
+}
+
+export async function ppGostergeKaydet(girdi: {
+  id?: number
+  faaliyetId: number
+  altProgramId: number
+  yil: number
+  programId: number
+  ad: string
+  birim: string
+  sira: number | null
+  degerler: { indeks: number; deger: number | null }[]
+}): Promise<{ hata?: string }> {
+  const ad = girdi.ad.trim()
+  if (!ad || !GOSTERGE_BIRIM.has(girdi.birim)) return { hata: 'Gösterge adı ve birim zorunludur.' }
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data: faaliyet } = await sb.from('stratejik_plan_faaliyet').select('id, alt_hedef_id').eq('id', girdi.faaliyetId).eq('aktif', true).maybeSingle()
+  const altHedefId = Number(faaliyet?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId)) return { hata: 'Faaliyet bulunamadı.' }
+  const yetki = await gostergeYazabilir(sb, altHedefId)
+  if (yetki.hata) return yetki
+  const { data: bag } = await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_program_id', girdi.altProgramId).eq('alt_hedef_id', altHedefId).maybeSingle()
+  if (!bag) return { hata: 'Bu hedef alt programa bağlı değil.' }
+  const donem = await gostergeDonemIndeks(sb, girdi.yil)
+  if ('hata' in donem) return donem
+  const yilAlani = (i: number) => `yil_${i + 1}`
+  const patch: Record<string, unknown> = {
+    gosterge_adi: ad,
+    birim: girdi.birim,
+    sira_no: girdi.sira,
+  }
+  for (const d of girdi.degerler) {
+    if (!donem.izin.includes(d.indeks)) return { hata: 'Yalnızca bu yıl ve sonrası için değer girilebilir.' }
+    patch[yilAlani(d.indeks)] = d.deger
+  }
+  if (girdi.id) {
+    const { error } = await sb.from('stratejik_plan_gosterge').update(patch).eq('id', girdi.id).eq('faaliyet_id', girdi.faaliyetId)
+    if (error) return { hata: error.message }
+  } else {
+    const { error } = await sb.from('stratejik_plan_gosterge').insert({
+      ...patch,
+      alt_hedef_id: altHedefId,
+      faaliyet_id: girdi.faaliyetId,
+      aktif: true,
+    })
+    if (error) return { hata: error.message }
+  }
+  gostergeYol(girdi.yil, girdi.programId, girdi.altProgramId)
+  return {}
+}
+
+export async function ppGostergeSil(
+  id: number,
+  faaliyetId: number,
+  altProgramId: number,
+  yil: number,
+  programId: number,
+): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data: faaliyet } = await sb.from('stratejik_plan_faaliyet').select('alt_hedef_id').eq('id', faaliyetId).maybeSingle()
+  const altHedefId = Number(faaliyet?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId)) return { hata: 'Faaliyet bulunamadı.' }
+  const yetki = await gostergeYazabilir(sb, altHedefId)
+  if (yetki.hata) return yetki
+  const { error } = await sb.from('stratejik_plan_gosterge').update({ aktif: false }).eq('id', id).eq('faaliyet_id', faaliyetId)
+  if (error) return { hata: error.message }
+  gostergeYol(yil, programId, altProgramId)
+  return {}
+}

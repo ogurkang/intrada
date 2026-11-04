@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 export interface PpAltProgram {
   id: number
@@ -57,7 +58,15 @@ export default function PerformansProgramiAltProgramClient({
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">{programAdi}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">{programAdi}</h1>
+            <PpEkranBilgi maddeler={[
+              { baslik: 'Alt Program Ekle', metin: 'Bu programa alt program yazar. Gerekçe metni Excel’deki gerekçe alanına gider.' },
+              { baslik: 'Göz', metin: 'Alt Program Hedefi ekranını açar. Stratejik plandaki performans hedefi buradan bağlanır.' },
+              { baslik: 'Kalem', metin: 'Alt programın kodunu, adını ve gerekçesini günceller. Bağlı hedefler durur.' },
+              { baslik: 'Bilgi', metin: 'Alt programa bağlı performans hedefi sayısını gösterir.' },
+            ]} />
+          </div>
           <p className="text-sm text-slate-500 mt-1">Alt programları yönetebilirsiniz.</p>
         </div>
         <button onClick={() => { setSecili(null); setHata(null); setFormAcik(true) }} className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700">
