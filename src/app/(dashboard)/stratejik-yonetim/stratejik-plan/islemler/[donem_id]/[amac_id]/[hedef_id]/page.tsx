@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanAltHedefClient, { type SpAltHedef } from '@/components/stratejik/StratejikPlanAltHedefClient'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
-import { altHedefEkle, altHedefGuncelle } from '../../../actions'
+import { altHedefEkle, altHedefGuncelle, altHedefSil } from '../../../actions'
 
 export default async function StratejikPlanHedefDetayPage({
   params,
@@ -67,6 +67,7 @@ export default async function StratejikPlanHedefDetayPage({
         mudurlukler={mudurlukler}
         onEkle={altHedefEkle}
         onGuncelle={altHedefGuncelle}
+        onSil={altHedefSil}
       />
     </div>
   )

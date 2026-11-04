@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanHedefClient, { type SpHedef } from '@/components/stratejik/StratejikPlanHedefClient'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
-import { hedefEkle, hedefGuncelle } from '../../actions'
+import { hedefEkle, hedefGuncelle, hedefSil } from '../../actions'
 
 export default async function StratejikPlanAmacDetayPage({
   params,
@@ -62,6 +62,7 @@ export default async function StratejikPlanAmacDetayPage({
         hedefler={hedefler}
         onEkle={hedefEkle}
         onGuncelle={hedefGuncelle}
+        onSil={hedefSil}
       />
     </div>
   )

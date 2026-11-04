@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
 import Link from 'next/link'
 
 export interface SpAltHedef {
@@ -25,6 +26,7 @@ interface Props {
   mudurlukler: string[]
   onEkle: (hedefId: number, donemId: number, fd: FormData) => Promise<{ hata?: string }>
   onGuncelle: (id: number, donemId: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil: (id: number, donemId: number) => Promise<{ hata?: string }>
 }
 
 export default function StratejikPlanAltHedefClient({
@@ -37,6 +39,7 @@ export default function StratejikPlanAltHedefClient({
   mudurlukler,
   onEkle,
   onGuncelle,
+  onSil,
 }: Props) {
   const router = useRouter()
   const [formAcik, setFormAcik] = useState(false)
@@ -54,6 +57,15 @@ export default function StratejikPlanAltHedefClient({
     setSecili(a)
     setHata(null)
     setFormAcik(true)
+  }
+
+  function sil(id: number) {
+    if (!confirm('Bu kaydı silmek istiyor musunuz?')) return
+    startTransition(async () => {
+      const res = await onSil(id, donemId)
+      if (res.hata) alert(res.hata)
+      else router.refresh()
+    })
   }
 
   function kaydet(fd: FormData) {
@@ -123,6 +135,7 @@ export default function StratejikPlanAltHedefClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        <CopKutusuSilDugmesi onClick={() => sil(a.id)} disabled={isPending} />
                       </div>
                     </td>
                   </tr>

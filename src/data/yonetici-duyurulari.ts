@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-04-stratejik-plan-sil',
+    baslik: '4 Kasım 2026 — Stratejik plan silme',
+    maddeler: [
+      'Stratejik planda dönem, amaç, hedef, performans hedefi, faaliyet ve gösterge silinebilir.',
+      'Başlığın altında bağlı kayıt varsa silme yapılmaz. Uyarı: Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.',
+    ],
+  },
+  {
     id: '2026-11-04-pp-gosterge',
     baslik: '4 Kasım 2026 — Performans göstergesi',
     maddeler: [

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
 
 const BIRIMLER = ['Yüzde', 'Adet', 'Kişi', 'Gün', 'Hektar', 'Ton', 'Metre', 'Metrekare', 'Saat'] as const
 
@@ -52,6 +53,7 @@ interface Props {
     }[],
   ) => Promise<{ hata?: string; kaydedilen?: number }>
   onGuncelle: (id: number, donemId: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil: (id: number, donemId: number) => Promise<{ hata?: string }>
 }
 
 function toNum(v: string): number | null {
@@ -84,6 +86,7 @@ export default function StratejikPlanGostergeClient({
   onEkle,
   onTopluEkle,
   onGuncelle,
+  onSil,
 }: Props) {
   const router = useRouter()
   const [formAcik, setFormAcik] = useState(false)
@@ -128,6 +131,15 @@ export default function StratejikPlanGostergeClient({
       return true
     }
     return false
+  }
+
+  function sil(id: number) {
+    if (!confirm('Bu kaydı silmek istiyor musunuz?')) return
+    startTransition(async () => {
+      const res = await onSil(id, donemId)
+      if (res.hata) alert(res.hata)
+      else router.refresh()
+    })
   }
 
   function kaydet(fd: FormData) {
@@ -219,6 +231,7 @@ export default function StratejikPlanGostergeClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        <CopKutusuSilDugmesi onClick={() => sil(g.id)} disabled={isPending} />
                       </div>
                     </td>
                   </tr>

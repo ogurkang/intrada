@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanDonemClient, { type SpDonem } from '@/components/stratejik/StratejikPlanDonemClient'
-import { donemAktifPasifYap, donemEkle, donemGuncelle } from './actions'
+import { donemAktifPasifYap, donemEkle, donemGuncelle, donemSil } from './actions'
 
 export default async function StratejikPlanIslemlerPage() {
   const supabase = await createClient()
@@ -17,6 +17,7 @@ export default async function StratejikPlanIslemlerPage() {
       onEkle={donemEkle}
       onGuncelle={donemGuncelle}
       onAktifPasif={donemAktifPasifYap}
+      onSil={donemSil}
     />
   )
 }

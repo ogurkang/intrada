@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanAmacClient, { type SpAmac } from '@/components/stratejik/StratejikPlanAmacClient'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
-import { amacEkle, amacGuncelle } from '../actions'
+import { amacEkle, amacGuncelle, amacSil } from '../actions'
 
 export default async function StratejikPlanDonemDetayPage({
   params,
@@ -59,6 +59,7 @@ export default async function StratejikPlanDonemDetayPage({
         amaclar={amaclar}
         onEkle={amacEkle}
         onGuncelle={amacGuncelle}
+        onSil={amacSil}
       />
     </div>
   )

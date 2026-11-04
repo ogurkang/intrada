@@ -494,3 +494,103 @@ export async function stratejikVeriGirisKaydet(
   return { kaydedilen: payload.length }
 }
 
+const BAGLI_VERI = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
+
+async function bagliSay(tablo: string, kolon: string, id: number): Promise<number | { hata: string }> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count, error } = await (supabase as any).from(tablo).select('id', { count: 'exact', head: true }).eq(kolon, id)
+  if (error) return { hata: error.message }
+  return count ?? 0
+}
+
+async function bagliMi(kontroller: { tablo: string; kolon: string }[], id: number): Promise<{ hata?: string }> {
+  for (const k of kontroller) {
+    const n = await bagliSay(k.tablo, k.kolon, id)
+    if (typeof n !== 'number') return n
+    if (n > 0) return { hata: BAGLI_VERI }
+  }
+  return {}
+}
+
+async function satirSil(tablo: string, id: number): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from(tablo).delete().eq('id', id)
+  if (error) {
+    if (String(error.message).includes('row-level security') || String(error.code) === '42501') {
+      return { hata: 'Silme izni yok. supabase/migrations/20261104110000_stratejik_plan_sil.sql dosyasını çalıştırın.' }
+    }
+    return { hata: error.message }
+  }
+  return {}
+}
+
+export async function donemSil(id: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([
+    { tablo: 'stratejik_plan_amac', kolon: 'donem_id' },
+    { tablo: 'stratejik_plan_gosterge_gerceklesme', kolon: 'stratejik_donem_id' },
+  ], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_donem', id)
+  if (sil.hata) return sil
+  revalidatePath('/stratejik-yonetim/stratejik-plan/islemler')
+  return {}
+}
+
+export async function amacSil(id: number, donemId: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([{ tablo: 'stratejik_plan_hedef', kolon: 'amac_id' }], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_amac', id)
+  if (sil.hata) return sil
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
+export async function hedefSil(id: number, donemId: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([{ tablo: 'stratejik_plan_alt_hedef', kolon: 'hedef_id' }], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_hedef', id)
+  if (sil.hata) return sil
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
+export async function altHedefSil(id: number, donemId: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([
+    { tablo: 'stratejik_plan_faaliyet', kolon: 'alt_hedef_id' },
+    { tablo: 'stratejik_plan_gosterge', kolon: 'alt_hedef_id' },
+    { tablo: 'performans_programi_alt_program_hedef', kolon: 'alt_hedef_id' },
+    { tablo: 'performans_programi_ozel_faaliyet', kolon: 'alt_hedef_id' },
+  ], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_alt_hedef', id)
+  if (sil.hata) return sil
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
+export async function faaliyetSil(id: number, donemId: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([
+    { tablo: 'stratejik_plan_gosterge', kolon: 'faaliyet_id' },
+    { tablo: 'performans_programi_faaliyet_butce', kolon: 'faaliyet_id' },
+  ], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_faaliyet', id)
+  if (sil.hata) return sil
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+
+export async function gostergeSil(id: number, donemId: number): Promise<{ hata?: string }> {
+  const bag = await bagliMi([
+    { tablo: 'performans_programi_veri_giris', kolon: 'gosterge_id' },
+    { tablo: 'stratejik_plan_gosterge_gerceklesme', kolon: 'gosterge_id' },
+  ], id)
+  if (bag.hata) return bag
+  const sil = await satirSil('stratejik_plan_gosterge', id)
+  if (sil.hata) return sil
+  revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
+  return {}
+}
+

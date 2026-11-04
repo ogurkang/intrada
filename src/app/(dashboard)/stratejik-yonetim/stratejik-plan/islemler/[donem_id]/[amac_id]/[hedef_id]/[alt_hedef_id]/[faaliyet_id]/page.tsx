@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
 import StratejikPlanGostergeClient, { type SpGosterge } from '@/components/stratejik/StratejikPlanGostergeClient'
-import { gostergeEkle, gostergeGuncelle, gostergeTopluEkle } from '../../../../../actions'
+import { gostergeEkle, gostergeGuncelle, gostergeSil, gostergeTopluEkle } from '../../../../../actions'
 
 export default async function StratejikPlanFaaliyetGostergePage({
   params,
@@ -70,6 +70,7 @@ export default async function StratejikPlanFaaliyetGostergePage({
         onEkle={gostergeEkle}
         onTopluEkle={gostergeTopluEkle}
         onGuncelle={gostergeGuncelle}
+        onSil={gostergeSil}
       />
     </div>
   )
