@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-05-pp-iliski',
+    baslik: '5 Kasım 2026 — Performans programı ilişkisi',
+    maddeler: [
+      'Stratejik plan amaç, stratejik hedef ve performans hedefinde biter.',
+      'Alt Program Ekle yeni sekme açar. Hedef, stratejik plandaki performans hedeflerinden SA, SH ve PH koduyla seçilir.',
+      'Gerekçe, performans faaliyeti ve gösterge bu sekmede yazılır. Kaydet sekmeyi kapatır.',
+    ],
+  },
+  {
     id: '2026-11-04-stratejik-plan-sil',
     baslik: '4 Kasım 2026 — Stratejik plan silme',
     maddeler: [
