@@ -8,10 +8,13 @@ export const dynamic = 'force-dynamic'
 
 export default async function PpAltProgramIliskiPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ donem_id: string; program_id: string; alt_program_id: string }>
+  searchParams: Promise<{ bag?: string }>
 }) {
   const p = await params
+  const bagSorgu = Number((await searchParams).bag)
   const yil = Number.parseInt(p.donem_id, 10)
   const programId = Number.parseInt(p.program_id, 10)
   const altId = Number.parseInt(p.alt_program_id, 10)
@@ -24,7 +27,8 @@ export default async function PpAltProgramIliskiPage({
     sb.from('performans_programi_alt_program').select('id, sira_no, kodu, alt_program_adi').eq('id', altId).eq('program_id', programId).maybeSingle(),
   ])
   if (!program || !alt) notFound()
-  const { data: bag } = await sb.from('performans_programi_alt_program_hedef').select('id, alt_hedef_id, gerekce').eq('alt_program_id', altId).limit(1).maybeSingle()
+  const bagSorguGecerli = Number.isFinite(bagSorgu) && bagSorgu > 0
+  const { data: bag } = await sb.from('performans_programi_alt_program_hedef').select('id, alt_hedef_id, gerekce').eq('alt_program_id', altId).eq('id', bagSorguGecerli ? bagSorgu : -1).maybeSingle()
   const { data: faaliyetRaw } = bag
     ? await sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi').eq('bag_id', bag.id).order('sira_no')
     : { data: [] }
@@ -49,6 +53,8 @@ export default async function PpAltProgramIliskiPage({
   }[]
   const baslangic: PpIliskiBaslangic = {
     altProgramId: altId,
+    bagId: bag ? Number(bag.id) : undefined,
+    yalnizHedef: true,
     sira: alt.sira_no == null ? '' : String(alt.sira_no),
     kodu: String(alt.kodu ?? ''),
     ad: String(alt.alt_program_adi ?? ''),

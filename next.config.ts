@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: '/personel/gorev-bilgileri', destination: '/personel', permanent: true }]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/stratejik-yonetim/performans-programi/islemler/:donem_id/:program_id/:alt_program_id/faaliyetler/:faaliyet_id/hedef/:bag_id',
+        destination: '/stratejik-yonetim/performans-programi/hedef/:bag_id',
+      },
+    ]
+  },
   turbopack: {
     resolveAlias: {
       /** unzipper 0.12+ optional S3 path — not used by ExcelJS xlsx read (relative path for Turbopack on Windows). */

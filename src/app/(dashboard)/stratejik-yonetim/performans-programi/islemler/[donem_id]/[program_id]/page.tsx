@@ -4,7 +4,7 @@ import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcr
 import PerformansProgramiAltProgramClient, {
   type PpAltProgram,
 } from '@/components/stratejik/PerformansProgramiAltProgramClient'
-import { altProgramEkle, altProgramGuncelle } from '../../actions'
+import { altProgramEkle, altProgramGuncelle, altProgramSil } from '../../actions'
 
 export default async function PerformansProgramiProgramDetayPage({
   params,
@@ -25,7 +25,7 @@ export default async function PerformansProgramiProgramDetayPage({
   if (!program) notFound()
   const altIds = (altRaw ?? []).map((a: { id: number }) => a.id)
   const { data: hedefRaw } = altIds.length
-    ? await sb.from('performans_programi_alt_program_hedef').select('alt_program_id').in('alt_program_id', altIds)
+    ? await sb.from('performans_programi_pf_faaliyet').select('alt_program_id').in('alt_program_id', altIds)
     : { data: [] }
   const hedefSayisiByAlt = new Map<number, number>()
   for (const h of hedefRaw ?? []) {
@@ -44,7 +44,7 @@ export default async function PerformansProgramiProgramDetayPage({
         { label: 'Programlar', href: `/stratejik-yonetim/performans-programi/islemler/${yil}` },
         { label: 'Alt Programlar' },
       ]} />
-      <PerformansProgramiAltProgramClient yil={yil} programId={programId} programAdi={String((program as { program_adi?: string }).program_adi ?? `Program #${programId}`)} altProgramlar={altProgramlar} onEkle={altProgramEkle} onGuncelle={altProgramGuncelle} />
+      <PerformansProgramiAltProgramClient yil={yil} programId={programId} programAdi={String((program as { program_adi?: string }).program_adi ?? `Program #${programId}`)} altProgramlar={altProgramlar} onEkle={altProgramEkle} onGuncelle={altProgramGuncelle} onSil={altProgramSil} />
     </div>
   )
 }

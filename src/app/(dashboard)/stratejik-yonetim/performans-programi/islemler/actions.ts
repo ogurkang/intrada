@@ -100,6 +100,34 @@ export async function altProgramGuncelle(id: number, programId: number, yil: num
   return {}
 }
 
+const BAGLI = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
+
+export async function programSil(id: number, yil: number): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { count, error: sayHata } = await sb.from('performans_programi_alt_program').select('id', { count: 'exact', head: true }).eq('program_id', id)
+  if (sayHata) return { hata: sayHata.message }
+  if ((count ?? 0) > 0) return { hata: BAGLI }
+  const { error } = await sb.from('performans_programi_program').delete().eq('id', id)
+  if (error) return { hata: error.message }
+  revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}`)
+  return {}
+}
+
+export async function altProgramSil(id: number, programId: number, yil: number): Promise<{ hata?: string }> {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { count, error: sayHata } = await sb.from('performans_programi_pf_faaliyet').select('id', { count: 'exact', head: true }).eq('alt_program_id', id)
+  if (sayHata) return { hata: sayHata.message }
+  if ((count ?? 0) > 0) return { hata: BAGLI }
+  const { error } = await sb.from('performans_programi_alt_program').delete().eq('id', id).eq('program_id', programId)
+  if (error) return { hata: error.message }
+  revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`)
+  return {}
+}
+
 export async function faaliyetEkle(altProgramId: number, yil: number, programId: number, fd: FormData): Promise<{ hata?: string }> {
   const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))

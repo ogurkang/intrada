@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
+import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
 
 export interface PpProgram {
   id: number
@@ -20,6 +21,7 @@ interface Props {
   programlar: PpProgram[]
   onEkle: (yil: number, fd: FormData) => Promise<{ hata?: string }>
   onGuncelle: (id: number, yil: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil: (id: number, yil: number) => Promise<{ hata?: string }>
 }
 
 export default function PerformansProgramiProgramClient({
@@ -27,6 +29,7 @@ export default function PerformansProgramiProgramClient({
   programlar,
   onEkle,
   onGuncelle,
+  onSil,
 }: Props) {
   const router = useRouter()
   const [formAcik, setFormAcik] = useState(false)
@@ -44,6 +47,19 @@ export default function PerformansProgramiProgramClient({
     setHata(null)
     setFormAcik(true)
   }
+  function sil(p: PpProgram) {
+    if (p.alt_program_sayisi > 0) {
+      alert('Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.')
+      return
+    }
+    if (!confirm('Bu kaydı silmek istiyor musunuz?')) return
+    startTransition(async () => {
+      const res = await onSil(p.id, yil)
+      if (res.hata) alert(res.hata)
+      else router.refresh()
+    })
+  }
+
   function kaydet(fd: FormData) {
     setHata(null)
     startTransition(async () => {
@@ -130,6 +146,7 @@ export default function PerformansProgramiProgramClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        <CopKutusuSilDugmesi onClick={() => sil(p)} disabled={isPending} />
                       </div>
                     </td>
                   </tr>

@@ -1,0 +1,66 @@
+import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
+import PpPerformansFaaliyetListeClient, { type PpPerformansFaaliyetSatir } from '@/components/stratejik/PpPerformansFaaliyetListeClient'
+import { ppIliskiSecenekleri } from '../../islemler/[donem_id]/[program_id]/iliski-actions'
+import { ppFaaliyetKodu } from '@/lib/pp-iliski'
+
+export const dynamic = 'force-dynamic'
+
+export default async function PpPerformansFaaliyetPage({
+  params,
+}: {
+  params: Promise<{ bag_id: string }>
+}) {
+  const p = await params
+  const bagId = Number.parseInt(p.bag_id, 10)
+  if (!Number.isFinite(bagId)) notFound()
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const [{ data: bag }, { data: raw }, sec] = await Promise.all([
+    sb.from('performans_programi_alt_program_hedef').select('id, alt_hedef_id, faaliyet_id, alt_program_id').eq('id', bagId).maybeSingle(),
+    sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi').eq('bag_id', bagId).order('sira_no'),
+    ppIliskiSecenekleri(),
+  ])
+  if (!bag) notFound()
+  const faaliyetId = Number(bag.faaliyet_id)
+  const altId = Number(bag.alt_program_id)
+  const { data: alt } = await sb.from('performans_programi_alt_program').select('id, program_id').eq('id', altId).maybeSingle()
+  if (!alt) notFound()
+  const programId = Number(alt.program_id)
+  const { data: program } = await sb.from('performans_programi_program').select('id, yil').eq('id', programId).maybeSingle()
+  if (!program) notFound()
+  const yil = Number(program.yil)
+  const kayitlar = (raw ?? []) as { id: number; sira_no: number; faaliyet_adi: string }[]
+  const ids = kayitlar.map(f => f.id)
+  const { data: gostergeRaw } = ids.length
+    ? await sb.from('performans_programi_pf_gosterge').select('faaliyet_id').in('faaliyet_id', ids)
+    : { data: [] }
+  const gostergeSay = new Map<number, number>()
+  for (const g of gostergeRaw ?? []) {
+    const id = Number((g as { faaliyet_id?: number }).faaliyet_id)
+    if (Number.isFinite(id)) gostergeSay.set(id, (gostergeSay.get(id) ?? 0) + 1)
+  }
+  const ph = sec.secenekler.find(s => s.id === Number(bag.alt_hedef_id))
+  const satirlar: PpPerformansFaaliyetSatir[] = kayitlar.map((f, i) => ({
+    id: f.id,
+    sira: i + 1,
+    kod: ppFaaliyetKodu(ph?.kod ?? '', i + 1),
+    ad: f.faaliyet_adi,
+    gostergeSayisi: gostergeSay.get(f.id) ?? 0,
+  }))
+  return (
+    <div className="space-y-4">
+      <StratejikPlanBreadcrumb items={[
+        { label: 'İşlemler', href: '/stratejik-yonetim/performans-programi/islemler' },
+        { label: 'Programlar', href: `/stratejik-yonetim/performans-programi/islemler/${yil}` },
+        { label: 'Alt Programlar', href: `/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}` },
+        { label: 'Faaliyetler', href: `/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altId}/faaliyetler` },
+        { label: 'Alt Program Hedefleri', href: `/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altId}/faaliyetler/${faaliyetId}` },
+        { label: 'Performans Faaliyetleri' },
+      ]} />
+      <PpPerformansFaaliyetListeClient bagId={bagId} baslik={ph?.ad ?? 'Performans faaliyetleri'} satirlar={satirlar} />
+    </div>
+  )
+}

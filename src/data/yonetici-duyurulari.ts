@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-06-pp-faaliyet',
+    baslik: '6 Kasım 2026 — Performans faaliyeti',
+    maddeler: [
+      'Performans programında program, alt program, faaliyet ve alt program hedefi, altında kayıt varken silinmez.',
+      'İşlemler satırındaki ok, başlık seçip Git ile o listenin sayfasını açar. Göz, yılın program listesine gider.',
+      'Alt program hedefinin gözü performans faaliyetlerini listeler. Ekle yeni sekme açar. Kod, hedef koduna .1, .2 diye eklenir.',
+      'Sekmede gösterge adı, ölçü birimi ve t−2 ile t+2 arasındaki değerler tek satırdadır. Açıklama ve hesaplama yöntemi altta yazılır.',
+    ],
+  },
+  {
     id: '2026-11-05-pp-iliski',
     baslik: '5 Kasım 2026 — Performans programı ilişkisi',
     maddeler: [

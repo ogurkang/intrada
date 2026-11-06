@@ -3,6 +3,7 @@ export const PP_BIRIMLER = ['Yüzde', 'Adet', 'Kişi', 'Gün', 'Hektar', 'Ton', 
 export type PpPhSecenek = {
   id: number
   etiket: string
+  ad: string
   kod: string
   mudurluk: string
 }

@@ -45,6 +45,8 @@ const YIL_ALAN = [
 
 export type PpIliskiBaslangic = {
   altProgramId?: number
+  bagId?: number
+  yalnizHedef?: boolean
   sira: string
   kodu: string
   ad: string
@@ -114,6 +116,8 @@ export default function PpAltProgramKayitClient({
     start(async () => {
       const sonuc = await ppIliskiKaydet({
         altProgramId: baslangic?.altProgramId,
+        bagId: baslangic?.bagId,
+        yalnizHedef: baslangic?.yalnizHedef,
         programId,
         yil,
         sira: siraNo,
@@ -150,9 +154,13 @@ export default function PpAltProgramKayitClient({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">{programAdi}</h1>
-        <p className="mt-1 text-sm text-slate-500">{yil} yılı alt programı. Kaydet, sekmeyi kapatır ve ilişkilendirmeyi tamamlar.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          {baslangic?.yalnizHedef
+            ? 'Tek performans hedefi. Göstergeler bu hedefe yazılır. Kaydet sekmeyi kapatır.'
+            : `${yil} yılı alt programı. Kaydet, sekmeyi kapatır ve ilişkilendirmeyi tamamlar.`}
+        </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      {baslangic?.yalnizHedef ? null : <div className="grid gap-4 sm:grid-cols-3">
         <label className="text-sm text-slate-700">Sıra no
           <input value={sira} onChange={e => setSira(e.target.value)} className={`${input} mt-1`} />
         </label>
@@ -162,7 +170,7 @@ export default function PpAltProgramKayitClient({
         <label className="text-sm text-slate-700 sm:col-span-1">Alt program adı
           <input value={ad} onChange={e => setAd(e.target.value)} className={`${input} mt-1`} />
         </label>
-      </div>
+      </div>}
       <label className="block text-sm text-slate-700">Alt program hedefi
         <select value={altHedefId} onChange={e => setAltHedefId(e.target.value)} className={`${input} mt-1`}>
           <option value="">Performans hedefi seçin</option>
@@ -215,15 +223,35 @@ export default function PpAltProgramKayitClient({
                     </div>
                   </div>
                 ))}
-                <button type="button" onClick={() => guncelleFaaliyet(f.anahtar, x => ({ ...x, gostergeler: [...x.gostergeler, bosGosterge()] }))} className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white">
-                  Gösterge Ekle
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => guncelleFaaliyet(f.anahtar, x => ({ ...x, gostergeler: [...x.gostergeler, bosGosterge()] }))} className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white">
+                    Gösterge Ekle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => guncelleFaaliyet(f.anahtar, x => ({ ...x, gostergeler: x.gostergeler.slice(0, -1) }))}
+                    disabled={f.gostergeler.length === 0}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 disabled:opacity-40"
+                  >
+                    Kaldır
+                  </button>
+                </div>
               </section>
             )
           })}
-          <button type="button" onClick={() => setFaaliyetler(liste => [...liste, bosFaaliyet()])} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800">
-            Faaliyet Ekle
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setFaaliyetler(liste => [...liste, bosFaaliyet()])} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800">
+              Faaliyet Ekle
+            </button>
+            <button
+              type="button"
+              onClick={() => setFaaliyetler(liste => liste.length > 1 ? liste.slice(0, -1) : liste)}
+              disabled={faaliyetler.length < 2}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 disabled:opacity-40"
+            >
+              Kaldır
+            </button>
+          </div>
         </>
       ) : null}
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}

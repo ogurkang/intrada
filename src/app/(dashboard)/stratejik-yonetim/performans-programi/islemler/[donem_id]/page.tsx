@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import PerformansProgramiProgramClient, {
   type PpProgram,
 } from '@/components/stratejik/PerformansProgramiProgramClient'
-import { programEkle, programGuncelle } from '../actions'
+import { programEkle, programGuncelle, programSil } from '../actions'
 
 export default async function PerformansProgramiDonemDetayPage({
   params,
@@ -43,7 +43,7 @@ export default async function PerformansProgramiDonemDetayPage({
           { label: 'Programlar' },
         ]}
       />
-      <PerformansProgramiProgramClient yil={yil} programlar={programlar} onEkle={programEkle} onGuncelle={programGuncelle} />
+      <PerformansProgramiProgramClient yil={yil} programlar={programlar} onEkle={programEkle} onGuncelle={programGuncelle} onSil={programSil} />
     </div>
   )
 }
