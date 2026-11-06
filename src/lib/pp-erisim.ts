@@ -2,6 +2,20 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppAccess, isAdminLike, type AppAccess } from '@/lib/app-access'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 
+/** Seçilen müdürlük bu değerdeyse satır, ilerideki müdürlük süzgecinde herkese görünür. */
+export const PP_TUM_MUDURLUKLER = 'Tüm Müdürlükler'
+
+export function ppTumMudurluklerMi(ad: string | null | undefined): boolean {
+  return ppNorm(ad) === ppNorm(PP_TUM_MUDURLUKLER)
+}
+
+/** Yönetici her satırı görür. Tüm Müdürlükler seçilen satır da herkese açıktır. */
+export function ppSecilenMudurlukGorunur(secilen: string, gorevMudurlukleri: string[], yonetici: boolean): boolean {
+  if (yonetici || ppTumMudurluklerMi(secilen)) return true
+  const hedef = ppNorm(secilen)
+  return gorevMudurlukleri.some(m => ppNorm(m) === hedef)
+}
+
 export function ppNorm(v: string | null | undefined): string {
   return String(v ?? '')
     .trim()

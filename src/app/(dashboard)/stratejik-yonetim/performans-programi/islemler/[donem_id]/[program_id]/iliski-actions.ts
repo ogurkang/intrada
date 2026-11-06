@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
 import { ppMaliyetSeciciMi, ppNorm, ppOturum } from '@/lib/pp-erisim'
+import { ppSatirLogYaz } from '@/lib/pp-satir-log'
 import {
   PP_BIRIMLER,
   ppPerformansYol,
@@ -193,12 +194,13 @@ export async function ppFaaliyetEkle(altProgramId: number, yil: number, programI
   const { data: varOlan } = await sb.from('performans_programi_pf_faaliyet').select('sira_no').eq('alt_program_id', altProgramId)
   const nolar = ((varOlan ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
   const sira = (nolar.length ? Math.max(...nolar) : 0) + 1
-  const { error } = await sb.from('performans_programi_pf_faaliyet').insert({
+  const { data, error } = await sb.from('performans_programi_pf_faaliyet').insert({
     alt_program_id: altProgramId,
     sira_no: sira,
     faaliyet_adi: faaliyetAdi,
-  })
+  }).select('id').single()
   if (error) return { hata: error.message.includes('alt_program_id') ? 'Faaliyet tablosu güncel değil. 20261105160000_pp_faaliyet_once.sql dosyasını çalıştırın.' : error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'faaliyet', kayitId: Number(data.id), islem: 'Ekleme', ozet: faaliyetAdi })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler`)
   return {}
 }
@@ -220,17 +222,18 @@ export async function ppAltProgramHedefiEkle(
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_alt_program_hedef').insert({
+  const { data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
     alt_program_id: altProgramId,
     alt_hedef_id: altHedefId,
     faaliyet_id: faaliyetId,
     secilen_mudurluk: mud,
     gerekce: ppZenginMetinTemiz(gerekce),
-  })
+  }).select('id').single()
   if (error) {
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
     return { hata: error.message }
   }
+  await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: Number(data.id), islem: 'Ekleme', ozet: mud })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler/${faaliyetId}`)
   return {}
 }
@@ -262,6 +265,7 @@ export async function ppAltProgramHedefiGuncelle(
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
     return { hata: error.message }
   }
+  await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: id, islem: 'Güncelleme', ozet: mud })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler/${faaliyetId}`)
   return {}
 }
@@ -277,6 +281,7 @@ export async function ppFaaliyetSil(id: number, altProgramId: number, yil: numbe
   if ((count ?? 0) > 0) return { hata: BAGLI_KAYIT }
   const { error } = await sb.from('performans_programi_pf_faaliyet').delete().eq('id', id).eq('alt_program_id', altProgramId)
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'faaliyet', kayitId: id, islem: 'Silme', ozet: `Faaliyet #${id}` })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler`)
   return {}
 }
@@ -290,6 +295,7 @@ export async function ppAltProgramHedefiSil(id: number, faaliyetId: number, yil:
   if ((count ?? 0) > 0) return { hata: BAGLI_KAYIT }
   const { error } = await sb.from('performans_programi_alt_program_hedef').delete().eq('id', id).eq('faaliyet_id', faaliyetId)
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: id, islem: 'Silme', ozet: `Hedef #${id}` })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler/${faaliyetId}`)
   return {}
 }
@@ -374,6 +380,7 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
     if (error) return { hata: error.message.includes('aciklama') ? 'Faaliyet açıklaması için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
     const { error: silHata } = await sb.from('performans_programi_pf_gosterge').delete().eq('faaliyet_id', faaliyetId)
     if (silHata) return { hata: silHata.message }
+    await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: faaliyetId, islem: 'Güncelleme', ozet: faaliyetAdi })
   } else {
     const { data: varOlan } = await sb.from('performans_programi_pf_faaliyet').select('sira_no').eq('bag_id', girdi.bagId)
     const nolar = ((varOlan ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
@@ -386,6 +393,7 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
     }).select('id').single()
     if (error) return { hata: error.message.includes('aciklama') ? 'Faaliyet açıklaması için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
     faaliyetId = Number(faaliyet.id)
+    await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: faaliyetId, islem: 'Ekleme', ozet: faaliyetAdi })
   }
   if (girdi.gostergeler.length) {
     const { error: gHata } = await sb.from('performans_programi_pf_gosterge').insert(girdi.gostergeler.map((g, gi) => ({
@@ -456,6 +464,7 @@ export async function ppPerformansFaaliyetSatirSil(id: number, bagId: number): P
   if ((odenekSay ?? 0) > 0) return { hata: BAGLI_KAYIT }
   const { error } = await sb.from('performans_programi_pf_faaliyet').delete().eq('id', id).eq('bag_id', bagId)
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: id, islem: 'Silme', ozet: `Performans faaliyeti #${id}` })
   const { data: kalan } = await sb.from('performans_programi_pf_faaliyet').select('id').eq('bag_id', bagId).order('sira_no')
   for (let i = 0; i < (kalan ?? []).length; i += 1) {
     await sb.from('performans_programi_pf_faaliyet').update({ sira_no: i + 1 }).eq('id', (kalan as { id: number }[])[i].id).eq('bag_id', bagId)

@@ -3,6 +3,8 @@ type IntradaLoaderProps = {
   label?: string
   /** Daha küçük yerleşim (satır içi paneller) */
   compact?: boolean
+  /** Sayfada sürekli duran süs; yükleniyor duyurusu vermez */
+  dekor?: boolean
   className?: string
 }
 
@@ -13,6 +15,7 @@ type IntradaLoaderProps = {
 export function IntradaLoader({
   label = 'Yükleniyor…',
   compact = false,
+  dekor = false,
   className = '',
 }: IntradaLoaderProps) {
   const box = compact ? 96 : 132
@@ -20,10 +23,11 @@ export function IntradaLoader({
   return (
     <div
       className={`intrada-loader flex flex-col items-center gap-3 text-center ${className}`}
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-      aria-label={label || 'Yükleniyor'}
+      role={dekor ? undefined : 'status'}
+      aria-live={dekor ? undefined : 'polite'}
+      aria-busy={dekor ? undefined : true}
+      aria-hidden={dekor ? true : undefined}
+      aria-label={dekor ? undefined : (label || 'Yükleniyor')}
     >
       <svg
         width={box}

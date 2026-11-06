@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import PpSatirSaat from '@/components/stratejik/PpSatirSaat'
 
 export interface PpProgram {
   id: number
@@ -121,7 +122,7 @@ export default function PerformansProgramiProgramClient({
               ) : (
                 programlar.map((p, i) => (
                   <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-center text-slate-600">{p.sira_no ?? i + 1}</td>
+                    <td className="px-4 py-3 text-center text-slate-600">{i + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-700">{p.kodu}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{p.program_adi}</td>
                     <td className="px-4 py-3 text-slate-600">{p.alt_program_sayisi} alt program bağlı.</td>
@@ -146,6 +147,7 @@ export default function PerformansProgramiProgramClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        <PpSatirSaat tablo="program" kayitId={p.id} />
                         <CopKutusuSilDugmesi onClick={() => sil(p)} disabled={isPending} />
                       </div>
                     </td>
@@ -165,15 +167,9 @@ export default function PerformansProgramiProgramClient({
           }}
           className="space-y-4"
         >
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sıra No</label>
-              <input name="sira_no" type="number" min={1} defaultValue={secili?.sira_no ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Kodu *</label>
-              <input name="kodu" required defaultValue={secili?.kodu ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kodu *</label>
+            <input name="kodu" required defaultValue={secili?.kodu ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Program Adı *</label>

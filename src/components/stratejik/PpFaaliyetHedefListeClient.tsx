@@ -6,6 +6,8 @@ import Modal from '@/components/ui/Modal'
 import Link from 'next/link'
 import { ppAltProgramHedefiEkle, ppAltProgramHedefiGuncelle, ppAltProgramHedefiSil } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/iliski-actions'
 import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import PpSatirSaat from '@/components/stratejik/PpSatirSaat'
+import { PP_TUM_MUDURLUKLER } from '@/lib/pp-erisim'
 import PpZenginMetin from '@/components/stratejik/PpZenginMetin'
 import type { PpPhSecenek } from '@/lib/pp-iliski'
 
@@ -109,6 +111,7 @@ export default function PpFaaliyetHedefListeClient({
                     <button type="button" onClick={() => { setDuzenlenen(h); setAltHedefId(String(h.altHedefId)); setMudurluk(h.mudurluk); setGerekce(h.gerekce); setHata(null); setAcik(true) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100" title="Düzenle">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
+                    <PpSatirSaat tablo="hedef" kayitId={h.id} />
                     <CopKutusuSilDugmesi onClick={() => silHedef(h)} disabled={bekliyor} />
                   </div>
                 </td>
@@ -137,7 +140,8 @@ export default function PpFaaliyetHedefListeClient({
           <label className="block text-sm text-slate-700">Müdürlük
             <select value={mudurluk} onChange={e => setMudurluk(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
               <option value="">Seçin</option>
-              {mudurlukler.map(m => <option key={m}>{m}</option>)}
+              <option value={PP_TUM_MUDURLUKLER}>{PP_TUM_MUDURLUKLER}</option>
+              {mudurlukler.filter(m => m !== PP_TUM_MUDURLUKLER).map(m => <option key={m}>{m}</option>)}
             </select>
           </label>
           <div className="text-sm font-semibold text-slate-800">Gerekçe ve Açıklamalar

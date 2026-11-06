@@ -77,7 +77,10 @@ export default function PpPfOdenekClient({
     start(async () => {
       const s = await ppPfOdenekKaydet(faaliyetId, kalemler)
       if (s.hata) setHata(s.hata)
-      else router.refresh()
+      else if (window.opener) {
+        try { window.opener.location.reload() } catch { /* sekme açan sayfa kapalı olabilir */ }
+        window.close()
+      } else router.refresh()
     })
   }
 

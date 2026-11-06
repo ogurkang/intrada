@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import PpSatirSaat from '@/components/stratejik/PpSatirSaat'
 
 export interface PpAltProgram {
   id: number
@@ -108,7 +109,7 @@ export default function PerformansProgramiAltProgramClient({
                 <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-500">Alt program kaydı yok.</td></tr>
               ) : altProgramlar.map((a, i) => (
                 <tr key={a.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-center text-slate-600">{a.sira_no ?? i + 1}</td>
+                  <td className="px-4 py-3 text-center text-slate-600">{i + 1}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-700">{a.kodu}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{a.alt_program_adi}</td>
                   <td className="px-4 py-3 text-slate-600">{a.hedef_sayisi} faaliyet bağlı.</td>
@@ -120,6 +121,7 @@ export default function PerformansProgramiAltProgramClient({
                       <button onClick={() => { setSecili(a); setHata(null); setFormAcik(true) }} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:bg-slate-100" title="Düzenle">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
+                      <PpSatirSaat tablo="alt_program" kayitId={a.id} />
                       <CopKutusuSilDugmesi onClick={() => sil(a)} disabled={isPending} />
                     </div>
                   </td>
@@ -132,15 +134,9 @@ export default function PerformansProgramiAltProgramClient({
 
       <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Alt Program Düzenle' : 'Alt Program Ekle'} size="lg">
         <form onSubmit={async e => { e.preventDefault(); await kaydet(new FormData(e.currentTarget)) }} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sıra No</label>
-              <input name="sira_no" type="number" min={1} defaultValue={secili?.sira_no ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Kodu *</label>
-              <input name="kodu" required defaultValue={secili?.kodu ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Kodu *</label>
+            <input name="kodu" required defaultValue={secili?.kodu ?? ''} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Alt Program Adı *</label>

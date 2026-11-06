@@ -5,6 +5,21 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess } from '@/lib/app-access'
 import { stratejikYoneticiMi } from '@/lib/pp-erisim'
 import { getKullaniciGorevMudurlukleri } from '@/lib/kullanici-mudurluk'
+import { ppSatirLogYaz } from '@/lib/pp-satir-log'
+
+async function sonrakiSira(sb: { from: (t: string) => { select: (c: string) => { eq: (k: string, v: number) => Promise<{ data: { sira_no: number | null }[] | null }> } } }, tablo: string, kolon: string, deger: number) {
+  const { data } = await sb.from(tablo).select('sira_no').eq(kolon, deger)
+  const nolar = ((data ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
+  return (nolar.length ? Math.max(...nolar) : 0) + 1
+}
+
+async function siraSikistir(sb: { from: (t: string) => any }, tablo: string, kolon: string, deger: number) {
+  const { data } = await sb.from(tablo).select('id').eq(kolon, deger).order('sira_no').order('id')
+  const satirlar = (data ?? []) as { id: number }[]
+  for (let i = 0; i < satirlar.length; i += 1) {
+    await sb.from(tablo).update({ sira_no: i + 1 }).eq('id', satirlar[i].id)
+  }
+}
 
 function txt(v: FormDataEntryValue | null): string {
   return String(v ?? '').trim()
@@ -15,87 +30,81 @@ function normMud(v: string | null | undefined): string {
 }
 
 export async function programEkle(yil: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const program_adi = txt(fd.get('program_adi'))
   if (!kodu || !program_adi) return { hata: 'Kod ve program adı zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
 
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_program').insert({
+  const sira_no = await sonrakiSira(sb, 'performans_programi_program', 'yil', yil)
+  const { data, error } = await sb.from('performans_programi_program').insert({
     yil,
     sira_no,
     kodu,
     program_adi,
     aktif: true,
-  })
+  }).select('id').single()
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'program', kayitId: Number(data.id), islem: 'Ekleme', ozet: program_adi })
 
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}`)
   return {}
 }
 
 export async function programGuncelle(id: number, yil: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const program_adi = txt(fd.get('program_adi'))
   if (!kodu || !program_adi) return { hata: 'Kod ve program adı zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
 
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const { error } = await sb
     .from('performans_programi_program')
-    .update({ sira_no, kodu, program_adi })
+    .update({ kodu, program_adi })
     .eq('id', id)
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'program', kayitId: id, islem: 'Güncelleme', ozet: program_adi })
 
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}`)
   return {}
 }
 
 export async function altProgramEkle(programId: number, yil: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_program_adi = txt(fd.get('alt_program_adi'))
   const gerekce = txt(fd.get('gerekce')) || null
   if (!kodu || !alt_program_adi) return { hata: 'Kod ve alt program adı zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_alt_program').insert({
+  const sira_no = await sonrakiSira(sb, 'performans_programi_alt_program', 'program_id', programId)
+  const { data, error } = await sb.from('performans_programi_alt_program').insert({
     program_id: programId,
     sira_no,
     kodu,
     alt_program_adi,
     gerekce,
     aktif: true,
-  })
+  }).select('id').single()
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'alt_program', kayitId: Number(data.id), islem: 'Ekleme', ozet: alt_program_adi })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`)
   return {}
 }
 
 export async function altProgramGuncelle(id: number, programId: number, yil: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_program_adi = txt(fd.get('alt_program_adi'))
   const gerekce = txt(fd.get('gerekce')) || null
   if (!kodu || !alt_program_adi) return { hata: 'Kod ve alt program adı zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_alt_program').update({ sira_no, kodu, alt_program_adi, gerekce }).eq('id', id)
+  const { error } = await sb.from('performans_programi_alt_program').update({ kodu, alt_program_adi, gerekce }).eq('id', id)
   if (error) return { hata: error.message }
+  await ppSatirLogYaz(supabase, { tablo: 'alt_program', kayitId: id, islem: 'Güncelleme', ozet: alt_program_adi })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`)
   return {}
 }
@@ -111,6 +120,8 @@ export async function programSil(id: number, yil: number): Promise<{ hata?: stri
   if ((count ?? 0) > 0) return { hata: BAGLI }
   const { error } = await sb.from('performans_programi_program').delete().eq('id', id)
   if (error) return { hata: error.message }
+  await siraSikistir(sb, 'performans_programi_program', 'yil', yil)
+  await ppSatirLogYaz(supabase, { tablo: 'program', kayitId: id, islem: 'Silme', ozet: `Program #${id}` })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}`)
   return {}
 }
@@ -124,6 +135,8 @@ export async function altProgramSil(id: number, programId: number, yil: number):
   if ((count ?? 0) > 0) return { hata: BAGLI }
   const { error } = await sb.from('performans_programi_alt_program').delete().eq('id', id).eq('program_id', programId)
   if (error) return { hata: error.message }
+  await siraSikistir(sb, 'performans_programi_alt_program', 'program_id', programId)
+  await ppSatirLogYaz(supabase, { tablo: 'alt_program', kayitId: id, islem: 'Silme', ozet: `Alt program #${id}` })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}`)
   return {}
 }

@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-06-pp-sira-log',
+    baslik: '6 Kasım 2026 — Sıra, geçmiş ve müdürlük',
+    maddeler: [
+      'Performans programı listelerinde sıra numarası kendiliğinden 1, 2, 3 diye ilerler.',
+      'Her satırdaki saat, ekleme, güncelleme ve silme kaydını Türkiye saatiyle gösterir.',
+      'Müdürlük seçiminde Tüm Müdürlükler vardır. Bu satırlar ilerideki müdürlük yetkisinde herkese görünür.',
+      'Ödenek teklifi yeni sekmede açılır. Kaydet sekmeyi kapatır. Sayfalarda dosya dolabı animasyonu durur.',
+    ],
+  },
+  {
     id: '2026-11-06-pp-odenek',
     baslik: '6 Kasım 2026 — Ödenek teklifi',
     maddeler: [

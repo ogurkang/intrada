@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ppOturum } from '@/lib/pp-erisim'
+import { ppSatirLogYaz } from '@/lib/pp-satir-log'
 
 export type PpOdenekKalem = {
   butce_kodu_id: number
@@ -43,6 +44,7 @@ export async function ppPfOdenekKaydet(pfFaaliyetId: number, kalemler: PpOdenekK
     })), { onConflict: 'pf_faaliyet_id,butce_kodu_id' })
     if (error) return { hata: error.message.includes('pf_odenek') ? 'Ödenek tablosu için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
   }
+  await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: pfFaaliyetId, islem: 'Ödenek', ozet: `${yazilacak.length} kod kaydedildi` })
   const { data: faaliyet } = await sb.from('performans_programi_pf_faaliyet').select('bag_id').eq('id', pfFaaliyetId).maybeSingle()
   if (faaliyet?.bag_id) revalidatePath(`/stratejik-yonetim/performans-programi/hedef/${faaliyet.bag_id}`)
   revalidatePath(`/stratejik-yonetim/performans-programi/pf/${pfFaaliyetId}/odenek`)
