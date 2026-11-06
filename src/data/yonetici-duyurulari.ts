@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-06-pp-odenek',
+    baslik: '6 Kasım 2026 — Ödenek teklifi',
+    maddeler: [
+      'Git menüsüne Performans Faaliyetleri eklendi. Alt program hedefinde gerekçe koyu, italik ve punto ile yazılır.',
+      'Performans faaliyeti ekranında yıllar program yılına göredir. Faaliyet adının altında açıklama vardır.',
+      'İşlemlerdeki yeşil düğme 4. düzey ödenek teklifi girer. Göz, girilen teklifleri ödenek koduna göre gösterir.',
+      'Performans maliyeti sütununda bir önceki yıl koyu griden açık griye, program yılı yeşil, sonraki yıllar turuncu ve mavidir.',
+    ],
+  },
+  {
     id: '2026-11-06-pp-faaliyet',
     baslik: '6 Kasım 2026 — Performans faaliyeti',
     maddeler: [

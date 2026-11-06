@@ -7,6 +7,7 @@ import { ppMaliyetSeciciMi, ppNorm, ppOturum } from '@/lib/pp-erisim'
 import {
   PP_BIRIMLER,
   ppPerformansYol,
+  ppZenginMetinTemiz,
   type PpFaaliyetGirdi,
   type PpGostergeGirdi,
   type PpPhSecenek,
@@ -209,6 +210,7 @@ export async function ppAltProgramHedefiEkle(
   programId: number,
   altHedefId: number,
   mudurluk: string,
+  gerekce = '',
 ): Promise<{ hata?: string }> {
   const mud = mudurluk.trim()
   if (!Number.isFinite(altHedefId)) return { hata: 'Performans hedefi seçin.' }
@@ -223,7 +225,7 @@ export async function ppAltProgramHedefiEkle(
     alt_hedef_id: altHedefId,
     faaliyet_id: faaliyetId,
     secilen_mudurluk: mud,
-    gerekce: '',
+    gerekce: ppZenginMetinTemiz(gerekce),
   })
   if (error) {
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
@@ -241,6 +243,7 @@ export async function ppAltProgramHedefiGuncelle(
   programId: number,
   altHedefId: number,
   mudurluk: string,
+  gerekce = '',
 ): Promise<{ hata?: string }> {
   const mud = mudurluk.trim()
   if (!Number.isFinite(id) || id <= 0) return { hata: 'Kayıt bulunamadı.' }
@@ -253,6 +256,7 @@ export async function ppAltProgramHedefiGuncelle(
   const { error } = await (supabase as any).from('performans_programi_alt_program_hedef').update({
     alt_hedef_id: altHedefId,
     secilen_mudurluk: mud,
+    gerekce: ppZenginMetinTemiz(gerekce),
   }).eq('id', id).eq('faaliyet_id', faaliyetId).eq('alt_program_id', altProgramId)
   if (error) {
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
@@ -347,6 +351,7 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
   id?: number
   bagId: number
   ad: string
+  aciklama: string
   gostergeler: PpGostergeGirdi[]
 }): Promise<{ hata?: string }> {
   const faaliyetAdi = girdi.ad.trim()
@@ -364,8 +369,9 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
   if (faaliyetId) {
     const { error } = await sb.from('performans_programi_pf_faaliyet').update({
       faaliyet_adi: faaliyetAdi,
+      aciklama: girdi.aciklama.trim(),
     }).eq('id', faaliyetId).eq('bag_id', girdi.bagId)
-    if (error) return { hata: error.message }
+    if (error) return { hata: error.message.includes('aciklama') ? 'Faaliyet açıklaması için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
     const { error: silHata } = await sb.from('performans_programi_pf_gosterge').delete().eq('faaliyet_id', faaliyetId)
     if (silHata) return { hata: silHata.message }
   } else {
@@ -376,8 +382,9 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
       bag_id: girdi.bagId,
       sira_no: sira,
       faaliyet_adi: faaliyetAdi,
+      aciklama: girdi.aciklama.trim(),
     }).select('id').single()
-    if (error) return { hata: error.message }
+    if (error) return { hata: error.message.includes('aciklama') ? 'Faaliyet açıklaması için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
     faaliyetId = Number(faaliyet.id)
   }
   if (girdi.gostergeler.length) {
@@ -444,6 +451,9 @@ export async function ppPerformansFaaliyetSatirSil(id: number, bagId: number): P
   const { count, error: sayHata } = await sb.from('performans_programi_pf_gosterge').select('id', { count: 'exact', head: true }).eq('faaliyet_id', id)
   if (sayHata) return { hata: sayHata.message }
   if ((count ?? 0) > 0) return { hata: BAGLI_KAYIT }
+  const { count: odenekSay, error: odenekHata } = await sb.from('performans_programi_pf_odenek').select('id', { count: 'exact', head: true }).eq('pf_faaliyet_id', id)
+  if (odenekHata && !String(odenekHata.message).includes('pf_odenek')) return { hata: odenekHata.message }
+  if ((odenekSay ?? 0) > 0) return { hata: BAGLI_KAYIT }
   const { error } = await sb.from('performans_programi_pf_faaliyet').delete().eq('id', id).eq('bag_id', bagId)
   if (error) return { hata: error.message }
   const { data: kalan } = await sb.from('performans_programi_pf_faaliyet').select('id').eq('bag_id', bagId).order('sira_no')

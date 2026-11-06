@@ -41,7 +41,7 @@ export default function PerformansProgramiDonemClient({ donemler, hizli }: Props
             <h1 className="text-2xl font-bold text-slate-800">Performans Programı İşlemler</h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Göz', metin: 'O yılın program listesini açar.' },
-              { baslik: 'Ok', metin: 'Pencerede yalnızca başlık seçilir. Git, o başlığın listesine gider. Alt Program, yılın programındaki alt program sayfasını açar.' },
+              { baslik: 'Ok', metin: 'Pencerede başlık seçilir. Git, o başlığın listesine gider. Performans Faaliyetleri, ilk hedefin faaliyet listesini açar.' },
             ]} />
           </div>
           <p className="text-sm text-slate-500 mt-1">Stratejik plan dönemlerine göre performans programı kaydı oluşturabilirsiniz.</p>
@@ -118,6 +118,7 @@ const BASLIKLAR = [
   ['alt', 'Alt Program'],
   ['faaliyet', 'Faaliyet'],
   ['hedef', 'Alt Program Hedefi'],
+  ['pf', 'Performans Faaliyetleri'],
 ] as const
 
 const selectSinif = 'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm'
@@ -134,6 +135,9 @@ function baslikAdresi(yil: number, asama: string, agac?: PpHizliYil): string | n
   const faaliyet = alt.faaliyetler[0]
   if (!faaliyet) return null
   if (asama === 'hedef') return `${kok}/${program.id}/${alt.id}/faaliyetler/${faaliyet.id}`
+  const hedef = faaliyet.hedefler[0]
+  if (!hedef) return null
+  if (asama === 'pf') return `/stratejik-yonetim/performans-programi/hedef/${hedef.id}`
   return null
 }
 

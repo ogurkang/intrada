@@ -6,9 +6,10 @@ import Modal from '@/components/ui/Modal'
 import Link from 'next/link'
 import { ppAltProgramHedefiEkle, ppAltProgramHedefiGuncelle, ppAltProgramHedefiSil } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/islemler/[donem_id]/[program_id]/iliski-actions'
 import { CopKutusuSilDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import PpZenginMetin from '@/components/stratejik/PpZenginMetin'
 import type { PpPhSecenek } from '@/lib/pp-iliski'
 
-export type PpFaaliyetHedefSatir = { id: number; kod: string; ad: string; altHedefId: number; mudurluk: string; faaliyetSayisi: number }
+export type PpFaaliyetHedefSatir = { id: number; kod: string; ad: string; altHedefId: number; mudurluk: string; gerekce: string; faaliyetSayisi: number }
 
 export default function PpFaaliyetHedefListeClient({
   yil,
@@ -35,6 +36,7 @@ export default function PpFaaliyetHedefListeClient({
   const [gorunen, setGorunen] = useState<PpFaaliyetHedefSatir | null>(null)
   const [altHedefId, setAltHedefId] = useState('')
   const [mudurluk, setMudurluk] = useState('')
+  const [gerekce, setGerekce] = useState('')
   const [hata, setHata] = useState<string | null>(null)
   const [bekliyor, start] = useTransition()
 
@@ -55,8 +57,8 @@ export default function PpFaaliyetHedefListeClient({
     setHata(null)
     start(async () => {
       const s = duzenlenen
-        ? await ppAltProgramHedefiGuncelle(duzenlenen.id, faaliyetId, altProgramId, yil, programId, Number(altHedefId), mudurluk)
-        : await ppAltProgramHedefiEkle(faaliyetId, altProgramId, yil, programId, Number(altHedefId), mudurluk)
+        ? await ppAltProgramHedefiGuncelle(duzenlenen.id, faaliyetId, altProgramId, yil, programId, Number(altHedefId), mudurluk, gerekce)
+        : await ppAltProgramHedefiEkle(faaliyetId, altProgramId, yil, programId, Number(altHedefId), mudurluk, gerekce)
       if (s.hata) setHata(s.hata)
       else {
         setAltHedefId('')
@@ -75,7 +77,7 @@ export default function PpFaaliyetHedefListeClient({
           <h1 className="text-2xl font-bold text-slate-800">{faaliyetAdi}</h1>
           <p className="mt-1 text-sm text-slate-500">Bu faaliyetin alt program hedefleri.</p>
         </div>
-        <button type="button" onClick={() => { setHata(null); setDuzenlenen(null); setAltHedefId(''); setMudurluk(''); setAcik(true) }} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
+        <button type="button" onClick={() => { setHata(null); setDuzenlenen(null); setAltHedefId(''); setMudurluk(''); setGerekce(''); setAcik(true) }} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
           Alt Program Hedefi Ekle
         </button>
       </div>
@@ -104,7 +106,7 @@ export default function PpFaaliyetHedefListeClient({
                     <Link href={`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler/${faaliyetId}/hedef/${h.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50" title="Performans faaliyetleri">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     </Link>
-                    <button type="button" onClick={() => { setDuzenlenen(h); setAltHedefId(String(h.altHedefId)); setMudurluk(h.mudurluk); setHata(null); setAcik(true) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100" title="Düzenle">
+                    <button type="button" onClick={() => { setDuzenlenen(h); setAltHedefId(String(h.altHedefId)); setMudurluk(h.mudurluk); setGerekce(h.gerekce); setHata(null); setAcik(true) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100" title="Düzenle">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
                     <CopKutusuSilDugmesi onClick={() => silHedef(h)} disabled={bekliyor} />
@@ -138,6 +140,9 @@ export default function PpFaaliyetHedefListeClient({
               {mudurlukler.map(m => <option key={m}>{m}</option>)}
             </select>
           </label>
+          <div className="text-sm font-semibold text-slate-800">Gerekçe ve Açıklamalar
+            <PpZenginMetin key={duzenlenen?.id ?? 'yeni'} value={gerekce} onChange={setGerekce} />
+          </div>
           {hata ? <p className="text-sm text-red-700">{hata}</p> : null}
           <button type="button" onClick={kaydet} disabled={bekliyor} className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white disabled:opacity-50">Kaydet</button>
         </div>

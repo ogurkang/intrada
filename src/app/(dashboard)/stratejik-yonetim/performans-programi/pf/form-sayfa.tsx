@@ -28,8 +28,11 @@ export default async function PpPerformansFaaliyetFormSayfa({
   const { data: program } = await sb.from('performans_programi_program').select('id, yil').eq('id', programId).maybeSingle()
   if (!program) notFound()
   const yil = Number(program.yil)
-  const { data: siraRaw } = await sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi').eq('bag_id', bagId).order('sira_no')
-  const kayitlar = (siraRaw ?? []) as { id: number; sira_no: number; faaliyet_adi: string }[]
+  const aciklamali = await sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi, aciklama').eq('bag_id', bagId).order('sira_no')
+  const siraSorgu = aciklamali.error
+    ? await sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi').eq('bag_id', bagId).order('sira_no')
+    : aciklamali
+  const kayitlar = (siraSorgu.data ?? []) as { id: number; sira_no: number; faaliyet_adi: string; aciklama?: string | null }[]
   const kayit = faaliyetId ? kayitlar.find(f => f.id === faaliyetId) : undefined
   if (faaliyetId && !kayit) notFound()
   const { data: gostergeRaw } = kayit
@@ -65,6 +68,7 @@ export default async function PpPerformansFaaliyetFormSayfa({
   const baslangic: PpPerformansFormBaslangic = {
     faaliyetId: kayit?.id,
     ad: kayit?.faaliyet_adi ?? '',
+    aciklama: kayit?.aciklama ?? '',
     sira,
     gostergeler,
   }

@@ -20,14 +20,18 @@ type GostergeTaslak = {
 }
 
 const input = 'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm'
-const YIL = [
-  ['t2', 't−2 Gerçekleşme'],
-  ['t1plan', 't−1 Planlanan'],
-  ['t1son', 't−1 Yıl Sonu Gerçekleşme Tahmini'],
-  ['thedef', 't Hedef'],
-  ['t1tahmin', 't+1 Tahmin'],
-  ['t2tahmin', 't+2 Tahmin'],
-] as const
+const YIL_ANAHTAR = ['t2', 't1plan', 't1son', 'thedef', 't1tahmin', 't2tahmin'] as const
+
+function yilBasliklari(yil: number): [typeof YIL_ANAHTAR[number], string][] {
+  return [
+    ['t2', `${yil - 2} Gerçekleşme`],
+    ['t1plan', `${yil - 1} Planlanan`],
+    ['t1son', `${yil - 1} Yıl Sonu Gerçekleşme Tahmini`],
+    ['thedef', `${yil} Hedef`],
+    ['t1tahmin', `${yil + 1} Tahmin`],
+    ['t2tahmin', `${yil + 2} Tahmin`],
+  ]
+}
 
 function anahtar() {
   return `${Date.now()}-${Math.random()}`
@@ -40,6 +44,7 @@ function bosGosterge(): GostergeTaslak {
 export type PpPerformansFormBaslangic = {
   faaliyetId?: number
   ad: string
+  aciklama: string
   sira: number
   gostergeler: GostergeTaslak[]
 }
@@ -56,7 +61,9 @@ export default function PpPerformansFaaliyetClient({
   baslangic: PpPerformansFormBaslangic
 }) {
   const [ad, setAd] = useState(baslangic.ad)
+  const [aciklama, setAciklama] = useState(baslangic.aciklama)
   const [gostergeler, setGostergeler] = useState<GostergeTaslak[]>(baslangic.gostergeler)
+  const yilAlan = yilBasliklari(yil)
   const [hata, setHata] = useState<string | null>(null)
   const [bekliyor, start] = useTransition()
   const fKod = ppFaaliyetKodu(phKod, baslangic.sira)
@@ -88,6 +95,7 @@ export default function PpPerformansFaaliyetClient({
         id: baslangic.faaliyetId,
         bagId,
         ad,
+        aciklama,
         gostergeler: gostergeler.map(g => ({
           ad: g.ad,
           birim: g.birim,
@@ -118,6 +126,9 @@ export default function PpPerformansFaaliyetClient({
           <input value={ad} onChange={e => setAd(e.target.value)} className={input} />
         </label>
       </div>
+      <label className="block text-sm text-slate-700">Faaliyet Açıklaması
+        <textarea value={aciklama} onChange={e => setAciklama(e.target.value)} className={`${input} min-h-24`} />
+      </label>
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" onClick={() => setGostergeler(liste => [...liste, bosGosterge()])} className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white">Gösterge Ekle</button>
         <button type="button" disabled={gostergeler.length === 0} onClick={() => setGostergeler(liste => liste.slice(0, -1))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-40">Kaldır</button>
@@ -131,7 +142,6 @@ export default function PpPerformansFaaliyetClient({
           <label className="block text-sm text-slate-700">Gösterge adı
             <input value={g.ad} onChange={e => guncelle(g.anahtar, x => ({ ...x, ad: e.target.value }))} className={input} />
           </label>
-          <p className="text-xs text-slate-500">t = {yil}</p>
           <div className="overflow-x-auto">
             <div className="grid min-w-[1080px] grid-cols-7 gap-2">
               <label className="text-xs text-slate-700">Ölçü birimi
@@ -139,7 +149,7 @@ export default function PpPerformansFaaliyetClient({
                   {PP_BIRIMLER.map(b => <option key={b}>{b}</option>)}
                 </select>
               </label>
-              {YIL.map(([alan, etiket]) => (
+              {yilAlan.map(([alan, etiket]) => (
                 <label key={alan} className="text-xs text-slate-700">{etiket}
                   <input
                     value={g[alan]}

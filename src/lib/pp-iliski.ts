@@ -62,3 +62,25 @@ export function ppParaYaz(n: number | null): string {
   if (n == null) return ''
   return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n)
 }
+
+export function ppZenginMetinTemiz(html: string): string {
+  const temiz = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+  return temiz.replace(/<\/?([a-z0-9]+)([^>]*)>/gi, (tam, etiket, nitelik) => {
+    const ad = String(etiket).toLowerCase()
+    if (ad === 'br') return '<br>'
+    const kapali = tam.startsWith('</')
+    if (!['b', 'strong', 'i', 'em', 'p', 'div', 'span', 'font'].includes(ad)) return ''
+    if (kapali) return `</${ad}>`
+    if (ad === 'font') {
+      const boyut = /size\s*=\s*["']?([1-7])["']?/i.exec(String(nitelik))
+      return boyut ? `<font size="${boyut[1]}">` : '<font>'
+    }
+    if (ad === 'span') {
+      const punto = /font-size\s*:\s*(\d{1,2})px/i.exec(String(nitelik))
+      return punto ? `<span style="font-size:${punto[1]}px">` : '<span>'
+    }
+    return `<${ad}>`
+  })
+}
