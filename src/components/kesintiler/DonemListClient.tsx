@@ -61,7 +61,7 @@ interface Props {
   kuralMetni?: string
   /** true ise Seçim sütunu ve SecimModal gizlenir (IZY, IVY detay sayfasında seçim yapıldığı için) */
   hideSecimColumn?: boolean
-  onEkle:      (fd: FormData) => Promise<{ hata?: string; uyari?: string; donemId?: number }>
+  onEkle:      (fd: FormData) => Promise<{ hata?: string; uyari?: string; donemId?: number; aradaKalan?: boolean }>
   onGuncelle:  (id: number, fd: FormData) => Promise<{ hata?: string }>
   onKapat:     (id: number) => Promise<{ hata?: string }>
   onAc:        (id: number) => Promise<{ hata?: string }>
@@ -305,6 +305,11 @@ export default function DonemListClient({
   const [seciliDonem, setSeciliDonem] = useState<Donem | null>(null)
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
+  const [uyariPopup, setUyariPopup]   = useState<{
+    metin: string
+    donemId?: number
+    aradaKalan?: boolean
+  } | null>(null)
   const [isPending, startTransition]  = useTransition()
   const [sortSutun, setSortSutun]     = useState<DonemSortSutun>('baslangic_tarihi')
   const [sortYon, setSortYon]         = useState<SortYon>('desc')
@@ -370,11 +375,11 @@ export default function DonemListClient({
         broadcastIntradaRefresh('kesintiler')
         router.refresh()
         if (res.uyari) {
-          if (detayBase && res.donemId && confirm(`${res.uyari}\n\nDönem detayına gidip izinleri kontrol etmek ister misiniz?`)) {
-            router.push(`${detayBase}/${res.donemId}`)
-          } else if (!detayBase || !res.donemId) {
-            alert(res.uyari)
-          }
+          setUyariPopup({
+            metin: res.uyari,
+            donemId: res.donemId,
+            aradaKalan: res.aradaKalan === true,
+          })
         }
       }
     })
@@ -599,6 +604,49 @@ export default function DonemListClient({
         diffSatirlari={kesintiDonemAuditDiffSatirlari}
         degerGoster={kesintiDonemAuditDegerGoster}
       />
+
+      <Modal
+        open={uyariPopup != null}
+        onClose={() => setUyariPopup(null)}
+        title={uyariPopup?.aradaKalan ? 'Arada Kalan İzin' : 'Arada Kalan Kontrolü'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{uyariPopup?.metin}</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            {uyariPopup?.aradaKalan && detayBase && uyariPopup.donemId != null ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setUyariPopup(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
+                >
+                  Kapat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = uyariPopup.donemId
+                    setUyariPopup(null)
+                    if (id != null) router.push(`${detayBase}/${id}`)
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700"
+                >
+                  Dönem Detayına Git
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setUyariPopup(null)}
+                className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700"
+              >
+                Tamam
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

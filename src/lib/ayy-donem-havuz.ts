@@ -367,6 +367,10 @@ export function ayyFormatAradaKalanUyari(rows: AyyIzinDbRow[]): string {
   return `${rows.length} adet «arada kalan» izin tespit edildi: ${ornek}${fazla}. Bu izinler havuza dahil olabilir; dönem detayından İzinleri Düzenle ile kontrol edin.`
 }
 
+/** Yeni dönem eklenirken arada kalan izin yoksa gösterilen doğrulama metni. */
+export const AYY_ARADA_KALAN_YOK =
+  'Arada Kalan izin tespit edilmedi. Kesinti İşlemlerine Başlayabilirsiniz.'
+
 export async function ayyLoadTatiller(
   supabase: SupabaseClient,
 ): Promise<Parameters<typeof ayyHesapla>[0]['tatiller']> {

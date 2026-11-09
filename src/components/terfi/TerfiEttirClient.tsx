@@ -222,7 +222,14 @@ export default function TerfiEttirClient({
   const [ogrenimModalAcik, setOgrenimModalAcik] = useState(false)
   const [ogrenimSeciliSicil, setOgrenimSeciliSicil] = useState('')
   const [ogrenimModalHata, setOgrenimModalHata] = useState<string | null>(null)
+  const [excelUyariAcik, setExcelUyariAcik] = useState(false)
   const mesgul = ilerleme != null
+  /**
+   * Excel, en az bir Terfi Ettir (geri alınmamış) kaydı varken görünür.
+   * Tüm terfiler geri alınırsa kaybolur. Bekleyen satır varken tıklanınca uyarı çıkar.
+   */
+  const excelGorunur = terfiEttirilenRows.length > 0
+  const excelIndirilebilir = excelGorunur && satirlar.length === 0
   const satirImza = initialRows
     .map(r => `${r.terfi_id ?? ''}|${r.payload.kha_tarihi}|${r.payload.kidem_tarihi}|${r.payload.iyi_hal_terfi_tarihi}|${r.dk_kha_yeni}|${r.durum}`)
     .join(';')
@@ -384,8 +391,12 @@ export default function TerfiEttirClient({
   }
 
   async function excelIndir() {
-    // Hem henüz terfi ettirilmemiş (önizleme) hem de bu dönemde terfi ettirilmiş satırları birleştir
-    const tumSatirlar = [...satirlar, ...terfiEttirilenRows].sort((a, b) =>
+    if (!excelIndirilebilir) {
+      setExcelUyariAcik(true)
+      return
+    }
+    // Yalnızca bu dönemde terfi ettirilmiş (geri alınmamış) satırlar
+    const tumSatirlar = [...terfiEttirilenRows].sort((a, b) =>
       a.sicil_no.localeCompare(b.sicil_no, 'tr', { numeric: true }),
     )
 
@@ -680,12 +691,18 @@ export default function TerfiEttirClient({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void excelIndir()}
-            className="text-sm font-medium border border-slate-300 bg-white px-4 py-2 rounded-lg hover:bg-slate-50 shadow-sm">
-            Excel indir
-          </button>
+          {excelGorunur ? (
+            <button
+              type="button"
+              onClick={() => void excelIndir()}
+              className={`text-sm font-medium border px-4 py-2 rounded-lg shadow-sm ${
+                excelIndirilebilir
+                  ? 'border-slate-300 bg-white hover:bg-slate-50'
+                  : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+              }`}>
+              Excel indir
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1046,6 +1063,23 @@ export default function TerfiEttirClient({
             className="text-sm font-medium text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700">
             Listeye Ekle
           </button>
+        </div>
+      </Modal>
+
+      <Modal open={excelUyariAcik} onClose={() => setExcelUyariAcik(false)} title="Excel İndirme" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-800 leading-relaxed">
+            Terfi edecek personel bulunmaktadır. Terfi Ettir düğmesine bastıktan sonra excel indirme işlemi aktif olacaktır.
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setExcelUyariAcik(false)}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700"
+            >
+              Tamam
+            </button>
+          </div>
         </div>
       </Modal>
 

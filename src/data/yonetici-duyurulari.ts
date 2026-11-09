@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-09-ayy-terfi-excel',
+    baslik: '9 Kasım 2026 — AYY doğrulama ve terfi Excel',
+    maddeler: [
+      'Aylık yemek döneminde arada kalan izin yoksa «Kesinti işlemlerine başlayabilirsiniz» onayı çıkar.',
+      'Terfi döneminde Excel, Terfi Ettir sonrası açılır; bekleyen veya geri alınan personel varken indirme uyarısı gelir.',
+    ],
+  },
+  {
     id: '2026-11-09-pp-hedef-mudurluk',
     baslik: '9 Kasım 2026 — Aynı hedef, farklı müdürlük',
     maddeler: [

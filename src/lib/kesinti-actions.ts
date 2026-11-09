@@ -7,7 +7,12 @@ import {
   kesintiDonemAuditSnapshot,
   writeKesintiDonemAuditLogSafe,
 } from '@/lib/kesinti-donem-audit'
-import { ayyDonemTuruNorm, ayyAradaKalanIzinleriBul, ayyFormatAradaKalanUyari } from '@/lib/ayy-donem-havuz'
+import {
+  ayyDonemTuruNorm,
+  ayyAradaKalanIzinleriBul,
+  ayyFormatAradaKalanUyari,
+  AYY_ARADA_KALAN_YOK,
+} from '@/lib/ayy-donem-havuz'
 
 type DonemTablo = 'aylik_yemek_yeni_donem' | 'raporlu_memurlar_yeni_donem' | 'izinli_vekiller_yeni_donem' | 'izinli_zabitalar_yeni_donem'
 type SecimTablo = 'aylik_yemek_yeni_secim' | 'raporlu_memurlar_yeni_secim' | 'izinli_vekiller_yeni_secim' | 'izinli_zabitalar_yeni_secim'
@@ -86,7 +91,12 @@ export function makeDonemActions(
     return data ? kesintiDonemAuditSnapshot(data as unknown as Record<string, unknown>) : null
   }
 
-  async function donemEkle(fd: FormData): Promise<{ hata?: string; uyari?: string; donemId?: number }> {
+  async function donemEkle(fd: FormData): Promise<{
+    hata?: string
+    uyari?: string
+    donemId?: number
+    aradaKalan?: boolean
+  }> {
     const yil              = parseInt(String(fd.get('yil') ?? '0'), 10)
     const baslangic_tarihi = str(fd, 'baslangic_tarihi')
     const bitis_tarihi     = str(fd, 'bitis_tarihi')
@@ -129,11 +139,10 @@ export function makeDonemActions(
         bitis_tarihi,
         donem_turu: payload.donem_turu as 'normal' | 'fark',
       })
-      if (arada.length > 0) {
-        return {
-          uyari: ayyFormatAradaKalanUyari(arada),
-          donemId: inserted.id,
-        }
+      return {
+        uyari: arada.length > 0 ? ayyFormatAradaKalanUyari(arada) : AYY_ARADA_KALAN_YOK,
+        donemId: inserted.id,
+        aradaKalan: arada.length > 0,
       }
     }
 
