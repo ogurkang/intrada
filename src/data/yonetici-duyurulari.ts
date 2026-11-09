@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-09-pp-hedef-mudurluk',
+    baslik: '9 Kasım 2026 — Aynı hedef, farklı müdürlük',
+    maddeler: [
+      'Alt program hedefinde aynı performans hedefi birden fazla kez seçilebilir.',
+      'Uyarı yalnızca o hedefe daha önce bağlanmış müdürlük yeniden seçilirse çıkar.',
+    ],
+  },
+  {
     id: '2026-11-06-pp-sira-log',
     baslik: '6 Kasım 2026 — Sıra, geçmiş ve müdürlük',
     maddeler: [

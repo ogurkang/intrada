@@ -222,6 +222,7 @@ export async function ppAltProgramHedefiEkle(
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
+  if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud)) return { hata: HEDEF_MUDURLUK }
   const { data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
     alt_program_id: altProgramId,
     alt_hedef_id: altHedefId,
@@ -230,7 +231,7 @@ export async function ppAltProgramHedefiEkle(
     gerekce: ppZenginMetinTemiz(gerekce),
   }).select('id').single()
   if (error) {
-    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
+    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
     return { hata: error.message }
   }
   await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: Number(data.id), islem: 'Ekleme', ozet: mud })
@@ -256,13 +257,15 @@ export async function ppAltProgramHedefiGuncelle(
   if (yetki.hata) return yetki
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('performans_programi_alt_program_hedef').update({
+  const sb = supabase as any
+  if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud, id)) return { hata: HEDEF_MUDURLUK }
+  const { error } = await sb.from('performans_programi_alt_program_hedef').update({
     alt_hedef_id: altHedefId,
     secilen_mudurluk: mud,
     gerekce: ppZenginMetinTemiz(gerekce),
   }).eq('id', id).eq('faaliyet_id', faaliyetId).eq('alt_program_id', altProgramId)
   if (error) {
-    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: 'Bu performans hedefi zaten bağlı.' }
+    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
     return { hata: error.message }
   }
   await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: id, islem: 'Güncelleme', ozet: mud })
@@ -271,6 +274,18 @@ export async function ppAltProgramHedefiGuncelle(
 }
 
 const BAGLI_KAYIT = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
+const HEDEF_MUDURLUK = 'Bu performans hedefi bu müdürlükle zaten bağlı.'
+
+async function hedefMudurlukBagli(
+  sb: { from: (t: string) => any },
+  altProgramId: number,
+  altHedefId: number,
+  mudurluk: string,
+  haricId?: number,
+): Promise<boolean> {
+  const { data } = await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_program_id', altProgramId).eq('alt_hedef_id', altHedefId).eq('secilen_mudurluk', mudurluk)
+  return ((data ?? []) as { id: number }[]).some(r => r.id !== haricId)
+}
 
 export async function ppFaaliyetSil(id: number, altProgramId: number, yil: number, programId: number): Promise<{ hata?: string }> {
   const supabase = await createClient()
