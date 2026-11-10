@@ -14,9 +14,10 @@ interface PersoneleGoreIzinSatir {
   durum: string
   gun: number
   mudur: boolean
+  sinif?: string
 }
 
-type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'ayrilis' | 'baslama' | 'tur' | 'durum' | 'gun'
+type SortKey = 'sicil_no' | 'ad_soyad' | 'mudurluk' | 'sinif' | 'ayrilis' | 'baslama' | 'tur' | 'durum' | 'gun'
 type SortDir = 'asc' | 'desc'
 
 interface Props {
@@ -102,7 +103,9 @@ export default function PersoneleGoreIzinListesiClient({
     const dir = sortDir === 'asc' ? 1 : -1
     return [...rows].sort((a, b) => {
       if (sortKey === 'gun') return (a.gun - b.gun) * dir
-      return a[sortKey].localeCompare(b[sortKey], 'tr', { numeric: sortKey === 'sicil_no' }) * dir
+      const av = String(a[sortKey] ?? '')
+      const bv = String(b[sortKey] ?? '')
+      return av.localeCompare(bv, 'tr', { numeric: sortKey === 'sicil_no' }) * dir
     })
   }, [satirlar, mudurlukFiltreler, sicilFiltre, turFiltre, durumFiltre, personelFiltre, sortKey, sortDir])
 
@@ -296,6 +299,13 @@ export default function PersoneleGoreIzinListesiClient({
                   <SortIcon dir={sortKey === 'ad_soyad' ? sortDir : null} />
                 </th>
                 <th
+                  className={`text-left ${thClass('sinif')} w-28`}
+                  onClick={() => handleSort('sinif')}
+                >
+                  Sınıf
+                  <SortIcon dir={sortKey === 'sinif' ? sortDir : null} />
+                </th>
+                <th
                   className={`text-left ${thClass('ayrilis')} w-28`}
                   onClick={() => handleSort('ayrilis')}
                 >
@@ -335,7 +345,7 @@ export default function PersoneleGoreIzinListesiClient({
             <tbody className="divide-y divide-slate-100">
               {gorunenSatirlar.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                     Kayıt bulunamadı.
                   </td>
                 </tr>
@@ -348,6 +358,7 @@ export default function PersoneleGoreIzinListesiClient({
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{row.sicil_no}</td>
                     <td className="px-4 py-2.5 text-slate-800">{row.ad_soyad}</td>
+                    <td className="px-4 py-2.5 text-slate-700 text-xs">{row.sinif ?? '—'}</td>
                     <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.ayrilis}</td>
                     <td className="px-4 py-2.5 text-slate-700 text-xs tabular-nums">{row.baslama}</td>
                     <td className="px-4 py-2.5 text-slate-700">{row.tur}</td>
@@ -362,7 +373,7 @@ export default function PersoneleGoreIzinListesiClient({
             {gorunenSatirlar.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
-                  <td colSpan={7} className="px-4 py-2.5 text-slate-700">
+                  <td colSpan={8} className="px-4 py-2.5 text-slate-700">
                     Toplam ({gorunenSatirlar.length} kayıt)
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-800">

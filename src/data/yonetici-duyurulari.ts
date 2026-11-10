@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-10-rapor-sihirbaz-izin-sinif',
+    baslik: '10 Kasım 2026 — Rapor sihirbazı izin ve sınıf',
+    maddeler: [
+      'Rapor sihirbazında Kadro bölümüne Sınıf eklendi; unvan tanımlarından gelir.',
+      'İzin başlığı altında Hak ve Kullanılan İzin seçenekleri vardır.',
+      'Personele göre kullanılan izin listesine Sınıf sütunu eklendi.',
+    ],
+  },
+  {
     id: '2026-11-09-ayy-terfi-excel',
     baslik: '9 Kasım 2026 — AYY doğrulama ve terfi Excel',
     maddeler: [

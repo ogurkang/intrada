@@ -18,6 +18,8 @@ export interface PersoneleGoreIzinSatir {
   gun: number
   mudur: boolean
   unvan: string
+  /** tanim_unvan.sinif_adi — unvan adına göre */
+  sinif: string
 }
 
 export interface IzinHareketRaporRow {
@@ -53,6 +55,7 @@ export function gruplaPersoneleGoreIzinSatirlari(satirlar: PersoneleGoreIzinSati
   sicil_no: string
   ad_soyad: string
   unvan: string
+  sinif: string
   toplamGun: number
   kayitlar: PersoneleGoreIzinSatir[]
 }[] {
@@ -75,6 +78,7 @@ export function gruplaPersoneleGoreIzinSatirlari(satirlar: PersoneleGoreIzinSati
       sicil_no: sicil,
       ad_soyad: ilk?.ad_soyad ?? '',
       unvan: ilk?.unvan ?? '',
+      sinif: ilk?.sinif ?? '—',
       toplamGun: kayitlar.reduce((s, x) => s + x.gun, 0),
       kayitlar,
     }
@@ -89,13 +93,32 @@ function formatTarih(s: string | null | undefined): string {
   return `${g}.${m}.${y}`
 }
 
+function unvanSinifBul(
+  unvanSinif: Map<string, string>,
+  unvan: string,
+  kadro?: Pick<KadroRaporRow, 'kadro_unvani' | 'gorev_unvani'> | null,
+): string {
+  const adaylar = [
+    String(unvan ?? '').trim(),
+    String(kadro?.gorev_unvani ?? '').trim(),
+    String(kadro?.kadro_unvani ?? '').trim(),
+  ]
+  for (const ad of adaylar) {
+    if (ad && unvanSinif.has(ad)) return unvanSinif.get(ad)!
+  }
+  return '—'
+}
+
 export function buildPersoneleGoreIzinListesi(input: {
   D: string
   kadro: KadroRaporRow[]
   calisanBySicil: Map<string, { sicil_no: string; ad_soyad: string }>
   izinRows: IzinHareketRaporRow[]
+  /** tanim_unvan.unvan_adi → sinif_adi */
+  unvanSinif?: Map<string, string>
 }): PersoneleGoreIzinSatir[] {
   const { D, kadro, calisanBySicil, izinRows } = input
+  const unvanSinif = input.unvanSinif ?? new Map<string, string>()
 
   const byAsil = new Map<string, KadroRaporRow[]>()
   for (const r of kadro ?? []) {
@@ -151,6 +174,8 @@ export function buildPersoneleGoreIzinListesi(input: {
     const mudurluk = mudurlukBySicil.get(sicil) ?? ''
     const ayrilis = formatTarih(iz.ayrilis) || '—'
     const baslama = formatTarih(iz.baslama) || '—'
+    const kadroSatir = kadroBySicil.get(sicil)
+    const unvan = unvanBySicil.get(sicil) || (kadroSatir ? genelUnvan(kadroSatir) : '')
     out.push({
       sicil_no: sicil,
       ad_soyad: calisan.ad_soyad,
@@ -161,7 +186,8 @@ export function buildPersoneleGoreIzinListesi(input: {
       durum: String(iz.durum ?? '').trim() || '—',
       gun,
       mudur: mudurSiciller.has(sicil),
-      unvan: unvanBySicil.get(sicil) || (kadroBySicil.get(sicil) ? genelUnvan(kadroBySicil.get(sicil)!) : ''),
+      unvan,
+      sinif: unvanSinifBul(unvanSinif, unvan, kadroSatir),
     })
   }
 
@@ -205,7 +231,7 @@ export async function yuklePersoneleGoreKullanilanIzinListesi(
   yil: number,
 ): Promise<{ satirlar: PersoneleGoreIzinSatir[]; hata?: string }> {
   try {
-    const [kadro, calisanRaw, izinRes] = await Promise.all([
+    const [kadro, calisanRaw, izinRes, unvanRes] = await Promise.all([
       fetchAllSelect<KadroRaporRow>(
         supabase,
         'kadro_hareketleri',
@@ -213,11 +239,19 @@ export async function yuklePersoneleGoreKullanilanIzinListesi(
       ),
       fetchAllSelect<{ sicil_no: string; ad_soyad: string }>(supabase, 'calisan', 'sicil_no, ad_soyad'),
       fetchAllIzinHareketleriForKullanilanRapor(supabase, yil),
+      supabase.from('tanim_unvan').select('unvan_adi, sinif_adi').eq('aktif', true),
     ])
     if (izinRes.error) return { satirlar: [], hata: izinRes.error }
 
     const calisanBySicil = new Map<string, { sicil_no: string; ad_soyad: string }>()
     for (const c of calisanRaw) calisanBySicil.set(c.sicil_no, c)
+
+    const unvanSinif = new Map<string, string>()
+    for (const u of unvanRes.data ?? []) {
+      const ad = String(u.unvan_adi ?? '').trim()
+      const sinif = String(u.sinif_adi ?? '').trim()
+      if (ad && sinif) unvanSinif.set(ad, sinif)
+    }
 
     const today = new Date().toISOString().slice(0, 10)
     const satirlar = buildPersoneleGoreIzinListesi({
@@ -225,6 +259,7 @@ export async function yuklePersoneleGoreKullanilanIzinListesi(
       kadro,
       calisanBySicil,
       izinRows: izinRes.data,
+      unvanSinif,
     })
     return { satirlar }
   } catch (err) {

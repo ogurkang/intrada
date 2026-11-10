@@ -5,12 +5,21 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
   ISTIHDAM_SECENEKLERI,
+  SIHIRBAZ_IZIN_HAK_SUTUNLARI,
+  SIHIRBAZ_IZIN_KULLANILAN_SUTUNLARI,
   sihirbazBasliklari,
+  sihirbazGorunenBasliklar,
   sihirbazGruplari,
   type Istihdam,
   type SayfaYonu,
   type SihirbazSatir,
 } from '@/lib/rapor-sihirbaz'
+
+function sihirbazSutunBlogu(key: string): string {
+  if (SIHIRBAZ_IZIN_HAK_SUTUNLARI.some(b => b.key === key)) return 'izin_hak'
+  if (SIHIRBAZ_IZIN_KULLANILAN_SUTUNLARI.some(b => b.key === key)) return 'izin_kullanilan_secim'
+  return key
+}
 
 const TH =
   'sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-slate-700 shadow-[0_1px_0_0_rgb(226,232,240)]'
@@ -35,10 +44,10 @@ export default function RaporSihirbazClient({ satirlar }: { satirlar: SihirbazSa
     [satirlar, istihdamSet],
   )
   const gruplar = useMemo(() => sihirbazGruplari(istihdamlar), [istihdamlar])
-  const basliklar = useMemo(() => {
-    const harita = new Map(sihirbazBasliklari(istihdamlar).map(b => [b.key, b]))
-    return baslikSirasi.map(k => harita.get(k)).filter((b): b is NonNullable<typeof b> => !!b)
-  }, [baslikSirasi, istihdamlar])
+  const basliklar = useMemo(
+    () => sihirbazGorunenBasliklar(baslikSirasi, istihdamlar),
+    [baslikSirasi, istihdamlar],
+  )
 
   function istihdamTik(id: Istihdam) {
     const sonraki = istihdamlar.includes(id) ? istihdamlar.filter(k => k !== id) : [...istihdamlar, id]
@@ -52,12 +61,18 @@ export default function RaporSihirbazClient({ satirlar }: { satirlar: SihirbazSa
   }
 
   function sutunBirak(hedef: string) {
-    if (!suruklenen || suruklenen === hedef) return
+    if (!suruklenen) return
+    const kaynakBlok = sihirbazSutunBlogu(suruklenen)
+    const hedefBlok = sihirbazSutunBlogu(hedef)
+    if (kaynakBlok === hedefBlok) {
+      setSuruklenen(null)
+      return
+    }
     setBaslikSirasi(once => {
-      const kalan = once.filter(k => k !== suruklenen)
-      const yer = kalan.indexOf(hedef)
+      const kalan = once.filter(k => k !== kaynakBlok)
+      const yer = kalan.indexOf(hedefBlok)
       if (yer < 0) return once
-      kalan.splice(yer, 0, suruklenen)
+      kalan.splice(yer, 0, kaynakBlok)
       return kalan
     })
     setSuruklenen(null)
@@ -232,7 +247,7 @@ export default function RaporSihirbazClient({ satirlar }: { satirlar: SihirbazSa
                   <tr key={s.id} className="hover:bg-slate-50/80">
                     <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">{i + 1}</td>
                     {basliklar.map(b => (
-                      <td key={b.key} className="px-3 py-2.5 text-slate-700 whitespace-normal break-words">{s.deger[b.key] ?? '—'}</td>
+                      <td key={b.key} className="px-3 py-2.5 text-slate-700 whitespace-pre-line break-words">{s.deger[b.key] ?? '—'}</td>
                     ))}
                   </tr>
                 ))

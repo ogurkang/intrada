@@ -80,8 +80,8 @@ export async function GET(req: Request) {
       year: 'numeric',
     })
 
-    const COLS = 9
-    const KOLON_BASLIK = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Unvan', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']
+    const COLS = 10
+    const KOLON_BASLIK = ['Sıra No', 'Sicil No', 'Adı Soyadı', 'Unvan', 'Sınıf', 'Ayrılış', 'Başlama', 'İzin Türü', 'Durum', 'Gün Bilgisi']
     const gruplar = gruplaPersoneleGoreIzinSatirlari(satirlar)
     const dataRows: (string | number)[][] = []
     const kisiBaslikSatirlari = new Set<number>()
@@ -100,6 +100,7 @@ export async function GET(req: Request) {
             i === 0 ? grup.sicil_no : '',
             i === 0 ? grup.ad_soyad : '',
             i === 0 ? grup.unvan : '',
+            i === 0 ? grup.sinif : '',
             s.ayrilis,
             s.baslama,
             s.tur,
@@ -110,11 +111,11 @@ export async function GET(req: Request) {
         excelRow++
       })
       kisiToplamSatirlari.add(excelRow)
-      dataRows.push(padRow(COLS, ['', '', '', '', '', '', '', 'İzin toplamı', grup.toplamGun]))
+      dataRows.push(padRow(COLS, ['', '', '', '', '', '', '', '', 'İzin toplamı', grup.toplamGun]))
       excelRow++
       const blokSon = excelRow - 1
       if (blokSon > blokBas) {
-        for (let c = 0; c <= 3; c++) {
+        for (let c = 0; c <= 4; c++) {
           kimlikBirlestirmeleri.push({ s: { r: blokBas, c }, e: { r: blokSon, c } })
         }
       }
@@ -135,6 +136,7 @@ export async function GET(req: Request) {
         '',
         '',
         '',
+        '',
         `${gruplar.length} personel / ${satirlar.length} kayıt`,
         satirlar.reduce((s, r) => s + r.gun, 0),
       ]),
@@ -145,11 +147,11 @@ export async function GET(req: Request) {
     const totalRow = dataBas + dataRows.length
 
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
-      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 7 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } },
+      { s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } },
       ...kimlikBirlestirmeleri,
     ]
     ws['!cols'] = [
@@ -157,6 +159,7 @@ export async function GET(req: Request) {
       { wch: 14 },
       { wch: 28 },
       { wch: 32 },
+      { wch: 14 },
       { wch: 12 },
       { wch: 12 },
       { wch: 22 },
@@ -176,12 +179,12 @@ export async function GET(req: Request) {
         const isTotal = r === totalRow
         const isKisiToplam = kisiToplamSatirlari.has(r)
         const inData = r >= dataBas && r <= totalRow
-        const kimlikHucresi = r >= dataBas && r < totalRow && c <= 3 && !isHead
+        const kimlikHucresi = r >= dataBas && r < totalRow && c <= 4 && !isHead
         cell.s = {
           font: { name: 'Calibri', sz: 11, bold: isTitle || isHead || isTotal || isKisiToplam },
           alignment: {
             vertical: 'center',
-            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 8 ? 'right' : 'left',
+            horizontal: isTitle ? 'center' : c === 0 ? 'center' : c === 9 ? 'right' : 'left',
             wrapText: true,
           },
           ...(inData ? { border: THIN_BORDER } : {}),

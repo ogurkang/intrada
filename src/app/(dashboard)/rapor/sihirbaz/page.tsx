@@ -1,5 +1,10 @@
 import RaporSihirbazClient from '@/components/rapor/RaporSihirbazClient'
-import { raporSihirbazSatirlari } from '@/lib/rapor-sihirbaz'
+import { fetchAllIzinHareketleriForKullanilanRapor } from '@/lib/izin-hareketleri-load'
+import {
+  raporSihirbazSatirlari,
+  type SihirbazIzinHak,
+  type SihirbazIzinKayit,
+} from '@/lib/rapor-sihirbaz'
 import {
   fetchAllCalisan,
   fetchAllCalisanOgrenim,
@@ -9,8 +14,17 @@ import {
 } from '@/lib/supabase-sayfala'
 import { createClient } from '@/lib/supabase/server'
 
+function formatTarihTr(s: string | null | undefined): string {
+  if (!s) return '—'
+  const d = s.slice(0, 10)
+  const [y, m, g] = d.split('-')
+  if (!y || !m || !g) return d
+  return `${g}.${m}.${y}`
+}
+
 export default async function RaporSihirbazPage() {
   const supabase = await createClient()
+  const yil = new Date().getFullYear()
   const [
     kadroQ,
     calisanQ,
@@ -22,6 +36,8 @@ export default async function RaporSihirbazPage() {
     mahalleQ,
     yerleskeQ,
     unvanQ,
+    izinHakQ,
+    izinHareketQ,
   ] = await Promise.all([
     fetchAllKadroHareketleri(
       supabase,
@@ -71,7 +87,16 @@ export default async function RaporSihirbazPage() {
     ),
     supabase.from('tanim_adres_mahalle').select('id, mahalle_adi'),
     supabase.from('tanim_yerleske_adresi').select('id, yerleske_adi'),
-    supabase.from('tanim_unvan').select('id, unvan_adi'),
+    supabase.from('tanim_unvan').select('id, unvan_adi, sinif_adi').eq('aktif', true),
+    fetchAllPaged<SihirbazIzinHak>((from, to) =>
+      supabase
+        .from('izin_haklari')
+        .select('sicil_no, devreden_gun, hak_edilen_gun, kullanilan_gun, kalan_gun')
+        .eq('yil', yil)
+        .order('id')
+        .range(from, to),
+    ),
+    fetchAllIzinHareketleriForKullanilanRapor(supabase, yil),
   ])
 
   const sendikaAd = new Map<number, string>()
@@ -83,7 +108,31 @@ export default async function RaporSihirbazPage() {
   const yerleskeAd = new Map<number, string>()
   for (const y of yerleskeQ.data ?? []) yerleskeAd.set(y.id, y.yerleske_adi)
   const unvanAd = new Map<number, string>()
-  for (const u of unvanQ.data ?? []) unvanAd.set(u.id, u.unvan_adi)
+  const unvanSinif = new Map<string, string>()
+  for (const u of unvanQ.data ?? []) {
+    unvanAd.set(u.id, u.unvan_adi)
+    const ad = String(u.unvan_adi ?? '').trim()
+    const sinif = String(u.sinif_adi ?? '').trim()
+    if (ad && sinif) unvanSinif.set(ad, sinif)
+  }
+
+  const izinKayitlariBySicil = new Map<string, SihirbazIzinKayit[]>()
+  for (const iz of izinHareketQ.data ?? []) {
+    if (iz.durum === 'İptal Edildi') continue
+    const sicil = String(iz.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const gun = Number(iz.gun ?? 0)
+    if (!Number.isFinite(gun) || gun <= 0) continue
+    const list = izinKayitlariBySicil.get(sicil) ?? []
+    list.push({
+      ayrilis: formatTarihTr(iz.ayrilis),
+      baslama: formatTarihTr(iz.baslama),
+      tur: String(iz.tur ?? '').trim() || '—',
+      durum: String(iz.durum ?? '').trim() || '—',
+      gun,
+    })
+    izinKayitlariBySicil.set(sicil, list)
+  }
 
   const satirlar = raporSihirbazSatirlari({
     kadro: kadroQ.data ?? [],
@@ -96,6 +145,9 @@ export default async function RaporSihirbazPage() {
     mahalleAd,
     yerleskeAd,
     unvanAd,
+    unvanSinif,
+    izinHaklari: izinHakQ.data ?? [],
+    izinKayitlariBySicil,
   })
 
   return <RaporSihirbazClient satirlar={satirlar} />

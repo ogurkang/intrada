@@ -62,6 +62,7 @@ export const SIHIRBAZ_BASLIKLARI: SihirbazBaslik[] = [
 
   { key: 'statu', etiket: 'Statü', grup: 'Kadro', adabel: true },
   { key: 'kadro_unvani', etiket: 'Kadro unvanı', grup: 'Kadro', adabel: false },
+  { key: 'sinif', etiket: 'Sınıf', grup: 'Kadro', adabel: false },
   { key: 'kadro_derecesi', etiket: 'Kadro derecesi', grup: 'Kadro', adabel: false },
   { key: 'kadro_sira_no', etiket: 'Kadro sıra no', grup: 'Kadro', adabel: false },
   { key: 'kadro_mudurlugu', etiket: 'Kadro müdürlüğü', grup: 'Kadro', adabel: false },
@@ -87,6 +88,28 @@ export const SIHIRBAZ_BASLIKLARI: SihirbazBaslik[] = [
   { key: 'es_is', etiket: 'Eşin iş durumu', grup: 'Aile', adabel: false },
   { key: 'es_gelir', etiket: 'Eşin gelir durumu', grup: 'Aile', adabel: false },
   { key: 'cocuk_sayisi', etiket: 'Çocuk sayısı', grup: 'Aile', adabel: false },
+
+  /** Seçince Devreden / Hak Edilen / Kullanılan / Kalan sütunları açılır. */
+  { key: 'izin_hak', etiket: 'Hak', grup: 'İzin', adabel: false },
+  /** Seçince Ayrılış / Başlama / İzin Türü / Durum / Gün Bilgisi sütunları açılır. */
+  { key: 'izin_kullanilan_secim', etiket: 'Kullanılan İzin', grup: 'İzin', adabel: false },
+]
+
+/** «Hak» seçildiğinde rapora eklenen sütunlar (/izin/haklar). */
+export const SIHIRBAZ_IZIN_HAK_SUTUNLARI: SihirbazBaslik[] = [
+  { key: 'izin_devreden', etiket: 'Devreden', grup: 'İzin', adabel: false },
+  { key: 'izin_hak_edilen', etiket: 'Hak Edilen', grup: 'İzin', adabel: false },
+  { key: 'izin_kullanilan', etiket: 'Kullanılan', grup: 'İzin', adabel: false },
+  { key: 'izin_kalan', etiket: 'Kalan', grup: 'İzin', adabel: false },
+]
+
+/** «Kullanılan İzin» seçildiğinde rapora eklenen sütunlar. */
+export const SIHIRBAZ_IZIN_KULLANILAN_SUTUNLARI: SihirbazBaslik[] = [
+  { key: 'izin_ayrilis', etiket: 'Ayrılış', grup: 'İzin', adabel: false },
+  { key: 'izin_baslama', etiket: 'Başlama', grup: 'İzin', adabel: false },
+  { key: 'izin_tur', etiket: 'İzin Türü', grup: 'İzin', adabel: false },
+  { key: 'izin_durum', etiket: 'Durum', grup: 'İzin', adabel: false },
+  { key: 'izin_gun', etiket: 'Gün Bilgisi', grup: 'İzin', adabel: false },
 ]
 
 export interface SihirbazSatir {
@@ -112,6 +135,75 @@ export function sihirbazGruplari(istihdam: Istihdam | Istihdam[]): { grup: strin
     else gruplar.push({ grup: b.grup, basliklar: [b] })
   }
   return gruplar
+}
+
+/** Seçim anahtarlarını önizleme / Excel sütunlarına açar (Hak ve Kullanılan İzin paketleri). */
+export function sihirbazGorunenBasliklar(
+  seciliKeys: string[],
+  istihdam: Istihdam | Istihdam[],
+): SihirbazBaslik[] {
+  const harita = new Map(sihirbazBasliklari(istihdam).map(b => [b.key, b]))
+  const out: SihirbazBaslik[] = []
+  for (const key of seciliKeys) {
+    if (key === 'izin_hak') {
+      out.push(...SIHIRBAZ_IZIN_HAK_SUTUNLARI)
+      continue
+    }
+    if (key === 'izin_kullanilan_secim') {
+      out.push(...SIHIRBAZ_IZIN_KULLANILAN_SUTUNLARI)
+      continue
+    }
+    const b = harita.get(key)
+    if (b) out.push(b)
+  }
+  return out
+}
+
+function unvanSinifBul(
+  unvanSinif: Map<string, string>,
+  kadroUnvani: string | null | undefined,
+  gorevUnvani: string | null | undefined,
+): string {
+  const k = String(kadroUnvani ?? '').trim()
+  const g = String(gorevUnvani ?? '').trim()
+  if (k && unvanSinif.has(k)) return unvanSinif.get(k)!
+  if (g && unvanSinif.has(g)) return unvanSinif.get(g)!
+  return '—'
+}
+
+function izinKayitMetinleri(kayitlar: SihirbazIzinKayit[] | undefined) {
+  if (!kayitlar?.length) {
+    return {
+      izin_ayrilis: '—',
+      izin_baslama: '—',
+      izin_tur: '—',
+      izin_durum: '—',
+      izin_gun: '—',
+    }
+  }
+  return {
+    izin_ayrilis: kayitlar.map(k => k.ayrilis).join('\n'),
+    izin_baslama: kayitlar.map(k => k.baslama).join('\n'),
+    izin_tur: kayitlar.map(k => k.tur).join('\n'),
+    izin_durum: kayitlar.map(k => k.durum).join('\n'),
+    izin_gun: kayitlar.map(k => String(k.gun)).join('\n'),
+  }
+}
+
+export interface SihirbazIzinKayit {
+  ayrilis: string
+  baslama: string
+  tur: string
+  durum: string
+  gun: number
+}
+
+export interface SihirbazIzinHak {
+  sicil_no: string
+  devreden_gun: number
+  hak_edilen_gun: number
+  kullanilan_gun: number
+  kalan_gun: number
 }
 
 function txt(v: string | number | null | undefined) {
@@ -270,9 +362,16 @@ export function raporSihirbazSatirlari(input: {
   mahalleAd: Map<number, string>
   yerleskeAd: Map<number, string>
   unvanAd: Map<number, string>
+  /** tanim_unvan.unvan_adi → sinif_adi */
+  unvanSinif?: Map<string, string>
+  izinHaklari?: SihirbazIzinHak[]
+  izinKayitlariBySicil?: Map<string, SihirbazIzinKayit[]>
 }): SihirbazSatir[] {
   const D = input.bugun ?? bugunTurkiye()
   const calisanBySicil = new Map(input.calisanlar.map(c => [c.sicil_no, c]))
+  const unvanSinif = input.unvanSinif ?? new Map<string, string>()
+  const hakBySicil = new Map((input.izinHaklari ?? []).map(h => [h.sicil_no, h]))
+  const izinBySicil = input.izinKayitlariBySicil ?? new Map<string, SihirbazIzinKayit[]>()
 
   const ogrenimBySicil = new Map<string, OgrenimHam>()
   for (const o of input.ogrenimler) {
@@ -311,6 +410,8 @@ export function raporSihirbazSatirlari(input: {
     const o = ogrenimBySicil.get(sicil)
     const sendika = sendikaBySicil.get(sicil)
     const aile = aileBySicil.get(sicil)
+    const hak = hakBySicil.get(sicil)
+    const izinMetin = izinKayitMetinleri(izinBySicil.get(sicil))
     const ad = txt(c.ad_soyad)
     out.push({
       id: `b:${sicil}`,
@@ -350,6 +451,7 @@ export function raporSihirbazSatirlari(input: {
         tasinir_gorevi: txt(c.tasinir_gorevi),
         statu: txt(kadro.statu),
         kadro_unvani: txt(kadro.kadro_unvani),
+        sinif: unvanSinifBul(unvanSinif, kadro.kadro_unvani, kadro.gorev_unvani),
         kadro_derecesi: txt(kadro.kadro_derecesi),
         kadro_sira_no: txt(kadro.kadro_sira_no),
         kadro_mudurlugu: txt(kadro.kadro_mudurlugu),
@@ -372,6 +474,11 @@ export function raporSihirbazSatirlari(input: {
         es_is: txt(aile?.is_durumu),
         es_gelir: txt(aile?.gelir_durumu),
         cocuk_sayisi: aile ? cocukSayisi(aile.cocuklar_json) : '—',
+        izin_devreden: hak ? String(hak.devreden_gun ?? 0) : '—',
+        izin_hak_edilen: hak ? String(hak.hak_edilen_gun ?? 0) : '—',
+        izin_kullanilan: hak ? String(hak.kullanilan_gun ?? 0) : '—',
+        izin_kalan: hak ? String(hak.kalan_gun ?? 0) : '—',
+        ...izinMetin,
       },
     })
   }
