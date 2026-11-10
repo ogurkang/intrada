@@ -9,7 +9,13 @@
 
 import { fetchAllKadroHareketleri } from '@/lib/supabase-sayfala'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ayyHesapla, type AyyIzinRow, type AyyStatuBazliPersonel, type PrevPersonelIzOverflowInfo } from '@/lib/ayy-hesap'
+import {
+  ayyHesapla,
+  ayyYariZamanliYgEffAktif,
+  type AyyIzinRow,
+  type AyyStatuBazliPersonel,
+  type PrevPersonelIzOverflowInfo,
+} from '@/lib/ayy-hesap'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 import { kayitKapatEsigiSonrasiMi } from '@/lib/ayy-kayit-esik'
 import { ayliksizIzinDonemiMi } from '@/lib/gorev-bilgileri'
@@ -51,6 +57,11 @@ type HavuzMemo = {
    * (satır-bazlı SD ile örtüşmeyen kısım). Faz 2 OD kuralı için kullanılır.
    */
   prevPersonelIzOverflow: Map<number, Record<string, PrevPersonelIzOverflowInfo>>
+  /**
+   * donemId → önceki dönemde yarı zamanlı YG_eff aşımı (IZ+OD−YG) sicil → gün.
+   * İzin satırı / havuz B kaçırsa bile OD olarak taşınır (Fatma 160 zinciri).
+   */
+  prevYariZamanliOd: Map<number, Record<string, number>>
 }
 
 const IN_CHUNK = 200
@@ -185,12 +196,16 @@ export async function ayySdSonrakiDonemIcin(
   const odPrevPrev = await ayySdSonrakiDonemIcin(supabase, prev.id, prev, tatiller, memo)
   const izinler = await ayyIzinDbToAyyIzinRow(supabase, prevPool)
   const prevOnceki = await ayyGetOncekiDonem(supabase, prev.baslangic_tarihi, donemTuru)
+  const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
+  const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
+  const prevYariZamanliOdBySicilNo = memo.prevYariZamanliOd.get(prev.id) ?? {}
   const sonuc = ayyHesapla({
     donemBas: prev.baslangic_tarihi,
     donemBit: prev.bitis_tarihi,
     izinler,
     tatiller,
     odBySiraNo: odPrevPrev,
+    prevYariZamanliOdBySicilNo,
     donemTuru,
     oncekiDonem: prevOnceki
       ? {
@@ -199,6 +214,9 @@ export async function ayySdSonrakiDonemIcin(
           kapatildi_at:     prevOnceki.kapatildi_at ?? null,
         }
       : undefined,
+    // Yarı zamanlı YG_eff / SD aşımı OD zincirine yansıması için gerekli
+    statuBazliPersonel,
+    yariZamanliKusurat: prev.durum === 'Açık',
   })
   const m: Record<string, number> = {}
   for (const s of sonuc.satirlar) {
@@ -237,6 +255,26 @@ export async function ayySdSonrakiDonemIcin(
     }
   }
   memo.prevPersonelIzOverflow.set(donemId, prevPersonelIzOverflowMap)
+
+  // Yarı zamanlı YG_eff aşımı → sonraki döneme sicil OD (izin satırı kaçsa bile).
+  // Not: memo anahtarı donemId = «bu hesaplanan dönem» (Kasım için Ekim aşımı).
+  const prevYzOdMap: Record<string, number> = {}
+  if (ayyYariZamanliYgEffAktif(prev.baslangic_tarihi)) {
+    const yzSiciller = new Set(
+      statuBazliPersonel
+        .filter(s => s.gorev_turu === 'Yarı Zamanlı')
+        .map(s => s.sicil_no.trim()),
+    )
+    for (const p of sonuc.personeller) {
+      const sicil = p.sicil_no.trim()
+      if (!yzSiciller.has(sicil)) continue
+      // Kapasite aşımı = IZ − YG_eff (gelen OD buraya katılmaz; aksi Fatma’da 15→4 yerine 16 üretir).
+      // Takvim SD zaten izin satırından OD olur; bu harita yalnızca YG_eff taşmasını taşır.
+      const asim = Math.max(0, (p.IZ || 0) - (p.YG || 0))
+      if (asim > 0) prevYzOdMap[sicil] = asim
+    }
+  }
+  memo.prevYariZamanliOd.set(donemId, prevYzOdMap)
 
   // Manuel SD düzeltmeleri: belirli dönem+sicil için SD zorla atanır (genellikle 0).
   const { data: overrides } = await supabase
@@ -441,7 +479,13 @@ export async function ayyIzinDbToAyyIzinRow(
 }
 
 export function createAyyHavuzMemo(): HavuzMemo {
-  return { pool: new Map(), sdSonrakiDoneme: new Map(), prevIzDoneme: new Map(), prevPersonelIzOverflow: new Map() }
+  return {
+    pool: new Map(),
+    sdSonrakiDoneme: new Map(),
+    prevIzDoneme: new Map(),
+    prevPersonelIzOverflow: new Map(),
+    prevYariZamanliOd: new Map(),
+  }
 }
 
 /**

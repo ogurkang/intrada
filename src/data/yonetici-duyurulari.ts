@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-10-ayy-yari-zamanli-yg-eff',
+    baslik: '10 Kasım 2026 — Aylık yemek yarı zamanlı kapasite',
+    maddeler: [
+      'Yarı zamanlıda Ekim 2026 döneminden itibaren yemekli gün hakkı yarım alınır (örtüşen günün yarısı, yukarı yuvarlanır).',
+      'Kapasiteyi aşan izin sonraki döneme «Önceki Dönemden» olarak taşınır (ör. 15 gün → 11 + 4; sonraki ay 4 + 10 → 3).',
+      'Ekim dönemi 15 Eylül’de başladığı için kural bu dönem başından geçerlidir.',
+    ],
+  },
+  {
     id: '2026-11-10-rapor-sihirbaz-izin-sinif',
     baslik: '10 Kasım 2026 — Rapor sihirbazı izin ve sınıf',
     maddeler: [
