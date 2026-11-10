@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { unstable_cache } from 'next/cache'
 import { denetimMenuYolu, type DenetimMenuIkonAnahtar, type DenetimMenuSayfaTuru } from '@/lib/denetim'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { Tables } from '@/types/database'
 
 export type DenetimMenuKayit = Tables<'denetim_donem_menu'>
@@ -69,7 +71,7 @@ export function denetimMenuAgaciKur(
   return childrenOf(null)
 }
 
-export async function loadDenetimSidebarAgac(
+async function fetchDenetimSidebarAgac(
   supabase: SupabaseClient,
 ): Promise<DenetimSidebarDonem[]> {
   const { data: donemler, error: donemErr } = await supabase
@@ -101,4 +103,15 @@ export async function loadDenetimSidebarAgac(
     sira_no: d.sira_no,
     menus: denetimMenuAgaciKur(d.id, byDonem.get(d.id) ?? []),
   }))
+}
+
+/** Sidebar denetim ağacı — kullanıcıdan bağımsız; 30 dk önbellek. */
+export async function loadDenetimSidebarAgac(
+  _supabase?: SupabaseClient,
+): Promise<DenetimSidebarDonem[]> {
+  return unstable_cache(
+    async () => fetchDenetimSidebarAgac(createServiceRoleClient()),
+    ['denetim-sidebar-agac'],
+    { revalidate: 1800, tags: ['denetim-menu'] },
+  )()
 }

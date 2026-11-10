@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { unstable_cache } from 'next/cache'
 import { kysMenuYolu, type KysMenuSayfaTuru } from '@/lib/kys'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { Tables } from '@/types/database'
 
 export type KysMenuKayit = Tables<'kys_menu'>
@@ -44,7 +46,7 @@ export function kysMenuAgaciKur(kayitlar: KysMenuKayit[]): KysSidebarMenu[] {
   return childrenOf(null)
 }
 
-export async function loadKysSidebarAgac(supabase: SupabaseClient): Promise<KysSidebarMenu[]> {
+async function fetchKysSidebarAgac(supabase: SupabaseClient): Promise<KysSidebarMenu[]> {
   const { data, error } = await supabase
     .from('kys_menu')
     .select('*')
@@ -54,4 +56,13 @@ export async function loadKysSidebarAgac(supabase: SupabaseClient): Promise<KysS
     return []
   }
   return kysMenuAgaciKur((data ?? []) as KysMenuKayit[])
+}
+
+/** Sidebar KYS ağacı — kullanıcıdan bağımsız; 30 dk önbellek. */
+export async function loadKysSidebarAgac(_supabase?: SupabaseClient): Promise<KysSidebarMenu[]> {
+  return unstable_cache(
+    async () => fetchKysSidebarAgac(createServiceRoleClient()),
+    ['kys-sidebar-agac'],
+    { revalidate: 1800, tags: ['kys-menu'] },
+  )()
 }

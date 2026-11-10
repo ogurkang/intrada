@@ -72,11 +72,23 @@ export async function yukleThHizmetYiliBekleyenler(
   return filterOutGodmodeCalisan(out)
 }
 
+import { unstable_cache } from 'next/cache'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+
+/** Menü noktası için: bekleyen var mı? (tam listeyi her nav’da çekmez; 15 dk önbellek) */
 export async function thHizmetYiliMenuAcikMi(
-  supabase: SupabaseClient<Database>,
+  _supabase?: SupabaseClient<Database>,
 ): Promise<boolean> {
-  const liste = await yukleThHizmetYiliBekleyenler(supabase)
-  return liste.length > 0
+  return unstable_cache(
+    async () => {
+      const liste = await yukleThHizmetYiliBekleyenler(
+        createServiceRoleClient() as SupabaseClient<Database>,
+      )
+      return liste.length > 0
+    },
+    ['th-hizmet-yili-menu-acik'],
+    { revalidate: 900, tags: ['th-hizmet-yili'] },
+  )()
 }
 
 export async function asilKadroThMi(

@@ -3,8 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /** Profil yok: eski davranış (tam erişim). admin: süper. kullanici: sadece kendi sicil + salt okunur kuralları. */
 export type AppAccess =
   | { mode: 'full' }
-  | { mode: 'admin' }
-  | { mode: 'kullanici'; sicilNo: string; menuIzinleri: Record<string, boolean> }
+  | { mode: 'admin'; kullaniciAdi?: string | null; kurtarmaHash?: unknown }
+  | { mode: 'kullanici'; sicilNo: string; menuIzinleri: Record<string, boolean>; kullaniciAdi?: string | null; kurtarmaHash?: unknown }
   | { mode: 'dis_denetci'; kullaniciAdi: string; adSoyad: string; kurumAdi: string }
   | { mode: 'blocked'; sicilNo: string | null }
 
@@ -22,12 +22,13 @@ export async function getAppAccess(
         kullanici_adi?: string | null
         ad_soyad?: string | null
         kurum_adi?: string | null
+        kurtarma_hash?: unknown
       }
     | null = null
 
   const tam = await supabase
     .from('app_profiles')
-    .select('sicil_no, rol, menu_izinleri, hesap_aktif, profil_turu, kullanici_adi, ad_soyad, kurum_adi')
+    .select('sicil_no, rol, menu_izinleri, hesap_aktif, profil_turu, kullanici_adi, ad_soyad, kurum_adi, kurtarma_hash')
     .eq('id', userId)
     .maybeSingle()
 
@@ -61,7 +62,7 @@ export async function getAppAccess(
     }
   }
   if (rolNorm === 'admin' || rolNorm === 'yönetici' || rolNorm === 'yonetici' || rolNorm === 'ik_admin') {
-    return { mode: 'admin' }
+    return { mode: 'admin', kullaniciAdi: data.kullanici_adi, kurtarmaHash: data.kurtarma_hash }
   }
   if (rolNorm === 'dis_denetci' || data.profil_turu === 'dis_denetci') {
     return {
@@ -76,6 +77,8 @@ export async function getAppAccess(
     mode: 'kullanici',
     sicilNo: data.sicil_no ?? '',
     menuIzinleri,
+    kullaniciAdi: data.kullanici_adi,
+    kurtarmaHash: data.kurtarma_hash,
   }
 }
 

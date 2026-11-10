@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-10-layout-onbellek',
+    baslik: '10 Kasım 2026 — Sayfa geçişlerinde daha az sorgu',
+    maddeler: [
+      'Menüde gezinirken kimlik, yetki ve yan menü bilgileri kısa süre hatırlanır; her tıkta yeniden çekilmez.',
+      'Giriş ve yetki kontrolü durur; ekranlar ve menü görünümü aynı kalır.',
+      'Amaç: Supabase yükünü azaltmak, yavaşlama ve kesinti riskini düşürmek.',
+    ],
+  },
+  {
     id: '2026-11-10-ayy-yari-zamanli-yg-eff',
     baslik: '10 Kasım 2026 — Aylık yemek yarı zamanlı kapasite',
     maddeler: [
