@@ -214,8 +214,8 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
   // İmza + üstünde imza boşluğu; kalan alanı programa yay.
   const imzaBoslukH = 48
   const imzaAlanH = 56
-  const aciklamaAlanH = 78
-  const dipNotH = 22
+  const aciklamaAlanH = 96
+  const dipNotH = 28
   const gridSatirSayisi = 1 + YZC_GUNLER.length
   const kalanH = Math.max(90, bottomLimit - y - aciklamaAlanH - dipNotH - imzaBoslukH - imzaAlanH - 8)
   const gridH = Math.max(12, Math.floor(kalanH / gridSatirSayisi))
@@ -248,14 +248,14 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
 
   y += 5
   font(doc, true)
-  doc.fontSize(7).text('AÇIKLAMALAR', MARGIN, y, { lineGap: 0 })
+  doc.fontSize(9).text('AÇIKLAMALAR', MARGIN, y, { lineGap: 0 })
   y = doc.y + 2
 
   const aciklamalar = YZC_ACIKLAMALAR.map((metin, i) => `${i + 1}-${metin}`)
-  y = ikiKolonMetin(doc, aciklamalar, MARGIN, y, contentW, 10, { size: 5.2, lineGap: 0.2 })
+  y = ikiKolonMetin(doc, aciklamalar, MARGIN, y, contentW, 10, { size: 7.2, lineGap: 0.3 })
 
   font(doc, false)
-  doc.fontSize(5.2).text('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.', MARGIN, y + 2, {
+  doc.fontSize(7.2).text('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.', MARGIN, y + 2, {
     width: contentW,
     lineGap: 0,
   })

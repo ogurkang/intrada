@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-yzc-sinir-saat-aciklama',
+    baslik: '11 Kasım 2026 — Yarı zamanlı saat seçimi',
+    maddeler: [
+      'Mesai saatlerinde 12:30 ve 17:30 sınır noktaları seçilebilir; süre ikinci noktadan itibaren hesaplanır.',
+      'Günde en fazla 8 saat, haftada 20 saat kuralı aynıdır.',
+      'PDF ekindeki açıklama yazıları iki punto büyütüldü.',
+    ],
+  },
+  {
     id: '2026-11-11-pp-ph-sira-yzc-imza',
     baslik: '11 Kasım 2026 — Performans faaliyeti sırası ve belge imzası',
     maddeler: [

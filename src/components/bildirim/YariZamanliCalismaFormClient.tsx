@@ -11,6 +11,7 @@ import {
   YZC_BIRIM,
   YZC_MAKAM,
   yzcBelgeAlanlari,
+  yzcCalismaProgramiKaydet,
   yzcProgramDogrula,
   yzcTarihFormat,
   type YzcCalismaProgrami,
@@ -163,7 +164,7 @@ export default function YariZamanliCalismaFormClient({
     fd.set('cocuk_dogum_tarihi', cocukDogumTarihi)
     fd.set('yari_zamanli_baslangic_tarihi', yariZamanliBaslangic)
     fd.set('normal_zamanli_donus_tarihi', normalDonusTarihi)
-    fd.set('calisma_programi', JSON.stringify(calismaProgrami))
+    fd.set('calisma_programi', JSON.stringify(yzcCalismaProgramiKaydet(calismaProgrami)))
 
     startTransition(async () => {
       const sonuc = await onKaydet(fd)

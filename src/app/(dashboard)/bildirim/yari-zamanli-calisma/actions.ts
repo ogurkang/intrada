@@ -8,6 +8,7 @@ import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
 import { getBildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
 import {
+  yzcCalismaProgramiKaydet,
   yzcCalismaProgramiNormalize,
   yzcProgramDogrula,
 } from '@/lib/yari-zamanli-calisma-belge'
@@ -52,15 +53,17 @@ export async function yariZamanliCalismaEkle(formData: FormData): Promise<YzcAct
     return { hata: 'Dönüş tarihi başlangıç tarihinden önce olamaz.' }
   }
 
-  let calisma_programi = {}
+  let calisma_programi: Record<string, unknown> = {}
   try {
-    calisma_programi = yzcCalismaProgramiNormalize(JSON.parse(str(formData, 'calisma_programi') || '{}'))
+    const ham = JSON.parse(str(formData, 'calisma_programi') || '{}')
+    const norm = yzcCalismaProgramiNormalize(ham)
+    const programDogrulama = yzcProgramDogrula(norm)
+    if (!programDogrulama.gecerli) {
+      return { hata: programDogrulama.hatalar.join('\n') }
+    }
+    calisma_programi = yzcCalismaProgramiKaydet(norm)
   } catch {
     return { hata: 'Çalışma programı geçersiz.' }
-  }
-  const programDogrulama = yzcProgramDogrula(calisma_programi)
-  if (!programDogrulama.gecerli) {
-    return { hata: programDogrulama.hatalar.join('\n') }
   }
 
   const personel = await getBildirimFormPersonel(supabase, sicil)
@@ -163,15 +166,17 @@ export async function yariZamanliCalismaGuncelle(id: number, formData: FormData)
     return { hata: 'Dönüş tarihi başlangıç tarihinden önce olamaz.' }
   }
 
-  let calisma_programi = {}
+  let calisma_programi: Record<string, unknown> = {}
   try {
-    calisma_programi = yzcCalismaProgramiNormalize(JSON.parse(str(formData, 'calisma_programi') || '{}'))
+    const ham = JSON.parse(str(formData, 'calisma_programi') || '{}')
+    const norm = yzcCalismaProgramiNormalize(ham)
+    const programDogrulamaGuncelle = yzcProgramDogrula(norm)
+    if (!programDogrulamaGuncelle.gecerli) {
+      return { hata: programDogrulamaGuncelle.hatalar.join('\n') }
+    }
+    calisma_programi = yzcCalismaProgramiKaydet(norm)
   } catch {
     return { hata: 'Çalışma programı geçersiz.' }
-  }
-  const programDogrulamaGuncelle = yzcProgramDogrula(calisma_programi)
-  if (!programDogrulamaGuncelle.gecerli) {
-    return { hata: programDogrulamaGuncelle.hatalar.join('\n') }
   }
 
   const sicil = String(kayit.sicil_no ?? '').trim()

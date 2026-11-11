@@ -141,21 +141,21 @@ function ekAciklamalar(): Paragraph[] {
       new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         spacing: { after: 80, line: 276 },
-        children: [run(`${i + 1}-${metin}`, { size: 18 })],
+        children: [run(`${i + 1}-${metin}`, { size: 22 })],
       }),
     )
   })
   paras.push(
     new Paragraph({
       spacing: { before: 160, after: 80 },
-      children: [run('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.', { size: 18 })],
+      children: [run('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.', { size: 22 })],
     }),
     new Paragraph({
       spacing: { after: 120 },
       children: [
         run(
           '** Mezkur yönetmeliğin "Yarı Zamanlı Çalışma hakkının sona erme halleri" başlıklı 15. maddesindeki hükümler saklıdır.',
-          { size: 18 },
+          { size: 22 },
         ),
       ],
     }),

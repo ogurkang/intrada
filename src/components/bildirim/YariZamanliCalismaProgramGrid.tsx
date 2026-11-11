@@ -5,10 +5,11 @@ import {
   YZC_ACIKLAMALAR,
   YZC_GUNLER,
   YZC_HEDEF_HAFTALIK_SAAT,
-  YZC_MAX_DILIM,
+  YZC_MAX_GUNLUK_SAAT,
   YZC_MIN_GUN,
   YZC_MIN_GUNLUK_SAAT,
   YZC_SAATLER,
+  yzcGunDilimSayisi,
   yzcProgramDilimSayisi,
   yzcProgramDogrula,
   yzcProgramMaxDilimeUlasti,
@@ -30,24 +31,36 @@ export default function YariZamanliCalismaProgramGrid({ value, onChange }: Props
   const [limitHata, setLimitHata] = useState<string | null>(null)
   const dogrulama = useMemo(() => yzcProgramDogrula(value), [value])
   const maxDoldu = yzcProgramMaxDilimeUlasti(value)
+  const ogleIdx = YZC_SAATLER.indexOf('13:30')
 
   function toggle(gun: YzcGun, saat: YzcSaat) {
     const mevcut = new Set(value[gun] ?? [])
     const ekleniyor = !mevcut.has(saat)
-    if (ekleniyor && yzcProgramDilimSayisi(value) >= YZC_MAX_DILIM) {
-      setLimitHata(`En fazla ${YZC_HEDEF_HAFTALIK_SAAT} saat seçilebilir.`)
-      return
-    }
     if (mevcut.has(saat)) mevcut.delete(saat)
     else mevcut.add(saat)
     const liste = [...mevcut].sort(
       (a, b) => YZC_SAATLER.indexOf(a as YzcSaat) - YZC_SAATLER.indexOf(b as YzcSaat),
     )
+    const sonraki: YzcCalismaProgrami = { ...value, [gun]: liste.length ? liste : undefined }
+    if (ekleniyor) {
+      const gunDilim = yzcGunDilimSayisi(liste)
+      if (gunDilim * 0.5 > YZC_MAX_GUNLUK_SAAT) {
+        setLimitHata(`Bir günde en fazla ${YZC_MAX_GUNLUK_SAAT} saat seçilebilir.`)
+        return
+      }
+      if (yzcProgramDilimSayisi(sonraki) > yzcProgramDilimSayisi(value) && yzcProgramMaxDilimeUlasti(value)) {
+        setLimitHata(`En fazla ${YZC_HEDEF_HAFTALIK_SAAT} saat seçilebilir.`)
+        return
+      }
+      if (yzcProgramDilimSayisi(sonraki) > YZC_HEDEF_HAFTALIK_SAAT / 0.5) {
+        setLimitHata(`En fazla ${YZC_HEDEF_HAFTALIK_SAAT} saat seçilebilir.`)
+        return
+      }
+    }
     setLimitHata(null)
-    onChange({ ...value, [gun]: liste.length ? liste : undefined })
+    onChange(sonraki)
   }
 
-  const ogleIdx = YZC_SAATLER.indexOf('13:30')
   const gunOk = dogrulama.gunSayisi >= YZC_MIN_GUN
   const saatOk = dogrulama.toplamSaat === YZC_HEDEF_HAFTALIK_SAAT
 
@@ -56,8 +69,8 @@ export default function YariZamanliCalismaProgramGrid({ value, onChange }: Props
       <div>
         <h3 className="text-sm font-semibold text-slate-700">Ek — Haftalık Çalışma Programı</h3>
         <p className="text-xs text-slate-500 mt-1">
-          Yarı zamanlı çalışma için haftada en az {YZC_MIN_GUN} gün, günde en az {YZC_MIN_GUNLUK_SAAT} saat ve
-          toplam {YZC_HEDEF_HAFTALIK_SAAT} saat seçilmelidir.
+          Saatler sınır noktasıdır: tek işaret süre vermez; 08:30 ile 09:00 birlikte 30 dk, 08:30 ile 09:30 bir saattir.
+          Haftada en az {YZC_MIN_GUN} gün, günde {YZC_MIN_GUNLUK_SAAT}–{YZC_MAX_GUNLUK_SAAT} saat, toplam {YZC_HEDEF_HAFTALIK_SAAT} saat.
         </p>
       </div>
 
