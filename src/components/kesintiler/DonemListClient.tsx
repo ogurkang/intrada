@@ -69,6 +69,8 @@ interface Props {
   onSecimKaydet:(donem_id: number, secimler: { izin_sira_no: string; dahil: boolean }[]) => Promise<{ hata?: string }>
   /** Detay sayfası varsa base URL (örn. "/kesintiler/ayy"). Eklenince tabloya Hesap butonu eklenir. */
   detayBase?:  string
+  /** AYY: kapalı dönem tarihîdir; yeniden aç butonu gizlenir. */
+  kapaliDonemAcilamaz?: boolean
   auditLoglarByRefId?: Record<string, Tables<'personel_audit_log'>[]>
 }
 
@@ -294,7 +296,7 @@ function DonemForm({
 
 // ─── Ana Bileşen ─────────────────────────────────────────────────────────────
 export default function DonemListClient({
-  baslik, kod, donemler, onEkle, onGuncelle, onKapat, onAc, onSecimGetir, onSecimKaydet, detayBase, kuralMetni, hideSecimColumn,
+  baslik, kod, donemler, onEkle, onGuncelle, onKapat, onAc, onSecimGetir, onSecimKaydet, detayBase, kuralMetni, hideSecimColumn, kapaliDonemAcilamaz = false,
   auditLoglarByRefId = {},
 }: Props) {
   const showDonemTuru = kod === 'AYY'
@@ -306,6 +308,7 @@ export default function DonemListClient({
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [sunuciHata, setSunuciHata]   = useState<string | null>(null)
   const [uyariPopup, setUyariPopup]   = useState<{
+    baslik?: string
     metin: string
     donemId?: number
     aradaKalan?: boolean
@@ -386,6 +389,13 @@ export default function DonemListClient({
   }
 
   function handleKapat(id: number) {
+    if (kapaliDonemAcilamaz) {
+      setUyariPopup({
+        baslik: 'Dönem Kapatma',
+        metin: 'Yeni bir dönem açtığınızda açık dönem kendiliğinden kapanacaktır.',
+      })
+      return
+    }
     if (!confirm('Bu dönem kapatılacak. Onaylıyor musunuz?')) return
     startTransition(async () => {
       const res = await onKapat(id)
@@ -398,6 +408,13 @@ export default function DonemListClient({
   }
 
   function handleAc(id: number) {
+    if (kapaliDonemAcilamaz) {
+      setUyariPopup({
+        baslik: 'Dönem Açma',
+        metin: 'Kapalı dönem yeniden açılamaz. İşlemlerinizi aktif dönem içerisinde gerçekleştiriniz.',
+      })
+      return
+    }
     if (!confirm('Bu dönem tekrar açılacak. Onaylıyor musunuz?')) return
     startTransition(async () => {
       const res = await onAc(id)
@@ -608,7 +625,10 @@ export default function DonemListClient({
       <Modal
         open={uyariPopup != null}
         onClose={() => setUyariPopup(null)}
-        title={uyariPopup?.aradaKalan ? 'Arada Kalan İzin' : 'Arada Kalan Kontrolü'}
+        title={
+          uyariPopup?.baslik
+            ?? (uyariPopup?.aradaKalan ? 'Arada Kalan İzin' : 'Arada Kalan Kontrolü')
+        }
         size="sm"
       >
         <div className="space-y-4">

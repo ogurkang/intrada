@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-ayy-devir-ozet',
+    baslik: '11 Kasım 2026 — Aylık yemek kapalı dönem devri',
+    maddeler: [
+      'Yeni dönem açılınca önceki açık dönem kendiliğinden kapanır; devreden günler bir kez kaydedilir.',
+      'Kapalı dönem yeniden açılamaz; Aç/Kapat düğmeleri bilgilendirme uyarısı verir.',
+      'Sonraki dönem «Önceki Dönemden» bilgisini bu kayıttan okur; kapalı dönem her seferinde yeniden hesaplanmaz.',
+    ],
+  },
+  {
     id: '2026-11-10-layout-onbellek',
     baslik: '10 Kasım 2026 — Sayfa geçişlerinde daha az sorgu',
     maddeler: [

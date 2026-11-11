@@ -11,6 +11,8 @@ import {
   ayyDonemTuruNorm,
   ayyAradaKalanIzinleriBul,
   ayyFormatAradaKalanUyari,
+  ayyDevirOzetKapatirkenYaz,
+  ayyLoadDonem,
   AYY_ARADA_KALAN_YOK,
 } from '@/lib/ayy-donem-havuz'
 
@@ -23,48 +25,6 @@ function str(fd: FormData, key: string): string | null {
 }
 
 const ZABITA_MUDURLUGU = 'Zabıta Müdürlüğü'
-
-async function ayyDonemAcilisKontrolu(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  donemId: number,
-): Promise<string | null> {
-  const { data: donem, error: donemErr } = await supabase
-    .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, donem_turu, baslangic_tarihi, bitis_tarihi')
-    .eq('id', donemId)
-    .maybeSingle()
-  if (donemErr) return donemErr.message
-  if (!donem) return 'Dönem bulunamadı.'
-
-  const donemTuru = ayyDonemTuruNorm(donem.donem_turu)
-  const { data: acikDonem } = await supabase
-    .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, donem_turu')
-    .eq('durum', 'Açık')
-    .eq('donem_turu', donemTuru)
-    .neq('id', donemId)
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (acikDonem) {
-    return `Önce ${acikDonem.donem_adi ?? `#${acikDonem.id}`} (${acikDonem.donem_turu ?? 'normal'}) açık dönemini kapatın.`
-  }
-
-  const { data: oncekiDonem } = await supabase
-    .from('aylik_yemek_yeni_donem')
-    .select('id, donem_adi, donem_turu, bitis_tarihi, kapatildi_at')
-    .eq('donem_turu', donemTuru)
-    .lt('bitis_tarihi', donem.baslangic_tarihi)
-    .order('bitis_tarihi', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (oncekiDonem && !oncekiDonem.kapatildi_at) {
-    return `Önceki dönem (${oncekiDonem.donem_adi ?? `#${oncekiDonem.id}`}) için kapatılma zamanı (kapatildi_at) boş. AYY kuralı için önce bunu doldurun.`
-  }
-
-  return null
-}
 
 const KESINTI_MODUL: Record<DonemTablo, string> = {
   aylik_yemek_yeni_donem: 'AYY',
@@ -114,6 +74,21 @@ export function makeDonemActions(
     }
 
     const supabase = await createClient()
+
+    // AYY: yeni dönem eklenince aynı türdeki açık dönem(ler) kendiliğinden kapanır + devir özeti yazılır
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      const donemTuru = ayyDonemTuruNorm(payload.donem_turu)
+      const { data: aciklar } = await supabase
+        .from('aylik_yemek_yeni_donem')
+        .select('id')
+        .eq('durum', 'Açık')
+        .eq('donem_turu', donemTuru)
+      for (const a of aciklar ?? []) {
+        const kapatRes = await ayyDonemiKapatVeOzetYaz(supabase, a.id)
+        if (kapatRes.hata) return { hata: kapatRes.hata }
+      }
+    }
+
     const { data: inserted, error } = await supabase
       .from(donemTablo)
       .insert(payload as never)
@@ -176,15 +151,46 @@ export function makeDonemActions(
     return {}
   }
 
+  async function ayyDonemiKapatVeOzetYaz(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    id: number,
+  ): Promise<{ hata?: string }> {
+    const onceki = await donemSnapshot(id)
+    const patch = { durum: 'Kapalı' as const, kapatildi_at: new Date().toISOString() }
+    const { error } = await supabase.from('aylik_yemek_yeni_donem').update(patch as never).eq('id', id)
+    if (error) return { hata: error.message }
+
+    const donem = await ayyLoadDonem(supabase, id)
+    if (donem) {
+      const yaz = await ayyDevirOzetKapatirkenYaz(supabase, donem)
+      if (yaz.hata) {
+        console.error('AYY_DEVIR_OZET_YAZ_FAILED', id, yaz.hata)
+      }
+    }
+
+    await writeKesintiDonemAuditLogSafe(supabase, {
+      refTable: donemTablo,
+      modul,
+      donemId: id,
+      islem: 'Kapat',
+      ozet: `${String(onceki?.donem_adi ?? onceki?.sira_no ?? id)} dönemi kapatıldı (yeni dönem ile).`,
+      onceki,
+      sonraki: { ...onceki, durum: 'Kapalı' },
+    })
+    return {}
+  }
+
   async function donemKapat(id: number): Promise<{ hata?: string }> {
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      return {
+        hata: 'Yeni bir dönem açtığınızda açık dönem kendiliğinden kapanacaktır.',
+      }
+    }
     const supabase = await createClient()
     const onceki = await donemSnapshot(id)
-    const patch: Record<string, unknown> = { durum: 'Kapalı' }
-    if (donemTablo === 'aylik_yemek_yeni_donem') {
-      patch.kapatildi_at = new Date().toISOString()
-    }
-    const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
+    const { error } = await supabase.from(donemTablo).update({ durum: 'Kapalı' } as never).eq('id', id)
     if (error) return { hata: error.message }
+
     await writeKesintiDonemAuditLogSafe(supabase, {
       refTable: donemTablo,
       modul,
@@ -199,17 +205,14 @@ export function makeDonemActions(
   }
 
   async function donemAc(id: number): Promise<{ hata?: string }> {
+    if (donemTablo === 'aylik_yemek_yeni_donem') {
+      return {
+        hata: 'Kapalı dönem yeniden açılamaz. İşlemlerinizi aktif dönem içerisinde gerçekleştiriniz.',
+      }
+    }
     const supabase = await createClient()
-    if (donemTablo === 'aylik_yemek_yeni_donem') {
-      const kontrolHata = await ayyDonemAcilisKontrolu(supabase, id)
-      if (kontrolHata) return { hata: kontrolHata }
-    }
     const onceki = await donemSnapshot(id)
-    const patch: Record<string, unknown> = { durum: 'Açık' }
-    if (donemTablo === 'aylik_yemek_yeni_donem') {
-      patch.kapatildi_at = null
-    }
-    const { error } = await supabase.from(donemTablo).update(patch as never).eq('id', id)
+    const { error } = await supabase.from(donemTablo).update({ durum: 'Açık' } as never).eq('id', id)
     if (error) return { hata: error.message }
     await writeKesintiDonemAuditLogSafe(supabase, {
       refTable: donemTablo,

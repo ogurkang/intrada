@@ -34,6 +34,7 @@ export default async function AyyPage() {
         'AYY havuzu A ∪ B ∪ C mantığıyla çalışır: A) Önceki dönem kapatıldıktan sonra kaydedilen uygun izinler, B) Önceki dönemden SD devreden izinler, C) Önceki dönemde hariç tutulup yeni dönemde tekrar görünen izinler. Arada kalan ve dönem öncesi başlayan izinlerde kapatildi_at eşiği dikkate alınır. Zabıta/normal kuralı ve mehil özel hesapları uygulanır. Detay kural dokümanı: proje kökündeki "aylık yemek.md".'
       }
       hideSecimColumn
+      kapaliDonemAcilamaz
       donemler={donemler}
       onEkle={donemEkle}
       onGuncelle={donemGuncelle}

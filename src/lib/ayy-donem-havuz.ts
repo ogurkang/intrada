@@ -16,6 +16,11 @@ import {
   type AyyStatuBazliPersonel,
   type PrevPersonelIzOverflowInfo,
 } from '@/lib/ayy-hesap'
+import {
+  ayyDevirOzetOku,
+  ayyDevirOzetYaz,
+  type AyyDevirOzet,
+} from '@/lib/ayy-devir-ozet'
 import { ayyZabitaNormalKesintiMuafSet } from '@/lib/ayy-zabita-havuz'
 import { kayitKapatEsigiSonrasiMi } from '@/lib/ayy-kayit-esik'
 import { ayliksizIzinDonemiMi } from '@/lib/gorev-bilgileri'
@@ -175,8 +180,150 @@ async function queryIzinBySiraNo(
   return all
 }
 
+function ayyDevirOzettenSonuc(
+  sonuc: ReturnType<typeof ayyHesapla>,
+  donemBas: string,
+  statuBazliPersonel: AyyStatuBazliPersonel[],
+): AyyDevirOzet {
+  const sdBySiraNo: Record<string, number> = {}
+  const izBySiraNo: Record<string, number> = {}
+  const sicilBySiraNo: Record<string, string> = {}
+  for (const s of sonuc.satirlar) {
+    if (s.SD > 0) sdBySiraNo[s.sira_no] = s.SD
+    if (s.IZ > 0) izBySiraNo[s.sira_no] = s.IZ
+    if (s.sicil_no) sicilBySiraNo[s.sira_no] = s.sicil_no.trim()
+  }
+
+  const sicilRowSdSums: Record<string, number> = {}
+  for (const s of sonuc.satirlar) {
+    if (s.SD > 0 && s.sicil_no) {
+      sicilRowSdSums[s.sicil_no] = (sicilRowSdSums[s.sicil_no] ?? 0) + s.SD
+    }
+  }
+  const zabitaOverflowBySicil: Record<string, PrevPersonelIzOverflowInfo> = {}
+  for (const p of sonuc.personeller) {
+    if (!p.isZabita) continue
+    const personelIzOverflow = Math.max(0, p.IZ - p.YG)
+    const alreadyTracked = sicilRowSdSums[p.sicil_no] ?? 0
+    const untracked = Math.max(0, personelIzOverflow - alreadyTracked)
+    if (untracked > 0) {
+      zabitaOverflowBySicil[p.sicil_no] = {
+        overflow: untracked,
+        ad_soyad: p.ad_soyad,
+        unvan: p.unvan,
+      }
+    }
+  }
+
+  const yariZamanliOdBySicil: Record<string, number> = {}
+  if (ayyYariZamanliYgEffAktif(donemBas)) {
+    const yzSiciller = new Set(
+      statuBazliPersonel
+        .filter(s => s.gorev_turu === 'Yarı Zamanlı')
+        .map(s => s.sicil_no.trim()),
+    )
+    for (const p of sonuc.personeller) {
+      const sicil = p.sicil_no.trim()
+      if (!yzSiciller.has(sicil)) continue
+      const asim = Math.max(0, (p.IZ || 0) - (p.YG || 0))
+      if (asim > 0) yariZamanliOdBySicil[sicil] = asim
+    }
+  }
+
+  return { sdBySiraNo, izBySiraNo, sicilBySiraNo, zabitaOverflowBySicil, yariZamanliOdBySicil }
+}
+
+/** Bir dönemin kendi hesabından sonraki döneme gidecek devir özetini üretir (canlı hesap). */
+export async function ayyDonemDevirCiktisiHesapla(
+  supabase: SupabaseClient,
+  donem: AyyDonemRow,
+  tatiller: Parameters<typeof ayyHesapla>[0]['tatiller'],
+  memo: HavuzMemo,
+): Promise<AyyDevirOzet> {
+  const donemTuru = ayyDonemTuruNorm(donem.donem_turu)
+  const pool = await ayyBuildIzinHavuzu(supabase, donem.id, donem, memo)
+  const odInto = await ayySdSonrakiDonemIcin(supabase, donem.id, donem, tatiller, memo)
+  const izinler = await ayyIzinDbToAyyIzinRow(supabase, pool)
+  const onceki = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi, donemTuru)
+  const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
+  const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
+  const prevYariZamanliOdBySicilNo = memo.prevYariZamanliOd.get(donem.id) ?? {}
+  const prevIzBySiraNo = memo.prevIzDoneme.get(donem.id) ?? {}
+  const prevPersonelIzOverflowBySicilNo = memo.prevPersonelIzOverflow.get(donem.id) ?? {}
+
+  const sonuc = ayyHesapla({
+    donemBas: donem.baslangic_tarihi,
+    donemBit: donem.bitis_tarihi,
+    izinler,
+    tatiller,
+    odBySiraNo: odInto,
+    prevIzBySiraNo,
+    prevPersonelIzOverflowBySicilNo,
+    prevYariZamanliOdBySicilNo,
+    donemTuru,
+    oncekiDonem: onceki
+      ? {
+          baslangic_tarihi: onceki.baslangic_tarihi,
+          bitis_tarihi: onceki.bitis_tarihi,
+          kapatildi_at: onceki.kapatildi_at ?? null,
+        }
+      : undefined,
+    statuBazliPersonel,
+    yariZamanliKusurat: donem.durum === 'Açık',
+  })
+
+  return ayyDevirOzettenSonuc(sonuc, donem.baslangic_tarihi, statuBazliPersonel)
+}
+
+/** Dönem kapatılırken devir özetini hesaplayıp kalıcı yazar. */
+export async function ayyDevirOzetKapatirkenYaz(
+  supabase: SupabaseClient,
+  donem: AyyDonemRow,
+): Promise<{ hata?: string }> {
+  const memo = createAyyHavuzMemo()
+  const tatiller = await ayyLoadTatiller(supabase)
+  try {
+    const ozet = await ayyDonemDevirCiktisiHesapla(supabase, donem, tatiller, memo)
+    return ayyDevirOzetYaz(supabase, donem.id, ozet)
+  } catch (e) {
+    return { hata: e instanceof Error ? e.message : 'Devir özeti yazılamadı.' }
+  }
+}
+
+function memoDevirYukle(memo: HavuzMemo, consumerDonemId: number, ozet: AyyDevirOzet) {
+  memo.prevIzDoneme.set(consumerDonemId, ozet.izBySiraNo)
+  memo.prevPersonelIzOverflow.set(consumerDonemId, ozet.zabitaOverflowBySicil)
+  memo.prevYariZamanliOd.set(consumerDonemId, ozet.yariZamanliOdBySicil)
+}
+
+async function ayySdOverrideUygula(
+  supabase: SupabaseClient,
+  consumerDonemId: number,
+  ozet: AyyDevirOzet,
+): Promise<Record<string, number>> {
+  const m = { ...ozet.sdBySiraNo }
+  const { data: overrides } = await supabase
+    .from('ayy_sd_override')
+    .select('sicil_no, sd_override')
+    .eq('donem_id', consumerDonemId)
+  if (!overrides?.length) return m
+
+  const overrideMap = new Map<string, number>()
+  for (const ov of overrides) {
+    overrideMap.set(String(ov.sicil_no ?? '').trim(), ov.sd_override ?? 0)
+  }
+  for (const [sira, sicil] of Object.entries(ozet.sicilBySiraNo)) {
+    if (!overrideMap.has(sicil)) continue
+    delete m[sira]
+    const yeniSd = overrideMap.get(sicil)!
+    if (yeniSd > 0) m[sira] = yeniSd
+  }
+  return m
+}
+
 /**
  * Bir sonraki döneme taşınan SD: `donem` için bir önceki dönem hesabından sira_no → SD.
+ * Önceki dönem kapalı ve özet varsa yeniden hesap yapılmaz.
  */
 export async function ayySdSonrakiDonemIcin(
   supabase: SupabaseClient,
@@ -190,112 +337,30 @@ export async function ayySdSonrakiDonemIcin(
   const prev = await ayyGetOncekiDonem(supabase, donem.baslangic_tarihi, donemTuru)
   if (!prev) {
     memo.sdSonrakiDoneme.set(donemId, {})
+    memo.prevIzDoneme.set(donemId, {})
+    memo.prevPersonelIzOverflow.set(donemId, {})
+    memo.prevYariZamanliOd.set(donemId, {})
     return {}
   }
-  const prevPool = await ayyBuildIzinHavuzu(supabase, prev.id, prev, memo)
-  const odPrevPrev = await ayySdSonrakiDonemIcin(supabase, prev.id, prev, tatiller, memo)
-  const izinler = await ayyIzinDbToAyyIzinRow(supabase, prevPool)
-  const prevOnceki = await ayyGetOncekiDonem(supabase, prev.baslangic_tarihi, donemTuru)
-  const memurSet = await ayyGetMemurSozlesmeliSiciller(supabase)
-  const statuBazliPersonel = await ayyLoadStatuBazliPersonel(supabase, memurSet)
-  const prevYariZamanliOdBySicilNo = memo.prevYariZamanliOd.get(prev.id) ?? {}
-  const sonuc = ayyHesapla({
-    donemBas: prev.baslangic_tarihi,
-    donemBit: prev.bitis_tarihi,
-    izinler,
-    tatiller,
-    odBySiraNo: odPrevPrev,
-    prevYariZamanliOdBySicilNo,
-    donemTuru,
-    oncekiDonem: prevOnceki
-      ? {
-          baslangic_tarihi: prevOnceki.baslangic_tarihi,
-          bitis_tarihi:     prevOnceki.bitis_tarihi,
-          kapatildi_at:     prevOnceki.kapatildi_at ?? null,
-        }
-      : undefined,
-    // Yarı zamanlı YG_eff / SD aşımı OD zincirine yansıması için gerekli
-    statuBazliPersonel,
-    yariZamanliKusurat: prev.durum === 'Açık',
-  })
-  const m: Record<string, number> = {}
-  for (const s of sonuc.satirlar) {
-    if (s.SD > 0) m[s.sira_no] = s.SD
-  }
 
-  // Önceki dönem IZ değerlerini sakla (Zabıta SD taşma kuralı tespiti için).
-  // Bu dönem (donemId) hesabında prevIzBySiraNo olarak kullanılacak.
-  const prevIzMap: Record<string, number> = {}
-  for (const s of sonuc.satirlar) {
-    prevIzMap[s.sira_no] = s.IZ
-  }
-  memo.prevIzDoneme.set(donemId, prevIzMap)
-
-  // Personel-bazlı IZ taşma hesabı (Faz 2 OD kuralı).
-  // Zabıta personelinin toplam IZ > YG (30) durumunda, satır-bazlı SD ile
-  // örtüşmeyen fazla günler bir sonraki döneme taşınır.
-  const sicilRowSdSums: Record<string, number> = {}
-  for (const s of sonuc.satirlar) {
-    if (s.SD > 0 && s.sicil_no) {
-      sicilRowSdSums[s.sicil_no] = (sicilRowSdSums[s.sicil_no] ?? 0) + s.SD
+  // Kapalı önceki dönem + kalıcı özet → yeniden hesap yok
+  if (prev.durum === 'Kapalı') {
+    let ozet = await ayyDevirOzetOku(supabase, prev.id)
+    if (!ozet) {
+      // Eski kapalı dönemler: bir kez hesapla, yaz, sonra oku
+      ozet = await ayyDonemDevirCiktisiHesapla(supabase, prev, tatiller, memo)
+      await ayyDevirOzetYaz(supabase, prev.id, ozet)
     }
-  }
-  const prevPersonelIzOverflowMap: Record<string, PrevPersonelIzOverflowInfo> = {}
-  for (const p of sonuc.personeller) {
-    if (!p.isZabita) continue
-    const personelIzOverflow = Math.max(0, p.IZ - p.YG)
-    const alreadyTracked = sicilRowSdSums[p.sicil_no] ?? 0
-    const untracked = Math.max(0, personelIzOverflow - alreadyTracked)
-    if (untracked > 0) {
-      prevPersonelIzOverflowMap[p.sicil_no] = {
-        overflow: untracked,
-        ad_soyad: p.ad_soyad,
-        unvan:    p.unvan,
-      }
-    }
-  }
-  memo.prevPersonelIzOverflow.set(donemId, prevPersonelIzOverflowMap)
-
-  // Yarı zamanlı YG_eff aşımı → sonraki döneme sicil OD (izin satırı kaçsa bile).
-  // Not: memo anahtarı donemId = «bu hesaplanan dönem» (Kasım için Ekim aşımı).
-  const prevYzOdMap: Record<string, number> = {}
-  if (ayyYariZamanliYgEffAktif(prev.baslangic_tarihi)) {
-    const yzSiciller = new Set(
-      statuBazliPersonel
-        .filter(s => s.gorev_turu === 'Yarı Zamanlı')
-        .map(s => s.sicil_no.trim()),
-    )
-    for (const p of sonuc.personeller) {
-      const sicil = p.sicil_no.trim()
-      if (!yzSiciller.has(sicil)) continue
-      // Kapasite aşımı = IZ − YG_eff (gelen OD buraya katılmaz; aksi Fatma’da 15→4 yerine 16 üretir).
-      // Takvim SD zaten izin satırından OD olur; bu harita yalnızca YG_eff taşmasını taşır.
-      const asim = Math.max(0, (p.IZ || 0) - (p.YG || 0))
-      if (asim > 0) prevYzOdMap[sicil] = asim
-    }
-  }
-  memo.prevYariZamanliOd.set(donemId, prevYzOdMap)
-
-  // Manuel SD düzeltmeleri: belirli dönem+sicil için SD zorla atanır (genellikle 0).
-  const { data: overrides } = await supabase
-    .from('ayy_sd_override')
-    .select('sicil_no, sd_override')
-    .eq('donem_id', donemId)
-
-  if (overrides && overrides.length > 0) {
-    const overrideMap = new Map<string, number>()
-    for (const ov of overrides) {
-      overrideMap.set(String(ov.sicil_no ?? '').trim(), ov.sd_override ?? 0)
-    }
-    for (const s of sonuc.satirlar) {
-      if (overrideMap.has(s.sicil_no)) {
-        delete m[s.sira_no]
-        const yeniSd = overrideMap.get(s.sicil_no)!
-        if (yeniSd > 0) m[s.sira_no] = yeniSd
-      }
-    }
+    memoDevirYukle(memo, donemId, ozet)
+    const m = await ayySdOverrideUygula(supabase, donemId, ozet)
+    memo.sdSonrakiDoneme.set(donemId, m)
+    return m
   }
 
+  // Açık önceki dönem: canlı hesap (özet yok)
+  const ozet = await ayyDonemDevirCiktisiHesapla(supabase, prev, tatiller, memo)
+  memoDevirYukle(memo, donemId, ozet)
+  const m = await ayySdOverrideUygula(supabase, donemId, ozet)
   memo.sdSonrakiDoneme.set(donemId, m)
   return m
 }
