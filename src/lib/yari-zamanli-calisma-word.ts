@@ -1,7 +1,7 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
-  PageBreak,
   Paragraph,
   Table,
   TableCell,
@@ -19,6 +19,11 @@ import {
   YZC_SAATLER,
   type YzcBelgeAlanlari,
 } from '@/lib/yari-zamanli-calisma-belge'
+
+/** 2,5 cm kenar (twip). */
+const MARGIN_25 = 1418
+const A4_W = 11906
+const A4_H = 16838
 
 function run(text: string, opts?: { bold?: boolean; size?: number }): TextRun {
   return new TextRun({
@@ -46,6 +51,14 @@ function bosSatir(): Paragraph {
   return new Paragraph({ spacing: { after: 200 }, children: [run('')] })
 }
 
+const KENAR_YOK = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+const HUCRE_KENARLARI = {
+  top: KENAR_YOK,
+  bottom: KENAR_YOK,
+  left: KENAR_YOK,
+  right: KENAR_YOK,
+}
+
 function ekBilgiTablosu(alanlar: YzcBelgeAlanlari): Table {
   const satirlar: [string, string][] = [
     ['Adı Soyadı', alanlar.ad_soyad],
@@ -62,9 +75,7 @@ function ekBilgiTablosu(alanlar: YzcBelgeAlanlari): Table {
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
-        children: [
-          hucre('PERSONEL BİLGİLERİ', { bold: true, center: true, widthPct: 100 }),
-        ],
+        children: [hucre('PERSONEL BİLGİLERİ', { bold: true, center: true, widthPct: 100 })],
       }),
       ...satirlar.map(
         ([etiket, deger]) =>
@@ -94,9 +105,7 @@ function ekProgramTablosu(alanlar: YzcBelgeAlanlari): Table {
   YZC_SAATLER.forEach((saat, idx) => {
     headerCells.push(hucre(saat, { bold: true, center: true }))
     if (idx === ogleIdx - 1) {
-      headerCells.push(
-        hucre('ÖĞLE ARASI', { bold: true, center: true }),
-      )
+      headerCells.push(hucre('ÖĞLE ARASI', { bold: true, center: true }))
     }
   })
 
@@ -132,22 +141,21 @@ function ekAciklamalar(): Paragraph[] {
       new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         spacing: { after: 80, line: 276 },
-        children: [run(`${i + 1}-${metin}`)],
+        children: [run(`${i + 1}-${metin}`, { size: 18 })],
       }),
     )
   })
   paras.push(
     new Paragraph({
       spacing: { before: 160, after: 80 },
-      children: [
-        run('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.'),
-      ],
+      children: [run('*Yarı Zamanlı Çalışma Başkanlık Oluru ile yürürlüğe girer.', { size: 18 })],
     }),
     new Paragraph({
       spacing: { after: 120 },
       children: [
         run(
           '** Mezkur yönetmeliğin "Yarı Zamanlı Çalışma hakkının sona erme halleri" başlıklı 15. maddesindeki hükümler saklıdır.',
+          { size: 18 },
         ),
       ],
     }),
@@ -155,12 +163,77 @@ function ekAciklamalar(): Paragraph[] {
   return paras
 }
 
+/** Sol: personel TC / ad / unvan; sağ: müdür ad / unvan. */
+function ekImzaTablosu(alanlar: YzcBelgeAlanlari): Table {
+  const sol = [
+    alanlar.tckn,
+    alanlar.ad_soyad.toLocaleUpperCase('tr-TR'),
+    alanlar.unvan,
+  ].filter(Boolean)
+  const sag = [
+    alanlar.mudur_ad_soyad.toLocaleUpperCase('tr-TR'),
+    alanlar.mudur_unvan,
+  ].filter(Boolean)
+  const satirSayisi = Math.max(sol.length, sag.length, 1)
+
+  const rows: TableRow[] = []
+  for (let i = 0; i < satirSayisi; i++) {
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 38, type: WidthType.PERCENTAGE },
+            borders: HUCRE_KENARLARI,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [run(sol[i] ?? '', { bold: i === 1 })],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 24, type: WidthType.PERCENTAGE },
+            borders: HUCRE_KENARLARI,
+            children: [new Paragraph({ children: [run('')] })],
+          }),
+          new TableCell({
+            width: { size: 38, type: WidthType.PERCENTAGE },
+            borders: HUCRE_KENARLARI,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [run(sag[i] ?? '', { bold: i === 0 })],
+              }),
+            ],
+          }),
+        ],
+      }),
+    )
+  }
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: KENAR_YOK,
+      bottom: KENAR_YOK,
+      left: KENAR_YOK,
+      right: KENAR_YOK,
+      insideHorizontal: KENAR_YOK,
+      insideVertical: KENAR_YOK,
+    },
+    rows,
+  })
+}
+
 export function yzcWordDocument(alanlar: YzcBelgeAlanlari): Document {
   return new Document({
     sections: [
       {
         properties: {
-          page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } },
+          page: {
+            size: { width: A4_W, height: A4_H },
+            margin: { top: MARGIN_25, bottom: MARGIN_25, left: MARGIN_25, right: MARGIN_25 },
+          },
         },
         children: [
           new Paragraph({
@@ -186,16 +259,31 @@ export function yzcWordDocument(alanlar: YzcBelgeAlanlari): Document {
           bosSatir(),
           bosSatir(),
           mehilIzniImzaTablosu(alanlar.tckn, alanlar.ad_soyad),
-          new Paragraph({ children: [new PageBreak()] }),
+        ],
+      },
+      {
+        properties: {
+          page: {
+            size: { orientation: 'landscape', width: A4_H, height: A4_W },
+            margin: { top: MARGIN_25, bottom: MARGIN_25, left: MARGIN_25, right: MARGIN_25 },
+          },
+        },
+        children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { after: 240 },
+            spacing: { after: 200 },
             children: [run('EK — YARI ZAMANLI ÇALIŞMA FORMU', { bold: true })],
           }),
           ekBilgiTablosu(alanlar),
           bosSatir(),
+          new Paragraph({
+            spacing: { after: 120 },
+            children: [run('Ek — Haftalık Çalışma Programı', { bold: true, size: 20 })],
+          }),
           ekProgramTablosu(alanlar),
           ...ekAciklamalar(),
+          bosSatir(),
+          ekImzaTablosu(alanlar),
         ],
       },
     ],

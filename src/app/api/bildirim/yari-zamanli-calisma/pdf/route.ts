@@ -45,7 +45,16 @@ export async function GET(req: Request) {
     }
 
     const tarih = kayit.created_at ? yzcTarihFormat(new Date(kayit.created_at)) : yzcTarihFormat()
-    const alanlar = yzcBelgeAlanlari(kayit, tarih)
+    const { yzcMudurlukMuduruBul } = await import('@/lib/yari-zamanli-calisma-mudur')
+    const mudur = await yzcMudurlukMuduruBul(supabase, String(kayit.mudurluk ?? ''))
+    const alanlar = yzcBelgeAlanlari(
+      {
+        ...kayit,
+        mudur_ad_soyad: mudur?.ad_soyad ?? '',
+        mudur_unvan: mudur?.unvan ?? '',
+      },
+      tarih,
+    )
     const { yzcPdfBuffer } = await import('@/lib/yari-zamanli-calisma-pdf')
     const buf = await yzcPdfBuffer(alanlar)
     const safeKey = alanlar.sicil_no || alanlar.tckn || String(kayit.id)

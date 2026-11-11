@@ -113,6 +113,9 @@ export interface YzcBelgeAlanlari {
   normal_zamanli_donus_tarihi: string
   calisma_programi: YzcCalismaProgrami
   metin: string
+  /** Görev müdürlüğünün müdürü (ek imza sağ kolon). */
+  mudur_ad_soyad: string
+  mudur_unvan: string
 }
 
 export function yzcBelgeAlanlari(
@@ -126,6 +129,8 @@ export function yzcBelgeAlanlari(
     yari_zamanli_baslangic_tarihi: string
     normal_zamanli_donus_tarihi: string
     calisma_programi: YzcCalismaProgrami
+    mudur_ad_soyad?: string | null
+    mudur_unvan?: string | null
   },
   tarih: string = yzcTarihFormat(),
 ): YzcBelgeAlanlari {
@@ -151,6 +156,8 @@ export function yzcBelgeAlanlari(
       mudurluk,
       cocuk_dogum_tarihi: p.cocuk_dogum_tarihi,
     }),
+    mudur_ad_soyad: String(p.mudur_ad_soyad ?? '').trim(),
+    mudur_unvan: String(p.mudur_unvan ?? '').trim(),
   }
 }
 

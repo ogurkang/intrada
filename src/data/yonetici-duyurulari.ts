@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-yzc-pdf-imza',
+    baslik: '11 Kasım 2026 — Yarı zamanlı çalışma belgesi',
+    maddeler: [
+      'PDF’de dilekçe ve ek ayrı sayfalardadır; ek yatay A4’te, kenarlardan 2,5 cm içeridedir.',
+      'Haftalık çalışma programı tablosu yazdırılabilir alana yayılır.',
+      'Ekin altında solda personel (TC, ad soyad, unvan), sağda görev müdürlüğünün müdürü yer alır.',
+    ],
+  },
+  {
     id: '2026-11-11-pp-sp-kod-aktif',
     baslik: '11 Kasım 2026 — Faaliyet kodu ve performans hedefi durumu',
     maddeler: [
