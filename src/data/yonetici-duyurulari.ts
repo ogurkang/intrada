@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-yzc-onizleme-kaldir',
+    baslik: '11 Kasım 2026 — Yarı zamanlı form sadeleştirme',
+    maddeler: [
+      'Yeni talep ve düzenleme ekranındaki dilekçe önizleme paneli kaldırıldı.',
+      'Form yalnızca personel, tarihler ve haftalık çalışma programını gösterir; belge PDF’den alınır.',
+    ],
+  },
+  {
     id: '2026-11-11-yzc-sinir-saat-aciklama',
     baslik: '11 Kasım 2026 — Yarı zamanlı saat seçimi',
     maddeler: [

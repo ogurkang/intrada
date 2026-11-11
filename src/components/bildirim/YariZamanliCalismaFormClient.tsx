@@ -8,12 +8,8 @@ import YariZamanliCalismaProgramGrid from '@/components/bildirim/YariZamanliCali
 import type { BildirimFormPersonel } from '@/lib/bildirim-form-personel'
 import { bildirimTcknGecerliMi } from '@/lib/bildirim-belge-ortak'
 import {
-  YZC_BIRIM,
-  YZC_MAKAM,
-  yzcBelgeAlanlari,
   yzcCalismaProgramiKaydet,
   yzcProgramDogrula,
-  yzcTarihFormat,
   type YzcCalismaProgrami,
 } from '@/lib/yari-zamanli-calisma-belge'
 
@@ -108,24 +104,6 @@ export default function YariZamanliCalismaFormClient({
     Boolean(seciliSicil && tcknUygun && secili?.unvan && secili?.mudurluk) &&
     Boolean(cocukDogumTarihi && yariZamanliBaslangic && normalDonusTarihi)
 
-  const onizlemeAlanlar =
-    secili && cocukDogumTarihi && yariZamanliBaslangic && normalDonusTarihi && secili.unvan && secili.mudurluk
-      ? yzcBelgeAlanlari(
-          {
-            sicil_no: secili.sicil_no,
-            ad_soyad: secili.ad_soyad,
-            tckn: secili.tckn,
-            unvan: secili.unvan,
-            mudurluk: secili.mudurluk,
-            cocuk_dogum_tarihi: cocukDogumTarihi,
-            yari_zamanli_baslangic_tarihi: yariZamanliBaslangic,
-            normal_zamanli_donus_tarihi: normalDonusTarihi,
-            calisma_programi: calismaProgrami,
-          },
-          yzcTarihFormat(),
-        )
-      : null
-
   function gonder() {
     setHata(null)
     if (!seciliSicil) {
@@ -178,7 +156,7 @@ export default function YariZamanliCalismaFormClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div>
         <Link
           href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
@@ -195,114 +173,77 @@ export default function YariZamanliCalismaFormClient({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="space-y-5">
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-            <PersonelAramaSecim
-              personeller={aramaOgeleri}
-              value={seciliSicil}
-              onChange={setSeciliSicil}
-              readOnly={Boolean(sabitSicil)}
-            />
+      <div className="space-y-5">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+          <PersonelAramaSecim
+            personeller={aramaOgeleri}
+            value={seciliSicil}
+            onChange={setSeciliSicil}
+            readOnly={Boolean(sabitSicil)}
+          />
 
-            {secili ? (
-              <div className="space-y-3">
-                <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
-                  <div className="text-slate-500 text-xs mb-1">T.C. Kimlik No</div>
-                  <div className="font-mono text-slate-800">{secili.tckn || '—'}</div>
-                </div>
-                <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
-                  <div className="text-slate-500 text-xs mb-1">Unvan (kadro)</div>
-                  <div className="text-slate-800">{secili.unvan || '—'}</div>
-                </div>
-                <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
-                  <div className="text-slate-500 text-xs mb-1">Görev Yaptığı Birim</div>
-                  <div className="text-slate-800">{secili.mudurluk || '—'}</div>
-                </div>
+          {secili ? (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
+                <div className="text-slate-500 text-xs mb-1">T.C. Kimlik No</div>
+                <div className="font-mono text-slate-800">{secili.tckn || '—'}</div>
               </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <TarihSecim
-                label="Çocuğun Doğum Tarihi"
-                value={cocukDogumTarihi}
-                onChange={setCocukDogumTarihi}
-                ornek="15.03.2026"
-              />
-              <TarihSecim
-                label="Yarı Zamanlı Başlangıç"
-                value={yariZamanliBaslangic}
-                onChange={setYariZamanliBaslangic}
-                ornek="01.04.2026"
-              />
-              <TarihSecim
-                label="Normal Zamanlı Dönüş"
-                value={normalDonusTarihi}
-                onChange={setNormalDonusTarihi}
-                ornek="01.04.2027"
-              />
+              <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
+                <div className="text-slate-500 text-xs mb-1">Unvan (kadro)</div>
+                <div className="text-slate-800">{secili.unvan || '—'}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
+                <div className="text-slate-500 text-xs mb-1">Görev Yaptığı Birim</div>
+                <div className="text-slate-800">{secili.mudurluk || '—'}</div>
+              </div>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <YariZamanliCalismaProgramGrid value={calismaProgrami} onChange={setCalismaProgrami} />
-          </div>
-
-          {hata ? (
-            <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{hata}</div>
           ) : null}
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={gonder}
-              disabled={pending || !formHazir}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
-            >
-              {pending ? 'Kaydediliyor…' : duzenleme ? 'Kaydet' : 'Oluştur'}
-            </button>
-            <Link
-              href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
-              className="text-sm text-slate-600 hover:text-slate-800"
-            >
-              İptal
-            </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <TarihSecim
+              label="Çocuğun Doğum Tarihi"
+              value={cocukDogumTarihi}
+              onChange={setCocukDogumTarihi}
+              ornek="15.03.2026"
+            />
+            <TarihSecim
+              label="Yarı Zamanlı Başlangıç"
+              value={yariZamanliBaslangic}
+              onChange={setYariZamanliBaslangic}
+              ornek="01.04.2026"
+            />
+            <TarihSecim
+              label="Normal Zamanlı Dönüş"
+              value={normalDonusTarihi}
+              onChange={setNormalDonusTarihi}
+              ornek="01.04.2027"
+            />
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-4">Dilekçe Önizleme</h2>
-            {onizlemeAlanlar ? (
-              <div className="text-sm text-slate-800 space-y-4 font-serif leading-relaxed">
-                <div className="text-right text-slate-600">{onizlemeAlanlar.tarih}</div>
-                <div className="text-center font-bold">{YZC_MAKAM}</div>
-                <div className="text-center text-slate-600">{YZC_BIRIM}</div>
-                <p className="text-justify indent-8">{onizlemeAlanlar.metin}</p>
-                <div className="pt-6 border-t border-dashed border-slate-300 text-right">
-                  <div className="font-mono text-xs">{onizlemeAlanlar.tckn}</div>
-                  <div className="font-bold mt-1">{onizlemeAlanlar.ad_soyad.toLocaleUpperCase('tr-TR')}</div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">Zorunlu alanları doldurduğunuzda dilekçe metni burada görünür.</p>
-            )}
-          </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <YariZamanliCalismaProgramGrid value={calismaProgrami} onChange={setCalismaProgrami} />
+        </div>
 
-          {onizlemeAlanlar ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 text-sm text-slate-700 space-y-2">
-              <h2 className="text-sm font-semibold text-slate-700 mb-2">Ek Önizleme — Personel Bilgileri</h2>
-              <p>
-                <span className="text-slate-500">Başlangıç:</span> {onizlemeAlanlar.yari_zamanli_baslangic_tarihi}
-              </p>
-              <p>
-                <span className="text-slate-500">Dönüş:</span> {onizlemeAlanlar.normal_zamanli_donus_tarihi}
-              </p>
-              <p className="text-xs text-slate-500 pt-2">
-                PDF çıktısında ek form (çalışma programı tablosu ve açıklamalar) dilekçe ile birlikte tek sayfada üretilir.
-              </p>
-            </div>
-          ) : null}
+        {hata ? (
+          <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{hata}</div>
+        ) : null}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={gonder}
+            disabled={pending || !formHazir}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
+          >
+            {pending ? 'Kaydediliyor…' : duzenleme ? 'Kaydet' : 'Oluştur'}
+          </button>
+          <Link
+            href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
+            className="text-sm text-slate-600 hover:text-slate-800"
+          >
+            İptal
+          </Link>
         </div>
       </div>
     </div>
