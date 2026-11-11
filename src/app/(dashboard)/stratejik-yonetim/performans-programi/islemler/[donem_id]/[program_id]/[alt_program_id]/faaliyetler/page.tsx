@@ -20,10 +20,10 @@ export default async function PpFaaliyetlerPage({
   const sb = supabase as any
   const [{ data: alt }, { data: raw }] = await Promise.all([
     sb.from('performans_programi_alt_program').select('id, alt_program_adi').eq('id', altId).eq('program_id', programId).maybeSingle(),
-    sb.from('performans_programi_pf_faaliyet').select('id, sira_no, faaliyet_adi').eq('alt_program_id', altId).order('sira_no'),
+    sb.from('performans_programi_pf_faaliyet').select('id, sira_no, kodu, faaliyet_adi').eq('alt_program_id', altId).order('sira_no'),
   ])
   if (!alt) notFound()
-  const kayitlar = (raw ?? []) as { id: number; sira_no: number; faaliyet_adi: string }[]
+  const kayitlar = (raw ?? []) as { id: number; sira_no: number; kodu?: string | null; faaliyet_adi: string }[]
   const ids = kayitlar.map(f => f.id)
   const { data: hedefRaw } = ids.length
     ? await sb.from('performans_programi_alt_program_hedef').select('faaliyet_id').in('faaliyet_id', ids)
@@ -36,6 +36,7 @@ export default async function PpFaaliyetlerPage({
   const faaliyetler: PpFaaliyetSatirListe[] = kayitlar.map(f => ({
     id: f.id,
     sira: f.sira_no,
+    kodu: String(f.kodu ?? ''),
     ad: f.faaliyet_adi,
     hedefSayisi: hedefSay.get(f.id) ?? 0,
   }))

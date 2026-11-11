@@ -136,23 +136,33 @@ export async function hedefGuncelle(id: number, donemId: number, fd: FormData): 
   return {}
 }
 
+function parseAktif(raw: FormDataEntryValue | null): boolean {
+  const v = String(raw ?? 'aktif').trim().toLocaleLowerCase('tr-TR')
+  return v === 'aktif' || v === 'true' || v === '1'
+}
+
 export async function altHedefEkle(hedefId: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_hedef_adi = txt(fd.get('alt_hedef_adi'))
   const mudurluk = txt(fd.get('mudurluk'))
+  const aktif = parseAktif(fd.get('aktif'))
   if (!kodu || !alt_hedef_adi || !mudurluk) return { hata: 'Kod, alt hedef adı ve müdürlük zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
 
   const supabase = await createClient()
+  const { data: varOlan } = await supabase
+    .from('stratejik_plan_alt_hedef' as never)
+    .select('sira_no')
+    .eq('hedef_id', hedefId)
+  const nolar = ((varOlan ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
+  const sira_no = (nolar.length ? Math.max(...nolar) : 0) + 1
+
   const { error } = await supabase.from('stratejik_plan_alt_hedef' as never).insert({
     hedef_id: hedefId,
     sira_no,
     kodu,
     alt_hedef_adi,
     mudurluk,
-    aktif: true,
+    aktif,
   } as never)
   if (error) return { hata: error.message }
   revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)
@@ -160,18 +170,16 @@ export async function altHedefEkle(hedefId: number, donemId: number, fd: FormDat
 }
 
 export async function altHedefGuncelle(id: number, donemId: number, fd: FormData): Promise<{ hata?: string }> {
-  const siraNoRaw = txt(fd.get('sira_no'))
   const kodu = txt(fd.get('kodu'))
   const alt_hedef_adi = txt(fd.get('alt_hedef_adi'))
   const mudurluk = txt(fd.get('mudurluk'))
+  const aktif = parseAktif(fd.get('aktif'))
   if (!kodu || !alt_hedef_adi || !mudurluk) return { hata: 'Kod, alt hedef adı ve müdürlük zorunludur.' }
-  const sira_no = siraNoRaw ? Number.parseInt(siraNoRaw, 10) : null
-  if (siraNoRaw && !Number.isFinite(sira_no)) return { hata: 'Sıra no sayısal olmalıdır.' }
 
   const supabase = await createClient()
   const { error } = await supabase
     .from('stratejik_plan_alt_hedef' as never)
-    .update({ sira_no, kodu, alt_hedef_adi, mudurluk } as never)
+    .update({ kodu, alt_hedef_adi, mudurluk, aktif } as never)
     .eq('id', id)
   if (error) return { hata: error.message }
   revalidatePath(`/stratejik-yonetim/stratejik-plan/islemler/${donemId}`)

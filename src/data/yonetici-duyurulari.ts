@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-pp-sp-kod-aktif',
+    baslik: '11 Kasım 2026 — Faaliyet kodu ve performans hedefi durumu',
+    maddeler: [
+      'Performans programı faaliyetlerinde Kodu alanı eklendi; kayıtlı faaliyetler Düzenle ile kod ve ad güncellenebilir.',
+      'Stratejik plan performans hedeflerinde Aktif/Pasif seçimi vardır; sıra numarası otomatik verilir.',
+      'Pasif performans hedefleri, Alt Program Hedefi Ekle listesinde görünmez.',
+    ],
+  },
+  {
     id: '2026-11-11-ayy-devir-ozet',
     baslik: '11 Kasım 2026 — Aylık yemek kapalı dönem devri',
     maddeler: [

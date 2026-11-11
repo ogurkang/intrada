@@ -184,9 +184,10 @@ export async function ppIliskiKaydet(girdi: {
   return { id: altId }
 }
 
-export async function ppFaaliyetEkle(altProgramId: number, yil: number, programId: number, ad: string): Promise<{ hata?: string }> {
+export async function ppFaaliyetEkle(altProgramId: number, yil: number, programId: number, kod: string, ad: string): Promise<{ hata?: string }> {
+  const kodu = kod.trim()
   const faaliyetAdi = ad.trim()
-  if (!faaliyetAdi) return { hata: 'Faaliyet adı girin.' }
+  if (!kodu || !faaliyetAdi) return { hata: 'Kod ve faaliyet adı girin.' }
   const supabase = await createClient()
   if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,10 +198,44 @@ export async function ppFaaliyetEkle(altProgramId: number, yil: number, programI
   const { data, error } = await sb.from('performans_programi_pf_faaliyet').insert({
     alt_program_id: altProgramId,
     sira_no: sira,
+    kodu,
     faaliyet_adi: faaliyetAdi,
   }).select('id').single()
-  if (error) return { hata: error.message.includes('alt_program_id') ? 'Faaliyet tablosu güncel değil. 20261105160000_pp_faaliyet_once.sql dosyasını çalıştırın.' : error.message }
+  if (error) {
+    if (error.message.includes('kodu')) return { hata: 'Faaliyet kodu sütunu yok. 20261111120000_pp_pf_faaliyet_kodu.sql dosyasını çalıştırın.' }
+    if (error.message.includes('alt_program_id')) return { hata: 'Faaliyet tablosu güncel değil. 20261105160000_pp_faaliyet_once.sql dosyasını çalıştırın.' }
+    return { hata: error.message }
+  }
   await ppSatirLogYaz(supabase, { tablo: 'faaliyet', kayitId: Number(data.id), islem: 'Ekleme', ozet: faaliyetAdi })
+  revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler`)
+  return {}
+}
+
+export async function ppFaaliyetGuncelle(
+  id: number,
+  altProgramId: number,
+  yil: number,
+  programId: number,
+  kod: string,
+  ad: string,
+): Promise<{ hata?: string }> {
+  const kodu = kod.trim()
+  const faaliyetAdi = ad.trim()
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Kayıt bulunamadı.' }
+  if (!kodu || !faaliyetAdi) return { hata: 'Kod ve faaliyet adı girin.' }
+  const supabase = await createClient()
+  if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { error } = await sb.from('performans_programi_pf_faaliyet').update({
+    kodu,
+    faaliyet_adi: faaliyetAdi,
+  }).eq('id', id).eq('alt_program_id', altProgramId)
+  if (error) {
+    if (error.message.includes('kodu')) return { hata: 'Faaliyet kodu sütunu yok. 20261111120000_pp_pf_faaliyet_kodu.sql dosyasını çalıştırın.' }
+    return { hata: error.message }
+  }
+  await ppSatirLogYaz(supabase, { tablo: 'faaliyet', kayitId: id, islem: 'Güncelleme', ozet: faaliyetAdi })
   revalidatePath(`/stratejik-yonetim/performans-programi/islemler/${yil}/${programId}/${altProgramId}/faaliyetler`)
   return {}
 }
