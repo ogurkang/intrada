@@ -283,6 +283,8 @@ export function yzcWordDocument(alanlar: YzcBelgeAlanlari): Document {
           ekProgramTablosu(alanlar),
           ...ekAciklamalar(),
           bosSatir(),
+          bosSatir(),
+          bosSatir(),
           ekImzaTablosu(alanlar),
         ],
       },

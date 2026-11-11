@@ -64,7 +64,19 @@ export default async function PpPerformansFaaliyetFormSayfa({
     t1tahmin: yaz(g.t1_tahmin),
     t2tahmin: yaz(g.t2_tahmin),
   }))
-  const sira = kayit ? kayitlar.findIndex(f => f.id === kayit.id) + 1 : kayitlar.length + 1
+  let sira = kayit?.sira_no ?? 0
+  if (!kayit) {
+    const altHedefId = Number(bag.alt_hedef_id)
+    const { data: baglar } = Number.isFinite(altHedefId)
+      ? await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_hedef_id', altHedefId)
+      : { data: [] }
+    const bagIds = ((baglar ?? []) as { id: number }[]).map(b => Number(b.id)).filter(Number.isFinite)
+    const { data: tum } = bagIds.length
+      ? await sb.from('performans_programi_pf_faaliyet').select('sira_no').in('bag_id', bagIds)
+      : { data: [] }
+    const nolar = ((tum ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
+    sira = (nolar.length ? Math.max(...nolar) : 0) + 1
+  }
   const baslangic: PpPerformansFormBaslangic = {
     faaliyetId: kayit?.id,
     ad: kayit?.faaliyet_adi ?? '',

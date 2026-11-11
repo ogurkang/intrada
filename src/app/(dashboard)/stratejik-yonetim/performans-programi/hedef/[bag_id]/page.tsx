@@ -63,10 +63,10 @@ export default async function PpPerformansFaaliyetPage({
     }
   }
   const ph = sec.secenekler.find(s => s.id === Number(bag.alt_hedef_id))
-  const satirlar: PpPerformansFaaliyetSatir[] = kayitlar.map((f, i) => ({
+  const satirlar: PpPerformansFaaliyetSatir[] = kayitlar.map(f => ({
     id: f.id,
-    sira: i + 1,
-    kod: ppFaaliyetKodu(ph?.kod ?? '', i + 1),
+    sira: f.sira_no,
+    kod: ppFaaliyetKodu(ph?.kod ?? '', f.sira_no),
     ad: f.faaliyet_adi,
     gostergeSayisi: gostergeSay.get(f.id) ?? 0,
     maliyet: maliyet.get(f.id) ?? bos(),

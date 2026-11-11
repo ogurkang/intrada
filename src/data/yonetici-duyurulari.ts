@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-11-pp-ph-sira-yzc-imza',
+    baslik: '11 Kasım 2026 — Performans faaliyeti sırası ve belge imzası',
+    maddeler: [
+      'Performans faaliyeti kodu, bağlı performans hedefinin genel sırasına göre verilir; müdürlük farkı yeni 1’den başlatmaz.',
+      'Yarı zamanlı PDF ekinde imza için isimlerin üstünde boş alan vardır.',
+      'Performans programı sayfalarındaki sağ alt yükleme animasyonu kaldırıldı.',
+    ],
+  },
+  {
     id: '2026-11-11-yzc-pdf-imza',
     baslik: '11 Kasım 2026 — Yarı zamanlı çalışma belgesi',
     maddeler: [

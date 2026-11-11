@@ -311,6 +311,31 @@ export async function ppAltProgramHedefiGuncelle(
 const BAGLI_KAYIT = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
 const HEDEF_MUDURLUK = 'Bu performans hedefi bu müdürlükle zaten bağlı.'
 
+/** Aynı performans hedefine (alt_hedef) bağlı tüm müdürlük bag’lerindeki en yüksek sıra + 1. */
+async function sonrakiPhFaaliyetSira(sb: { from: (t: string) => any }, bagId: number): Promise<number> {
+  const { data: bag } = await sb
+    .from('performans_programi_alt_program_hedef')
+    .select('alt_hedef_id')
+    .eq('id', bagId)
+    .maybeSingle()
+  const altHedefId = Number((bag as { alt_hedef_id?: number } | null)?.alt_hedef_id)
+  if (!Number.isFinite(altHedefId) || altHedefId <= 0) return 1
+  const { data: baglar } = await sb
+    .from('performans_programi_alt_program_hedef')
+    .select('id')
+    .eq('alt_hedef_id', altHedefId)
+  const bagIds = ((baglar ?? []) as { id: number }[]).map(b => Number(b.id)).filter(n => Number.isFinite(n))
+  if (!bagIds.length) return 1
+  const { data: varOlan } = await sb
+    .from('performans_programi_pf_faaliyet')
+    .select('sira_no')
+    .in('bag_id', bagIds)
+  const nolar = ((varOlan ?? []) as { sira_no: number | null }[])
+    .map(r => Number(r.sira_no))
+    .filter(Number.isFinite)
+  return (nolar.length ? Math.max(...nolar) : 0) + 1
+}
+
 async function hedefMudurlukBagli(
   sb: { from: (t: string) => any },
   altProgramId: number,
@@ -374,13 +399,15 @@ export async function ppPerformansFaaliyetKaydet(girdi: {
   }).eq('id', girdi.bagId).eq('faaliyet_id', girdi.faaliyetId)
   if (guncelleHata) return { hata: guncelleHata.message }
   await sb.from('performans_programi_pf_faaliyet').delete().eq('bag_id', girdi.bagId)
+  let sira = await sonrakiPhFaaliyetSira(sb, girdi.bagId)
   for (let i = 0; i < girdi.faaliyetler.length; i += 1) {
     const f = girdi.faaliyetler[i]
     const { data: faaliyet, error: fHata } = await sb.from('performans_programi_pf_faaliyet').insert({
       bag_id: girdi.bagId,
-      sira_no: i + 1,
+      sira_no: sira,
       faaliyet_adi: f.ad.trim(),
     }).select('id').single()
+    sira += 1
     if (fHata) return { hata: fHata.message }
     if (!f.gostergeler.length) continue
     const { error: gHata } = await sb.from('performans_programi_pf_gosterge').insert(f.gostergeler.map((g, gi) => ({
@@ -432,9 +459,7 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
     if (silHata) return { hata: silHata.message }
     await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: faaliyetId, islem: 'Güncelleme', ozet: faaliyetAdi })
   } else {
-    const { data: varOlan } = await sb.from('performans_programi_pf_faaliyet').select('sira_no').eq('bag_id', girdi.bagId)
-    const nolar = ((varOlan ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
-    const sira = (nolar.length ? Math.max(...nolar) : 0) + 1
+    const sira = await sonrakiPhFaaliyetSira(sb, girdi.bagId)
     const { data: faaliyet, error } = await sb.from('performans_programi_pf_faaliyet').insert({
       bag_id: girdi.bagId,
       sira_no: sira,
@@ -474,9 +499,7 @@ export async function ppPerformansFaaliyetEkle(bagId: number, ad: string): Promi
   if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { data: varOlan } = await sb.from('performans_programi_pf_faaliyet').select('sira_no').eq('bag_id', bagId)
-  const nolar = ((varOlan ?? []) as { sira_no: number | null }[]).map(r => Number(r.sira_no)).filter(Number.isFinite)
-  const sira = (nolar.length ? Math.max(...nolar) : 0) + 1
+  const sira = await sonrakiPhFaaliyetSira(sb, bagId)
   const { error } = await sb.from('performans_programi_pf_faaliyet').insert({
     bag_id: bagId,
     sira_no: sira,
@@ -515,10 +538,7 @@ export async function ppPerformansFaaliyetSatirSil(id: number, bagId: number): P
   const { error } = await sb.from('performans_programi_pf_faaliyet').delete().eq('id', id).eq('bag_id', bagId)
   if (error) return { hata: error.message }
   await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: id, islem: 'Silme', ozet: `Performans faaliyeti #${id}` })
-  const { data: kalan } = await sb.from('performans_programi_pf_faaliyet').select('id').eq('bag_id', bagId).order('sira_no')
-  for (let i = 0; i < (kalan ?? []).length; i += 1) {
-    await sb.from('performans_programi_pf_faaliyet').update({ sira_no: i + 1 }).eq('id', (kalan as { id: number }[])[i].id).eq('bag_id', bagId)
-  }
+  // Sıra numarası performans hedefi genelinde kalır; silmede yeniden numaralandırılmaz.
   revalidatePath(`/stratejik-yonetim/performans-programi/hedef/${bagId}`)
   return {}
 }

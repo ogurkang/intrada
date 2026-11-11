@@ -211,12 +211,13 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
   const colCount = saatBasliklari.length
   const colW = contentW / colCount
 
-  // İmza + açıklama için altta yer ayır; kalan alanı programa yay.
-  const imzaAlanH = 52
+  // İmza + üstünde imza boşluğu; kalan alanı programa yay.
+  const imzaBoslukH = 48
+  const imzaAlanH = 56
   const aciklamaAlanH = 78
   const dipNotH = 22
   const gridSatirSayisi = 1 + YZC_GUNLER.length
-  const kalanH = Math.max(90, bottomLimit - y - aciklamaAlanH - dipNotH - imzaAlanH - 8)
+  const kalanH = Math.max(90, bottomLimit - y - aciklamaAlanH - dipNotH - imzaBoslukH - imzaAlanH - 8)
   const gridH = Math.max(12, Math.floor(kalanH / gridSatirSayisi))
   const baslikFont = gridH >= 18 ? 6.5 : 5.5
   const hucreFont = gridH >= 18 ? 8 : 6.5
@@ -266,16 +267,17 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
   )
   y = doc.y + 8
 
-  // İmza: sol personel (TC / ad soyad / unvan), sağ müdür (ad soyad / unvan)
-  const imzaY = Math.min(y + 4, bottomLimit - imzaAlanH)
+  // İmza: üstte boş alan, altında personel / müdür bilgileri
+  const imzaY = Math.min(Math.max(y + 4, bottomLimit - imzaBoslukH - imzaAlanH), bottomLimit - imzaAlanH)
   const kolonW = contentW * 0.38
   const solX = MARGIN
   const sagX = MARGIN + contentW - kolonW
+  const metinY = imzaY + imzaBoslukH
 
   imzaBlok(
     doc,
     solX,
-    imzaY,
+    metinY,
     kolonW,
     [alanlar.tckn, alanlar.ad_soyad.toLocaleUpperCase('tr-TR'), alanlar.unvan],
     1,
@@ -284,7 +286,7 @@ export async function yzcPdfBuffer(alanlar: YzcBelgeAlanlari): Promise<Buffer> {
   imzaBlok(
     doc,
     sagX,
-    imzaY,
+    metinY,
     kolonW,
     [alanlar.mudur_ad_soyad.toLocaleUpperCase('tr-TR'), alanlar.mudur_unvan],
     0,
