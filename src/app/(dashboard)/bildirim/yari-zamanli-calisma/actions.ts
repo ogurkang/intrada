@@ -217,12 +217,22 @@ export async function yariZamanliCalismaGuncelle(id: number, formData: FormData)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { data: guncellenen, error } = await (supabase as any)
     .from('yari_zamanli_calisma_bildirimleri')
-    .update(sonraki)
+    .update({ ...sonraki, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .select('id')
+    .maybeSingle()
 
-  if (error) return { hata: error.message }
+  if (error) {
+    if (String(error.message).toLowerCase().includes('policy') || String(error.code) === '42501') {
+      return { hata: 'Güncelleme izni yok. 20261112100000_yzc_update_policy.sql dosyasını çalıştırın.' }
+    }
+    return { hata: error.message }
+  }
+  if (!guncellenen?.id) {
+    return { hata: 'Kayıt güncellenemedi. Güncelleme izni için 20261112100000_yzc_update_policy.sql dosyasını çalıştırın.' }
+  }
 
   await writePersonelAuditLogSafe(supabase, {
     sicil_no: sicil,

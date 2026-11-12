@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-12-yzc-guncelleme-rls',
+    baslik: '12 Kasım 2026 — Yarı zamanlı güncelleme düzeltmesi',
+    maddeler: [
+      'Talep düzenlemeleri artık detay sayfası ve PDF’e yansır.',
+      'Önceki kayıtta güncelleme izni eksikti; log oluşup veri yazılmıyordu.',
+    ],
+  },
+  {
     id: '2026-11-12-yzc-sil-detay',
     baslik: '12 Kasım 2026 — Yarı zamanlı silme ve detay',
     maddeler: [
