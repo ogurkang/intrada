@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-12-personel-kazanc-bilgileri',
+    baslik: '12 Kasım 2026 — Personel Kazanç Bilgileri',
+    maddeler: [
+      'Personel Yönetimi menüsüne Kadro Hareketleri’nden sonra Personel Kazanç Bilgileri eklendi.',
+      'Unvanında «müdürü» geçen asil/vekil personel ile memur Belediye Başkan Yardımcılarının kadro, terfi ve mevzuat bilgileri bir arada.',
+      'Ad soyad araması, unvan filtresi ve kişi başına sayfa PDF indirme vardır.',
+    ],
+  },
+  {
     id: '2026-11-12-yzc-guncelleme-rls',
     baslik: '12 Kasım 2026 — Yarı zamanlı güncelleme düzeltmesi',
     maddeler: [

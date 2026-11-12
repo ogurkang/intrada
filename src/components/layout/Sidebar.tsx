@@ -251,6 +251,7 @@ function buildMenuGroups(
       { href: '/personel-hareketleri', label: 'Personel Hareketleri'},
       { href: terfiMenuHref,          label: 'Terfi Hareketleri'   },
       { href: '/kadro',               label: 'Kadro Hareketleri'   },
+      { href: '/personel/kazanc-bilgileri', label: 'Personel Kazanç Bilgileri' },
     ],
   },
   {
