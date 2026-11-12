@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-12-personel-kazanc-tarih',
+    baslik: '12 Kasım 2026 — Personel Kazanç Bilgileri tarih formatı',
+    maddeler: [
+      'Personel Kazanç Bilgileri ekranında ve PDF’de tarihler gg.aa.yyyy biçiminde gösterilir.',
+    ],
+  },
+  {
     id: '2026-11-12-personel-kazanc-bilgileri',
     baslik: '12 Kasım 2026 — Personel Kazanç Bilgileri',
     maddeler: [

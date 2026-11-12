@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { trNormalize } from '@/lib/turkce-search'
+import { toGgAayyyy } from '@/lib/tarih'
 import type { PersonelKazancBilgiKart } from '@/lib/personel-kazanc-bilgi'
 
 interface Props {
@@ -10,6 +11,11 @@ interface Props {
 
 function metin(v: string | null | undefined): string {
   const t = String(v ?? '').trim()
+  return t || '—'
+}
+
+function tarihGoster(v: string | null | undefined): string {
+  const t = toGgAayyyy(v)
   return t || '—'
 }
 
@@ -268,10 +274,10 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <Alan etiket="Kadro Derecesi" deger={metin(t.kadro_derecesi)} />
                         <Alan etiket="Görev Aylığı" deger={dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe)} />
-                        <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${metin(t.kha_tarihi)}`} />
-                        <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${metin(t.ekea_tarihi)}`} />
-                        <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${metin(t.kidem_tarihi)}`} />
-                        <Alan etiket="İyi Hal" deger={metin(t.iyi_hal_terfi_tarihi)} />
+                        <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`} />
+                        <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`} />
+                        <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`} />
+                        <Alan etiket="İyi Hal" deger={tarihGoster(t.iyi_hal_terfi_tarihi)} />
                         <Alan etiket="Ek Gösterge" deger={metin(t.ek_gosterge)} />
                         <Alan etiket="Ek Ödeme" deger={metin(t.ek_odeme)} />
                         <Alan etiket="ÖHT" deger={metin(t.oht)} />

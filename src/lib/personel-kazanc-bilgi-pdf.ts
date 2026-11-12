@@ -1,6 +1,7 @@
 import path from 'node:path'
 import PDFDocument from 'pdfkit'
 import type { PersonelKazancBilgiKart } from '@/lib/personel-kazanc-bilgi'
+import { toGgAayyyy } from '@/lib/tarih'
 
 const MARGIN = 40
 const PAGE_W = 595.28
@@ -25,6 +26,11 @@ function font(doc: PdfDoc, bold = false) {
 
 function metin(v: string | null | undefined): string {
   const t = String(v ?? '').trim()
+  return t || '—'
+}
+
+function tarihGoster(v: string | null | undefined): string {
+  const t = toGgAayyyy(v)
   return t || '—'
 }
 
@@ -132,10 +138,10 @@ function kartCiz(doc: PdfDoc, kart: PersonelKazancBilgiKart) {
       y = satir(doc, y, `${t.rol} unvan`, metin(t.unvan_adi))
       y = satir(doc, y, 'Kadro derecesi', metin(t.kadro_derecesi))
       y = satir(doc, y, 'Görev aylığı', dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe))
-      y = satir(doc, y, 'KHA', `${dk(t.kha_derece, t.kha_kademe)} · ${metin(t.kha_tarihi)}`)
-      y = satir(doc, y, 'EKEA', `${dk(t.ekea_derece, t.ekea_kademe)} · ${metin(t.ekea_tarihi)}`)
-      y = satir(doc, y, 'Kıdem', `${metin(t.kidem_yili)} yıl · ${metin(t.kidem_tarihi)}`)
-      y = satir(doc, y, 'İyi hal', metin(t.iyi_hal_terfi_tarihi))
+      y = satir(doc, y, 'KHA', `${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`)
+      y = satir(doc, y, 'EKEA', `${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`)
+      y = satir(doc, y, 'Kıdem', `${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`)
+      y = satir(doc, y, 'İyi hal', tarihGoster(t.iyi_hal_terfi_tarihi))
       y = satir(doc, y, 'Ek gösterge', metin(t.ek_gosterge))
       y = satir(doc, y, 'Ek ödeme', metin(t.ek_odeme))
       y = satir(doc, y, 'ÖHT', metin(t.oht))
