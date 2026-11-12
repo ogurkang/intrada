@@ -33,6 +33,18 @@ function Alan({ etiket, deger }: { etiket: string; deger: string }) {
   )
 }
 
+function EvetHayir({ deger }: { deger: boolean }) {
+  return deger ? (
+    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+      Evet
+    </span>
+  ) : (
+    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+      Hayır
+    </span>
+  )
+}
+
 function UnvanFiltre({
   options,
   selected,
@@ -212,7 +224,6 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
             <header className="mb-4 pb-4 border-b border-slate-100">
               <p className="text-xs text-slate-400 tabular-nums">{k.sicil_no}</p>
               <h2 className="text-lg font-semibold text-slate-800">{k.ad_soyad}</h2>
-              {k.ogrenim ? <p className="text-xs text-slate-500 mt-0.5">{k.ogrenim}</p> : null}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
                 <p>
                   <span className="text-slate-500">Asil unvan:</span>{' '}
@@ -226,6 +237,44 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
                 </p>
               </div>
             </header>
+
+            <section className="mb-5">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Öğrenim Bilgileri</h3>
+              {k.ogrenimler.length === 0 ? (
+                <p className="text-sm text-slate-400">Öğrenim kaydı yok.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Öğrenim Türü</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Mesleği</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Kadrosu İle İlgili</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Teknik Öğrenim</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {k.ogrenimler.map((o, i) => (
+                        <tr key={`${k.sicil_no}-ogrenim-${i}`} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-slate-700">{metin(o.ogrenim_turu)}</td>
+                          <td className="px-4 py-3 text-slate-600">{metin(o.meslegi)}</td>
+                          <td className="px-4 py-3 text-center">
+                            <EvetHayir deger={o.varsayilan} />
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <EvetHayir deger={o.kadrosu_ile_ilgili} />
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <EvetHayir deger={o.teknik_ogrenim} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
 
             <section className="mb-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Kadro Bilgileri</h3>

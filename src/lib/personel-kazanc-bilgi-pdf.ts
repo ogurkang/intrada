@@ -105,16 +105,23 @@ function kartCiz(doc: PdfDoc, kart: PersonelKazancBilgiKart) {
   y = doc.y + 2
   font(doc, true)
   doc.fontSize(12).fillColor('#0f172a').text(kart.ad_soyad, MARGIN, y)
-  y = doc.y + 2
-  if (kart.ogrenim) {
-    font(doc, false)
-    doc.fontSize(9).fillColor('#64748b').text(kart.ogrenim, MARGIN, y)
-    y = doc.y + 6
+  y = doc.y + 8
+
+  y = baslik(doc, y, 'Öğrenim Bilgileri')
+  if (!kart.ogrenimler.length) {
+    y = satir(doc, y, 'Öğrenim', 'Kayıt yok')
   } else {
-    y += 6
+    for (const o of kart.ogrenimler) {
+      y = satir(doc, y, 'Öğrenim türü', metin(o.ogrenim_turu))
+      y = satir(doc, y, 'Mesleği', metin(o.meslegi))
+      y = satir(doc, y, 'Varsayılan', o.varsayilan ? 'Evet' : 'Hayır')
+      y = satir(doc, y, 'Kadrosu ile ilgili', o.kadrosu_ile_ilgili ? 'Evet' : 'Hayır')
+      y = satir(doc, y, 'Teknik öğrenim', o.teknik_ogrenim ? 'Evet' : 'Hayır')
+      y += 4
+    }
   }
 
-  y = baslik(doc, y, 'Kadro Bilgileri')
+  y = baslik(doc, y + 4, 'Kadro Bilgileri')
   if (!kart.kadrolar.length) {
     y = satir(doc, y, 'Kadro', 'Kayıt yok')
   } else {

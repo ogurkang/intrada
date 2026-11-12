@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
+import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
+import { fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
 import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import {
   personelKazancBilgiKartlariKur,
   personelKazancBilgiKapsamindaMi,
   type PersonelKazancBilgiKadro,
   type PersonelKazancBilgiKart,
+  type PersonelKazancBilgiOgrenim,
 } from '@/lib/personel-kazanc-bilgi'
 import type { Tables } from '@/types/database'
 
@@ -140,6 +143,60 @@ async function yukleGorevAyligi(
   return map
 }
 
+type OgrenimSatir = {
+  sicil_no: string
+  ogrenim_turu: string | null
+  meslegi: string | null
+  varsayilan: boolean | null
+  aktif: boolean | null
+  kadrosu_ile_ilgili: boolean | null
+  teknik_ogrenim: boolean | null
+}
+
+async function yukleOgrenimBySicil(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siciller: string[],
+): Promise<Map<string, PersonelKazancBilgiOgrenim[]>> {
+  const map = new Map<string, PersonelKazancBilgiOgrenim[]>()
+  if (!siciller.length) return map
+
+  const rows: OgrenimSatir[] = []
+  const CHUNK = 80
+  for (let i = 0; i < siciller.length; i += CHUNK) {
+    const chunk = siciller.slice(i, i + CHUNK)
+    const { data } = await fetchAllCalisanOgrenim<OgrenimSatir>(
+      supabase,
+      'sicil_no, ogrenim_turu, meslegi, varsayilan, aktif, kadrosu_ile_ilgili, teknik_ogrenim',
+      q => q.in('sicil_no', chunk),
+    )
+    rows.push(...(data ?? []))
+  }
+
+  const bySicil = new Map<string, OgrenimSatir[]>()
+  for (const row of rows) {
+    const sicil = String(row.sicil_no ?? '').trim()
+    if (!sicil) continue
+    const list = bySicil.get(sicil)
+    if (list) list.push(row)
+    else bySicil.set(sicil, [row])
+  }
+
+  for (const sicil of siciller) {
+    const sorted = sortCalisanOgrenimByTuru(bySicil.get(sicil) ?? [])
+    map.set(
+      sicil,
+      sorted.map(o => ({
+        ogrenim_turu: o.ogrenim_turu ?? null,
+        meslegi: o.meslegi ?? null,
+        varsayilan: o.varsayilan === true || (o.varsayilan == null && o.aktif === true),
+        kadrosu_ile_ilgili: o.kadrosu_ile_ilgili === true,
+        teknik_ogrenim: o.teknik_ogrenim === true,
+      })),
+    )
+  }
+  return map
+}
+
 export async function yuklePersonelKazancBilgiKartlari(
   sicilFiltre?: string[],
 ): Promise<PersonelKazancBilgiKart[]> {
@@ -167,14 +224,16 @@ export async function yuklePersonelKazancBilgiKartlari(
     ...new Set(kaynakAlt.map(k => k.terfi_id).filter((id): id is number => id != null && id > 0)),
   ]
 
-  const [kadroBySicil, gorevAyligiByTerfiId] = await Promise.all([
+  const [kadroBySicil, ogrenimBySicil, gorevAyligiByTerfiId] = await Promise.all([
     yukleKadroBySicil(supabase, siciller),
+    yukleOgrenimBySicil(supabase, siciller),
     yukleGorevAyligi(supabase, terfiIds),
   ])
 
   return personelKazancBilgiKartlariKur({
     kaynaklar: kaynakAlt,
     kadroBySicil,
+    ogrenimBySicil,
     gorevAyligiByTerfiId,
   })
 }

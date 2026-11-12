@@ -36,14 +36,22 @@ export type PersonelKazancBilgiTerfi = {
   sds_orani: string | null
 }
 
+export type PersonelKazancBilgiOgrenim = {
+  ogrenim_turu: string | null
+  meslegi: string | null
+  varsayilan: boolean
+  kadrosu_ile_ilgili: boolean
+  teknik_ogrenim: boolean
+}
+
 export type PersonelKazancBilgiKart = {
   sicil_no: string
   ad_soyad: string
-  ogrenim: string | null
   asilUnvan: string | null
   vekilUnvanlar: string[]
   /** Filtre / PDF için asil + vekil unvan listesi */
   unvanlar: string[]
+  ogrenimler: PersonelKazancBilgiOgrenim[]
   kadrolar: PersonelKazancBilgiKadro[]
   terfiler: PersonelKazancBilgiTerfi[]
   mevzuat: PersonelKazancKuralKalem[]
@@ -63,6 +71,7 @@ function metin(v: string | null | undefined): string | null {
 export function personelKazancBilgiKartlariKur(input: {
   kaynaklar: TerfiKaynak[]
   kadroBySicil: Map<string, PersonelKazancBilgiKadro[]>
+  ogrenimBySicil: Map<string, PersonelKazancBilgiOgrenim[]>
   gorevAyligiByTerfiId: Map<number, { derece: string | null; kademe: string | null }>
 }): PersonelKazancBilgiKart[] {
   const grup = new Map<string, TerfiKaynak[]>()
@@ -112,10 +121,10 @@ export function personelKazancBilgiKartlariKur(input: {
     kartlar.push({
       sicil_no: sicil,
       ad_soyad: kuralKaynak.ad_soyad ?? sicil,
-      ogrenim: metin(kuralKaynak.ogrenim_turu),
       asilUnvan,
       vekilUnvanlar,
       unvanlar,
+      ogrenimler: input.ogrenimBySicil.get(sicil) ?? [],
       kadrolar: input.kadroBySicil.get(sicil) ?? [],
       terfiler,
       mevzuat: kalemleriKur(
