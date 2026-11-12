@@ -5,6 +5,7 @@ import { loadAuditLoglarGroupedByRefId } from '@/lib/audit-load'
 import YariZamanliCalismaListeClient, {
   type YzcListeKayit,
 } from '@/components/bildirim/YariZamanliCalismaListeClient'
+import { yariZamanliCalismaSil } from './actions'
 
 export default async function YariZamanliCalismaPage() {
   const supabase = await createClient()
@@ -12,8 +13,9 @@ export default async function YariZamanliCalismaPage() {
     data: { user },
   } = await supabase.auth.getUser()
   const access = user ? await getAppAccess(supabase, user.id) : { mode: 'full' as const }
+  const adminMi = isAdminLike(access)
   const kullaniciSicil =
-    !isAdminLike(access) && access.mode === 'kullanici' ? access.sicilNo.trim() : null
+    !adminMi && access.mode === 'kullanici' ? access.sicilNo.trim() : null
 
   let q = supabase
     .from('yari_zamanli_calisma_bildirimleri')
@@ -73,7 +75,12 @@ export default async function YariZamanliCalismaPage() {
         </Link>
       </div>
 
-      <YariZamanliCalismaListeClient kayitlar={kayitlar} auditLoglarByRefId={auditLoglarByRefId} />
+      <YariZamanliCalismaListeClient
+        kayitlar={kayitlar}
+        auditLoglarByRefId={auditLoglarByRefId}
+        adminMi={adminMi}
+        onSil={adminMi ? yariZamanliCalismaSil : undefined}
+      />
     </div>
   )
 }

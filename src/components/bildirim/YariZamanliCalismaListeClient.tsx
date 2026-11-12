@@ -1,8 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import AuditGecmisPanel from '@/components/ui/AuditGecmisPanel'
-import { GozDetayLink, IndirLink, KalemDuzenleLink, SaatGecmisDugmesi } from '@/components/ui/TabloIslemIkonlari'
+import {
+  CopKutusuSilDugmesi,
+  GozDetayLink,
+  IndirLink,
+  KalemDuzenleLink,
+  SaatGecmisDugmesi,
+} from '@/components/ui/TabloIslemIkonlari'
 import { yzcAuditDegerGoster, yzcAuditDiffSatirlari } from '@/lib/yari-zamanli-calisma-audit'
 import { yzcTarihGoster } from '@/lib/yari-zamanli-calisma-belge'
 import type { Tables } from '@/types/database'
@@ -22,10 +29,29 @@ export interface YzcListeKayit {
 interface Props {
   kayitlar: YzcListeKayit[]
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
+  adminMi?: boolean
+  onSil?: (id: number) => Promise<{ hata?: string; ok?: boolean }>
 }
 
-export default function YariZamanliCalismaListeClient({ kayitlar, auditLoglarByRefId }: Props) {
+export default function YariZamanliCalismaListeClient({
+  kayitlar,
+  auditLoglarByRefId,
+  adminMi = false,
+  onSil,
+}: Props) {
+  const router = useRouter()
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
+  const [bekliyor, start] = useTransition()
+
+  function sil(k: YzcListeKayit) {
+    if (!onSil) return
+    if (!confirm(`${k.ad_soyad} kaydını silmek istiyor musunuz?`)) return
+    start(async () => {
+      const res = await onSil(k.id)
+      if (res.hata) alert(res.hata)
+      else router.refresh()
+    })
+  }
 
   return (
     <>
@@ -38,7 +64,7 @@ export default function YariZamanliCalismaListeClient({ kayitlar, auditLoglarByR
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Adı Soyadı</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Doğum Tarihi</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-700">Yarı Zamanlı Dönem</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-44">İşlemler</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-700 w-48">İşlemler</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -80,6 +106,9 @@ export default function YariZamanliCalismaListeClient({ kayitlar, auditLoglarByR
                             href={`/api/bildirim/yari-zamanli-calisma/pdf?id=${k.id}`}
                             title="PDF İndir"
                           />
+                          {adminMi && onSil ? (
+                            <CopKutusuSilDugmesi onClick={() => sil(k)} disabled={bekliyor} title="Sil" />
+                          ) : null}
                         </div>
                       </td>
                     </tr>

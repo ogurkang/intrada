@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-12-yzc-sil-detay',
+    baslik: '12 Kasım 2026 — Yarı zamanlı silme ve detay',
+    maddeler: [
+      'Liste işlemlerinde yalnızca yöneticiler sil düğmesini görür.',
+      'Detay sayfası tam genişlikte; geri dönüş lacivert düğmedir.',
+      'Düzenlemede Talep Detayı düğmesi «<» ile yazılır.',
+    ],
+  },
+  {
     id: '2026-11-12-yzc-form-genis',
     baslik: '12 Kasım 2026 — Yarı zamanlı form düzeni',
     maddeler: [

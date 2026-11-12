@@ -173,7 +173,7 @@ export default function YariZamanliCalismaFormClient({
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {duzenleme && kayitId ? (
             <Link href={`/bildirim/yari-zamanli-calisma/${kayitId}`} className={NAV_BTN}>
-              ← Talep Detayı
+              &lt; Talep Detayı
             </Link>
           ) : null}
           <Link href="/bildirim/yari-zamanli-calisma" className={NAV_BTN}>

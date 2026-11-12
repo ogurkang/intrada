@@ -24,6 +24,9 @@ function tarihFormat(iso: string): string {
   })
 }
 
+const NAV_BTN =
+  'inline-flex items-center gap-1.5 rounded-lg bg-slate-800 text-white px-3.5 py-2 text-sm font-medium hover:bg-slate-700 transition-colors whitespace-nowrap'
+
 export default async function YariZamanliCalismaDetayPage({ params }: Props) {
   const { id: idStr } = await params
   const id = parseInt(idStr, 10)
@@ -74,16 +77,13 @@ export default async function YariZamanliCalismaDetayPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <Link
-            href="/bildirim/yari-zamanli-calisma"
-            className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
-          >
-            ← Yarı Zamanlı Çalışma İşlemleri
-          </Link>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-800">Yarı Zamanlı Çalışma Talebi Detayı</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link href="/bildirim/yari-zamanli-calisma" className={NAV_BTN}>
+            &lt; Yarı Zamanlı Çalışma İşlemleri
+          </Link>
           <Link
             href={`/bildirim/yari-zamanli-calisma/${kayit.id}/duzenle`}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
@@ -91,30 +91,28 @@ export default async function YariZamanliCalismaDetayPage({ params }: Props) {
             Düzenle
           </Link>
           <a
-          href={`/api/bildirim/yari-zamanli-calisma/pdf?id=${kayit.id}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          PDF İndir (Dilekçe + Ek)
-        </a>
+            href={`/api/bildirim/yari-zamanli-calisma/pdf?id=${kayit.id}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-700 text-white px-4 py-2 text-sm font-medium hover:bg-blue-600 transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            PDF İndir (Dilekçe + Ek)
+          </a>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden max-w-2xl">
-        <table className="w-full text-sm">
-          <tbody>
-            {satirlar.map(s => (
-              <tr key={s.etiket} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium text-slate-600 w-44 align-top">{s.etiket}</td>
-                <td className="px-4 py-3 text-slate-800">{s.deger}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+          {satirlar.map(s => (
+            <div key={s.etiket} className="border-b border-r border-slate-100 px-5 py-4 last:border-b-0">
+              <div className="text-xs font-medium text-slate-500 mb-1">{s.etiket}</div>
+              <div className="text-sm text-slate-800 break-words">{s.deger}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

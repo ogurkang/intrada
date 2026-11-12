@@ -240,3 +240,52 @@ export async function yariZamanliCalismaGuncelle(id: number, formData: FormData)
   revalidatePath(`/bildirim/yari-zamanli-calisma/${id}/duzenle`)
   return { ok: true, id }
 }
+
+export async function yariZamanliCalismaSil(id: number): Promise<YzcActionSonuc> {
+  if (!Number.isFinite(id) || id <= 0) return { hata: 'Kayıt bulunamadı.' }
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { hata: 'Oturum gerekli.' }
+  const access = await getAppAccess(supabase, user.id)
+  if (!isAdminLike(access)) return { hata: 'Silme yetkisi yalnızca yönetici hesaplarındadır.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: kayit } = await (supabase as any)
+    .from('yari_zamanli_calisma_bildirimleri')
+    .select(
+      'id, sicil_no, ad_soyad, tckn, unvan, mudurluk, cocuk_dogum_tarihi, yari_zamanli_baslangic_tarihi, normal_zamanli_donus_tarihi, calisma_programi',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (!kayit) return { hata: 'Kayıt bulunamadı.' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('yari_zamanli_calisma_bildirimleri').delete().eq('id', id)
+  if (error) return { hata: error.message }
+
+  await writePersonelAuditLogSafe(supabase, {
+    sicil_no: String(kayit.sicil_no ?? '').trim(),
+    modul: 'yari-zamanli-calisma',
+    islem: 'Sil',
+    ozet: `${kayit.ad_soyad} yarı zamanlı çalışma talebi silindi.`,
+    ref_table: 'yari_zamanli_calisma_bildirimleri',
+    ref_id: String(id),
+    onceki: {
+      ad_soyad: kayit.ad_soyad,
+      tckn: kayit.tckn,
+      unvan: kayit.unvan,
+      mudurluk: kayit.mudurluk,
+      cocuk_dogum_tarihi: kayit.cocuk_dogum_tarihi,
+      yari_zamanli_baslangic_tarihi: kayit.yari_zamanli_baslangic_tarihi,
+      normal_zamanli_donus_tarihi: kayit.normal_zamanli_donus_tarihi,
+      calisma_programi: kayit.calisma_programi,
+    },
+  })
+
+  revalidatePath('/bildirim/yari-zamanli-calisma')
+  revalidatePath(`/bildirim/yari-zamanli-calisma/${id}`)
+  revalidatePath(`/bildirim/yari-zamanli-calisma/${id}/duzenle`)
+  return { ok: true, id }
+}
