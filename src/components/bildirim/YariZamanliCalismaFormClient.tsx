@@ -31,6 +31,9 @@ interface Props {
   onKaydet: (fd: FormData) => Promise<Sonuc>
 }
 
+const NAV_BTN =
+  'inline-flex items-center gap-1.5 rounded-lg bg-slate-800 text-white px-3.5 py-2 text-sm font-medium hover:bg-slate-700 transition-colors whitespace-nowrap'
+
 function TarihSecim({
   label,
   value,
@@ -156,21 +159,27 @@ export default function YariZamanliCalismaFormClient({
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <Link
-          href={duzenleme && kayitId ? `/bildirim/yari-zamanli-calisma/${kayitId}` : '/bildirim/yari-zamanli-calisma'}
-          className="text-sm text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 mb-2"
-        >
-          ← {duzenleme ? 'Talep Detayı' : 'Yarı Zamanlı Çalışma İşlemleri'}
-        </Link>
-        <h1 className="text-2xl font-bold text-slate-800">
-          {duzenleme ? 'Yarı Zamanlı Çalışma Talebini Düzenle' : 'Yeni Yarı Zamanlı Çalışma Talebi'}
-        </h1>
-        <p className="text-sm text-slate-600 mt-1 max-w-4xl">
-          Personel bilgileri kadro kaydından alınır. Dilekçe ile birlikte ekte yer alacak yarı zamanlı çalışma
-          formunu doldurun.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-slate-800">
+            {duzenleme ? 'Yarı Zamanlı Çalışma Talebini Düzenle' : 'Yeni Yarı Zamanlı Çalışma Talebi'}
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Personel bilgileri kadro kaydından alınır. Dilekçe ile birlikte ekte yer alacak yarı zamanlı çalışma
+            formunu doldurun.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {duzenleme && kayitId ? (
+            <Link href={`/bildirim/yari-zamanli-calisma/${kayitId}`} className={NAV_BTN}>
+              ← Talep Detayı
+            </Link>
+          ) : null}
+          <Link href="/bildirim/yari-zamanli-calisma" className={NAV_BTN}>
+            &lt; Yarı Zamanlı Çalışanlar
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-5">
@@ -183,7 +192,7 @@ export default function YariZamanliCalismaFormClient({
           />
 
           {secili ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 text-sm">
                 <div className="text-slate-500 text-xs mb-1">T.C. Kimlik No</div>
                 <div className="font-mono text-slate-800">{secili.tckn || '—'}</div>

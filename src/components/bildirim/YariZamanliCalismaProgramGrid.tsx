@@ -68,7 +68,7 @@ export default function YariZamanliCalismaProgramGrid({ value, onChange }: Props
     <div className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-slate-700">Ek — Haftalık Çalışma Programı</h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-sm text-slate-500 mt-1">
           Saatler sınır noktasıdır: tek işaret süre vermez; 08:30 ile 09:00 birlikte 30 dk, 08:30 ile 09:30 bir saattir.
           Haftada en az {YZC_MIN_GUN} gün, günde {YZC_MIN_GUNLUK_SAAT}–{YZC_MAX_GUNLUK_SAAT} saat, toplam {YZC_HEDEF_HAFTALIK_SAAT} saat.
         </p>
