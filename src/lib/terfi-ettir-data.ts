@@ -5,6 +5,11 @@ import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import type { KazancPuan, TerfiKaynak } from '@/lib/terfi-ettir-hesap'
 import { sortTanimOgrenimByIsim } from '@/lib/ogrenim-sira'
 import {
+  ekGosterge43bTabanBySicilKur,
+  type EkGosterge43bHareket,
+} from '@/lib/kazanc-ek-gosterge-43b'
+import { parseDerece } from '@/lib/kazanc-teknisyen-ek-gosterge'
+import {
   ogrenimYuksekMi,
   teknisyenEkGostergeBaglamKur,
   teknisyenKariyerUnvanFromOgrenimRows,
@@ -454,6 +459,54 @@ export async function yukleTerfiEttirKaynakVeKazanc(
     kazancLookupYedek,
     ozelKalemUnvanIdleri((unvanAdRaw ?? []).map(u => ({ id: u.id, unvan_adi: u.unvan_adi }))),
   )
+
+  // 657 md. 43/b — önceki müdür kariyeri / GİH (g) EG tabanı
+  const hareket43b: EkGosterge43bHareket[] = []
+  if (memurSiciller.length > 0) {
+    const CHUNK = 80
+    for (let i = 0; i < memurSiciller.length; i += CHUNK) {
+      const chunk = memurSiciller.slice(i, i + CHUNK)
+      const { data } = await supabase
+        .from('personel_hareketleri')
+        .select('sicil_no, eski_unvan, yeni_unvan, eski_ek_gosterge, yeni_ek_gosterge')
+        .in('sicil_no', chunk)
+      for (const row of data ?? []) {
+        hareket43b.push({
+          sicil_no: row.sicil_no,
+          eski_unvan: row.eski_unvan ?? null,
+          yeni_unvan: row.yeni_unvan ?? null,
+          eski_ek_gosterge: row.eski_ek_gosterge ?? null,
+          yeni_ek_gosterge: row.yeni_ek_gosterge ?? null,
+        })
+      }
+    }
+  }
+  const khaDereceBySicil43b = new Map<string, number | null>()
+  const ogrenimIdBySicil43b = new Map<string, number | null>()
+  for (const k of kaynaklar) {
+    if (!khaDereceBySicil43b.has(k.sicil_no)) {
+      khaDereceBySicil43b.set(k.sicil_no, parseDerece(k.kha_derece))
+    }
+    if (!ogrenimIdBySicil43b.has(k.sicil_no)) {
+      ogrenimIdBySicil43b.set(k.sicil_no, k.ogrenim_id)
+    }
+  }
+  const taban43bBySicil = ekGosterge43bTabanBySicilKur({
+    siciller: memurSiciller,
+    kadroDerecesiBySicil,
+    khaDereceBySicil: khaDereceBySicil43b,
+    ogrenimIdBySicil: ogrenimIdBySicil43b,
+    hareketler: hareket43b,
+    unvanlar: (unvanAdRaw ?? []).map(u => ({
+      id: u.id,
+      unvan_adi: u.unvan_adi,
+      sinif_adi: u.sinif_adi ?? null,
+    })),
+    lookup: kazancLookup,
+  })
+  for (const k of kaynaklar) {
+    k.ek_gosterge_43b_taban = taban43bBySicil.get(k.sicil_no) ?? null
+  }
 
   const memurPersoneller = memurSiciller
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))

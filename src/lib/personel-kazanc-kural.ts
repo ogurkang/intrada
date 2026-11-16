@@ -9,6 +9,7 @@ import {
 import { unvanBelediyeBaskanYardimcisiMi, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
 import { mudurKariyerTuru, unvanMuduruMi } from '@/lib/kazanc-mudur-th-overlay'
 import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi } from '@/lib/kazanc-yan-odeme'
+import { kadroDerecesi1Ile4Mu } from '@/lib/kazanc-ek-gosterge-43b'
 
 export type PersonelKazancKuralKalem = {
   baslik: string
@@ -176,6 +177,14 @@ export function kalemleriKur(
   } else if (kariyer === 'kimyager') {
     egParcalar.push(
       'Asil müdür TH kariyer (kimyager): ek gösterge = max(müdür unvanı, kimyager tanımı). 2006/10344 sayılı BKK I sayılı cetvel.',
+    )
+  }
+  if (kadroDerecesi1Ile4Mu(r.kadro_derecesi)) {
+    const taban = metin(r.ek_gosterge_43b_taban)
+    egParcalar.push(
+      taban
+        ? `657 md. 43/b: 1–4. dereceli kadroda ek gösterge, önceki kariyer sınıfı veya I sayılı cetvel GİH (g) (KHA) tabanından (${taban}) düşük olamaz.`
+        : '657 md. 43/b: 1–4. dereceli kadroda ek gösterge, önceki kariyer sınıfı veya I sayılı cetvel GİH (g) (KHA derecesi) tabanından düşük olamaz.',
     )
   }
   if (ekranYollari) {

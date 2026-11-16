@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-16-kazanc-43b-ek-gosterge',
+    baslik: '16 Kasım 2026 — Ek gösterge 657 md. 43/b',
+    maddeler: [
+      '1–4. dereceli kadroda ek gösterge, önceki kariyer (ör. müdür) veya GİH (g) tabanından düşük sayılmaz.',
+      'Tanımdan sapan personel ve personel kazanç kuralı bu tabanı dikkate alır (ör. müdürden uzmana geçenlerde 3600).',
+    ],
+  },
+  {
     id: '2026-11-12-personel-kazanc-ogrenim',
     baslik: '12 Kasım 2026 — Personel Kazanç Bilgileri öğrenim',
     maddeler: [

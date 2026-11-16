@@ -1,5 +1,6 @@
 import { mudurOhtYuksekDerecedenUygula, mudurThKariyerUygula } from '@/lib/kazanc-mudur-th-overlay'
 import { unvanBelediyeBaskanYardimcisiMi, unvanOzelKalemMuduruMi } from '@/lib/kazanc-ozel-kalem'
+import { ekGosterge43bUygula } from '@/lib/kazanc-ek-gosterge-43b'
 import {
   kadroVeKha1Ile5Mi,
   parseDerece,
@@ -26,6 +27,8 @@ export type KazancKuralOpts = {
   meslegi: string | null | undefined
   bolum: string | null | undefined
   baglam: TeknisyenEkGostergeBaglam | null | undefined
+  /** 657 md. 43/b — önceki kariyer / GİH (g) EG tabanı (kadro 1–4) */
+  ekGosterge43bTaban?: string | null
 }
 
 function doluMetin(v: string | null | undefined): string | null {
@@ -95,6 +98,7 @@ export function ohtYuksekDerecedenUygula<T extends { oht?: string | null }>(
  * 3) tekniker + teknik öğrenim overlay
  * 4) asil müdür ÖHT’yi yüksek 657 derecesinden al
  * 5) asil müdür + TH kariyer overlay
+ * 6) 657 md. 43/b: kadro 1–4 ise EG ≥ max(önceki kariyer, GİH (g) KHA)
  * Özel Kalem Müdürü: 1. derece satırı olduğu gibi kalır.
  * Belediye Başkan Yardımcısı: 1. derece taban + asil TH kariyer overlay (EG KHA’dan, yan 2600).
  */
@@ -110,17 +114,22 @@ export function kazancTaniminiKuralla<
   },
 >(puan: T, lookup: KazancSatirLookup, opts: KazancKuralOpts): T {
   if (unvanOzelKalemMuduruMi(opts.unvanAdi)) {
-    if (!unvanBelediyeBaskanYardimcisiMi(opts.unvanAdi)) return puan
-    return mudurThKariyerUygula(puan, lookup, {
-      unvanAdi: opts.unvanAdi,
-      kadroDerecesi: opts.kadroDerecesi,
-      khaDerece: opts.khaDerece,
-      asilMi: opts.asilMi,
-      destekYardimciBirim: opts.destekYardimciBirim,
-      meslegi: opts.meslegi,
-      bolum: opts.bolum,
-      baglam: opts.baglam,
-    })
+    if (!unvanBelediyeBaskanYardimcisiMi(opts.unvanAdi)) {
+      return ekGosterge43bUygula(puan, opts.ekGosterge43bTaban)
+    }
+    return ekGosterge43bUygula(
+      mudurThKariyerUygula(puan, lookup, {
+        unvanAdi: opts.unvanAdi,
+        kadroDerecesi: opts.kadroDerecesi,
+        khaDerece: opts.khaDerece,
+        asilMi: opts.asilMi,
+        destekYardimciBirim: opts.destekYardimciBirim,
+        meslegi: opts.meslegi,
+        bolum: opts.bolum,
+        baglam: opts.baglam,
+      }),
+      opts.ekGosterge43bTaban,
+    )
   }
   const dereceOpts = {
     unvanId: opts.unvanId,
@@ -164,6 +173,7 @@ export function kazancTaniminiKuralla<
     bolum: opts.bolum,
     baglam: opts.baglam,
   })
+  sonraki = ekGosterge43bUygula(sonraki, opts.ekGosterge43bTaban)
   return sonraki
 }
 
@@ -181,6 +191,7 @@ export function terfiKaynaktanKuralOpts(r: {
   destek_yardimci_birim?: boolean
   ogrenim_meslegi?: string | null
   ogrenim_bolum?: string | null
+  ek_gosterge_43b_taban?: string | null
 }, khaDerece: number | null | undefined, baglam: TeknisyenEkGostergeBaglam | null | undefined): KazancKuralOpts {
   return {
     unvanId: r.unvan_id,
@@ -197,5 +208,6 @@ export function terfiKaynaktanKuralOpts(r: {
     meslegi: r.ogrenim_meslegi ?? null,
     bolum: r.ogrenim_bolum ?? null,
     baglam,
+    ekGosterge43bTaban: r.ek_gosterge_43b_taban ?? null,
   }
 }

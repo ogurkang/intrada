@@ -252,6 +252,8 @@ export type TerfiKaynak = {
   asil_kadro_derecesi?: string | null
   asil_destek_yardimci_birim?: boolean
   asil_unvan_sinif?: string | null
+  /** 657 md. 43/b EG tabanı (önceki müdür kariyeri / GİH (g); kadro 1–4) */
+  ek_gosterge_43b_taban?: string | null
 }
 
 export type TerfiEttirOnizlemeSatir = {
