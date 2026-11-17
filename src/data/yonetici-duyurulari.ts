@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-17-butce-kodu-sil',
+    baslik: '17 Kasım 2026 — Bütçe kodu silme',
+    maddeler: [
+      'Performans Programı bütçe kodu tanımlarında her satıra sil düğmesi eklendi.',
+      'Ödenek kullanılmamışsa silinir; kullanılmışsa nerede geçtiği gösterilir ve silinmez.',
+    ],
+  },
+  {
     id: '2026-11-17-memur-maas-hesaplama',
     baslik: '17 Kasım 2026 — Memur Maaş Hesaplama',
     maddeler: [

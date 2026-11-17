@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
+import { CopKutusuSilDugmesi, KalemDuzenleDugmesi } from '@/components/ui/TabloIslemIkonlari'
 
 export interface PpButceKoduRow {
   id: number
@@ -19,6 +20,7 @@ interface Props {
   rows: PpButceKoduRow[]
   onEkle: (fd: FormData) => Promise<{ hata?: string }>
   onGuncelle: (id: number, fd: FormData) => Promise<{ hata?: string }>
+  onSil: (id: number) => Promise<{ hata?: string; kullanim?: string[] }>
 }
 
 function computeKod(a1: string, a2: string, a3: string, a4: string) {
@@ -26,7 +28,7 @@ function computeKod(a1: string, a2: string, a3: string, a4: string) {
   return `${fix(a1)}.${fix(a2)}.${fix(a3)}.${fix(a4)}`
 }
 
-export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle, onGuncelle }: Props) {
+export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle, onGuncelle, onSil }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -35,6 +37,7 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
   const [isPending, startTransition] = useTransition()
   const [formAcik, setFormAcik] = useState(false)
   const [secili, setSecili] = useState<PpButceKoduRow | null>(null)
+  const [kullanimModal, setKullanimModal] = useState<{ kod: string; yerler: string[] } | null>(null)
 
   const [adim1, setAdim1] = useState('')
   const [adim2, setAdim2] = useState('')
@@ -99,6 +102,27 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
     })
   }
 
+  function sil(row: PpButceKoduRow) {
+    if (!window.confirm(`${row.ekonomik_kod} — ${row.hesap_adi}\n\nBu ödeneği silmek istiyor musunuz?`)) return
+    setHata(null)
+    setMesaj(null)
+    setKullanimModal(null)
+    startTransition(async () => {
+      const res = await onSil(row.id)
+      if (res.kullanim?.length) {
+        setKullanimModal({ kod: row.ekonomik_kod, yerler: res.kullanim })
+        setHata(res.hata ?? 'Bu ödenek kullanıldığı için silinemez.')
+        return
+      }
+      if (res.hata) {
+        setHata(res.hata)
+        return
+      }
+      setMesaj(`${row.ekonomik_kod} silindi.`)
+      router.refresh()
+    })
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
@@ -108,6 +132,7 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
             <PpEkranBilgi maddeler={[
               { baslik: 'Excel', metin: 'Bütçe kodu listesini toplu yükler. Maliyet ekranındaki 4. düzey kodlar bu listeden gelir.' },
               { baslik: 'Ekle ve kalem', metin: 'Tek bir ekonomik kodu ekler veya adını günceller. Daha önce girilmiş maliyet tutarını silmez.' },
+              { baslik: 'Sil', metin: 'Kullanılmayan ödenek silinir. Kullanılmışsa nerede geçtiği gösterilir ve silinmez.' },
             ]} />
           </div>
           <p className="text-sm text-slate-500 mt-1">Excel ile toplu yükleyebilir veya tek tek bütçe kodu ekleyebilirsiniz.</p>
@@ -182,14 +207,11 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
                     <td className="px-3 py-2 text-center font-mono text-xs">{k.adim_4}</td>
                     <td className="px-3 py-2 font-mono text-xs">{k.ekonomik_kod}</td>
                     <td className="px-3 py-2 text-slate-800">{k.hesap_adi}</td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => modalAc(k)}
-                        className="inline-flex items-center rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
-                      >
-                        Düzenle
-                      </button>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <KalemDuzenleDugmesi onClick={() => modalAc(k)} disabled={isPending} />
+                        <CopKutusuSilDugmesi onClick={() => sil(k)} disabled={isPending} />
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -198,6 +220,33 @@ export default function PerformansProgramiButceKoduYonetimClient({ rows, onEkle,
           </table>
         </div>
       </div>
+
+      <Modal
+        open={kullanimModal != null}
+        onClose={() => setKullanimModal(null)}
+        title="Ödenek silinemez"
+        size="md"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-700">
+            <span className="font-mono font-medium">{kullanimModal?.kod}</span> başka kayıtlarda kullanıldığı için silinemez.
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-700">
+            {(kullanimModal?.yerler ?? []).map((y, i) => (
+              <li key={`${i}-${y}`}>{y}</li>
+            ))}
+          </ul>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setKullanimModal(null)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={formAcik} onClose={() => setFormAcik(false)} title={secili ? 'Bütçe Kodu Düzenle' : 'Bütçe Kodu Ekle'} size="md">
         <div className="space-y-4">

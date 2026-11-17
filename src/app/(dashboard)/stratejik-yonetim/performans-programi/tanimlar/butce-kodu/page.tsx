@@ -1,6 +1,6 @@
 import PerformansProgramiButceKoduYonetimClient from '@/components/stratejik/PerformansProgramiButceKoduYonetimClient'
 import { createClient } from '@/lib/supabase/server'
-import { butceKoduEkle, butceKoduGuncelle } from './actions'
+import { butceKoduEkle, butceKoduGuncelle, butceKoduSil } from './actions'
 
 export default async function PerformansProgramiButceKoduPage() {
   const supabase = await createClient()
@@ -25,6 +25,7 @@ export default async function PerformansProgramiButceKoduPage() {
         }[]}
         onEkle={butceKoduEkle}
         onGuncelle={butceKoduGuncelle}
+        onSil={butceKoduSil}
       />
     </div>
   )
