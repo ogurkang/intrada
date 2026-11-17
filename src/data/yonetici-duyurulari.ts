@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-17-memur-maas-oran-duzen',
+    baslik: '17 Kasım 2026 — Memur Maaş tutar girişi',
+    maddeler: [
+      'Cari yılda yalnızca tutar girilir; artış oranı düğmesi yoktur.',
+      'CY+1…CY+3’te artış oranı yıl tutarının üstündedir; oran değişince tutar dinamik güncellenir.',
+      'Tutar alanları ödenek teklifi ekranındaki gibi (nokta binlik, virgül küsür) düzenlendi.',
+    ],
+  },
+  {
     id: '2026-11-17-organizasyon-mudur-eslesme',
     baslik: '17 Kasım 2026 — Organizasyon müdür eşleşmesi',
     maddeler: [
