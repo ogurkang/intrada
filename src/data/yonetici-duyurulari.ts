@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-17-organizasyon-mudur-eslesme',
+    baslik: '17 Kasım 2026 — Organizasyon müdür eşleşmesi',
+    maddeler: [
+      'Organizasyon şemasında müdürlük altındaki müdür, unvanında «müdürü» geçen ve müdürlük adıyla eşleşen asil/vekil personeldir.',
+      'Aynı kişi başka müdürlükte tekrar listelenmez; birden fazla müdür unvanı varsa her unvan kendi müdürlüğünde görünür.',
+    ],
+  },
+  {
     id: '2026-11-17-kadro-bosalt-kaydet',
     baslik: '17 Kasım 2026 — İlişkilendirilen kadroyu boşalt',
     maddeler: [

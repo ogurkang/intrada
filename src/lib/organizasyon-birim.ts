@@ -49,13 +49,20 @@ export function mudurlukBazEslesir(a: string, b: string): boolean {
   return na === nb || na.includes(nb) || nb.includes(na)
 }
 
+/** Organizasyon şeması için sıkı eşleşme: yalnızca normalize edilmiş tam eşitlik. */
+export function mudurlukBazTamEslesir(a: string, b: string): boolean {
+  const na = eslesmeBazNorm(trNormalize(a))
+  const nb = eslesmeBazNorm(trNormalize(b))
+  return Boolean(na && nb && na === nb)
+}
+
 function mudurBazEkle(map: Map<string, Set<string>>, baz: string, deger: string) {
   if (!baz || !deger) return
   if (!map.has(baz)) map.set(baz, new Set())
   map.get(baz)!.add(deger)
 }
 
-/** Organizasyonda müdürlük müdürü: kadro ünvanı müdür, şube müdürü değil. */
+/** Organizasyonda müdürlük müdürü: unvanda «müdürü» geçer, şube müdürü değil. */
 export function organizasyonMudurUnvaniMi(unvan: string): boolean {
   if (!performansMudurUnvaniMi(unvan)) return false
   return !trNormalize(unvan).includes('sube')
@@ -70,12 +77,13 @@ function kadroSatiriUnvani(r: KadroUnvanSatir): string {
   return String(r.kadro_unvani ?? '').trim() || String(r.gorev_unvani ?? '').trim()
 }
 
+/** Müdürlük adına göre indeksten kişi listesi — yalnızca müdürlük↔müdürü tam eşleşmesi. */
 function maptenEslesen(map: Map<string, string[]>, mudurlukAdi: string | null | undefined): string[] {
   const baz = mudurlukEslesmeBaz(mudurlukAdi)
   if (!baz) return []
   const out = new Set<string>()
   for (const [k, vals] of map) {
-    if (k === baz || mudurlukBazEslesir(baz, k)) vals.forEach(v => out.add(v))
+    if (mudurlukBazTamEslesir(baz, k)) vals.forEach(v => out.add(v))
   }
   return [...out].sort((a, b) => a.localeCompare(b, 'tr'))
 }
@@ -112,23 +120,26 @@ export interface OrganizasyonPersonelIndeks {
   baskanSicilleri: string[]
 }
 
-/** Satırda görevi yürüten kişiyi (asil öncelikli, yoksa vekil) sicil+ad olarak çöz. */
-function satirKisi(r: KadroUnvanSatir): { sicil: string; ad: string } | null {
+/** Satırda ilişkilendirilen kişileri (asil ve/veya vekil) sicil+ad olarak çöz. */
+function satirKisiler(r: KadroUnvanSatir): { sicil: string; ad: string }[] {
+  const out: { sicil: string; ad: string }[] = []
   const asil = String(r.asil ?? '').trim()
   if (asil) {
     const ad = String(r.asil_calisan?.ad_soyad ?? '').trim()
-    if (ad) return { sicil: asil, ad }
+    if (ad) out.push({ sicil: asil, ad })
   }
   const vekil = String(r.vekil ?? '').trim()
-  if (vekil) {
+  if (vekil && vekil !== asil) {
     const ad = String(r.vekil_calisan?.ad_soyad ?? '').trim()
-    if (ad) return { sicil: vekil, ad }
+    if (ad) out.push({ sicil: vekil, ad })
   }
-  return null
+  return out
 }
 
 /**
- * Makam (başkan / BY) kadro ünvanına göre; müdür, kadro ünvanı + kadro müdürlüğüne göre.
+ * Makam (başkan / BY) kadro ünvanına göre.
+ * Müdür: unvanda «müdürü» geçen kayıt; müdürlük adı ile unvan tabanı birebir eşleşir.
+ * Aynı kişi yalnızca kendi unvan tabanında listelenir (birden fazla müdür unvanı varsa her biri ayrı).
  */
 export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): OrganizasyonPersonelIndeks {
   const baskanlar = new Set<string>()
@@ -140,39 +151,46 @@ export function organizasyonPersonelIndeksKur(rows: KadroUnvanSatir[]): Organiza
   const mudurSicilByBaz = new Map<string, Set<string>>()
 
   for (const r of rows) {
-    const kisi = satirKisi(r)
-    if (!kisi) continue
-    const { sicil, ad } = kisi
-    sicilAd.set(sicil, ad)
+    const kisiler = satirKisiler(r)
+    if (kisiler.length === 0) continue
 
     const unvan = kadroSatiriUnvani(r)
     if (!unvan) continue
 
+    for (const { sicil, ad } of kisiler) sicilAd.set(sicil, ad)
+
     if (performansBaskanYardimcisiUnvaniMi(unvan)) {
-      baskanYrd.add(ad)
-      baskanYrdAday.set(sicil, ad)
+      for (const { sicil, ad } of kisiler) {
+        baskanYrd.add(ad)
+        baskanYrdAday.set(sicil, ad)
+      }
       continue
     }
     if (performansBelediyeBaskaniUnvaniMi(unvan)) {
-      baskanlar.add(ad)
-      baskanSicil.add(sicil)
+      for (const { sicil, ad } of kisiler) {
+        baskanlar.add(ad)
+        baskanSicil.add(sicil)
+      }
       continue
     }
+
     const kadroUnvan = String(r.kadro_unvani ?? '').trim()
     const mudurUnvan = organizasyonMudurUnvaniMi(kadroUnvan)
       ? kadroUnvan
       : organizasyonMudurUnvaniMi(unvan)
         ? unvan
         : ''
-    if (mudurUnvan) {
-      // 1) Kadro ünvanı: "İşletme ve İştirakler Müdürü" → İşletme ve İştirakler Müdürlüğü
-      mudurBazEkle(mudurByBaz, unvanMudurEslesmeBaz(mudurUnvan), ad)
-      mudurBazEkle(mudurSicilByBaz, unvanMudurEslesmeBaz(mudurUnvan), sicil)
-      // 2) Kadro müdürlüğü alanı (boşsa görev müdürlüğü)
-      const mudBaz =
-        mudurlukEslesmeBaz(r.kadro_mudurlugu) || mudurlukEslesmeBaz(r.gorev_mudurlugu)
-      mudurBazEkle(mudurByBaz, mudBaz, ad)
-      mudurBazEkle(mudurSicilByBaz, mudBaz, sicil)
+    if (!mudurUnvan) continue
+
+    // "Kadın ve Aile Hizmetleri Müdürü" → "kadin aile hizmetleri"
+    // Müdürlük listesinde "Kadın ve Aile Hizmetleri Müdürlüğü" ile birebir eşleşir.
+    // Kadro müdürlüğü alanına ikinci anahtar yazılmaz; aksi halde kişi başka müdürlüklerde de görünürdü.
+    const unvanBaz = unvanMudurEslesmeBaz(mudurUnvan)
+    if (!unvanBaz) continue
+
+    for (const { sicil, ad } of kisiler) {
+      mudurBazEkle(mudurByBaz, unvanBaz, ad)
+      mudurBazEkle(mudurSicilByBaz, unvanBaz, sicil)
     }
   }
 
