@@ -230,6 +230,8 @@ export default function PersonelHareketiDegistirClient({
   const [yeniKadroDerecesiState, setYeniKadroDerecesiState] = useState(yeniKayit ? '' : (yeni.kadro_derecesi ?? ''))
   const [yeniKadroRolState, setYeniKadroRolState] = useState<'asil' | 'vekil'>(yeniKayit ? 'asil' : seciliKadroRol)
   const [yeniGirisVarsayilan, setYeniGirisVarsayilan] = useState<DurumBilgi>(yeniKayit ? BOS_DURUM : yeni)
+  /** İlişkilendirilen kadroyu boşalt: kaydetmede kazanç kıyası / terfi hesabı yok. */
+  const [kadroBosaltildi, setKadroBosaltildi] = useState(false)
 
   useEffect(() => {
     if (!yeniKayit) return
@@ -240,7 +242,7 @@ export default function PersonelHareketiDegistirClient({
 
   function kadroRolDegistir(rol: 'asil' | 'vekil') {
     setYeniKadroRolState(rol)
-    kadroyuBosalt()
+    kadroyuBosalt({ kayitYolu: false })
   }
 
   async function personelSec(sicil: string) {
@@ -323,6 +325,7 @@ export default function PersonelHareketiDegistirClient({
   function kadroSec(kadro: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
     const unvan = kadro.kadro_unvani ?? kadro.gorev_unvani ?? ''
     const sinif = unvanlar.find(u => u.ad === unvan)?.sinif ?? ''
+    setKadroBosaltildi(false)
     setYeniKadroIdState(kadro.id)
     setYeniKadroSiraNoState(kadro.kadro_sira_no ?? '')
     setYeniKadroDurumuState(kadro.durumu ?? '')
@@ -333,7 +336,8 @@ export default function PersonelHareketiDegistirClient({
     setKadroSecModalAcik(false)
   }
 
-  function kadroyuBosalt() {
+  function kadroyuBosalt(opts?: { kayitYolu?: boolean }) {
+    const kayitYolu = opts?.kayitYolu === true
     setYeniKadroIdState(null)
     setYeniKadroSiraNoState('')
     setYeniKadroDurumuState('')
@@ -341,10 +345,10 @@ export default function PersonelHareketiDegistirClient({
     setYeniSinifState('')
     setYeniKadroDerecesiState('')
     setYeniGorevYeriState('')
-    // Kadro değişikliği personelin kurumdan ayrıldığı anlamına gelmez.
-    // Kadro alanlarını temizlerken kazanılmış terfi bilgilerini koru.
-    setYeniGirisVarsayilan({ ...BOS_DURUM, ...durumTerfiAlanlari(terfiSonState) })
+    // Kaydet yolu: YENİ bölümünün tamamı boşalsın; terfi/kazanç hesabı yapılmaz.
+    setYeniGirisVarsayilan({ ...BOS_DURUM })
     setYeniBolumKey(k => k + 1)
+    setKadroBosaltildi(kayitYolu)
     setKadroSecModalAcik(false)
   }
 
@@ -393,6 +397,32 @@ export default function PersonelHareketiDegistirClient({
     setIsPending(true)
     fd.set('sicil_no', personelAktif.sicil_no)
     fd.set('kadro_sira_no', yeniKadroSiraNoState)
+    if (kadroBosaltildi) {
+      fd.set('kadro_bosalt', '1')
+      fd.set('yeni_kadro_id', '')
+      fd.set('kadro_sira_no', '')
+      fd.set('yeni_unvan', '')
+      fd.set('yeni_sinif', '')
+      fd.set('yeni_kadro_derecesi', '')
+      fd.set('yeni_gorev_yeri', '')
+      fd.set('yeni_kha_derece', '')
+      fd.set('yeni_kha_kademe', '')
+      fd.set('yeni_kha_tarihi', '')
+      fd.set('yeni_ekea_derece', '')
+      fd.set('yeni_ekea_kademe', '')
+      fd.set('yeni_ekea_tarihi', '')
+      fd.set('yeni_kidem_yili', '')
+      fd.set('yeni_kidem_tarihi', '')
+      fd.set('yeni_iyi_hal_terfi_tarihi', '')
+      fd.set('yeni_ek_gosterge', '')
+      fd.set('yeni_ek_odeme', '')
+      fd.set('yeni_oht', '')
+      fd.set('yeni_igz', '')
+      fd.set('yeni_sds_orani', '')
+      kaydetGonder(fd)
+      return
+    }
+    fd.set('kadro_bosalt', '0')
     personelHareketKazancKiyasla(fd).then(res => {
       if (res.hata) {
         setIsPending(false)
@@ -735,9 +765,19 @@ export default function PersonelHareketiDegistirClient({
                 </div>
                 <div className="grid grid-cols-5 gap-2">
                   <div>
-                    <div className="flex items-center justify-between mb-0.5">
+                    <div className="flex items-center justify-between mb-0.5 gap-2">
                       <label className="block text-xs text-slate-500">Unvanı</label>
-                      <span className="text-xs font-medium text-indigo-600 whitespace-nowrap">Seçim Yap</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => kadroyuBosalt({ kayitYolu: true })}
+                          className="text-xs font-medium text-amber-700 hover:underline whitespace-nowrap"
+                          title="YENİ alanlarını boşaltır; kaydette kadro ilişkisi kopar, hesap yapılmaz"
+                        >
+                          İlişkilendirilen kadroyu boşalt
+                        </button>
+                        <span className="text-xs font-medium text-indigo-600 whitespace-nowrap">Seçim Yap</span>
+                      </div>
                     </div>
                     <div>
                       <button
@@ -748,7 +788,13 @@ export default function PersonelHareketiDegistirClient({
                         {yeniUnvanState || 'Kadro Seç (açılır pencereden)'}
                       </button>
                     </div>
+                    {kadroBosaltildi ? (
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        Kadro ilişkisi boşaltıldı. Kaydet ile personel bu unvan/kadrodan çıkarılır; kazanç hesabı yapılmaz.
+                      </p>
+                    ) : null}
                     <input type="hidden" name="yeni_unvan" value={yeniUnvanState} />
+                    <input type="hidden" name="kadro_bosalt" value={kadroBosaltildi ? '1' : '0'} />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-0.5">Sınıfı</label>
@@ -1033,7 +1079,7 @@ export default function PersonelHareketiDegistirClient({
               <button type="button" onClick={() => setKadroSecModalAcik(false)} className="text-sm text-slate-500 hover:text-slate-700">Kapat</button>
             </div>
             <div className="px-4 py-3 border-b border-slate-100 space-y-2">
-              <button type="button" onClick={kadroyuBosalt} className="px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50">
+              <button type="button" onClick={() => kadroyuBosalt({ kayitYolu: true })} className="px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50">
                 İlişkilendirilen kadroyu boşalt
               </button>
               <input

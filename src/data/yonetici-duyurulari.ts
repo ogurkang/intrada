@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-17-kadro-bosalt-kaydet',
+    baslik: '17 Kasım 2026 — İlişkilendirilen kadroyu boşalt',
+    maddeler: [
+      'Personel hareketi Değiştir ekranında «İlişkilendirilen kadroyu boşalt» YENİ alanlarının tamamını temizler.',
+      'Bu yolla kaydetmede kazanç kıyası ve terfi hesabı yapılmaz; personelin kadro/unvan ilişkisi koparılır.',
+      'Normal kadro seçimi ve kaydet akışı önceki gibi hesap ve kontrollerle devam eder.',
+    ],
+  },
+  {
     id: '2026-11-17-butce-kodu-sil',
     baslik: '17 Kasım 2026 — Bütçe kodu silme',
     maddeler: [
