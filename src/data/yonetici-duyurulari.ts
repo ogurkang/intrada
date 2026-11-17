@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-17-memur-maas-hesaplama',
+    baslik: '17 Kasım 2026 — Memur Maaş Hesaplama',
+    maddeler: [
+      'Hesaplama Yönetimi’ne Memur Maaş Hesaplama eklendi.',
+      'PP tanımlarındaki 1. düzeyi 01 ve 02 olan 4. düzey ödenekler listelenir; müdürlük ve unvan sekmeleriyle cari yıl tutarı girilir.',
+      'CY+1, CY+2 ve CY+3’te yüzde artışı hem elle hem artı-eksi ile değiştirilir; tutar zincirleme güncellenir.',
+    ],
+  },
+  {
     id: '2026-11-16-kazanc-43b-ek-gosterge',
     baslik: '16 Kasım 2026 — Ek gösterge 657 md. 43/b',
     maddeler: [

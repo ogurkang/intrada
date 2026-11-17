@@ -7,6 +7,11 @@ const KARTLAR = [
     aciklama: 'Yevmiye ve sosyal hakların artış oranını artı-eksi ile değiştirin. Toplam maliyetin ne kadar kaydığını görün.',
   },
   {
+    href: '/hesaplama/memur-maas',
+    baslik: 'Memur Maaş Hesaplama',
+    aciklama: 'PP bütçe kodlarında 01–02 ödenekleri. Müdürlük ve unvana göre cari yıl tutarı; CY+1…CY+3 yüzde veya tutar ile zincirleme artış.',
+  },
+  {
     href: '/hesaplama/emeklilik-tazminati',
     baslik: 'Emeklilik Tazminatı Hesaplama',
     aciklama: '375 sayılı KHK m. 1 (D). Memurda gösterge 13.558, işçide 12.105. Kesinti yalnız damga vergisidir.',
@@ -34,7 +39,7 @@ export default function HesaplamaYonetimiPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Hesaplama Yönetimi</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Personel maliyeti, emeklilik tazminatı, memur ölüm yardımı ve kişi borcu hesapları.
+          Personel maliyeti, memur maaş, emeklilik tazminatı, memur ölüm yardımı ve kişi borcu hesapları.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
