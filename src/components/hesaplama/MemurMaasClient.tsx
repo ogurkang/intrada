@@ -85,6 +85,8 @@ export default function MemurMaasClient({
     tabloYok ? 'Kayıt tablosu henüz yok; senaryo oturumda tutulur. SQL migration’ı uygulayınca Kaydet çalışır.' : null,
   )
   const [pending, startTransition] = useTransition()
+  /** Sütun başlığındaki artış oranı — tüm ödenek satırlarına uygulanır. */
+  const [sutunOran, setSutunOran] = useState<MemurMaasOran>(() => bosOran())
 
   const yillar = memurMaasYilEtiketleri(belge.cari_yil)
 
@@ -95,6 +97,18 @@ export default function MemurMaasClient({
     }
     if (!unvanlar.includes(unvan)) setUnvan(unvanlar[0] ?? '')
   }, [unvanlar, unvan])
+
+  // Müdürlük / unvan değişince sütun oranını mevcut satırlardan oku
+  useEffect(() => {
+    if (!mudurluk || !unvan || odenekler.length === 0) {
+      setSutunOran(bosOran())
+      return
+    }
+    const ilk = memurMaasSatirAl(belge, mudurluk, unvan, odenekler[0].id).oran
+    setSutunOran({ yil1: ilk.yil1, yil2: ilk.yil2, yil3: ilk.yil3 })
+    // belge bilerek bağımlılıkta yok: yalnızca sekme değişiminde senkron
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mudurluk, unvan, odenekler])
 
   function mudurlukSec(m: string) {
     setMudurluk(m)
@@ -116,8 +130,18 @@ export default function MemurMaasClient({
     })
   }
 
-  function oranYaz(odenekId: number, alan: keyof MemurMaasOran, deger: number) {
-    satirYaz(odenekId, { oran: { [alan]: deger } })
+  /** Başlıktaki oran: seçili unvandaki tüm ödeneklere yazılır. */
+  function sutunOranYaz(alan: keyof MemurMaasOran, deger: number) {
+    if (!mudurluk || !unvan) return
+    setSutunOran(prev => ({ ...prev, [alan]: deger }))
+    const satirlar = { ...belge.satirlar }
+    for (const o of odenekler) {
+      const key = memurMaasSatirAnahtari(mudurluk, unvan, o.id)
+      const once = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
+      satirlar[key] = { taban: once.taban, oran: { ...once.oran, [alan]: deger } }
+    }
+    setBelge({ ...belge, satirlar })
+    setMesaj(null)
   }
 
   function miktarYaz(odenekId: number, donem: GelecekDonem, miktar: number) {
@@ -134,7 +158,7 @@ export default function MemurMaasClient({
       return
     }
     setMesaj(null)
-    oranYaz(odenekId, donem, yuzdeDeger)
+    satirYaz(odenekId, { oran: { [donem]: yuzdeDeger } })
   }
 
   function sifirlaOranlar() {
@@ -146,6 +170,7 @@ export default function MemurMaasClient({
       satirlar[key] = { taban: once?.taban ?? 0, oran: bosOran() }
     }
     setBelge({ ...belge, satirlar })
+    setSutunOran(bosOran())
     setMesaj('Seçili unvan için artış oranları sıfırlandı.')
   }
 
@@ -190,7 +215,7 @@ export default function MemurMaasClient({
           <h1 className="text-2xl font-bold text-slate-800">Memur Maaş Hesaplama</h1>
           <p className="mt-1 text-sm text-slate-600">
             Performans programı bütçe kodlarında 1. düzeyi 01 ve 02 olan ödenekler. Cari yıl tutarını girin;
-            sonraki yıllarda artış oranını üstte değiştirin — tutar dinamik güncellenir.
+            sonraki yılların artış oranı sütun başlığındadır — değişince satır tutarları dinamik güncellenir.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -275,21 +300,27 @@ export default function MemurMaasClient({
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="min-w-[14rem] px-3 py-2 align-bottom">Ödenek</th>
-                  <th className="min-w-[9rem] px-3 py-2 text-center align-bottom">
-                    <span className="block text-[10px] font-normal normal-case text-slate-400">Cari yıl</span>
-                    <span>{yillar.cari}</span>
+                  <th className="min-w-[14rem] px-3 py-3 align-bottom">Ödenek</th>
+                  <th className="min-w-[9rem] px-3 py-3 text-center align-bottom">
+                    <span className="block text-[10px] font-normal normal-case text-transparent select-none">—</span>
+                    <span className="mt-2 block">{yillar.cari}</span>
                   </th>
-                  <th className="min-w-[10rem] px-3 py-2 text-center align-bottom">
-                    <span className="mb-1 block text-[10px] font-normal normal-case text-slate-400">Artış oranı</span>
+                  <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
+                    <div className="mb-2 flex justify-center normal-case">
+                      <OranAdimi deger={sutunOran.yil1} onChange={n => sutunOranYaz('yil1', n)} />
+                    </div>
                     <span>{yillar.yil1}</span>
                   </th>
-                  <th className="min-w-[10rem] px-3 py-2 text-center align-bottom">
-                    <span className="mb-1 block text-[10px] font-normal normal-case text-slate-400">Artış oranı</span>
+                  <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
+                    <div className="mb-2 flex justify-center normal-case">
+                      <OranAdimi deger={sutunOran.yil2} onChange={n => sutunOranYaz('yil2', n)} />
+                    </div>
                     <span>{yillar.yil2}</span>
                   </th>
-                  <th className="min-w-[10rem] px-3 py-2 text-center align-bottom">
-                    <span className="mb-1 block text-[10px] font-normal normal-case text-slate-400">Artış oranı</span>
+                  <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
+                    <div className="mb-2 flex justify-center normal-case">
+                      <OranAdimi deger={sutunOran.yil3} onChange={n => sutunOranYaz('yil3', n)} />
+                    </div>
                     <span>{yillar.yil3}</span>
                   </th>
                 </tr>
@@ -298,12 +329,12 @@ export default function MemurMaasClient({
                 {odenekler.map(o => {
                   const s = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
                   return (
-                    <tr key={o.id} className="border-t border-slate-100 align-top">
-                      <td className="px-3 py-3">
+                    <tr key={o.id} className="border-t border-slate-100">
+                      <td className="px-3 py-2.5">
                         <div className="font-medium text-slate-800">{o.hesap_adi}</div>
                         <div className="text-xs tabular-nums text-slate-500">{o.ekonomik_kod}</div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-2.5">
                         <TeklifTutarGiris
                           deger={s.taban}
                           onCommit={n => {
@@ -312,32 +343,23 @@ export default function MemurMaasClient({
                           }}
                         />
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <OranAdimi deger={s.oran.yil1} onChange={n => oranYaz(o.id, 'yil1', n)} />
-                          <TeklifTutarGiris
-                            deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil1')}
-                            onCommit={n => miktarYaz(o.id, 'yil1', n)}
-                          />
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <TeklifTutarGiris
+                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil1')}
+                          onCommit={n => miktarYaz(o.id, 'yil1', n)}
+                        />
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <OranAdimi deger={s.oran.yil2} onChange={n => oranYaz(o.id, 'yil2', n)} />
-                          <TeklifTutarGiris
-                            deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil2')}
-                            onCommit={n => miktarYaz(o.id, 'yil2', n)}
-                          />
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <TeklifTutarGiris
+                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil2')}
+                          onCommit={n => miktarYaz(o.id, 'yil2', n)}
+                        />
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <OranAdimi deger={s.oran.yil3} onChange={n => oranYaz(o.id, 'yil3', n)} />
-                          <TeklifTutarGiris
-                            deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil3')}
-                            onCommit={n => miktarYaz(o.id, 'yil3', n)}
-                          />
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <TeklifTutarGiris
+                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil3')}
+                          onCommit={n => miktarYaz(o.id, 'yil3', n)}
+                        />
                       </td>
                     </tr>
                   )
@@ -353,8 +375,8 @@ export default function MemurMaasClient({
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Cari yılda yalnızca tutar girilir. Sonraki yıllarda üstteki yüzde değişince alttaki tutar güncellenir;
-            tutar elle değişince yüzde yeniden hesaplanır. Tutarlar teklif ekranındaki gibi nokta binlik, virgül küsür
+            Artış oranı yılın üstündeki düğmededir ve tüm satırlara uygulanır. Satırlarda yalnızca tutar girilir;
+            oran değişince tutarlar dinamik güncellenir. Tutarlar teklif ekranındaki gibi nokta binlik, virgül küsür
             biçimindedir.
           </p>
         </>
