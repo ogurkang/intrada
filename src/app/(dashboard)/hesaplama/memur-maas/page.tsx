@@ -6,15 +6,14 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 export default async function MemurMaasPage() {
-  const [{ odenekler, mudurlukler, unvanByMudurluk }, { belge, uyari }] = await Promise.all([
-    yukleMemurMaasKaynaklari(),
-    memurMaasOku(),
-  ])
+  const [{ odenekler, mudurlukler, unvanByMudurluk, kisiByMudurlukUnvan }, { belge, uyari }] =
+    await Promise.all([yukleMemurMaasKaynaklari(), memurMaasOku()])
   return (
     <MemurMaasClient
       odenekler={odenekler}
       mudurlukler={mudurlukler}
       unvanByMudurluk={unvanByMudurluk}
+      kisiByMudurlukUnvan={kisiByMudurlukUnvan}
       sunucuBelge={belge}
       tabloYok={uyari === 'tablo-yok'}
     />

@@ -8,6 +8,8 @@ export type MemurMaasYukleSonuc = {
   mudurlukler: string[]
   /** müdürlük adı → unvan listesi (kadro_mudurlugu eşleşmesi, Memur) */
   unvanByMudurluk: Record<string, string[]>
+  /** müdürlük → unvan → kişi sayısı (asil/vekil dolu kadro satırları) */
+  kisiByMudurlukUnvan: Record<string, Record<string, number>>
 }
 
 export async function yukleMemurMaasKaynaklari(): Promise<MemurMaasYukleSonuc> {
@@ -28,7 +30,9 @@ export async function yukleMemurMaasKaynaklari(): Promise<MemurMaasYukleSonuc> {
       kadro_mudurlugu: string | null
       ayrilis_tarihi: string | null
       statu: string | null
-    }>(supabase, 'kadro_unvani, kadro_mudurlugu, ayrilis_tarihi, statu', q =>
+      asil: string | null
+      vekil: string | null
+    }>(supabase, 'kadro_unvani, kadro_mudurlugu, ayrilis_tarihi, statu, asil, vekil', q =>
       q.is('ayrilis_tarihi', null).eq('statu', 'Memur'),
     ),
   ])
@@ -57,32 +61,61 @@ export async function yukleMemurMaasKaynaklari(): Promise<MemurMaasYukleSonuc> {
   const mudurlukler = mudurlukSecenek.map(m => m.mudurluk_adi.trim()).filter(Boolean)
 
   const unvanSetByMud = new Map<string, Set<string>>()
+  const kisiSayByMudUnvan = new Map<string, Map<string, number>>()
+
   for (const k of kadroRaw ?? []) {
     const mud = String(k.kadro_mudurlugu ?? '').trim()
     const unvan = String(k.kadro_unvani ?? '').trim()
     if (!mud || !unvan) continue
+
     let set = unvanSetByMud.get(mud)
     if (!set) {
       set = new Set()
       unvanSetByMud.set(mud, set)
     }
     set.add(unvan)
+
+    const asil = String(k.asil ?? '').trim()
+    const vekil = String(k.vekil ?? '').trim()
+    let kisi = 0
+    if (asil) kisi += 1
+    if (vekil && vekil !== asil) kisi += 1
+    if (kisi === 0) continue
+
+    let byUnvan = kisiSayByMudUnvan.get(mud)
+    if (!byUnvan) {
+      byUnvan = new Map()
+      kisiSayByMudUnvan.set(mud, byUnvan)
+    }
+    byUnvan.set(unvan, (byUnvan.get(unvan) ?? 0) + kisi)
   }
 
   const unvanByMudurluk: Record<string, string[]> = {}
+  const kisiByMudurlukUnvan: Record<string, Record<string, number>> = {}
+
   for (const mud of mudurlukler) {
     const set = unvanSetByMud.get(mud)
     unvanByMudurluk[mud] = set
       ? [...set].sort((a, b) => a.localeCompare(b, 'tr'))
       : []
+    const kisiMap = kisiSayByMudUnvan.get(mud)
+    kisiByMudurlukUnvan[mud] = {}
+    if (kisiMap) {
+      for (const [u, n] of kisiMap) kisiByMudurlukUnvan[mud][u] = n
+    }
   }
   // Kadroda olup tanim_mudurluk'te olmayanlar
   for (const [mud, set] of unvanSetByMud) {
     if (unvanByMudurluk[mud]) continue
     unvanByMudurluk[mud] = [...set].sort((a, b) => a.localeCompare(b, 'tr'))
     mudurlukler.push(mud)
+    kisiByMudurlukUnvan[mud] = {}
+    const kisiMap = kisiSayByMudUnvan.get(mud)
+    if (kisiMap) {
+      for (const [u, n] of kisiMap) kisiByMudurlukUnvan[mud][u] = n
+    }
   }
   mudurlukler.sort((a, b) => a.localeCompare(b, 'tr'))
 
-  return { odenekler, mudurlukler, unvanByMudurluk }
+  return { odenekler, mudurlukler, unvanByMudurluk, kisiByMudurlukUnvan }
 }

@@ -18,17 +18,19 @@ import {
   type MemurMaasOran,
 } from '@/lib/memur-maas-hesap'
 
+const TOPLAM_SEKME = 'TOPLAM'
+
 type Props = {
   odenekler: MemurMaasOdenek[]
   mudurlukler: string[]
   unvanByMudurluk: Record<string, string[]>
+  kisiByMudurlukUnvan: Record<string, Record<string, number>>
   sunucuBelge: MemurMaasBelge | null
   tabloYok: boolean
 }
 
 type GelecekDonem = Exclude<MemurMaasDonem, 'cari'>
 
-/** Teklif ekranındaki gibi tutar girişi (nokta binlik, virgül küsür). */
 function TeklifTutarGiris({
   deger,
   onCommit,
@@ -65,10 +67,19 @@ function TeklifTutarGiris({
   )
 }
 
+function SaltTutar({ deger }: { deger: number }) {
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-right text-sm tabular-nums text-slate-700">
+      {deger ? ppParaYaz(deger) : '—'}
+    </div>
+  )
+}
+
 export default function MemurMaasClient({
   odenekler,
   mudurlukler,
   unvanByMudurluk,
+  kisiByMudurlukUnvan,
   sunucuBelge,
   tabloYok,
 }: Props) {
@@ -80,57 +91,63 @@ export default function MemurMaasClient({
     () => (mudurluk ? unvanByMudurluk[mudurluk] ?? [] : []),
     [mudurluk, unvanByMudurluk],
   )
-  const [unvan, setUnvan] = useState(unvanlar[0] ?? '')
+  const [sekme, setSekme] = useState<string>(unvanlar[0] ?? TOPLAM_SEKME)
+  const toplamMi = sekme === TOPLAM_SEKME
+  const unvan = toplamMi ? '' : sekme
+
   const [mesaj, setMesaj] = useState<string | null>(
     tabloYok ? 'Kayıt tablosu henüz yok; senaryo oturumda tutulur. SQL migration’ı uygulayınca Kaydet çalışır.' : null,
   )
   const [pending, startTransition] = useTransition()
-  /** Sütun başlığındaki artış oranı — tüm ödenek satırlarına uygulanır. */
   const [sutunOran, setSutunOran] = useState<MemurMaasOran>(() => bosOran())
 
   const yillar = memurMaasYilEtiketleri(belge.cari_yil)
 
+  const kisiSayisi = useMemo(() => {
+    if (!mudurluk || !unvan) return 0
+    return kisiByMudurlukUnvan[mudurluk]?.[unvan] ?? 0
+  }, [kisiByMudurlukUnvan, mudurluk, unvan])
+
   useEffect(() => {
     if (!unvanlar.length) {
-      setUnvan('')
+      setSekme(TOPLAM_SEKME)
       return
     }
-    if (!unvanlar.includes(unvan)) setUnvan(unvanlar[0] ?? '')
-  }, [unvanlar, unvan])
+    if (sekme !== TOPLAM_SEKME && !unvanlar.includes(sekme)) setSekme(unvanlar[0] ?? TOPLAM_SEKME)
+  }, [unvanlar, sekme])
 
-  // Müdürlük / unvan değişince sütun oranını mevcut satırlardan oku
   useEffect(() => {
-    if (!mudurluk || !unvan || odenekler.length === 0) {
+    if (toplamMi || !mudurluk || !unvan || odenekler.length === 0) {
       setSutunOran(bosOran())
       return
     }
     const ilk = memurMaasSatirAl(belge, mudurluk, unvan, odenekler[0].id).oran
     setSutunOran({ yil1: ilk.yil1, yil2: ilk.yil2, yil3: ilk.yil3 })
-    // belge bilerek bağımlılıkta yok: yalnızca sekme değişiminde senkron
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mudurluk, unvan, odenekler])
+  }, [mudurluk, unvan, odenekler, toplamMi])
 
   function mudurlukSec(m: string) {
     setMudurluk(m)
     const liste = unvanByMudurluk[m] ?? []
-    setUnvan(liste[0] ?? '')
+    setSekme(liste[0] ?? TOPLAM_SEKME)
   }
 
   function satirYaz(odenekId: number, patch: Partial<{ taban: number; oran: Partial<MemurMaasOran> }>) {
     if (!mudurluk || !unvan) return
     const key = memurMaasSatirAnahtari(mudurluk, unvan, odenekId)
     const once = memurMaasSatirAl(belge, mudurluk, unvan, odenekId)
-    const sonraki = {
-      taban: patch.taban ?? once.taban,
-      oran: { ...once.oran, ...(patch.oran ?? {}) },
-    }
     setBelge({
       ...belge,
-      satirlar: { ...belge.satirlar, [key]: sonraki },
+      satirlar: {
+        ...belge.satirlar,
+        [key]: {
+          taban: patch.taban ?? once.taban,
+          oran: { ...once.oran, ...(patch.oran ?? {}) },
+        },
+      },
     })
   }
 
-  /** Başlıktaki oran: seçili unvandaki tüm ödeneklere yazılır. */
   function sutunOranYaz(alan: keyof MemurMaasOran, deger: number) {
     if (!mudurluk || !unvan) return
     setSutunOran(prev => ({ ...prev, [alan]: deger }))
@@ -189,24 +206,80 @@ export default function MemurMaasClient({
     })
   }
 
-  const toplamCari = useMemo(() => {
-    if (!mudurluk || !unvan) return 0
-    return odenekler.reduce((t, o) => t + memurMaasSatirAl(belge, mudurluk, unvan, o.id).taban, 0)
-  }, [belge, mudurluk, unvan, odenekler])
+  /** Unvan satırı: kişi × cari tutar. TOPLAM: tüm unvanların kişi×tutar toplamı. */
+  function kisiCarpimCari(odenekId: number): number {
+    if (!mudurluk) return 0
+    if (!toplamMi) {
+      const s = memurMaasSatirAl(belge, mudurluk, unvan, odenekId)
+      return Math.round(kisiSayisi * s.taban * 100) / 100
+    }
+    let t = 0
+    for (const u of unvanlar) {
+      const kisi = kisiByMudurlukUnvan[mudurluk]?.[u] ?? 0
+      const s = memurMaasSatirAl(belge, mudurluk, u, odenekId)
+      t += kisi * s.taban
+    }
+    return Math.round(t * 100) / 100
+  }
 
-  const toplamYil = useMemo(() => {
-    if (!mudurluk || !unvan) return { yil1: 0, yil2: 0, yil3: 0 }
+  /** TOPLAM: unvanların kişi × etkin tutar toplamı. */
+  function toplamDonemKisiCarpim(odenekId: number, donem: GelecekDonem): number {
+    if (!mudurluk) return 0
+    let t = 0
+    for (const u of unvanlar) {
+      const kisi = kisiByMudurlukUnvan[mudurluk]?.[u] ?? 0
+      const s = memurMaasSatirAl(belge, mudurluk, u, odenekId)
+      t += kisi * memurMaasEtkinTutar(s.taban, s.oran, donem)
+    }
+    return Math.round(t * 100) / 100
+  }
+
+  function toplamCariBirim(odenekId: number): number {
+    if (!mudurluk || !toplamMi) return 0
+    let t = 0
+    for (const u of unvanlar) {
+      t += memurMaasSatirAl(belge, mudurluk, u, odenekId).taban
+    }
+    return Math.round(t * 100) / 100
+  }
+
+  const ozet = useMemo(() => {
+    if (!mudurluk) return { cari: 0, kisiCari: 0, yil1: 0, yil2: 0, yil3: 0 }
+    if (!toplamMi) {
+      let cari = 0
+      let yil1 = 0
+      let yil2 = 0
+      let yil3 = 0
+      for (const o of odenekler) {
+        const s = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
+        cari += s.taban
+        yil1 += memurMaasEtkinTutar(s.taban, s.oran, 'yil1')
+        yil2 += memurMaasEtkinTutar(s.taban, s.oran, 'yil2')
+        yil3 += memurMaasEtkinTutar(s.taban, s.oran, 'yil3')
+      }
+      return {
+        cari,
+        kisiCari: Math.round(kisiSayisi * cari * 100) / 100,
+        yil1,
+        yil2,
+        yil3,
+      }
+    }
+    let cari = 0
+    let kisiCari = 0
     let yil1 = 0
     let yil2 = 0
     let yil3 = 0
     for (const o of odenekler) {
-      const s = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
-      yil1 += memurMaasEtkinTutar(s.taban, s.oran, 'yil1')
-      yil2 += memurMaasEtkinTutar(s.taban, s.oran, 'yil2')
-      yil3 += memurMaasEtkinTutar(s.taban, s.oran, 'yil3')
+      cari += toplamCariBirim(o.id)
+      kisiCari += kisiCarpimCari(o.id)
+      yil1 += toplamDonemKisiCarpim(o.id, 'yil1')
+      yil2 += toplamDonemKisiCarpim(o.id, 'yil2')
+      yil3 += toplamDonemKisiCarpim(o.id, 'yil3')
     }
-    return { yil1, yil2, yil3 }
-  }, [belge, mudurluk, unvan, odenekler])
+    return { cari, kisiCari, yil1, yil2, yil3 }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [belge, mudurluk, unvan, unvanlar, odenekler, kisiSayisi, toplamMi, kisiByMudurlukUnvan])
 
   return (
     <div className="space-y-6">
@@ -214,15 +287,16 @@ export default function MemurMaasClient({
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold text-slate-800">Memur Maaş Hesaplama</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Performans programı bütçe kodlarında 1. düzeyi 01 ve 02 olan ödenekler. Cari yıl tutarını girin;
-            sonraki yılların artış oranı sütun başlığındadır — değişince satır tutarları dinamik güncellenir.
+            Cari yıl tutarını girin; kişi × tutar sütunu unvandaki personel sayısıyla çarpar. TOPLAM sekmesi tüm
+            unvanların ödenek bazında toplamını gösterir.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={sifirlaOranlar}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+            disabled={toplamMi}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-40"
           >
             Oranları sıfırla
           </button>
@@ -261,6 +335,12 @@ export default function MemurMaasClient({
           Cari yıl: <span className="font-medium text-slate-800">{yillar.cari}</span>
           {' · '}
           Ödenek: {odenekler.length}
+          {!toplamMi && mudurluk && unvan ? (
+            <>
+              {' · '}
+              Kişi: <span className="font-medium text-slate-800">{kisiSayisi}</span>
+            </>
+          ) : null}
         </p>
       </div>
 
@@ -273,27 +353,49 @@ export default function MemurMaasClient({
       ) : (
         <>
           <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-px">
-            {unvanlar.map(u => (
-              <button
-                key={u}
-                type="button"
-                onClick={() => setUnvan(u)}
-                className={`rounded-t-lg px-3 py-2 text-sm ${
-                  u === unvan
-                    ? '-mb-px border border-b-white border-slate-200 bg-white font-semibold text-slate-800'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {u}
-              </button>
-            ))}
+            {unvanlar.map(u => {
+              const kisi = kisiByMudurlukUnvan[mudurluk]?.[u] ?? 0
+              return (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setSekme(u)}
+                  className={`rounded-t-lg px-3 py-2 text-sm ${
+                    sekme === u
+                      ? '-mb-px border border-b-white border-slate-200 bg-white font-semibold text-slate-800'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {u}
+                  <span className="ml-1 text-xs font-normal text-slate-400">({kisi})</span>
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => setSekme(TOPLAM_SEKME)}
+              className={`rounded-t-lg px-3 py-2 text-sm tracking-wide ${
+                toplamMi
+                  ? '-mb-px border border-b-white border-slate-200 bg-white font-bold uppercase text-slate-900'
+                  : 'font-bold uppercase text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              TOPLAM
+            </button>
           </div>
 
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <OzetKart baslik={`${yillar.cari} (cari)`} tutar={temizTutar(toplamCari)} />
-            <OzetKart baslik={yillar.yil1} tutar={temizTutar(toplamYil.yil1)} vurgu />
-            <OzetKart baslik={yillar.yil2} tutar={temizTutar(toplamYil.yil2)} />
-            <OzetKart baslik={yillar.yil3} tutar={temizTutar(toplamYil.yil3)} />
+            <OzetKart
+              baslik={toplamMi ? `${yillar.cari} kişi × tutar` : `${yillar.cari} (birim)`}
+              tutar={temizTutar(toplamMi ? ozet.kisiCari : ozet.cari)}
+            />
+            <OzetKart
+              baslik={toplamMi ? `${yillar.cari} toplam` : `Kişi × ${yillar.cari}`}
+              tutar={temizTutar(ozet.kisiCari)}
+              vurgu
+            />
+            <OzetKart baslik={`${yillar.yil1} toplam`} tutar={temizTutar(ozet.yil1)} />
+            <OzetKart baslik={`${yillar.yil2} / ${yillar.yil3}`} tutar={`${temizTutar(ozet.yil2)} · ${temizTutar(ozet.yil3)}`} />
           </section>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -305,28 +407,72 @@ export default function MemurMaasClient({
                     <span className="block text-[10px] font-normal normal-case text-transparent select-none">—</span>
                     <span className="mt-2 block">{yillar.cari}</span>
                   </th>
+                  <th className="min-w-[9rem] px-3 py-3 text-center align-bottom">
+                    <span className="block text-[10px] font-normal normal-case text-slate-400">
+                      {toplamMi ? 'Tüm unvanlar' : `${kisiSayisi} kişi`}
+                    </span>
+                    <span className="mt-2 block normal-case">Kişi × tutar</span>
+                  </th>
                   <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
-                    <div className="mb-2 flex justify-center normal-case">
-                      <OranAdimi deger={sutunOran.yil1} onChange={n => sutunOranYaz('yil1', n)} />
-                    </div>
+                    {!toplamMi ? (
+                      <div className="mb-2 flex justify-center normal-case">
+                        <OranAdimi deger={sutunOran.yil1} onChange={n => sutunOranYaz('yil1', n)} />
+                      </div>
+                    ) : (
+                      <span className="mb-2 block text-[10px] font-normal normal-case text-transparent select-none">—</span>
+                    )}
                     <span>{yillar.yil1}</span>
                   </th>
                   <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
-                    <div className="mb-2 flex justify-center normal-case">
-                      <OranAdimi deger={sutunOran.yil2} onChange={n => sutunOranYaz('yil2', n)} />
-                    </div>
+                    {!toplamMi ? (
+                      <div className="mb-2 flex justify-center normal-case">
+                        <OranAdimi deger={sutunOran.yil2} onChange={n => sutunOranYaz('yil2', n)} />
+                      </div>
+                    ) : (
+                      <span className="mb-2 block text-[10px] font-normal normal-case text-transparent select-none">—</span>
+                    )}
                     <span>{yillar.yil2}</span>
                   </th>
                   <th className="min-w-[10rem] px-3 py-3 text-center align-bottom">
-                    <div className="mb-2 flex justify-center normal-case">
-                      <OranAdimi deger={sutunOran.yil3} onChange={n => sutunOranYaz('yil3', n)} />
-                    </div>
+                    {!toplamMi ? (
+                      <div className="mb-2 flex justify-center normal-case">
+                        <OranAdimi deger={sutunOran.yil3} onChange={n => sutunOranYaz('yil3', n)} />
+                      </div>
+                    ) : (
+                      <span className="mb-2 block text-[10px] font-normal normal-case text-transparent select-none">—</span>
+                    )}
                     <span>{yillar.yil3}</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {odenekler.map(o => {
+                  if (toplamMi) {
+                    return (
+                      <tr key={o.id} className="border-t border-slate-100">
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium text-slate-800">{o.hesap_adi}</div>
+                          <div className="text-xs tabular-nums text-slate-500">{o.ekonomik_kod}</div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <SaltTutar deger={toplamCariBirim(o.id)} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <SaltTutar deger={kisiCarpimCari(o.id)} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <SaltTutar deger={toplamDonemKisiCarpim(o.id, 'yil1')} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <SaltTutar deger={toplamDonemKisiCarpim(o.id, 'yil2')} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <SaltTutar deger={toplamDonemKisiCarpim(o.id, 'yil3')} />
+                        </td>
+                      </tr>
+                    )
+                  }
+
                   const s = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
                   return (
                     <tr key={o.id} className="border-t border-slate-100">
@@ -342,6 +488,9 @@ export default function MemurMaasClient({
                             satirYaz(o.id, { taban: n })
                           }}
                         />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <SaltTutar deger={kisiCarpimCari(o.id)} />
                       </td>
                       <td className="px-3 py-2.5">
                         <TeklifTutarGiris
@@ -366,7 +515,7 @@ export default function MemurMaasClient({
                 })}
                 {odenekler.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-10 text-center text-slate-400">
+                    <td colSpan={6} className="px-3 py-10 text-center text-slate-400">
                       1. düzeyi 01 veya 02 olan ödenek bulunamadı.
                     </td>
                   </tr>
@@ -375,9 +524,8 @@ export default function MemurMaasClient({
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Artış oranı yılın üstündeki düğmededir ve tüm satırlara uygulanır. Satırlarda yalnızca tutar girilir;
-            oran değişince tutarlar dinamik güncellenir. Tutarlar teklif ekranındaki gibi nokta binlik, virgül küsür
-            biçimindedir.
+            Kişi × tutar = bu müdürlükteki unvan personel sayısı × cari yıl birim tutarı. TOPLAM sekmesinde tüm
+            unvanların kişi × tutar ve yıllara yayılmış toplamları salt okunur listelenir.
           </p>
         </>
       )}
