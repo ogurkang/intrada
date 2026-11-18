@@ -7,6 +7,7 @@ import { ppParaOku, ppParaYaz } from '@/lib/pp-iliski'
 import {
   bosOran,
   memurMaasEtkinTutar,
+  memurMaasKisiTaban,
   memurMaasSatirAl,
   memurMaasSatirAnahtari,
   memurMaasYilEtiketleri,
@@ -163,15 +164,16 @@ export default function MemurMaasClient({
 
   function miktarYaz(odenekId: number, donem: GelecekDonem, miktar: number) {
     const s = memurMaasSatirAl(belge, mudurluk, unvan, odenekId)
+    const kisiTaban = memurMaasKisiTaban(s.taban, kisiSayisi)
     const baz =
       donem === 'yil1'
-        ? s.taban
+        ? kisiTaban
         : donem === 'yil2'
-          ? memurMaasEtkinTutar(s.taban, s.oran, 'yil1')
-          : memurMaasEtkinTutar(s.taban, s.oran, 'yil2')
+          ? memurMaasEtkinTutar(kisiTaban, s.oran, 'yil1')
+          : memurMaasEtkinTutar(kisiTaban, s.oran, 'yil2')
     const yuzdeDeger = yuzdeFromMiktar(baz, miktar)
     if (yuzdeDeger == null) {
-      setMesaj('Cari yıl tutarı sıfır olduğu için yüzde hesaplanamaz. Önce cari yıl tutarını girin.')
+      setMesaj('Kişi × tutar sıfır olduğu için yüzde hesaplanamaz. Önce cari yıl tutarını girin (ve unvanda kişi olsun).')
       return
     }
     setMesaj(null)
@@ -211,25 +213,31 @@ export default function MemurMaasClient({
     if (!mudurluk) return 0
     if (!toplamMi) {
       const s = memurMaasSatirAl(belge, mudurluk, unvan, odenekId)
-      return Math.round(kisiSayisi * s.taban * 100) / 100
+      return memurMaasKisiTaban(s.taban, kisiSayisi)
     }
     let t = 0
     for (const u of unvanlar) {
       const kisi = kisiByMudurlukUnvan[mudurluk]?.[u] ?? 0
       const s = memurMaasSatirAl(belge, mudurluk, u, odenekId)
-      t += kisi * s.taban
+      t += memurMaasKisiTaban(s.taban, kisi)
     }
     return Math.round(t * 100) / 100
   }
 
-  /** TOPLAM: unvanların kişi × etkin tutar toplamı. */
+  /** Sonraki yıllar: kişi × tutar üzerinden zincirleme artış. */
+  function unvanDonemTutar(odenekId: number, donem: GelecekDonem): number {
+    const s = memurMaasSatirAl(belge, mudurluk, unvan, odenekId)
+    return memurMaasEtkinTutar(memurMaasKisiTaban(s.taban, kisiSayisi), s.oran, donem)
+  }
+
+  /** TOPLAM: her unvanın kişi×tutar tabanından hesaplanan etkin tutarların toplamı. */
   function toplamDonemKisiCarpim(odenekId: number, donem: GelecekDonem): number {
     if (!mudurluk) return 0
     let t = 0
     for (const u of unvanlar) {
       const kisi = kisiByMudurlukUnvan[mudurluk]?.[u] ?? 0
       const s = memurMaasSatirAl(belge, mudurluk, u, odenekId)
-      t += kisi * memurMaasEtkinTutar(s.taban, s.oran, donem)
+      t += memurMaasEtkinTutar(memurMaasKisiTaban(s.taban, kisi), s.oran, donem)
     }
     return Math.round(t * 100) / 100
   }
@@ -247,23 +255,20 @@ export default function MemurMaasClient({
     if (!mudurluk) return { cari: 0, kisiCari: 0, yil1: 0, yil2: 0, yil3: 0 }
     if (!toplamMi) {
       let cari = 0
+      let kisiCari = 0
       let yil1 = 0
       let yil2 = 0
       let yil3 = 0
       for (const o of odenekler) {
         const s = memurMaasSatirAl(belge, mudurluk, unvan, o.id)
+        const kisiTaban = memurMaasKisiTaban(s.taban, kisiSayisi)
         cari += s.taban
-        yil1 += memurMaasEtkinTutar(s.taban, s.oran, 'yil1')
-        yil2 += memurMaasEtkinTutar(s.taban, s.oran, 'yil2')
-        yil3 += memurMaasEtkinTutar(s.taban, s.oran, 'yil3')
+        kisiCari += kisiTaban
+        yil1 += memurMaasEtkinTutar(kisiTaban, s.oran, 'yil1')
+        yil2 += memurMaasEtkinTutar(kisiTaban, s.oran, 'yil2')
+        yil3 += memurMaasEtkinTutar(kisiTaban, s.oran, 'yil3')
       }
-      return {
-        cari,
-        kisiCari: Math.round(kisiSayisi * cari * 100) / 100,
-        yil1,
-        yil2,
-        yil3,
-      }
+      return { cari, kisiCari, yil1, yil2, yil3 }
     }
     let cari = 0
     let kisiCari = 0
@@ -287,8 +292,8 @@ export default function MemurMaasClient({
         <div className="max-w-3xl">
           <h1 className="text-2xl font-bold text-slate-800">Memur Maaş Hesaplama</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Cari yıl tutarını girin; kişi × tutar sütunu unvandaki personel sayısıyla çarpar. TOPLAM sekmesi tüm
-            unvanların ödenek bazında toplamını gösterir.
+            Cari yıl birim tutarını girin; kişi × tutar salt okunur sütunu sonraki yılların tabanıdır. Artış oranı bu
+            tutar üzerinden uygulanır.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -494,19 +499,19 @@ export default function MemurMaasClient({
                       </td>
                       <td className="px-3 py-2.5">
                         <TeklifTutarGiris
-                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil1')}
+                          deger={unvanDonemTutar(o.id, 'yil1')}
                           onCommit={n => miktarYaz(o.id, 'yil1', n)}
                         />
                       </td>
                       <td className="px-3 py-2.5">
                         <TeklifTutarGiris
-                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil2')}
+                          deger={unvanDonemTutar(o.id, 'yil2')}
                           onCommit={n => miktarYaz(o.id, 'yil2', n)}
                         />
                       </td>
                       <td className="px-3 py-2.5">
                         <TeklifTutarGiris
-                          deger={memurMaasEtkinTutar(s.taban, s.oran, 'yil3')}
+                          deger={unvanDonemTutar(o.id, 'yil3')}
                           onCommit={n => miktarYaz(o.id, 'yil3', n)}
                         />
                       </td>
@@ -524,8 +529,8 @@ export default function MemurMaasClient({
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Kişi × tutar = bu müdürlükteki unvan personel sayısı × cari yıl birim tutarı. TOPLAM sekmesinde tüm
-            unvanların kişi × tutar ve yıllara yayılmış toplamları salt okunur listelenir.
+            Kişi × tutar = unvan personel sayısı × cari yıl birim tutarı. CY+1…CY+3 bu tutarı taban alır; artış oranı
+            onun üzerine biner. TOPLAM sekmesinde tüm unvanların aynı mantıkla toplamı salt okunur listelenir.
           </p>
         </>
       )}

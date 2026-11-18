@@ -74,7 +74,7 @@ export function yuzdeFromMiktar(baz: number, miktar: number): number | null {
   return ((miktar / baz) - 1) * 100
 }
 
-/** CY+n oranı bir önceki yılın tutarının üzerine biner. */
+/** CY+n oranı bir önceki yılın tutarının üzerine biner. `taban` genelde kişi × birim tutardır. */
 export function memurMaasEtkinTutar(taban: number, oran: MemurMaasOran, donem: MemurMaasDonem): number {
   if (donem === 'cari') return round2(taban)
   const y1 = round2(taban * carpan(oran.yil1))
@@ -82,6 +82,11 @@ export function memurMaasEtkinTutar(taban: number, oran: MemurMaasOran, donem: M
   const y2 = round2(y1 * carpan(oran.yil2))
   if (donem === 'yil2') return y2
   return round2(y2 * carpan(oran.yil3))
+}
+
+/** Salt okunur kişi × birim tutar (cari taban). */
+export function memurMaasKisiTaban(birimTaban: number, kisiSayisi: number): number {
+  return round2(sayi(birimTaban) * sayi(kisiSayisi))
 }
 
 export function memurMaasYilEtiketleri(cariYil: number): { cari: string; yil1: string; yil2: string; yil3: string } {
