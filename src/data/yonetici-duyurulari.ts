@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-19-pp-raporlar-hub',
+    baslik: '19 Kasım 2026 — Performans Programı Raporlar',
+    maddeler: [
+      'Performans Programı → Raporlar altında on tablo başlığı sırayla listelenir; menüden de açılır.',
+      'Müdürlüklerin Performans Programı Tablosu hazırdır; diğer tabloların veri bağlantısı sonraki adımlarda tamamlanacak.',
+    ],
+  },
+  {
     id: '2026-11-18-memur-maas-kisi-taban-artis',
     baslik: '18 Kasım 2026 — Memur Maaş artış tabanı kişi × tutar',
     maddeler: [

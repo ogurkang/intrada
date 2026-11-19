@@ -499,7 +499,22 @@ function buildMenuGroups(
         label: 'Performans Programı',
         children: [
           { href: '/stratejik-yonetim/performans-programi/islemler', label: 'İşlemler' },
-          { href: '/stratejik-yonetim/performans-programi/raporlar', label: 'Raporlar' },
+          {
+            href: '/stratejik-yonetim/performans-programi/raporlar',
+            label: 'Raporlar',
+            children: [
+              { href: '/stratejik-yonetim/performans-programi/raporlar/idare-performans-bilgisi', label: 'İdare Performans Bilgisi Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/faaliyetler-duzeyinde-idare-pp-maliyeti', label: 'Faaliyetler Düzeyinde İdare PP Maliyeti Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/ekonomik-siniflandirma-duzeyinde-pp-maliyeti', label: 'Ekonomik Sınıflandırma Düzeyinde PP Maliyeti Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/faaliyetlerden-sorumlu-harcama-birimleri', label: 'Faaliyetlerden Sorumlu Harcama Birimleri Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/performans-gostergeleri-izleme-birimleri', label: 'PG İzleme ve Takip Sorumlu Birimler Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/mudurluklerin-performans-programi', label: 'Müdürlüklerin Performans Programı Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/mudurluklerin-faaliyet-maliyetleri', label: 'Müdürlüklerin Faaliyet Maliyetleri Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/harcama-birim-yetkilileri', label: 'Harcama Birim Yetkilileri Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/program-alt-program-stratejik-plan', label: 'Program-Alt Program Stratejik Plan Tablosu' },
+              { href: '/stratejik-yonetim/performans-programi/raporlar/mudurluklerin-program-alt-program-stratejik-plan', label: 'Müdürlüklerin Program-Alt Program SP Tablosu' },
+            ],
+          },
           { href: '/stratejik-yonetim/performans-programi/tanimlar', label: 'Tanımlar' },
         ],
       },

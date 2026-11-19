@@ -14,7 +14,7 @@ export default function PerformansProgramiSayfa() {
         {
           href: '/stratejik-yonetim/performans-programi/raporlar',
           baslik: 'Raporlar',
-          aciklama: 'Müdürlük performans bilgisi. Yıl ve müdürlük seçilerek tablo ve Excel alınır.',
+          aciklama: 'İdare ve müdürlük performans tabloları. On başlık sırayla listelenir.',
         },
         {
           href: '/stratejik-yonetim/performans-programi/tanimlar',
