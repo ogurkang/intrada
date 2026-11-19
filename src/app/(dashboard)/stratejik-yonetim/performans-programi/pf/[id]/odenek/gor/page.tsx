@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
+import PpSekmeKapatDugmesi from '@/components/stratejik/PpSekmeKapatDugmesi'
 import { ppParaYaz } from '@/lib/pp-iliski'
 
 export const dynamic = 'force-dynamic'
@@ -69,7 +70,10 @@ export default async function PpPfOdenekGorPage({
           <h1 className="text-2xl font-bold text-slate-800">{String(faaliyet.faaliyet_adi ?? 'Ödenek')}</h1>
           <p className="mt-1 text-sm text-slate-600">Girilen teklifler ödenek koduna göre.</p>
         </div>
-        <Link href={`/stratejik-yonetim/performans-programi/pf/${faaliyetId}/odenek`} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white">Teklif gir</Link>
+        <div className="flex flex-wrap gap-2">
+          <PpSekmeKapatDugmesi geriHref={`/stratejik-yonetim/performans-programi/hedef/${bagId}`} />
+          <Link href={`/stratejik-yonetim/performans-programi/pf/${faaliyetId}/odenek`} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white">Teklif gir</Link>
+        </div>
       </div>
       {error ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Ödenek tablosu için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.</p> : null}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

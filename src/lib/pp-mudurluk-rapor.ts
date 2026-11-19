@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
-import { ppPerformansYol } from '@/lib/pp-iliski'
+import { ppFaaliyetKodu, ppGostergeKodu, ppPerformansYol } from '@/lib/pp-iliski'
 
 export type PpRaporSayi = number | null
 
@@ -185,12 +185,15 @@ export async function ppPerformansRaporYili(
     : { data: [] }
   const altlar = (altRaw ?? []) as { id: number; program_id: number; alt_program_adi: string; gerekce: string | null }[]
   const altIds = altlar.map(a => a.id)
-  type Bag = { alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null }
+  type Bag = { id: number; alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null }
   const { data: bagRaw } = altIds.length
-    ? await sb.from('performans_programi_alt_program_hedef').select('alt_program_id, alt_hedef_id, secilen_mudurluk').in('alt_program_id', altIds)
+    ? await sb.from('performans_programi_alt_program_hedef').select('id, alt_program_id, alt_hedef_id, secilen_mudurluk').in('alt_program_id', altIds)
     : { data: [] }
   const baglar = (bagRaw ?? []) as Bag[]
   const hedefIdSet = [...new Set(baglar.map(b => b.alt_hedef_id))]
+  /** İdare: her performans hedefi ayrı tablo; PF faaliyet/gösterge bag üzerinden. */
+  const hedefBasinaBlok = mudurlukKaynak === 'secilen'
+  const bagIds = baglar.map(b => b.id)
 
   const { data: amacRaw } = await sb.from('stratejik_plan_amac').select('id, kodu, sira_no').eq('donem_id', donem.id)
   const amaclar = (amacRaw ?? []) as Amac[]
@@ -207,41 +210,94 @@ export async function ppPerformansRaporYili(
   const altHedefById = new Map(altHedefler.map(h => [h.id, h]))
   const gecerliHedefIds = altHedefler.map(h => h.id)
 
-  const [{ data: faaliyetRaw }, { data: ozelRaw }, { data: gostergeRaw }] = await Promise.all([
-    gecerliHedefIds.length
-      ? sb.from('stratejik_plan_faaliyet').select('id, alt_hedef_id, sira_no, faaliyet_adi').in('alt_hedef_id', gecerliHedefIds).eq('aktif', true).order('sira_no')
-      : Promise.resolve({ data: [] }),
-    altIds.length
-      ? sb.from('performans_programi_ozel_faaliyet').select('id, alt_program_id, alt_hedef_id, sira_no, faaliyet_adi').eq('yil', yil).in('alt_program_id', altIds)
-      : Promise.resolve({ data: [] }),
-    gecerliHedefIds.length
-      ? sb.from('stratejik_plan_gosterge').select('id, alt_hedef_id, faaliyet_id, gosterge_adi, birim, yil_1, yil_2, yil_3, yil_4, yil_5').in('alt_hedef_id', gecerliHedefIds).eq('aktif', true).order('sira_no')
-      : Promise.resolve({ data: [] }),
-  ])
-  const planFaaliyet = (faaliyetRaw ?? []) as PlanFaaliyet[]
-  const ozelFaaliyet = (ozelRaw ?? []) as { id: number; alt_program_id: number; alt_hedef_id: number; sira_no: number | null; faaliyet_adi: string }[]
-  const gostergeler = (gostergeRaw ?? []) as Gosterge[]
-  const gostergeIds = gostergeler.map(g => g.id)
-  const planIds = planFaaliyet.map(f => f.id)
-  const ozelIds = ozelFaaliyet.map(f => f.id)
-  const [{ data: veriRaw }, { data: butceRaw }, { data: ozelButceRaw }] = await Promise.all([
-    gostergeIds.length
-      ? sb.from('performans_programi_veri_giris').select('gosterge_id, yil, mudurluk, planlanan_cari_yil, gerceklesme_tahmini_cari_yil, onceki_yil_gerceklesme, tahmin_sonraki_yil_1, tahmin_sonraki_yil_2, gosterge_aciklama, hesaplama_yontemi').in('gosterge_id', gostergeIds).in('yil', [yil - 1, yil])
-      : Promise.resolve({ data: [] }),
-    planIds.length
-      ? sb.from('performans_programi_faaliyet_butce').select('faaliyet_id, mudurluk, tutar, cari_yil_butce, cari_yil_haziran_sonu, cari_yil_yil_sonu_tahmin, sonraki_yil_butce_2, sonraki_yil_butce_3').eq('yil', yil).in('faaliyet_id', planIds)
-      : Promise.resolve({ data: [] }),
-    ozelIds.length
-      ? sb.from('performans_programi_ozel_faaliyet_butce').select('ozel_faaliyet_id, mudurluk, tutar').eq('yil', yil).in('ozel_faaliyet_id', ozelIds)
-      : Promise.resolve({ data: [] }),
-  ])
+  type PfFaaliyet = { id: number; bag_id: number; sira_no: number | null; faaliyet_adi: string }
+  type PfGosterge = {
+    faaliyet_id: number
+    sira_no: number | null
+    gosterge_adi: string
+    birim: string
+    aciklama: string | null
+    hesaplama_yontemi: string | null
+    t2_gerceklesme: number | null
+    t1_planlanan: number | null
+    t1_yil_sonu: number | null
+    t_hedef: number | null
+    t1_tahmin: number | null
+    t2_tahmin: number | null
+  }
+  type PfOdenek = {
+    pf_faaliyet_id: number
+    t1_butce: number | null
+    t1_haziran: number | null
+    t1_yil_sonu: number | null
+    t_butce: number | null
+    t1_tahmin: number | null
+    t2_tahmin: number | null
+  }
+
+  let planFaaliyet: PlanFaaliyet[] = []
+  let ozelFaaliyet: { id: number; alt_program_id: number; alt_hedef_id: number; sira_no: number | null; faaliyet_adi: string }[] = []
+  let gostergeler: Gosterge[] = []
+  let veriListe: Veri[] = []
+  let butceListe: { faaliyet_id: number; mudurluk: string; tutar?: number | null; cari_yil_butce?: number | null; cari_yil_haziran_sonu?: number | null; cari_yil_yil_sonu_tahmin?: number | null; sonraki_yil_butce_2?: number | null; sonraki_yil_butce_3?: number | null }[] = []
+  let ozelButceListe: { ozel_faaliyet_id: number; mudurluk: string; tutar?: number | null }[] = []
+  let pfFaaliyetler: PfFaaliyet[] = []
+  let pfGostergeler: PfGosterge[] = []
+  let pfOdenekler: PfOdenek[] = []
+
+  if (hedefBasinaBlok) {
+    const { data: pfRaw } = bagIds.length
+      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi').in('bag_id', bagIds).order('sira_no')
+      : { data: [] }
+    pfFaaliyetler = (pfRaw ?? []) as PfFaaliyet[]
+    const pfIds = pfFaaliyetler.map(f => f.id)
+    const [{ data: pfGRaw }, { data: pfORaw }] = await Promise.all([
+      pfIds.length
+        ? sb.from('performans_programi_pf_gosterge').select('faaliyet_id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin').in('faaliyet_id', pfIds).order('sira_no')
+        : Promise.resolve({ data: [] }),
+      pfIds.length
+        ? sb.from('performans_programi_pf_odenek').select('pf_faaliyet_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin').in('pf_faaliyet_id', pfIds)
+        : Promise.resolve({ data: [] }),
+    ])
+    pfGostergeler = (pfGRaw ?? []) as PfGosterge[]
+    pfOdenekler = (pfORaw ?? []) as PfOdenek[]
+  } else {
+    const [{ data: faaliyetRaw }, { data: ozelRaw }, { data: gostergeRaw }] = await Promise.all([
+      gecerliHedefIds.length
+        ? sb.from('stratejik_plan_faaliyet').select('id, alt_hedef_id, sira_no, faaliyet_adi').in('alt_hedef_id', gecerliHedefIds).eq('aktif', true).order('sira_no')
+        : Promise.resolve({ data: [] }),
+      altIds.length
+        ? sb.from('performans_programi_ozel_faaliyet').select('id, alt_program_id, alt_hedef_id, sira_no, faaliyet_adi').eq('yil', yil).in('alt_program_id', altIds)
+        : Promise.resolve({ data: [] }),
+      gecerliHedefIds.length
+        ? sb.from('stratejik_plan_gosterge').select('id, alt_hedef_id, faaliyet_id, gosterge_adi, birim, yil_1, yil_2, yil_3, yil_4, yil_5').in('alt_hedef_id', gecerliHedefIds).eq('aktif', true).order('sira_no')
+        : Promise.resolve({ data: [] }),
+    ])
+    planFaaliyet = (faaliyetRaw ?? []) as PlanFaaliyet[]
+    ozelFaaliyet = (ozelRaw ?? []) as { id: number; alt_program_id: number; alt_hedef_id: number; sira_no: number | null; faaliyet_adi: string }[]
+    gostergeler = (gostergeRaw ?? []) as Gosterge[]
+    const gostergeIds = gostergeler.map(g => g.id)
+    const planIds = planFaaliyet.map(f => f.id)
+    const ozelIds = ozelFaaliyet.map(f => f.id)
+    const [{ data: veriRaw }, { data: butceRaw }, { data: ozelButceRaw }] = await Promise.all([
+      gostergeIds.length
+        ? sb.from('performans_programi_veri_giris').select('gosterge_id, yil, mudurluk, planlanan_cari_yil, gerceklesme_tahmini_cari_yil, onceki_yil_gerceklesme, tahmin_sonraki_yil_1, tahmin_sonraki_yil_2, gosterge_aciklama, hesaplama_yontemi').in('gosterge_id', gostergeIds).in('yil', [yil - 1, yil])
+        : Promise.resolve({ data: [] }),
+      planIds.length
+        ? sb.from('performans_programi_faaliyet_butce').select('faaliyet_id, mudurluk, tutar, cari_yil_butce, cari_yil_haziran_sonu, cari_yil_yil_sonu_tahmin, sonraki_yil_butce_2, sonraki_yil_butce_3').eq('yil', yil).in('faaliyet_id', planIds)
+        : Promise.resolve({ data: [] }),
+      ozelIds.length
+        ? sb.from('performans_programi_ozel_faaliyet_butce').select('ozel_faaliyet_id, mudurluk, tutar').eq('yil', yil).in('ozel_faaliyet_id', ozelIds)
+        : Promise.resolve({ data: [] }),
+    ])
+    veriListe = (veriRaw ?? []) as Veri[]
+    butceListe = (butceRaw ?? []) as typeof butceListe
+    ozelButceListe = (ozelButceRaw ?? []) as typeof ozelButceListe
+  }
 
   const amacById = new Map(amaclar.map(a => [a.id, a]))
   const hedefById = new Map(hedefler.map(h => [h.id, h]))
   const donemBas = ilk
-  const veriListe = (veriRaw ?? []) as Veri[]
-  const butceListe = (butceRaw ?? []) as { faaliyet_id: number; mudurluk: string; tutar?: number | null; cari_yil_butce?: number | null; cari_yil_haziran_sonu?: number | null; cari_yil_yil_sonu_tahmin?: number | null; sonraki_yil_butce_2?: number | null; sonraki_yil_butce_3?: number | null }[]
-  const ozelButceListe = (ozelButceRaw ?? []) as { ozel_faaliyet_id: number; mudurluk: string; tutar?: number | null }[]
 
   function hedefKodu(h: AltHedef): string {
     const hedef = hedefById.get(h.hedef_id)
@@ -264,8 +320,86 @@ export async function ppPerformansRaporYili(
     return String(h?.mudurluk ?? '').trim()
   }
 
-  /** İdare: her performans hedefi ayrı tablo. Müdürlük raporu: alt programda hedefler birleşik. */
-  const hedefBasinaBlok = mudurlukKaynak === 'secilen'
+  function blokOlusturIdare(
+    alt: { id: number; program_id: number; alt_program_adi: string; gerekce: string | null },
+    h: AltHedef,
+    norm: string,
+    ad: string,
+  ): PpPerformansBlok {
+    const program = programlar.find(p => p.id === alt.program_id)
+    const phKod = hedefKodu(h)
+    const ilgiliBagIds = new Set(
+      baglar
+        .filter(b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && ppNorm(bagMudurluk(b)) === norm)
+        .map(b => b.id),
+    )
+    const pfListe = pfFaaliyetler
+      .filter(f => ilgiliBagIds.has(f.bag_id))
+      .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.faaliyet_adi.localeCompare(b.faaliyet_adi, 'tr'))
+
+    const faaliyetler: PpPerformansFaaliyet[] = pfListe.map(f => {
+      const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
+      const satirlar = pfOdenekler.filter(o => o.pf_faaliyet_id === f.id)
+      const topla = (alan: keyof PfOdenek) => {
+        const dolu = satirlar.map(r => sayi(r[alan])).filter((n): n is number => n != null)
+        return dolu.length ? dolu.reduce((x, y) => x + y, 0) : null
+      }
+      return {
+        kod,
+        ad: f.faaliyet_adi,
+        tutarlar: [
+          topla('t1_butce'),
+          topla('t1_haziran'),
+          topla('t1_yil_sonu'),
+          topla('t_butce'),
+          topla('t1_tahmin'),
+          topla('t2_tahmin'),
+        ],
+      }
+    })
+
+    const gostergeSatir: PpPerformansGosterge[] = []
+    for (const f of pfListe) {
+      const fKod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
+      const gs = pfGostergeler
+        .filter(g => g.faaliyet_id === f.id)
+        .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.gosterge_adi.localeCompare(b.gosterge_adi, 'tr'))
+      gs.forEach((g, i) => {
+        const sira = Number(g.sira_no ?? 0) || i + 1
+        gostergeSatir.push({
+          kod: ppGostergeKodu(fKod, sira),
+          ad: g.gosterge_adi,
+          birim: BIRIM[g.birim] ?? g.birim,
+          degerler: [
+            sayi(g.t2_gerceklesme),
+            sayi(g.t1_planlanan),
+            sayi(g.t1_yil_sonu),
+            sayi(g.t_hedef),
+            sayi(g.t1_tahmin),
+            sayi(g.t2_tahmin),
+          ],
+          aciklama: String(g.aciklama ?? '').trim(),
+          hesaplama: String(g.hesaplama_yontemi ?? '').trim(),
+          sorumlu: ad,
+        })
+      })
+    }
+
+    return {
+      tabloKey: ppIdareTabloKey(alt.id, h.id),
+      altProgramId: alt.id,
+      altHedefId: h.id,
+      hedefKod: phKod,
+      hedefAd: h.alt_hedef_adi,
+      programAdi: program?.program_adi ?? '',
+      altProgramAdi: alt.alt_program_adi,
+      gerekce: String(alt.gerekce ?? '').trim(),
+      hedef: `PH ${phKod} ${h.alt_hedef_adi}`.trim(),
+      veriKaynagi: ad,
+      gostergeler: gostergeSatir,
+      faaliyetler,
+    }
+  }
 
   function blokOlustur(
     alt: { id: number; program_id: number; alt_program_adi: string; gerekce: string | null },
@@ -325,7 +459,7 @@ export async function ppPerformansRaporYili(
         }
       })
     const tek = hedefSirali.length === 1 ? hedefSirali[0] : null
-    const kodlar = hedefSirali.map(h => hedefKodu(h))
+    const kodlar = hedefSirali.map(x => hedefKodu(x))
     return {
       tabloKey: tek ? ppIdareTabloKey(alt.id, tek.id) : undefined,
       altProgramId: alt.id,
@@ -335,7 +469,7 @@ export async function ppPerformansRaporYili(
       programAdi: program?.program_adi ?? '',
       altProgramAdi: alt.alt_program_adi,
       gerekce: String(alt.gerekce ?? '').trim(),
-      hedef: hedefSirali.map((h, i) => `PH ${kodlar[i]} ${h.alt_hedef_adi}`.trim()).join('\n'),
+      hedef: hedefSirali.map((x, i) => `PH ${kodlar[i]} ${x.alt_hedef_adi}`.trim()).join('\n'),
       veriKaynagi: ad,
       gostergeler: gostergeSatir,
       faaliyetler,
@@ -368,7 +502,7 @@ export async function ppPerformansRaporYili(
         }
         if (hedefBasinaBlok) {
           for (const h of hedefSirali) {
-            bloklar.push(blokOlustur(alt, [h], norm, ad))
+            bloklar.push(blokOlusturIdare(alt, h, norm, ad))
           }
         } else {
           bloklar.push(blokOlustur(alt, hedefSirali, norm, ad))

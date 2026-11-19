@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { PpPerformansRaporYil } from '@/lib/pp-mudurluk-rapor'
@@ -7,6 +8,7 @@ import { ppNorm } from '@/lib/pp-erisim'
 import { PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 import PpRaporGoz from '@/components/stratejik/PpRaporGoz'
+import { IntradaLoader } from '@/components/ui/IntradaLoader'
 
 const LISTE_YOL = `${PP_RAPORLAR_BASE}/idare-performans-bilgisi`
 const EXCEL = '/api/performans-programi/raporlar/idare-performans/excel'
@@ -19,6 +21,7 @@ export default function PpIdarePerformansListeClient({
   secilenMudurluk: string
 }) {
   const router = useRouter()
+  const [yukleniyor, setYukleniyor] = useState(false)
   const mudurlukler = rapor.sekmeler.map(s => s.mudurluk)
   const aktifMudurluk = mudurlukler.find(m => ppNorm(m) === ppNorm(secilenMudurluk))
     ?? mudurlukler[0]
@@ -26,7 +29,12 @@ export default function PpIdarePerformansListeClient({
   const sekme = rapor.sekmeler.find(s => ppNorm(s.mudurluk) === ppNorm(aktifMudurluk))
   const tablolar = sekme?.bloklar ?? []
 
+  useEffect(() => {
+    setYukleniyor(false)
+  }, [rapor.yil, aktifMudurluk, tablolar.length])
+
   function yilDegistir(y: string) {
+    setYukleniyor(true)
     const q = new URLSearchParams()
     q.set('y', y)
     if (aktifMudurluk) q.set('m', aktifMudurluk)
@@ -34,6 +42,7 @@ export default function PpIdarePerformansListeClient({
   }
 
   function mudurlukDegistir(m: string) {
+    setYukleniyor(true)
     const q = new URLSearchParams()
     q.set('y', String(rapor.yil))
     if (m) q.set('m', m)
@@ -41,7 +50,17 @@ export default function PpIdarePerformansListeClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {yukleniyor ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-white/75 backdrop-blur-[1px]"
+          role="alert"
+          aria-busy="true"
+          aria-label="Rapor yükleniyor"
+        >
+          <IntradaLoader label="Rapor yükleniyor" />
+        </div>
+      ) : null}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">

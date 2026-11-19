@@ -50,7 +50,7 @@ export default function PpPerformansBlokTablo({
               {gBaslik.map((b, i) => hucre(b, 'text-center', `g-${i}`))}
             </tr>
             {blok.gostergeler.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Gösterge yok. (Sonraki adımda performans faaliyeti göstergeleri buraya gelecek.)</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Bu hedefe bağlı performans faaliyeti göstergesi yok.</td></tr>
             ) : blok.gostergeler.map(g => (
               <GostergeGrup key={`${g.kod}-${g.ad}`} g={g} />
             ))}

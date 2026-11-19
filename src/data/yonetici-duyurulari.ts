@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-19-idare-pf-gosterge-loader',
+    baslik: '19 Kasım 2026 — İdare raporu göstergeler ve yükleme',
+    maddeler: [
+      'İdare Performans Bilgisi’nde yıl veya müdürlük değişince dosya arayan animasyon görünür.',
+      'Hedef tablosunda o hedefe eklenen performans faaliyetlerinin göstergeleri kodlarıyla sırayla yer alır; Excel’de de aynıdır.',
+      'Performans Faaliyetleri’nde düzenle, ödenek teklifi ve ödenek görüntüle yeni sekmede açılır; kaydet sekmeyi kapatır.',
+    ],
+  },
+  {
     id: '2026-11-19-idare-performans-liste',
     baslik: '19 Kasım 2026 — İdare Performans Bilgisi liste ve hedef tabloları',
     maddeler: [

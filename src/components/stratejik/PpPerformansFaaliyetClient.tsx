@@ -114,7 +114,11 @@ export default function PpPerformansFaaliyetClient({
         return
       }
       try { window.opener?.location.reload() } catch { /* sekme açan sayfa kapalı olabilir */ }
-      window.close()
+      try { window.close() } catch { /* tarayıcı kapatmayı engelleyebilir */ }
+      // Yeni sekmede açıldıysa kapanır; aynı sekmede kaldıysa listeye dön
+      if (!window.closed && window.opener == null) {
+        window.location.href = `/stratejik-yonetim/performans-programi/hedef/${bagId}`
+      }
     })
   }
 
