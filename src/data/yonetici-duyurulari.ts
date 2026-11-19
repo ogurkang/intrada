@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-19-idare-performans-liste',
+    baslik: '19 Kasım 2026 — İdare Performans Bilgisi liste ve hedef tabloları',
+    maddeler: [
+      'İdare Performans Bilgisi’nde yıl ve müdürlük seçilir; o müdürlüğe bağlı her performans hedefi ayrı satırda listelenir.',
+      'Göz ile tabloya bakılır, indir ile Excel alınır; tablo ekranında da Excel İndir vardır.',
+      'Her alt program hedefi ayrı tablodur; hedef kodları (ör. 1.1.1 / 1.2.1) doğru üretilir.',
+    ],
+  },
+  {
     id: '2026-11-19-idare-performans-bilgisi',
     baslik: '19 Kasım 2026 — İdare Performans Bilgisi Tablosu',
     maddeler: [

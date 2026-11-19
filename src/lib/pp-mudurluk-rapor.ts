@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
+import { ppPerformansYol } from '@/lib/pp-iliski'
 
 export type PpRaporSayi = number | null
 
@@ -20,6 +21,12 @@ export type PpPerformansFaaliyet = {
 }
 
 export type PpPerformansBlok = {
+  /** İdare raporunda tek hedef tablosu anahtarı: `{altProgramId}_{altHedefId}` */
+  tabloKey?: string
+  altProgramId?: number
+  altHedefId?: number
+  hedefKod?: string
+  hedefAd?: string
   programAdi: string
   altProgramAdi: string
   gerekce: string
@@ -27,6 +34,18 @@ export type PpPerformansBlok = {
   veriKaynagi: string
   gostergeler: PpPerformansGosterge[]
   faaliyetler: PpPerformansFaaliyet[]
+}
+
+export function ppIdareTabloKey(altProgramId: number, altHedefId: number): string {
+  return `${altProgramId}_${altHedefId}`
+}
+
+export function ppIdareTabloKeyCoz(key: string): { altProgramId: number; altHedefId: number } | null {
+  const [a, b] = key.split('_')
+  const altProgramId = Number(a)
+  const altHedefId = Number(b)
+  if (!Number.isFinite(altProgramId) || !Number.isFinite(altHedefId)) return null
+  return { altProgramId, altHedefId }
 }
 
 export type PpPerformansSekme = {
@@ -224,10 +243,14 @@ export async function ppPerformansRaporYili(
   const butceListe = (butceRaw ?? []) as { faaliyet_id: number; mudurluk: string; tutar?: number | null; cari_yil_butce?: number | null; cari_yil_haziran_sonu?: number | null; cari_yil_yil_sonu_tahmin?: number | null; sonraki_yil_butce_2?: number | null; sonraki_yil_butce_3?: number | null }[]
   const ozelButceListe = (ozelButceRaw ?? []) as { ozel_faaliyet_id: number; mudurluk: string; tutar?: number | null }[]
 
-  function kodKok(h: AltHedef): string[] {
+  function hedefKodu(h: AltHedef): string {
     const hedef = hedefById.get(h.hedef_id)
     const amac = hedef ? amacById.get(hedef.amac_id) : undefined
+    const yol = ppPerformansYol(amac?.kodu ?? '', hedef?.kodu ?? '', h.kodu ?? '')
+    if (yol) return yol
     return [sayiParcasi(amac?.kodu, amac?.sira_no), sayiParcasi(hedef?.kodu, hedef?.sira_no), sayiParcasi(h.kodu, h.sira_no)]
+      .filter(Boolean)
+      .join('.')
   }
   function planYil(g: Gosterge, hedefYil: number): PpRaporSayi {
     const i = hedefYil - donemBas
@@ -239,6 +262,84 @@ export async function ppPerformansRaporYili(
     if (mudurlukKaynak === 'secilen') return String(b.secilen_mudurluk ?? '').trim()
     const h = altHedefById.get(b.alt_hedef_id)
     return String(h?.mudurluk ?? '').trim()
+  }
+
+  /** İdare: her performans hedefi ayrı tablo. Müdürlük raporu: alt programda hedefler birleşik. */
+  const hedefBasinaBlok = mudurlukKaynak === 'secilen'
+
+  function blokOlustur(
+    alt: { id: number; program_id: number; alt_program_adi: string; gerekce: string | null },
+    hedefSirali: AltHedef[],
+    norm: string,
+    ad: string,
+  ): PpPerformansBlok {
+    const hedefIdleri = new Set(hedefSirali.map(h => h.id))
+    const program = programlar.find(p => p.id === alt.program_id)
+    const plan = planFaaliyet.filter(f => hedefIdleri.has(f.alt_hedef_id))
+    const ozel = ozelFaaliyet.filter(f => f.alt_program_id === alt.id && hedefIdleri.has(f.alt_hedef_id))
+    const kodByPlan = new Map<number, string>()
+    const faaliyetler: PpPerformansFaaliyet[] = [
+      ...plan.map(f => ({ ...f, ozel: false as const })),
+      ...ozel.map(f => ({ ...f, ozel: true as const })),
+    ]
+      .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.faaliyet_adi.localeCompare(b.faaliyet_adi, 'tr'))
+      .map(f => {
+        const sahip = altHedefById.get(f.alt_hedef_id)
+        const kod = [sahip ? hedefKodu(sahip) : '', String(f.sira_no ?? '')].filter(Boolean).join('.')
+        if (!f.ozel) kodByPlan.set(f.id, kod)
+        const satirlar = f.ozel
+          ? ozelButceListe.filter(r => r.ozel_faaliyet_id === f.id && ppNorm(r.mudurluk) === norm)
+          : butceListe.filter(r => r.faaliyet_id === f.id && ppNorm(r.mudurluk) === norm)
+        const topla = (alan: 'cari_yil_butce' | 'cari_yil_haziran_sonu' | 'cari_yil_yil_sonu_tahmin' | 'tutar' | 'sonraki_yil_butce_2' | 'sonraki_yil_butce_3') => {
+          const dolu = satirlar.map(r => sayi((r as Record<string, unknown>)[alan])).filter((n): n is number => n != null)
+          return dolu.length ? dolu.reduce((x, y) => x + y, 0) : null
+        }
+        return {
+          kod,
+          ad: f.faaliyet_adi,
+          tutarlar: f.ozel
+            ? [null, null, null, topla('tutar'), null, null]
+            : [topla('cari_yil_butce'), topla('cari_yil_haziran_sonu'), topla('cari_yil_yil_sonu_tahmin'), topla('tutar'), topla('sonraki_yil_butce_2'), topla('sonraki_yil_butce_3')],
+        }
+      })
+    const gostergeSatir: PpPerformansGosterge[] = gostergeler
+      .filter(g => g.faaliyet_id != null && plan.some(f => f.id === g.faaliyet_id))
+      .map(g => {
+        const onceki = veriListe.find(v => v.gosterge_id === g.id && v.yil === yil - 1 && ppNorm(v.mudurluk) === norm)
+        const cari = veriListe.find(v => v.gosterge_id === g.id && v.yil === yil && ppNorm(v.mudurluk) === norm)
+        return {
+          kod: kodByPlan.get(g.faaliyet_id!) ?? '',
+          ad: g.gosterge_adi,
+          birim: BIRIM[g.birim] ?? g.birim,
+          degerler: [
+            sayi(onceki?.onceki_yil_gerceklesme),
+            sayi(onceki?.planlanan_cari_yil) ?? planYil(g, yil - 1),
+            sayi(onceki?.gerceklesme_tahmini_cari_yil),
+            sayi(cari?.planlanan_cari_yil) ?? planYil(g, yil),
+            sayi(cari?.tahmin_sonraki_yil_1) ?? planYil(g, yil + 1),
+            sayi(cari?.tahmin_sonraki_yil_2) ?? planYil(g, yil + 2),
+          ],
+          aciklama: String(cari?.gosterge_aciklama ?? onceki?.gosterge_aciklama ?? '').trim(),
+          hesaplama: String(cari?.hesaplama_yontemi ?? onceki?.hesaplama_yontemi ?? '').trim(),
+          sorumlu: ad,
+        }
+      })
+    const tek = hedefSirali.length === 1 ? hedefSirali[0] : null
+    const kodlar = hedefSirali.map(h => hedefKodu(h))
+    return {
+      tabloKey: tek ? ppIdareTabloKey(alt.id, tek.id) : undefined,
+      altProgramId: alt.id,
+      altHedefId: tek?.id,
+      hedefKod: tek ? kodlar[0] : undefined,
+      hedefAd: tek?.alt_hedef_adi,
+      programAdi: program?.program_adi ?? '',
+      altProgramAdi: alt.alt_program_adi,
+      gerekce: String(alt.gerekce ?? '').trim(),
+      hedef: hedefSirali.map((h, i) => `PH ${kodlar[i]} ${h.alt_hedef_adi}`.trim()).join('\n'),
+      veriKaynagi: ad,
+      gostergeler: gostergeSatir,
+      faaliyetler,
+    }
   }
 
   const mudurlukAd = new Map<string, string>()
@@ -258,7 +359,6 @@ export async function ppPerformansRaporYili(
           b => b.alt_program_id === alt.id && altHedefById.has(b.alt_hedef_id) && ppNorm(bagMudurluk(b)) === norm,
         )
         if (!bagli.length) continue
-        // Aynı hedef birden fazla bag satırında olsa bile blokta bir kez
         const hedefSirali: AltHedef[] = []
         const gorulen = new Set<number>()
         for (const b of bagli) {
@@ -266,67 +366,15 @@ export async function ppPerformansRaporYili(
           gorulen.add(b.alt_hedef_id)
           hedefSirali.push(altHedefById.get(b.alt_hedef_id)!)
         }
-        const hedefIdleri = new Set(hedefSirali.map(h => h.id))
-        const program = programlar.find(p => p.id === alt.program_id)
-        const plan = planFaaliyet.filter(f => hedefIdleri.has(f.alt_hedef_id))
-        const ozel = ozelFaaliyet.filter(f => f.alt_program_id === alt.id && hedefIdleri.has(f.alt_hedef_id))
-        const kodByPlan = new Map<number, string>()
-        const faaliyetler: PpPerformansFaaliyet[] = [
-          ...plan.map(f => ({ ...f, ozel: false as const })),
-          ...ozel.map(f => ({ ...f, ozel: true as const })),
-        ]
-          .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.faaliyet_adi.localeCompare(b.faaliyet_adi, 'tr'))
-          .map(f => {
-            const sahip = altHedefById.get(f.alt_hedef_id)
-            const kod = [...(sahip ? kodKok(sahip) : []), String(f.sira_no ?? '')].filter(Boolean).join('.')
-            if (!f.ozel) kodByPlan.set(f.id, kod)
-            const satirlar = f.ozel
-              ? ozelButceListe.filter(r => r.ozel_faaliyet_id === f.id && ppNorm(r.mudurluk) === norm)
-              : butceListe.filter(r => r.faaliyet_id === f.id && ppNorm(r.mudurluk) === norm)
-            const topla = (alan: 'cari_yil_butce' | 'cari_yil_haziran_sonu' | 'cari_yil_yil_sonu_tahmin' | 'tutar' | 'sonraki_yil_butce_2' | 'sonraki_yil_butce_3') => {
-              const dolu = satirlar.map(r => sayi((r as Record<string, unknown>)[alan])).filter((n): n is number => n != null)
-              return dolu.length ? dolu.reduce((x, y) => x + y, 0) : null
-            }
-            return {
-              kod,
-              ad: f.faaliyet_adi,
-              tutarlar: f.ozel
-                ? [null, null, null, topla('tutar'), null, null]
-                : [topla('cari_yil_butce'), topla('cari_yil_haziran_sonu'), topla('cari_yil_yil_sonu_tahmin'), topla('tutar'), topla('sonraki_yil_butce_2'), topla('sonraki_yil_butce_3')],
-            }
-          })
-        const gostergeSatir: PpPerformansGosterge[] = gostergeler
-          .filter(g => g.faaliyet_id != null && plan.some(f => f.id === g.faaliyet_id))
-          .map(g => {
-            const onceki = veriListe.find(v => v.gosterge_id === g.id && v.yil === yil - 1 && ppNorm(v.mudurluk) === norm)
-            const cari = veriListe.find(v => v.gosterge_id === g.id && v.yil === yil && ppNorm(v.mudurluk) === norm)
-            return {
-              kod: kodByPlan.get(g.faaliyet_id!) ?? '',
-              ad: g.gosterge_adi,
-              birim: BIRIM[g.birim] ?? g.birim,
-              degerler: [
-                sayi(onceki?.onceki_yil_gerceklesme),
-                sayi(onceki?.planlanan_cari_yil) ?? planYil(g, yil - 1),
-                sayi(onceki?.gerceklesme_tahmini_cari_yil),
-                sayi(cari?.planlanan_cari_yil) ?? planYil(g, yil),
-                sayi(cari?.tahmin_sonraki_yil_1) ?? planYil(g, yil + 1),
-                sayi(cari?.tahmin_sonraki_yil_2) ?? planYil(g, yil + 2),
-              ],
-              aciklama: String(cari?.gosterge_aciklama ?? onceki?.gosterge_aciklama ?? '').trim(),
-              hesaplama: String(cari?.hesaplama_yontemi ?? onceki?.hesaplama_yontemi ?? '').trim(),
-              sorumlu: ad,
-            }
-          })
-        bloklar.push({
-          programAdi: program?.program_adi ?? '',
-          altProgramAdi: alt.alt_program_adi,
-          gerekce: String(alt.gerekce ?? '').trim(),
-          hedef: hedefSirali.map(h => `PH ${kodKok(h).filter(Boolean).join('.')} ${h.alt_hedef_adi}`.trim()).join('\n'),
-          veriKaynagi: ad,
-          gostergeler: gostergeSatir,
-          faaliyetler,
-        })
+        if (hedefBasinaBlok) {
+          for (const h of hedefSirali) {
+            bloklar.push(blokOlustur(alt, [h], norm, ad))
+          }
+        } else {
+          bloklar.push(blokOlustur(alt, hedefSirali, norm, ad))
+        }
       }
+      bloklar.sort((a, b) => (a.hedefKod ?? a.hedef).localeCompare(b.hedefKod ?? b.hedef, 'tr'))
       return { mudurluk: ad, bloklar }
     })
     .filter(s => s.bloklar.length)
