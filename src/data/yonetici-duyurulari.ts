@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-19-idare-maliyet-bicim',
+    baslik: '19 Kasım 2026 — Faaliyet maliyet biçimi',
+    maddeler: [
+      'Faaliyet Maliyetleri Tablosu ekranda üstteki tablolarla aynı görünümdedir; sağ kaydırma çubuğu kaldırıldı.',
+      'Excel’de birleştirme, kenarlık ve satır yükseklikleri örnek forma uygundur; tutarlar nokta binlik / virgül küsür gösterir.',
+    ],
+  },
+  {
     id: '2026-11-19-idare-faaliyet-maliyeti',
     baslik: '19 Kasım 2026 — İdare raporunda faaliyet maliyet tabloları',
     maddeler: [

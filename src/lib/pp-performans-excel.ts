@@ -9,6 +9,8 @@ import {
 } from './pp-mudurluk-rapor'
 
 const SABLON = path.join(process.cwd(), 'src/lib/pp/sablon/ornek.xlsx')
+const CIZGI = { style: 'medium' as const, color: { argb: 'FF5B9BD5' } }
+const TUTAR_FORMAT = '#.##0,00'
 
 type Merge = { top: number; left: number; bottom: number; right: number }
 
@@ -55,10 +57,26 @@ function sayiYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
   hucre.value = deger == null ? null : deger
 }
 
+function tutarYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
+  if (deger == null) {
+    hucre.value = null
+    return
+  }
+  hucre.value = deger
+  hucre.numFmt = TUTAR_FORMAT
+  hucre.alignment = { ...(hucre.alignment ?? {}), horizontal: 'center', vertical: 'middle' }
+}
+
 const TUTAR_KOLON = [3, 4, 5, 6, 7, 9]
 
 function sutunHarf(col: number): string {
   return String.fromCharCode(64 + col)
+}
+
+function kenarlik9(ws: ExcelJS.Worksheet, satirNo: number) {
+  for (let c = 1; c <= 9; c++) {
+    ws.getCell(satirNo, c).border = { top: CIZGI, left: CIZGI, bottom: CIZGI, right: CIZGI }
+  }
 }
 
 export async function ppPerformansExcelOlustur(
@@ -149,8 +167,8 @@ export async function ppPerformansExcelOlustur(
       f.tutarlar.forEach((t, i) => {
         toplam[i] = t == null ? toplam[i] : (toplam[i] ?? 0) + t
         const col = TUTAR_KOLON[i]
-        sayiYaz(ws.getCell(r, col), t)
-        sayiYaz(ws.getCell(r + 1, col), t)
+        tutarYaz(ws.getCell(r, col), t)
+        tutarYaz(ws.getCell(r + 1, col), t)
       })
     }
     const toplamSatir = damga(93, 94)
@@ -163,10 +181,14 @@ export async function ppPerformansExcelOlustur(
         hucre.value = null
       } else {
         hucre.value = { formula: kaynaklar.join('+'), result: t }
+        hucre.numFmt = TUTAR_FORMAT
       }
       const alt = ws.getCell(toplamSatir + 1, col)
       if (t == null) alt.value = null
-      else alt.value = { formula: `${harf}${toplamSatir}`, result: t }
+      else {
+        alt.value = { formula: `${harf}${toplamSatir}`, result: t }
+        alt.numFmt = TUTAR_FORMAT
+      }
     })
     yazi(ws.getCell(toplamSatir + 1, 8), null)
     damga(95, 95)
@@ -180,16 +202,15 @@ export async function ppPerformansExcelOlustur(
 
     for (const mt of blok.maliyetTablolari ?? []) {
       satir += 1
-      satir = faaliyetMaliyetYaz(ws, satir, blok, mt, yil, mBaslik)
+      satir = faaliyetMaliyetYaz(ws, satir, blok, mt, mBaslik)
     }
 
     const son = satir - 1
-    const cizgi = { style: 'medium' as const, color: { argb: 'FF5B9BD5' } }
     for (let r = 1; r <= son; r++) {
       for (let c = 1; c <= 9; c++) {
         const h = ws.getCell(r, c)
         if (!h.border?.top) {
-          h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
+          h.border = { top: CIZGI, left: CIZGI, bottom: CIZGI, right: CIZGI }
         }
       }
     }
@@ -200,41 +221,43 @@ export async function ppPerformansExcelOlustur(
   return new Uint8Array(buf)
 }
 
+/**
+ * Referans Excel (satır 61–70): A:I birleştirmeleri, mavi kenarlık,
+ * bilgi satırları A:B | C:I, açıklama yüksek, tutar #.##0,00.
+ */
 function faaliyetMaliyetYaz(
   ws: ExcelJS.Worksheet,
   basSatir: number,
   blok: PpPerformansBlok,
   tablo: PpFaaliyetMaliyetTablo,
-  yil: number,
   mBaslik: string[],
 ): number {
   let r = basSatir
-  const cizgi = { style: 'medium' as const, color: { argb: 'FF5B9BD5' } }
-  const boya = (satirNo: number, baslikMi = false, toplamMi = false) => {
-    for (let c = 1; c <= 7; c++) {
-      const h = ws.getCell(satirNo, c)
-      h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
-      if (baslikMi) {
-        h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0284C7' } }
-        h.font = { ...(h.font ?? {}), bold: true, color: { argb: 'FFFFFFFF' } }
-        h.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      } else if (toplamMi) {
-        h.font = { ...(h.font ?? {}), bold: true }
-        h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-      }
-    }
-  }
 
-  ws.mergeCells(r, 1, r, 7)
-  yazi(ws.getCell(r, 1), 'FAALİYET MALİYETLERİ TABLOSU')
-  boya(r, true)
+  // Başlık — A:I, yükseklik ~19.5
+  ws.mergeCells(r, 1, r, 9)
+  const baslik = ws.getCell(r, 1)
+  baslik.value = 'FAALİYET MALİYETLERİ TABLOSU'
+  baslik.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' }, name: 'Calibri' }
+  baslik.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } }
+  baslik.alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getRow(r).height = 19.5
+  kenarlik9(ws, r)
   r += 1
 
   const bilgi = (etiket: string, deger: string) => {
-    yazi(ws.getCell(r, 1), etiket)
-    ws.mergeCells(r, 2, r, 7)
-    yazi(ws.getCell(r, 2), deger)
-    boya(r)
+    ws.mergeCells(r, 1, r, 2)
+    ws.mergeCells(r, 3, r, 9)
+    const e = ws.getCell(r, 1)
+    const d = ws.getCell(r, 3)
+    e.value = etiket
+    d.value = deger || null
+    e.font = { bold: true, size: 10, name: 'Calibri' }
+    d.font = { size: 10, name: 'Calibri' }
+    e.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+    d.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+    ws.getRow(r).height = 13.5
+    kenarlik9(ws, r)
     r += 1
   }
   bilgi('İdare Adı', blok.veriKaynagi)
@@ -243,43 +266,71 @@ function faaliyetMaliyetYaz(
   bilgi('Alt Program Hedefi', blok.hedef)
   bilgi('Faaliyet Adı', `PH ${tablo.kod} ${tablo.ad}`.trim())
 
-  ws.mergeCells(r, 1, r, 7)
-  yazi(ws.getCell(r, 1), tablo.aciklama || null)
-  boya(r)
+  // Açıklama — tam birleşik, ~3 satır yüksekliği
+  ws.mergeCells(r, 1, r, 9)
+  const acik = ws.getCell(r, 1)
+  acik.value = tablo.aciklama || null
+  acik.font = { size: 10, name: 'Calibri' }
+  acik.alignment = { horizontal: 'left', vertical: 'top', wrapText: true }
+  ws.getRow(r).height = Math.max(45, Math.min(120, 15 + Math.ceil((tablo.aciklama || '').length / 80) * 15))
+  kenarlik9(ws, r)
   r += 1
 
+  // Sütun başlıkları: Ekonomik Ad A:B, tutarlar C D E F G:H I
+  ws.mergeCells(r, 1, r, 2)
+  ws.mergeCells(r, 7, r, 8)
   yazi(ws.getCell(r, 1), 'Ekonomik Ad')
-  mBaslik.forEach((b, i) => yazi(ws.getCell(r, 2 + i), b))
-  for (let c = 1; c <= 7; c++) {
+  mBaslik.forEach((b, i) => {
+    const col = TUTAR_KOLON[i]
+    yazi(ws.getCell(r, col), b)
+  })
+  for (let c = 1; c <= 9; c++) {
     const h = ws.getCell(r, c)
-    h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
-    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } }
-    h.font = { ...(h.font ?? {}), bold: true }
-    h.alignment = { horizontal: c === 1 ? 'left' : 'center', vertical: 'middle', wrapText: true }
+    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } }
+    h.font = { bold: true, size: 9, name: 'Calibri' }
+    h.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
   }
+  ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+  ws.getRow(r).height = 27.75
+  kenarlik9(ws, r)
   r += 1
 
   const toplam: PpRaporSayi[] = [null, null, null, null, null, null]
   if (!tablo.satirlar.length) {
-    ws.mergeCells(r, 1, r, 7)
+    ws.mergeCells(r, 1, r, 9)
     yazi(ws.getCell(r, 1), 'Bu faaliyet için 1. düzey ekonomik ödenek teklifi yok.')
-    boya(r)
+    ws.getRow(r).height = 13.5
+    kenarlik9(ws, r)
     r += 1
   } else {
     for (const s of tablo.satirlar) {
+      ws.mergeCells(r, 1, r, 2)
+      ws.mergeCells(r, 7, r, 8)
       yazi(ws.getCell(r, 1), s.ekonomikAd)
       s.tutarlar.forEach((t, i) => {
-        sayiYaz(ws.getCell(r, 2 + i), t)
+        tutarYaz(ws.getCell(r, TUTAR_KOLON[i]), t)
         if (t != null) toplam[i] = (toplam[i] ?? 0) + t
       })
-      boya(r)
+      ws.getCell(r, 1).font = { size: 10, name: 'Calibri' }
+      ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+      ws.getRow(r).height = 13.5
+      kenarlik9(ws, r)
       r += 1
     }
   }
 
+  ws.mergeCells(r, 1, r, 2)
+  ws.mergeCells(r, 7, r, 8)
   yazi(ws.getCell(r, 1), 'FAALİYET MALİYETİ TOPLAMI')
-  toplam.forEach((t, i) => sayiYaz(ws.getCell(r, 2 + i), t))
-  boya(r, false, true)
+  toplam.forEach((t, i) => tutarYaz(ws.getCell(r, TUTAR_KOLON[i]), t))
+  for (let c = 1; c <= 9; c++) {
+    const h = ws.getCell(r, c)
+    h.font = { bold: true, size: 10, name: 'Calibri' }
+  }
+  ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle' }
+  ws.getRow(r).height = 13.5
+  kenarlik9(ws, r)
   r += 1
+
   return r
 }

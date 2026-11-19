@@ -27,9 +27,8 @@ export default function PpPerformansBlokTablo({
     return dolu.length ? dolu.reduce((a, b) => a + b, 0) : null
   })
   return (
-    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-      <div className="overflow-auto max-h-[min(70vh,720px)]">
-        <table className="w-full min-w-[1100px] text-sm border-collapse">
+    <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+      <table className="w-full min-w-[1100px] border-collapse text-sm">
           <tbody className="divide-y divide-slate-100/80">
             <tr>
               <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">{tabloBaslik}</td>
@@ -84,7 +83,6 @@ export default function PpPerformansBlokTablo({
             ))}
           </tbody>
         </table>
-      </div>
     </div>
   )
 }
