@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs'
 import {
   ppGostergeBaslik,
   ppMaliyetBaslik,
+  type PpFaaliyetMaliyetTablo,
   type PpPerformansBlok,
   type PpRaporSayi,
 } from './pp-mudurluk-rapor'
@@ -177,11 +178,19 @@ export async function ppPerformansExcelOlustur(
       yazi(ws.getCell(r, 3), `PH ${f.kod} ${f.ad}`.trim())
     })
 
+    for (const mt of blok.maliyetTablolari ?? []) {
+      satir += 1
+      satir = faaliyetMaliyetYaz(ws, satir, blok, mt, yil, mBaslik)
+    }
+
     const son = satir - 1
     const cizgi = { style: 'medium' as const, color: { argb: 'FF5B9BD5' } }
     for (let r = 1; r <= son; r++) {
       for (let c = 1; c <= 9; c++) {
-        ws.getCell(r, c).border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
+        const h = ws.getCell(r, c)
+        if (!h.border?.top) {
+          h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
+        }
       }
     }
     ws.pageSetup.printArea = `A1:I${son}`
@@ -189,4 +198,88 @@ export async function ppPerformansExcelOlustur(
 
   const buf = await wb.xlsx.writeBuffer()
   return new Uint8Array(buf)
+}
+
+function faaliyetMaliyetYaz(
+  ws: ExcelJS.Worksheet,
+  basSatir: number,
+  blok: PpPerformansBlok,
+  tablo: PpFaaliyetMaliyetTablo,
+  yil: number,
+  mBaslik: string[],
+): number {
+  let r = basSatir
+  const cizgi = { style: 'medium' as const, color: { argb: 'FF5B9BD5' } }
+  const boya = (satirNo: number, baslikMi = false, toplamMi = false) => {
+    for (let c = 1; c <= 7; c++) {
+      const h = ws.getCell(satirNo, c)
+      h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
+      if (baslikMi) {
+        h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0284C7' } }
+        h.font = { ...(h.font ?? {}), bold: true, color: { argb: 'FFFFFFFF' } }
+        h.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      } else if (toplamMi) {
+        h.font = { ...(h.font ?? {}), bold: true }
+        h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+      }
+    }
+  }
+
+  ws.mergeCells(r, 1, r, 7)
+  yazi(ws.getCell(r, 1), 'FAALİYET MALİYETLERİ TABLOSU')
+  boya(r, true)
+  r += 1
+
+  const bilgi = (etiket: string, deger: string) => {
+    yazi(ws.getCell(r, 1), etiket)
+    ws.mergeCells(r, 2, r, 7)
+    yazi(ws.getCell(r, 2), deger)
+    boya(r)
+    r += 1
+  }
+  bilgi('İdare Adı', blok.veriKaynagi)
+  bilgi('Program Adı', blok.programAdi)
+  bilgi('Alt Program Adı', blok.altProgramAdi)
+  bilgi('Alt Program Hedefi', blok.hedef)
+  bilgi('Faaliyet Adı', `PH ${tablo.kod} ${tablo.ad}`.trim())
+
+  ws.mergeCells(r, 1, r, 7)
+  yazi(ws.getCell(r, 1), tablo.aciklama || null)
+  boya(r)
+  r += 1
+
+  yazi(ws.getCell(r, 1), 'Ekonomik Ad')
+  mBaslik.forEach((b, i) => yazi(ws.getCell(r, 2 + i), b))
+  for (let c = 1; c <= 7; c++) {
+    const h = ws.getCell(r, c)
+    h.border = { top: cizgi, left: cizgi, bottom: cizgi, right: cizgi }
+    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } }
+    h.font = { ...(h.font ?? {}), bold: true }
+    h.alignment = { horizontal: c === 1 ? 'left' : 'center', vertical: 'middle', wrapText: true }
+  }
+  r += 1
+
+  const toplam: PpRaporSayi[] = [null, null, null, null, null, null]
+  if (!tablo.satirlar.length) {
+    ws.mergeCells(r, 1, r, 7)
+    yazi(ws.getCell(r, 1), 'Bu faaliyet için 1. düzey ekonomik ödenek teklifi yok.')
+    boya(r)
+    r += 1
+  } else {
+    for (const s of tablo.satirlar) {
+      yazi(ws.getCell(r, 1), s.ekonomikAd)
+      s.tutarlar.forEach((t, i) => {
+        sayiYaz(ws.getCell(r, 2 + i), t)
+        if (t != null) toplam[i] = (toplam[i] ?? 0) + t
+      })
+      boya(r)
+      r += 1
+    }
+  }
+
+  yazi(ws.getCell(r, 1), 'FAALİYET MALİYETİ TOPLAMI')
+  toplam.forEach((t, i) => sayiYaz(ws.getCell(r, 2 + i), t))
+  boya(r, false, true)
+  r += 1
+  return r
 }

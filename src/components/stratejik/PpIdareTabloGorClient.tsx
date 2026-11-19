@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { PpPerformansBlok } from '@/lib/pp-mudurluk-rapor'
 import { PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 import PpPerformansBlokTablo from '@/components/stratejik/PpPerformansBlokTablo'
+import PpFaaliyetMaliyetTabloGorunum from '@/components/stratejik/PpFaaliyetMaliyetTablo'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
 const LISTE_YOL = `${PP_RAPORLAR_BASE}/idare-performans-bilgisi`
@@ -31,7 +32,8 @@ export default function PpIdareTabloGorClient({
             </h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Tablo', metin: 'Seçilen müdürlük ve performans hedefine özel İdare Performans Bilgisi tablosu.' },
-              { baslik: 'Excel İndir', metin: 'Bu tablonun Excel dosyasını örnek form düzeniyle indirir.' },
+              { baslik: 'Faaliyet maliyeti', metin: 'Her performans faaliyetinin ödenek teklifi, ekonomik sınıflandırmanın 1. düzeyinde ayrıca listelenir.' },
+              { baslik: 'Excel İndir', metin: 'İdare tablosu ile faaliyet maliyet tablolarını birlikte indirir.' },
             ]} />
           </div>
           <p className="mt-1 text-sm text-slate-600">{mudurluk}</p>
@@ -53,6 +55,15 @@ export default function PpIdareTabloGorClient({
       </div>
 
       <PpPerformansBlokTablo blok={blok} yil={yil} tabloBaslik="İDARE PERFORMANS BİLGİSİ" />
+
+      {(blok.maliyetTablolari ?? []).map(t => (
+        <PpFaaliyetMaliyetTabloGorunum
+          key={t.kod}
+          blok={blok}
+          tablo={t}
+          yil={yil}
+        />
+      ))}
     </div>
   )
 }

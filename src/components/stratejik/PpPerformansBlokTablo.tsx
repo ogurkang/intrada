@@ -64,7 +64,7 @@ export default function PpPerformansBlokTablo({
               {hucre(mBaslik[5], 'text-center', 'm-5')}
             </tr>
             {blok.faaliyetler.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">Faaliyet yok. (Sonraki adımda performans faaliyetleri buraya gelecek.)</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">Bu hedefe bağlı performans faaliyeti yok.</td></tr>
             ) : blok.faaliyetler.map(f => (
               <Fragment key={`${f.kod}-${f.ad}`}>
                 <MaliyetSatir ad={`${f.kod} ${f.ad}`.trim()} tutarlar={f.tutarlar} />

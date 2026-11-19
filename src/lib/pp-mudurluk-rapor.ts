@@ -20,6 +20,21 @@ export type PpPerformansFaaliyet = {
   tutarlar: PpRaporSayi[]
 }
 
+/** Ödenek teklifinin 1. düzey ekonomik sınıflandırmaya göre satırı. */
+export type PpFaaliyetMaliyetSatir = {
+  ekonomikKod: string
+  ekonomikAd: string
+  tutarlar: PpRaporSayi[]
+}
+
+/** Alt program hedefine bağlı her PF faaliyet için maliyet tablosu. */
+export type PpFaaliyetMaliyetTablo = {
+  kod: string
+  ad: string
+  aciklama: string
+  satirlar: PpFaaliyetMaliyetSatir[]
+}
+
 export type PpPerformansBlok = {
   /** İdare raporunda tek hedef tablosu anahtarı: `{altProgramId}_{altHedefId}` */
   tabloKey?: string
@@ -34,6 +49,33 @@ export type PpPerformansBlok = {
   veriKaynagi: string
   gostergeler: PpPerformansGosterge[]
   faaliyetler: PpPerformansFaaliyet[]
+  /** İdare: faaliyet başına 1. düzey ekonomik maliyet tabloları */
+  maliyetTablolari?: PpFaaliyetMaliyetTablo[]
+}
+
+/** Analitik bütçe ekonomik sınıflandırma 1. düzey adları. */
+export const PP_EKONOMIK_1_AD: Record<string, string> = {
+  '01': 'Personel Giderleri',
+  '02': 'Sosyal Güvenlik Kurumlarına Devlet Primi Giderleri',
+  '03': 'Mal ve Hizmet Alım Giderleri',
+  '04': 'Faiz Giderleri',
+  '05': 'Cari Transferler',
+  '06': 'Sermaye Giderleri',
+  '07': 'Sermaye Transferleri',
+  '08': 'Borç Verme',
+  '09': 'Yedek Ödenekler',
+}
+
+export function ppEkonomik1Kod(adim1: string | null | undefined): string {
+  const t = String(adim1 ?? '').trim()
+  if (!t) return ''
+  if (/^\d+$/.test(t)) return t.padStart(2, '0')
+  return t
+}
+
+export function ppEkonomik1Ad(adim1: string | null | undefined): string {
+  const kod = ppEkonomik1Kod(adim1)
+  return PP_EKONOMIK_1_AD[kod] ?? (kod ? `Ekonomik ${kod}` : 'Diğer')
 }
 
 export function ppIdareTabloKey(altProgramId: number, altHedefId: number): string {
@@ -210,7 +252,7 @@ export async function ppPerformansRaporYili(
   const altHedefById = new Map(altHedefler.map(h => [h.id, h]))
   const gecerliHedefIds = altHedefler.map(h => h.id)
 
-  type PfFaaliyet = { id: number; bag_id: number; sira_no: number | null; faaliyet_adi: string }
+  type PfFaaliyet = { id: number; bag_id: number; sira_no: number | null; faaliyet_adi: string; aciklama: string | null }
   type PfGosterge = {
     faaliyet_id: number
     sira_no: number | null
@@ -227,6 +269,7 @@ export async function ppPerformansRaporYili(
   }
   type PfOdenek = {
     pf_faaliyet_id: number
+    butce_kodu_id: number
     t1_butce: number | null
     t1_haziran: number | null
     t1_yil_sonu: number | null
@@ -234,6 +277,7 @@ export async function ppPerformansRaporYili(
     t1_tahmin: number | null
     t2_tahmin: number | null
   }
+  type ButceKodu = { id: number; adim_1: string }
 
   let planFaaliyet: PlanFaaliyet[] = []
   let ozelFaaliyet: { id: number; alt_program_id: number; alt_hedef_id: number; sira_no: number | null; faaliyet_adi: string }[] = []
@@ -244,23 +288,32 @@ export async function ppPerformansRaporYili(
   let pfFaaliyetler: PfFaaliyet[] = []
   let pfGostergeler: PfGosterge[] = []
   let pfOdenekler: PfOdenek[] = []
+  let butceKodById = new Map<number, ButceKodu>()
 
   if (hedefBasinaBlok) {
-    const { data: pfRaw } = bagIds.length
+    const aciklamali = bagIds.length
+      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi, aciklama').in('bag_id', bagIds).order('sira_no')
+      : { data: [], error: null }
+    const pfRaw = aciklamali.error
       ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi').in('bag_id', bagIds).order('sira_no')
-      : { data: [] }
-    pfFaaliyetler = (pfRaw ?? []) as PfFaaliyet[]
+      : aciklamali
+    pfFaaliyetler = ((pfRaw.data ?? []) as PfFaaliyet[]).map(f => ({ ...f, aciklama: f.aciklama ?? null }))
     const pfIds = pfFaaliyetler.map(f => f.id)
     const [{ data: pfGRaw }, { data: pfORaw }] = await Promise.all([
       pfIds.length
         ? sb.from('performans_programi_pf_gosterge').select('faaliyet_id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin').in('faaliyet_id', pfIds).order('sira_no')
         : Promise.resolve({ data: [] }),
       pfIds.length
-        ? sb.from('performans_programi_pf_odenek').select('pf_faaliyet_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin').in('pf_faaliyet_id', pfIds)
+        ? sb.from('performans_programi_pf_odenek').select('pf_faaliyet_id, butce_kodu_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin').in('pf_faaliyet_id', pfIds)
         : Promise.resolve({ data: [] }),
     ])
     pfGostergeler = (pfGRaw ?? []) as PfGosterge[]
     pfOdenekler = (pfORaw ?? []) as PfOdenek[]
+    const kodIds = [...new Set(pfOdenekler.map(o => o.butce_kodu_id).filter(Number.isFinite))]
+    const { data: kodRaw } = kodIds.length
+      ? await sb.from('performans_programi_butce_kodu').select('id, adim_1').in('id', kodIds)
+      : { data: [] }
+    butceKodById = new Map(((kodRaw ?? []) as ButceKodu[]).map(k => [k.id, k]))
   } else {
     const [{ data: faaliyetRaw }, { data: ozelRaw }, { data: gostergeRaw }] = await Promise.all([
       gecerliHedefIds.length
@@ -341,6 +394,7 @@ export async function ppPerformansRaporYili(
       const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
       const satirlar = pfOdenekler.filter(o => o.pf_faaliyet_id === f.id)
       const topla = (alan: keyof PfOdenek) => {
+        if (alan === 'pf_faaliyet_id' || alan === 'butce_kodu_id') return null
         const dolu = satirlar.map(r => sayi(r[alan])).filter((n): n is number => n != null)
         return dolu.length ? dolu.reduce((x, y) => x + y, 0) : null
       }
@@ -385,6 +439,40 @@ export async function ppPerformansRaporYili(
       })
     }
 
+    const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe.map(f => {
+      const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
+      const grup = new Map<string, PpRaporSayi[]>()
+      for (const o of pfOdenekler.filter(r => r.pf_faaliyet_id === f.id)) {
+        const adim = ppEkonomik1Kod(butceKodById.get(o.butce_kodu_id)?.adim_1)
+        if (!adim) continue
+        const once = grup.get(adim) ?? [null, null, null, null, null, null]
+        const ekle = (i: number, v: PpRaporSayi) => {
+          if (v == null) return
+          once[i] = (once[i] ?? 0) + v
+        }
+        ekle(0, sayi(o.t1_butce))
+        ekle(1, sayi(o.t1_haziran))
+        ekle(2, sayi(o.t1_yil_sonu))
+        ekle(3, sayi(o.t_butce))
+        ekle(4, sayi(o.t1_tahmin))
+        ekle(5, sayi(o.t2_tahmin))
+        grup.set(adim, once)
+      }
+      const satirlar: PpFaaliyetMaliyetSatir[] = [...grup.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+        .map(([ekonomikKod, tutarlar]) => ({
+          ekonomikKod,
+          ekonomikAd: ppEkonomik1Ad(ekonomikKod),
+          tutarlar,
+        }))
+      return {
+        kod,
+        ad: f.faaliyet_adi,
+        aciklama: String(f.aciklama ?? '').trim(),
+        satirlar,
+      }
+    })
+
     return {
       tabloKey: ppIdareTabloKey(alt.id, h.id),
       altProgramId: alt.id,
@@ -398,6 +486,7 @@ export async function ppPerformansRaporYili(
       veriKaynagi: ad,
       gostergeler: gostergeSatir,
       faaliyetler,
+      maliyetTablolari,
     }
   }
 
