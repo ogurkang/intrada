@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const sekme = rapor.sekmeler.find(s => ppNorm(s.mudurluk) === ppNorm(mudurluk)) ?? rapor.sekmeler[0]
   if (!sekme) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
 
-  const buf = await ppPerformansExcelOlustur(sekme.bloklar, rapor.yil)
+  const buf = await ppPerformansExcelOlustur(sekme.bloklar, rapor.yil, { tabloBaslik: 'MÜDÜRLÜK PERFORMANS BİLGİSİ' })
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

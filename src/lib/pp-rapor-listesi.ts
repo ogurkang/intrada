@@ -10,8 +10,8 @@ export const PP_RAPORLAR: PpRaporKayit[] = [
   {
     slug: 'idare-performans-bilgisi',
     baslik: 'İdare Performans Bilgisi Tablosu',
-    aciklama: 'İdare geneli performans bilgisi özeti.',
-    hazir: false,
+    aciklama: 'Hedef eklerken seçilen müdürlüğe özel; aynı hedef çok müdürlükteyse ayrı tablolar.',
+    hazir: true,
   },
   {
     slug: 'faaliyetler-duzeyinde-idare-pp-maliyeti',

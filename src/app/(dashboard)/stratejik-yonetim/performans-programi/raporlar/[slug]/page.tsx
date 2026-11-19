@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import PpMudurlukPerformansClient from '@/components/stratejik/PpMudurlukPerformansClient'
+import PpMudurlukPerformansClient, { IDARE_GORUNUM } from '@/components/stratejik/PpMudurlukPerformansClient'
 import { ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
 import { ppRaporBul, PP_RAPORLAR, PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 
@@ -20,11 +20,22 @@ export default async function PerformansProgramiRaporSayfa({
   const rapor = ppRaporBul(slug)
   if (!rapor) notFound()
 
-  if (slug === 'mudurluklerin-performans-programi') {
+  if (slug === 'idare-performans-bilgisi' || slug === 'mudurluklerin-performans-programi') {
     const y = Number.parseInt((await searchParams).y ?? '', 10)
     const supabase = await createClient()
-    const veri = await ppPerformansRaporYili(supabase, Number.isFinite(y) ? y : null)
-    return <PpMudurlukPerformansClient key={veri.yil} rapor={veri} />
+    const idare = slug === 'idare-performans-bilgisi'
+    const veri = await ppPerformansRaporYili(
+      supabase,
+      Number.isFinite(y) ? y : null,
+      { mudurlukKaynak: idare ? 'secilen' : 'alt_hedef' },
+    )
+    return (
+      <PpMudurlukPerformansClient
+        key={`${slug}-${veri.yil}`}
+        rapor={veri}
+        gorunum={idare ? IDARE_GORUNUM : undefined}
+      />
+    )
   }
 
   return (

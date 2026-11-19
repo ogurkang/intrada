@@ -63,7 +63,9 @@ function sutunHarf(col: number): string {
 export async function ppPerformansExcelOlustur(
   bloklar: PpPerformansBlok[],
   yil: number,
+  opts?: { tabloBaslik?: string },
 ): Promise<Uint8Array> {
+  const tabloBaslik = opts?.tabloBaslik ?? 'İDARE PERFORMANS BİLGİSİ'
   const sablon = new ExcelJS.Workbook()
   await sablon.xlsx.readFile(SABLON)
   const kaynak = sablon.worksheets[0]
@@ -96,7 +98,7 @@ export async function ppPerformansExcelOlustur(
     }
 
     const bas = damga(1, 11)
-    yazi(ws.getCell(bas, 1), 'MÜDÜRLÜK PERFORMANS BİLGİSİ')
+    yazi(ws.getCell(bas, 1), tabloBaslik)
     yazi(ws.getCell(bas + 1, 3), yil)
     yazi(ws.getCell(bas + 2, 3), blok.programAdi)
     yazi(ws.getCell(bas + 3, 3), blok.veriKaynagi)

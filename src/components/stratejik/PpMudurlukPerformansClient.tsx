@@ -8,14 +8,44 @@ import { ppGostergeBaslik, ppMaliyetBaslik, ppRaporGosterge, ppRaporPara } from 
 import { PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
 
-export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerformansRaporYil }) {
+export type PpPerformansRaporGorunum = {
+  baslik: string
+  aciklama: string
+  tabloBaslik: string
+  yilYolu: string
+  excelYolu: string
+}
+
+const MUDURLUK_GORUNUM: PpPerformansRaporGorunum = {
+  baslik: 'Müdürlüklerin Performans Programı Tablosu',
+  aciklama: 'Seçilen yıl ve müdürlüğün performans programı tablosu.',
+  tabloBaslik: 'MÜDÜRLÜK PERFORMANS BİLGİSİ',
+  yilYolu: `${PP_RAPORLAR_BASE}/mudurluklerin-performans-programi`,
+  excelYolu: '/api/performans-programi/raporlar/mudurluk-performans/excel',
+}
+
+export const IDARE_GORUNUM: PpPerformansRaporGorunum = {
+  baslik: 'İdare Performans Bilgisi Tablosu',
+  aciklama: 'Alt program hedefi eklerken seçilen müdürlüğe özel tablo. Aynı hedef birden fazla müdürlükle bağlıysa her müdürlük için ayrı tablo oluşur.',
+  tabloBaslik: 'İDARE PERFORMANS BİLGİSİ',
+  yilYolu: `${PP_RAPORLAR_BASE}/idare-performans-bilgisi`,
+  excelYolu: '/api/performans-programi/raporlar/idare-performans/excel',
+}
+
+export default function PpMudurlukPerformansClient({
+  rapor,
+  gorunum = MUDURLUK_GORUNUM,
+}: {
+  rapor: PpPerformansRaporYil
+  gorunum?: PpPerformansRaporGorunum
+}) {
   const router = useRouter()
   const [sekme, setSekme] = useState(0)
   const aktif = rapor.sekmeler[sekme] ?? rapor.sekmeler[0]
   const gBaslik = ppGostergeBaslik(rapor.yil)
   const mBaslik = ppMaliyetBaslik(rapor.yil)
   const excel = aktif
-    ? `/api/performans-programi/raporlar/mudurluk-performans/excel?yil=${rapor.yil}&m=${encodeURIComponent(aktif.mudurluk)}`
+    ? `${gorunum.excelYolu}?yil=${rapor.yil}&m=${encodeURIComponent(aktif.mudurluk)}`
     : ''
 
   return (
@@ -23,14 +53,14 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-800">Müdürlüklerin Performans Programı Tablosu</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{gorunum.baslik}</h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Yıl', metin: 'Raporun bütçe yılını değiştirir. Kayıt girişi yapmaz.' },
-              { baslik: 'Müdürlük sekmesi', metin: 'Seçilen müdürlüğün alt program bloklarını açar. Her blok o müdürlüğe bağlı hedefin göstergesini ve maliyetini gösterir.' },
+              { baslik: 'Müdürlük sekmesi', metin: 'Hedef ekleme aşamasında ilişkilendirilen müdürlüğün tablolarını açar. Aynı hedef birden fazla müdürlükteyse her biri ayrı sekmedir.' },
               { baslik: 'Excel İndir', metin: 'Açık müdürlüğün tablosunu örnek formun düzeniyle indirir. Ekrandaki veriyi değiştirmez.' },
             ]} />
           </div>
-          <p className="text-sm text-slate-600 mt-1">Seçilen yıl ve müdürlüğün performans programı tablosu.</p>
+          <p className="text-sm text-slate-600 mt-1">{gorunum.aciklama}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <Link
@@ -47,7 +77,7 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
           <label className="text-sm text-slate-600 whitespace-nowrap">Yıl</label>
           <select
             value={rapor.yil}
-            onChange={e => router.push(`/stratejik-yonetim/performans-programi/raporlar/mudurluklerin-performans-programi?y=${e.target.value}`)}
+            onChange={e => router.push(`${gorunum.yilYolu}?y=${e.target.value}`)}
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
           >
             {rapor.yillar.map(y => <option key={y} value={y}>{y}</option>)}
@@ -78,7 +108,14 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
             </nav>
           </div>
           {aktif?.bloklar.map(blok => (
-            <BlokTablo key={`${blok.programAdi}-${blok.altProgramAdi}`} blok={blok} yil={rapor.yil} gBaslik={gBaslik} mBaslik={mBaslik} />
+            <BlokTablo
+              key={`${blok.programAdi}-${blok.altProgramAdi}`}
+              blok={blok}
+              yil={rapor.yil}
+              gBaslik={gBaslik}
+              mBaslik={mBaslik}
+              tabloBaslik={gorunum.tabloBaslik}
+            />
           ))}
         </>
       )}
@@ -98,11 +135,13 @@ function BlokTablo({
   yil,
   gBaslik,
   mBaslik,
+  tabloBaslik,
 }: {
   blok: PpPerformansBlok
   yil: number
   gBaslik: string[]
   mBaslik: string[]
+  tabloBaslik: string
 }) {
   const toplam = mBaslik.map((_, i) => {
     const dolu = blok.faaliyetler.map(f => f.tutarlar[i]).filter((n): n is number => n != null)
@@ -114,7 +153,7 @@ function BlokTablo({
       <table className="w-full min-w-[1100px] text-sm border-collapse">
         <tbody className="divide-y divide-slate-100/80">
           <tr>
-            <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">MÜDÜRLÜK PERFORMANS BİLGİSİ</td>
+            <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">{tabloBaslik}</td>
           </tr>
           <Bilgi etiket="BÜTÇE YILI:" deger={String(yil)} />
           <Bilgi etiket="PROGRAM ADI:" deger={blok.programAdi} />
@@ -132,7 +171,7 @@ function BlokTablo({
             {gBaslik.map((b, i) => hucre(b, 'text-center', `g-${i}`))}
           </tr>
           {blok.gostergeler.length === 0 ? (
-            <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Gösterge yok.</td></tr>
+            <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Gösterge yok. (Sonraki adımda performans faaliyeti göstergeleri buraya gelecek.)</td></tr>
           ) : blok.gostergeler.map(g => (
             <GostergeGrup key={`${g.kod}-${g.ad}`} g={g} />
           ))}
@@ -145,7 +184,9 @@ function BlokTablo({
             <td colSpan={2} className={`${BASLIK} text-center`}>{mBaslik[4]}</td>
             {hucre(mBaslik[5], 'text-center', 'm-5')}
           </tr>
-          {blok.faaliyetler.map(f => (
+          {blok.faaliyetler.length === 0 ? (
+            <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">Faaliyet yok. (Sonraki adımda performans faaliyetleri buraya gelecek.)</td></tr>
+          ) : blok.faaliyetler.map(f => (
             <Fragment key={`${f.kod}-${f.ad}`}>
               <MaliyetSatir ad={`${f.kod} ${f.ad}`.trim()} tutarlar={f.tutarlar} />
               <MaliyetSatir ad="Bütçe İçi" tutarlar={f.tutarlar} />

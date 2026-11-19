@@ -40,6 +40,9 @@ export type PpPerformansRaporYil = {
   sekmeler: PpPerformansSekme[]
 }
 
+/** alt_hedef: SP alt hedefin müdürlüğü · secilen: PP hedef bağındaki secilen_mudurluk */
+export type PpRaporMudurlukKaynak = 'alt_hedef' | 'secilen'
+
 const BIRIM: Record<string, string> = {
   Yuzde: 'Yüzde (%)',
   Adet: 'Adet',
@@ -129,7 +132,9 @@ type Veri = {
 export async function ppPerformansRaporYili(
   supabase: SupabaseClient,
   istenenYil: number | null,
+  opts?: { mudurlukKaynak?: PpRaporMudurlukKaynak },
 ): Promise<PpPerformansRaporYil> {
+  const mudurlukKaynak: PpRaporMudurlukKaynak = opts?.mudurlukKaynak ?? 'alt_hedef'
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   const { data: donemRaw } = await sb
@@ -161,10 +166,11 @@ export async function ppPerformansRaporYili(
     : { data: [] }
   const altlar = (altRaw ?? []) as { id: number; program_id: number; alt_program_adi: string; gerekce: string | null }[]
   const altIds = altlar.map(a => a.id)
+  type Bag = { alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null }
   const { data: bagRaw } = altIds.length
-    ? await sb.from('performans_programi_alt_program_hedef').select('alt_program_id, alt_hedef_id').in('alt_program_id', altIds)
+    ? await sb.from('performans_programi_alt_program_hedef').select('alt_program_id, alt_hedef_id, secilen_mudurluk').in('alt_program_id', altIds)
     : { data: [] }
-  const baglar = (bagRaw ?? []) as { alt_program_id: number; alt_hedef_id: number }[]
+  const baglar = (bagRaw ?? []) as Bag[]
   const hedefIdSet = [...new Set(baglar.map(b => b.alt_hedef_id))]
 
   const { data: amacRaw } = await sb.from('stratejik_plan_amac').select('id, kodu, sira_no').eq('donem_id', donem.id)
@@ -229,9 +235,16 @@ export async function ppPerformansRaporYili(
     return sayi([g.yil_1, g.yil_2, g.yil_3, g.yil_4, g.yil_5][i])
   }
 
+  function bagMudurluk(b: Bag): string {
+    if (mudurlukKaynak === 'secilen') return String(b.secilen_mudurluk ?? '').trim()
+    const h = altHedefById.get(b.alt_hedef_id)
+    return String(h?.mudurluk ?? '').trim()
+  }
+
   const mudurlukAd = new Map<string, string>()
-  for (const h of altHedefler) {
-    const ad = h.mudurluk.trim()
+  for (const b of baglar) {
+    if (!altHedefById.has(b.alt_hedef_id)) continue
+    const ad = bagMudurluk(b)
     const n = ppNorm(ad)
     if (ad && !mudurlukAd.has(n)) mudurlukAd.set(n, ad)
   }
@@ -241,10 +254,19 @@ export async function ppPerformansRaporYili(
     .map(([norm, ad]) => {
       const bloklar: PpPerformansBlok[] = []
       for (const alt of altlar) {
-        const bagli = baglar.filter(b => b.alt_program_id === alt.id && altHedefById.has(b.alt_hedef_id))
-        const hedeflerBlok = bagli.map(b => altHedefById.get(b.alt_hedef_id)!).filter(h => ppNorm(h.mudurluk) === norm)
-        if (!hedeflerBlok.length) continue
-        const hedefIdleri = new Set(hedeflerBlok.map(h => h.id))
+        const bagli = baglar.filter(
+          b => b.alt_program_id === alt.id && altHedefById.has(b.alt_hedef_id) && ppNorm(bagMudurluk(b)) === norm,
+        )
+        if (!bagli.length) continue
+        // Aynı hedef birden fazla bag satırında olsa bile blokta bir kez
+        const hedefSirali: AltHedef[] = []
+        const gorulen = new Set<number>()
+        for (const b of bagli) {
+          if (gorulen.has(b.alt_hedef_id)) continue
+          gorulen.add(b.alt_hedef_id)
+          hedefSirali.push(altHedefById.get(b.alt_hedef_id)!)
+        }
+        const hedefIdleri = new Set(hedefSirali.map(h => h.id))
         const program = programlar.find(p => p.id === alt.program_id)
         const plan = planFaaliyet.filter(f => hedefIdleri.has(f.alt_hedef_id))
         const ozel = ozelFaaliyet.filter(f => f.alt_program_id === alt.id && hedefIdleri.has(f.alt_hedef_id))
@@ -299,7 +321,7 @@ export async function ppPerformansRaporYili(
           programAdi: program?.program_adi ?? '',
           altProgramAdi: alt.alt_program_adi,
           gerekce: String(alt.gerekce ?? '').trim(),
-          hedef: hedeflerBlok.map(h => `PH ${kodKok(h).filter(Boolean).join('.')} ${h.alt_hedef_adi}`.trim()).join('\n'),
+          hedef: hedefSirali.map(h => `PH ${kodKok(h).filter(Boolean).join('.')} ${h.alt_hedef_adi}`.trim()).join('\n'),
           veriKaynagi: ad,
           gostergeler: gostergeSatir,
           faaliyetler,
