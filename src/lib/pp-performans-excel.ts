@@ -66,7 +66,7 @@ function tutarYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
 function tutarVeyaKurumIci(hucre: ExcelJS.Cell, deger: PpRaporSayi, kurumIci?: boolean) {
   if (kurumIci) {
     hucre.value = 'Kurum İçi'
-    hucre.numFmt = undefined
+    hucre.numFmt = '@'
     hucre.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     return
   }
