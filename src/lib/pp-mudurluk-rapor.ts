@@ -129,6 +129,16 @@ function sayi(v: unknown): PpRaporSayi {
   return Number.isFinite(n) ? n : null
 }
 
+/** Raporlarda varsayılan yıl: her zaman mevcut takvim yılının bir sonrası (dönemde varsa). */
+export function ppRaporVarsayilanYil(yillar: number[], istenen: number | null): number {
+  const bugun = new Date().getFullYear()
+  const sonraki = bugun + 1
+  if (istenen != null && Number.isFinite(istenen) && yillar.includes(istenen)) return istenen
+  if (yillar.includes(sonraki)) return sonraki
+  if (yillar.includes(bugun)) return bugun
+  return yillar[yillar.length - 1] ?? sonraki
+}
+
 export function ppRaporPara(n: PpRaporSayi): string {
   if (n == null) return ''
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -211,12 +221,7 @@ export async function ppPerformansRaporYili(
   if (Number.isFinite(ilk) && Number.isFinite(son) && son >= ilk) {
     for (let y = ilk; y <= son; y += 1) yillar.push(y)
   }
-  const bugun = new Date().getFullYear()
-  const yil = yillar.includes(Number(istenenYil))
-    ? Number(istenenYil)
-    : yillar.includes(bugun)
-      ? bugun
-      : yillar[yillar.length - 1] ?? bugun
+  const yil = ppRaporVarsayilanYil(yillar, istenenYil)
   if (!donem || !yillar.length) return { yil, yillar, sekmeler: [] }
 
   const { data: programRaw } = await sb.from('performans_programi_program').select('id, program_adi').eq('yil', yil)

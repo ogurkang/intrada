@@ -100,8 +100,10 @@ export async function ppFaaliyetMaliyetExcelOlustur(rapor: PpFaaliyetMaliyetRapo
   const bas = damga(1, 2)
   yazi(ws.getCell(bas, 7), rapor.yil)
   yazi(ws.getCell(bas, 8), rapor.yil + 1)
+  yazi(ws.getCell(bas, 9), rapor.yil + 2)
   yazi(ws.getCell(bas + 1, 7), 'BÜTÇE İÇİ')
   yazi(ws.getCell(bas + 1, 8), 'BÜTÇE İÇİ')
+  yazi(ws.getCell(bas + 1, 9), 'BÜTÇE İÇİ')
 
   for (const s of rapor.satirlar) {
     const kaynakSatir = SABLON_SATIR[s.tur]
@@ -110,10 +112,11 @@ export async function ppFaaliyetMaliyetExcelOlustur(rapor: PpFaaliyetMaliyetRapo
     yazi(ws.getCell(r, 3), s.ad)
     tutarYaz(ws.getCell(r, 7), s.yilTutar)
     tutarYaz(ws.getCell(r, 8), s.sonrakiTutar)
+    tutarYaz(ws.getCell(r, 9), s.sonraki2Tutar)
   }
 
   const son = Math.max(satir - 1, 2)
-  ws.pageSetup.printArea = `A1:H${son}`
+  ws.pageSetup.printArea = `A1:I${son}`
 
   const buf = await wb.xlsx.writeBuffer()
   return new Uint8Array(buf)

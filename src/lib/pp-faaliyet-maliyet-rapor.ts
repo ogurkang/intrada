@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ppRaporPara, type PpRaporSayi } from './pp-mudurluk-rapor'
+import { ppRaporPara, ppRaporVarsayilanYil, type PpRaporSayi } from './pp-mudurluk-rapor'
 
 export type PpFaaliyetMaliyetSatirTur = 'program' | 'alt_program' | 'faaliyet'
 
@@ -9,6 +9,7 @@ export type PpFaaliyetMaliyetSatir = {
   ad: string
   yilTutar: PpRaporSayi
   sonrakiTutar: PpRaporSayi
+  sonraki2Tutar: PpRaporSayi
 }
 
 export type PpFaaliyetMaliyetRapor = {
@@ -28,22 +29,19 @@ function topla(...degerler: PpRaporSayi[]): PpRaporSayi {
   return dolu.length ? dolu.reduce((a, b) => a + b, 0) : null
 }
 
-/** Seçili yıl varsayılanı: takvim yılının bir sonraki yılı (dönem aralığında varsa). */
+/** @deprecated ppRaporVarsayilanYil kullanın */
 export function ppFaaliyetMaliyetVarsayilanYil(yillar: number[], istenen: number | null): number {
-  const bugun = new Date().getFullYear()
-  const sonraki = bugun + 1
-  if (istenen != null && yillar.includes(istenen)) return istenen
-  if (yillar.includes(sonraki)) return sonraki
-  if (yillar.includes(bugun)) return bugun
-  return yillar[yillar.length - 1] ?? sonraki
+  return ppRaporVarsayilanYil(yillar, istenen)
 }
 
-export { ppRaporPara }
+export { ppRaporPara, ppRaporVarsayilanYil }
+
+type UcTutar = { yil: PpRaporSayi; sonraki: PpRaporSayi; sonraki2: PpRaporSayi }
 
 /**
- * Program → Alt Program → Faaliyet hiyerarşisinde yıl / yıl+1 BÜTÇE İÇİ toplamları.
+ * Program → Alt Program → Faaliyet hiyerarşisinde yıl / yıl+1 / yıl+2 BÜTÇE İÇİ toplamları.
  * Faaliyet = alt programa bağlı sınıflandırma faaliyeti; maliyet, o faaliyete bağlı
- * performans faaliyetlerinin ödeneklerinden (t_butce / t1_tahmin) toplanır.
+ * performans faaliyetlerinin ödeneklerinden (t_butce / t1_tahmin / t2_tahmin) toplanır.
  */
 export async function ppFaaliyetMaliyetRaporYili(
   supabase: SupabaseClient,
@@ -64,7 +62,7 @@ export async function ppFaaliyetMaliyetRaporYili(
   if (Number.isFinite(ilk) && Number.isFinite(son) && son >= ilk) {
     for (let y = ilk; y <= son; y += 1) yillar.push(y)
   }
-  const yil = ppFaaliyetMaliyetVarsayilanYil(yillar, istenenYil)
+  const yil = ppRaporVarsayilanYil(yillar, istenenYil)
   if (!donem || !yillar.length) return { yil, yillar, satirlar: [] }
 
   const { data: programRaw } = await sb
@@ -132,37 +130,40 @@ export async function ppFaaliyetMaliyetRaporYili(
     pfByBag.set(f.bag_id, liste)
   }
 
-  // Üst faaliyetin kendisine doğrudan yazılmış ödenek de dahil
   const odenekPfIds = [...new Set([...pfIds, ...faaliyetIds])]
   const { data: odenekRaw } = odenekPfIds.length
     ? await sb
       .from('performans_programi_pf_odenek')
-      .select('pf_faaliyet_id, t_butce, t1_tahmin')
+      .select('pf_faaliyet_id, t_butce, t1_tahmin, t2_tahmin')
       .in('pf_faaliyet_id', odenekPfIds)
     : { data: [] }
   const odenekler = (odenekRaw ?? []) as {
     pf_faaliyet_id: number
     t_butce: number | null
     t1_tahmin: number | null
+    t2_tahmin: number | null
   }[]
-  const odenekByPf = new Map<number, { yil: PpRaporSayi; sonraki: PpRaporSayi }>()
+  const odenekByPf = new Map<number, UcTutar>()
   for (const o of odenekler) {
-    const once = odenekByPf.get(o.pf_faaliyet_id) ?? { yil: null, sonraki: null }
+    const once = odenekByPf.get(o.pf_faaliyet_id) ?? { yil: null, sonraki: null, sonraki2: null }
     once.yil = topla(once.yil, sayi(o.t_butce))
     once.sonraki = topla(once.sonraki, sayi(o.t1_tahmin))
+    once.sonraki2 = topla(once.sonraki2, sayi(o.t2_tahmin))
     odenekByPf.set(o.pf_faaliyet_id, once)
   }
 
-  function pfToplam(ids: number[]): { yil: PpRaporSayi; sonraki: PpRaporSayi } {
+  function pfToplam(ids: number[]): UcTutar {
     let y: PpRaporSayi = null
     let s: PpRaporSayi = null
+    let s2: PpRaporSayi = null
     for (const id of ids) {
       const o = odenekByPf.get(id)
       if (!o) continue
       y = topla(y, o.yil)
       s = topla(s, o.sonraki)
+      s2 = topla(s2, o.sonraki2)
     }
-    return { yil: y, sonraki: s }
+    return { yil: y, sonraki: s, sonraki2: s2 }
   }
 
   const satirlar: PpFaaliyetMaliyetSatir[] = []
@@ -176,6 +177,7 @@ export async function ppFaaliyetMaliyetRaporYili(
       faaliyetSatirlari: PpFaaliyetMaliyetSatir[]
       yilTutar: PpRaporSayi
       sonrakiTutar: PpRaporSayi
+      sonraki2Tutar: PpRaporSayi
     }[] = []
 
     for (const alt of programAltlar) {
@@ -186,6 +188,7 @@ export async function ppFaaliyetMaliyetRaporYili(
       const faaliyetSatirlari: PpFaaliyetMaliyetSatir[] = []
       let altYil: PpRaporSayi = null
       let altSonraki: PpRaporSayi = null
+      let altSonraki2: PpRaporSayi = null
 
       for (const f of altFaaliyetler) {
         const bagIdleri = bagByFaaliyet.get(f.id) ?? []
@@ -197,9 +200,11 @@ export async function ppFaaliyetMaliyetRaporYili(
           ad: f.faaliyet_adi,
           yilTutar: maliyet.yil,
           sonrakiTutar: maliyet.sonraki,
+          sonraki2Tutar: maliyet.sonraki2,
         })
         altYil = topla(altYil, maliyet.yil)
         altSonraki = topla(altSonraki, maliyet.sonraki)
+        altSonraki2 = topla(altSonraki2, maliyet.sonraki2)
       }
 
       altBloklari.push({
@@ -207,17 +212,19 @@ export async function ppFaaliyetMaliyetRaporYili(
         faaliyetSatirlari,
         yilTutar: altYil,
         sonrakiTutar: altSonraki,
+        sonraki2Tutar: altSonraki2,
       })
     }
 
     let programYil: PpRaporSayi = null
     let programSonraki: PpRaporSayi = null
+    let programSonraki2: PpRaporSayi = null
     for (const blok of altBloklari) {
       programYil = topla(programYil, blok.yilTutar)
       programSonraki = topla(programSonraki, blok.sonrakiTutar)
+      programSonraki2 = topla(programSonraki2, blok.sonraki2Tutar)
     }
 
-    // Yalnızca altında en az bir faaliyet olan programları yaz
     if (!altBloklari.some(b => b.faaliyetSatirlari.length > 0)) continue
 
     satirlar.push({
@@ -226,6 +233,7 @@ export async function ppFaaliyetMaliyetRaporYili(
       ad: program.program_adi,
       yilTutar: programYil,
       sonrakiTutar: programSonraki,
+      sonraki2Tutar: programSonraki2,
     })
 
     for (const blok of altBloklari) {
@@ -236,6 +244,7 @@ export async function ppFaaliyetMaliyetRaporYili(
         ad: blok.alt.alt_program_adi,
         yilTutar: blok.yilTutar,
         sonrakiTutar: blok.sonrakiTutar,
+        sonraki2Tutar: blok.sonraki2Tutar,
       })
       satirlar.push(...blok.faaliyetSatirlari)
     }

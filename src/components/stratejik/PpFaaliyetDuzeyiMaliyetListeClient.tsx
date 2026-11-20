@@ -52,13 +52,13 @@ export default function PpFaaliyetDuzeyiMaliyetListeClient({
               Faaliyetler Düzeyinde İdare Performans Programı Maliyeti Tablosu
             </h1>
             <PpEkranBilgi maddeler={[
-              { baslik: 'Yıl', metin: 'Varsayılan olarak bir sonraki takvim yılıdır. Kayıt girişi yapmaz.' },
+              { baslik: 'Yıl', metin: 'Varsayılan olarak bir sonraki takvim yılıdır. Tablo seçili yıl, yıl+1 ve yıl+2 BÜTÇE İÇİ sütunlarını gösterir.' },
               { baslik: 'Göz', metin: 'Program → alt program → faaliyet hiyerarşisindeki maliyet tablosunu açar.' },
               { baslik: 'İndir', metin: 'Aynı tablonun Excel dosyasını indirir.' },
             ]} />
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Faaliyet toplamları alt programa, alt program toplamları programa yazılır. Ekonomik sınıflandırma yoktur.
+            Faaliyet toplamları alt programa, alt program toplamları programa yazılır. Üç yıl BÜTÇE İÇİ; ekonomik sınıflandırma yoktur.
           </p>
         </div>
         <Link

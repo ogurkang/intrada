@@ -4,8 +4,11 @@ import { Fragment } from 'react'
 import type { PpPerformansBlok } from '@/lib/pp-mudurluk-rapor'
 import { ppGostergeBaslik, ppMaliyetBaslik, ppRaporGosterge, ppRaporPara } from '@/lib/pp-mudurluk-rapor'
 
-const HUCRE = 'px-3 py-2.5 align-top text-slate-700'
-const BASLIK = 'bg-slate-50/70 px-3 py-3 font-semibold text-slate-600'
+const BASLIK = 'border border-slate-300 bg-[#9DC3E6] px-3 py-3 font-bold text-slate-900'
+const ETIKET = 'border border-slate-300 bg-[#C6EFCE] px-3 py-2.5 font-bold text-slate-900'
+const DEGER = 'border border-slate-300 bg-[#F2F2F2] px-3 py-2.5 text-slate-800'
+const SATIR = 'border border-slate-300 bg-[#F2F2F2] px-3 py-2.5 text-slate-800'
+const TOPLAM = 'border border-slate-300 bg-[#C6EFCE] px-3 py-2.5 font-bold text-slate-900'
 
 function hucre(metin: string, className = '', anahtar?: string) {
   return <td key={anahtar} className={`${BASLIK} ${className}`}>{metin}</td>
@@ -27,11 +30,11 @@ export default function PpPerformansBlokTablo({
     return dolu.length ? dolu.reduce((a, b) => a + b, 0) : null
   })
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <table className="w-full min-w-[1100px] border-collapse text-sm">
-          <tbody className="divide-y divide-slate-100/80">
+          <tbody>
             <tr>
-              <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">{tabloBaslik}</td>
+              <td colSpan={9} className={`${BASLIK} text-center`}>{tabloBaslik}</td>
             </tr>
             <Bilgi etiket="BÜTÇE YILI:" deger={String(yil)} />
             <Bilgi etiket="PROGRAM ADI:" deger={blok.programAdi} />
@@ -41,7 +44,7 @@ export default function PpPerformansBlokTablo({
             <Bilgi etiket="ALT PROGRAMIN HEDEFİ" deger={blok.hedef} />
             <Bilgi etiket="VERİNİN KAYNAĞI/ SORUMLU BİRİM" deger={blok.veriKaynagi} />
             <tr>
-              <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">PERFORMANS GÖSTERGELERİ</td>
+              <td colSpan={9} className={`${BASLIK} text-center`}>PERFORMANS GÖSTERGELERİ</td>
             </tr>
             <tr>
               <td colSpan={2} className={`${BASLIK} text-left`}>Performans Göstergesi</td>
@@ -49,12 +52,12 @@ export default function PpPerformansBlokTablo({
               {gBaslik.map((b, i) => hucre(b, 'text-center', `g-${i}`))}
             </tr>
             {blok.gostergeler.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Bu hedefe bağlı performans faaliyeti göstergesi yok.</td></tr>
+              <tr><td colSpan={9} className={`${SATIR} py-10 text-center text-slate-500`}>Bu hedefe bağlı performans faaliyeti göstergesi yok.</td></tr>
             ) : blok.gostergeler.map(g => (
               <GostergeGrup key={`${g.kod}-${g.ad}`} g={g} />
             ))}
             <tr>
-              <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">ALT PROGRAM KAPSAMINDA YÜRÜTÜLECEK FAALİYET MALİYETLERİ</td>
+              <td colSpan={9} className={`${BASLIK} text-center`}>ALT PROGRAM KAPSAMINDA YÜRÜTÜLECEK FAALİYET MALİYETLERİ</td>
             </tr>
             <tr>
               <td colSpan={2} className={`${BASLIK} text-left`}>Faaliyetler</td>
@@ -63,7 +66,7 @@ export default function PpPerformansBlokTablo({
               {hucre(mBaslik[5], 'text-center', 'm-5')}
             </tr>
             {blok.faaliyetler.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">Bu hedefe bağlı performans faaliyeti yok.</td></tr>
+              <tr><td colSpan={9} className={`${SATIR} py-8 text-center text-slate-500`}>Bu hedefe bağlı performans faaliyeti yok.</td></tr>
             ) : blok.faaliyetler.map(f => (
               <Fragment key={`${f.kod}-${f.ad}`}>
                 <MaliyetSatir ad={`${f.kod} ${f.ad}`.trim()} tutarlar={f.tutarlar} />
@@ -73,12 +76,12 @@ export default function PpPerformansBlokTablo({
             <MaliyetSatir ad="Toplam" tutarlar={toplam} kalin />
             <MaliyetSatir ad="Bütçe Dışı" tutarlar={[null, null, null, null, null, null]} />
             <tr>
-              <td colSpan={9} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">Faaliyetlere İlişkin Açıklamalar</td>
+              <td colSpan={9} className={`${BASLIK} text-center`}>Faaliyetlere İlişkin Açıklamalar</td>
             </tr>
             {blok.faaliyetler.map((f, i) => (
-              <tr key={`${f.kod}-acik`} className="hover:bg-slate-50/80">
-                <td colSpan={2} className={`${HUCRE} font-medium text-slate-800`}>{i + 1}- Faaliyet Adı:</td>
-                <td colSpan={7} className={HUCRE}>{`PH ${f.kod} ${f.ad}`.trim()}</td>
+              <tr key={`${f.kod}-acik`}>
+                <td colSpan={2} className={`${ETIKET}`}>{i + 1}- Faaliyet Adı:</td>
+                <td colSpan={7} className={DEGER}>{`PH ${f.kod} ${f.ad}`.trim()}</td>
               </tr>
             ))}
           </tbody>
@@ -90,8 +93,8 @@ export default function PpPerformansBlokTablo({
 function Bilgi({ etiket, deger }: { etiket: string; deger: string }) {
   return (
     <tr>
-      <td colSpan={2} className={`${HUCRE} font-semibold text-slate-700 whitespace-nowrap`}>{etiket}</td>
-      <td colSpan={7} className={`${HUCRE} whitespace-pre-wrap text-slate-800`}>{deger}</td>
+      <td colSpan={2} className={`${ETIKET} whitespace-nowrap`}>{etiket}</td>
+      <td colSpan={7} className={`${DEGER} whitespace-pre-wrap`}>{deger}</td>
     </tr>
   )
 }
@@ -99,36 +102,37 @@ function Bilgi({ etiket, deger }: { etiket: string; deger: string }) {
 function GostergeGrup({ g }: { g: PpPerformansBlok['gostergeler'][number] }) {
   return (
     <>
-      <tr className="hover:bg-slate-50/80">
-        <td rowSpan={4} className={`${HUCRE} font-mono text-xs align-middle`}>{g.kod}</td>
-        <td className={`${HUCRE} text-slate-800`}>{g.ad}</td>
-        <td className={`${HUCRE} text-center`}>{g.birim}</td>
-        {g.degerler.map((d, i) => <td key={i} className={`${HUCRE} text-right tabular-nums`}>{ppRaporGosterge(d)}</td>)}
+      <tr>
+        <td rowSpan={4} className={`${ETIKET} font-mono text-xs align-middle`}>{g.kod}</td>
+        <td className={`${SATIR}`}>{g.ad}</td>
+        <td className={`${SATIR} text-center`}>{g.birim}</td>
+        {g.degerler.map((d, i) => <td key={i} className={`${SATIR} text-right tabular-nums`}>{ppRaporGosterge(d)}</td>)}
       </tr>
-      <tr className="hover:bg-slate-50/80">
-        <td className={HUCRE}>Göstergeye İlişkin Açıklama:</td>
-        <td colSpan={7} className={HUCRE}>{g.aciklama}</td>
+      <tr>
+        <td className={ETIKET}>Göstergeye İlişkin Açıklama:</td>
+        <td colSpan={7} className={DEGER}>{g.aciklama}</td>
       </tr>
-      <tr className="hover:bg-slate-50/80">
-        <td className={HUCRE}>Hesaplama Yöntemi:</td>
-        <td colSpan={7} className={HUCRE}>{g.hesaplama}</td>
+      <tr>
+        <td className={ETIKET}>Hesaplama Yöntemi:</td>
+        <td colSpan={7} className={DEGER}>{g.hesaplama}</td>
       </tr>
-      <tr className="hover:bg-slate-50/80">
-        <td className={HUCRE}>Sorumlu İdare:</td>
-        <td colSpan={7} className={HUCRE}>{g.sorumlu}</td>
+      <tr>
+        <td className={ETIKET}>Sorumlu İdare:</td>
+        <td colSpan={7} className={DEGER}>{g.sorumlu}</td>
       </tr>
     </>
   )
 }
 
 function MaliyetSatir({ ad, tutarlar, kalin = false }: { ad: string; tutarlar: (number | null)[]; kalin?: boolean }) {
-  const cls = `${HUCRE} text-right tabular-nums ${kalin ? 'font-semibold text-slate-800' : ''}`
+  const adCls = kalin ? TOPLAM : ETIKET
+  const sayCls = `${kalin ? TOPLAM : SATIR} text-right tabular-nums`
   return (
-    <tr className={kalin ? 'bg-slate-50 font-semibold' : 'hover:bg-slate-50/80'}>
-      <td colSpan={2} className={`${HUCRE} ${kalin ? 'font-semibold text-slate-800' : ''}`}>{ad}</td>
-      {tutarlar.slice(0, 4).map((t, i) => <td key={i} className={cls}>{ppRaporPara(t)}</td>)}
-      <td colSpan={2} className={cls}>{ppRaporPara(tutarlar[4])}</td>
-      <td className={cls}>{ppRaporPara(tutarlar[5])}</td>
+    <tr>
+      <td colSpan={2} className={adCls}>{ad}</td>
+      {tutarlar.slice(0, 4).map((t, i) => <td key={i} className={sayCls}>{ppRaporPara(t)}</td>)}
+      <td colSpan={2} className={sayCls}>{ppRaporPara(tutarlar[4])}</td>
+      <td className={sayCls}>{ppRaporPara(tutarlar[5])}</td>
     </tr>
   )
 }

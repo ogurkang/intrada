@@ -66,7 +66,7 @@ export default function PpIdarePerformansListeClient({
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-800">İdare Performans Bilgisi Tablosu</h1>
             <PpEkranBilgi maddeler={[
-              { baslik: 'Yıl', metin: 'Bütçe yılını seçer. Kayıt girişi yapmaz.' },
+              { baslik: 'Yıl', metin: 'Varsayılan olarak bir sonraki takvim yılıdır. Kayıt girişi yapmaz.' },
               { baslik: 'Müdürlük', metin: 'Hedef ekleme aşamasında seçilen müdürlüğe bağlı tabloları listeler.' },
               { baslik: 'Göz', metin: 'Seçilen performans hedefinin tablosunu açar.' },
               { baslik: 'İndir', metin: 'O hedefin Excel dosyasını indirir.' },

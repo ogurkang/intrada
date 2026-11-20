@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-pp-rapor-renk-yil',
+    baslik: '20 Kasım 2026 — PP raporları yıl+2 ve tablo renkleri',
+    maddeler: [
+      'Faaliyetler Düzeyinde maliyet tablosunda seçili yıl, yıl+1 ve yıl+2 BÜTÇE İÇİ sütunları vardır (ekran ve Excel).',
+      'Raporlarda varsayılan yıl bir sonraki takvim yılıdır.',
+      'İdare Performans Bilgisi hedef tablosunda bölüm/etiket satırları mavi–yeşil–gri grup renkleriyle gösterilir.',
+    ],
+  },
+  {
     id: '2026-11-20-faaliyet-duzeyi-maliyet',
     baslik: '20 Kasım 2026 — Faaliyetler Düzeyinde İdare PP Maliyeti',
     maddeler: [

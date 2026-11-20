@@ -16,7 +16,7 @@ export const PP_RAPORLAR: PpRaporKayit[] = [
   {
     slug: 'faaliyetler-duzeyinde-idare-pp-maliyeti',
     baslik: 'Faaliyetler Düzeyinde İdare Performans Programı Maliyeti Tablosu',
-    aciklama: 'Program → alt program → faaliyet toplam maliyetleri; varsayılan yıl bir sonraki takvim yılıdır.',
+    aciklama: 'Program → alt program → faaliyet; yıl / yıl+1 / yıl+2 BÜTÇE İÇİ toplamları. Varsayılan yıl CY+1.',
     hazir: true,
   },
   {

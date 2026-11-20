@@ -28,8 +28,10 @@ export default function PpFaaliyetDuzeyiMaliyetTablo({
             </th>
             <th className={BASLIK}>{yil}</th>
             <th className={BASLIK}>{yil + 1}</th>
+            <th className={BASLIK}>{yil + 2}</th>
           </tr>
           <tr>
+            <th className={BASLIK}>BÜTÇE İÇİ</th>
             <th className={BASLIK}>BÜTÇE İÇİ</th>
             <th className={BASLIK}>BÜTÇE İÇİ</th>
           </tr>
@@ -37,7 +39,7 @@ export default function PpFaaliyetDuzeyiMaliyetTablo({
         <tbody>
           {satirlar.length === 0 ? (
             <tr>
-              <td colSpan={4} className={`${HUCRE} py-10 text-center text-slate-500`}>
+              <td colSpan={5} className={`${HUCRE} py-10 text-center text-slate-500`}>
                 Seçilen yıl için program / faaliyet kaydı yok.
               </td>
             </tr>
@@ -54,6 +56,9 @@ export default function PpFaaliyetDuzeyiMaliyetTablo({
               </td>
               <td className={`${HUCRE} w-36 text-center tabular-nums ${satirSinif(s.tur)}`}>
                 {ppRaporPara(s.sonrakiTutar)}
+              </td>
+              <td className={`${HUCRE} w-36 text-center tabular-nums ${satirSinif(s.tur)}`}>
+                {ppRaporPara(s.sonraki2Tutar)}
               </td>
             </tr>
           ))}

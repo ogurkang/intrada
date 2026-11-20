@@ -27,7 +27,7 @@ export default function PpFaaliyetDuzeyiMaliyetGorClient({
             </h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Hiyerarşi', metin: 'PROGRAM → ALT PROGRAM → FAALİYET. Faaliyet tutarları yukarı toplanır.' },
-              { baslik: 'Yıllar', metin: `Seçili yıl (${rapor.yil}) ve bir sonraki yıl (${rapor.yil + 1}) BÜTÇE İÇİ sütunlarıdır.` },
+              { baslik: 'Yıllar', metin: `Seçili yıl (${rapor.yil}), ${rapor.yil + 1} ve ${rapor.yil + 2} BÜTÇE İÇİ sütunlarıdır.` },
               { baslik: 'Excel İndir', metin: 'Şablondaki renk, birleştirme ve ölçülerle Excel üretir.' },
             ]} />
           </div>
