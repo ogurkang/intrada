@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-pp-birim-span',
+    baslik: '20 Kasım 2026 — PP birim tablolarında hücre birleştirme',
+    maddeler: [
+      'Faaliyetlerden Sorumlu Harcama Birimleri’nde program, performans hedefi ve sorumlu birim sütunları satır birleştirmeli gösterilir.',
+      'Gösterge İzleme Sorumlu Birimleri’nde program, alt program ve ilgili müdürlük sütunları aynı şekilde birleştirilir.',
+      'Sınıflandırma faaliyeti veya müdürlük seçimi olmayan yetim kayıtlar (İşlemler’de görünmeyenler) bu raporlara alınmaz.',
+    ],
+  },
+  {
     id: '2026-11-20-pp-t3-t4-t5',
     baslik: '20 Kasım 2026 — PP ekonomik maliyet ve birim tabloları',
     maddeler: [

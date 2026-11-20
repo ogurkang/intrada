@@ -82,15 +82,19 @@ export async function ppFaaliyetBirimRaporYili(
     id: number
     alt_program_id: number
     alt_hedef_id: number
+    faaliyet_id: number | null
     secilen_mudurluk: string | null
   }
   const { data: bagRaw } = altIds.length
     ? await sb
       .from('performans_programi_alt_program_hedef')
-      .select('id, alt_program_id, alt_hedef_id, secilen_mudurluk')
+      .select('id, alt_program_id, alt_hedef_id, faaliyet_id, secilen_mudurluk')
       .in('alt_program_id', altIds)
     : { data: [] }
-  const baglar = (bagRaw ?? []) as Bag[]
+  /** İşlemlerde görünmeyen yetim bag’ler (sınıflandırma faaliyeti / müdürlük boş) rapora alınmaz. */
+  const baglar = ((bagRaw ?? []) as Bag[]).filter(
+    b => b.faaliyet_id != null && String(b.secilen_mudurluk ?? '').trim() !== '',
+  )
   const hedefIds = [...new Set(baglar.map(b => b.alt_hedef_id))]
 
   const { data: amacRaw } = await sb.from('stratejik_plan_amac').select('id, kodu, sira_no').eq('donem_id', donem.id)
