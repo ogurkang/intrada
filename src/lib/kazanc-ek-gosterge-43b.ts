@@ -85,6 +85,11 @@ export function oncekiMudurKariyerEgTabani(input: {
     parseDerece(input.khaDerece)
 
   for (const h of input.hareketler) {
+    /** Aynı harekette müdür satırına yazılmış EG’lerin en yükseği (eski veya yeni). */
+    const hareketMudurEg = ekGostergeMax(
+      unvanMuduruMi(h.eski_unvan) ? h.eski_ek_gosterge : null,
+      unvanMuduruMi(h.yeni_unvan) ? h.yeni_ek_gosterge : null,
+    )
     for (const [unvan, kayitliEg] of [
       [h.eski_unvan, h.eski_ek_gosterge],
       [h.yeni_unvan, h.yeni_ek_gosterge],
@@ -98,14 +103,15 @@ export function oncekiMudurKariyerEgTabani(input: {
       // 1. derece müdür satırı (3600) — KHA/kadro yüksek derecesi farklı olsa da kariyer tavanı
       const bir = doluMetin(input.lookup(uid, input.ogrenimId, 1)?.ek_gosterge)
       const mudurCetvel = ekGostergeMax(cetvel, bir)
-      const kayitli = parseKazancPuan(kayitliEg)
       const mudurPuan = parseKazancPuan(mudurCetvel)
+      const hareketEgPuan = parseKazancPuan(hareketMudurEg)
       /**
-       * Harekette müdür unvanı yazılmış ama kayıtlı EG müdür cetvelinin altında ise
-       * (ör. vekalet / yer değiştirmede 2800) cetvelden 3600’e zorlanmaz.
-       * Asıl müdür kariyerinde EG boşsa veya cetvel seviyesindeyse yükseltme uygulanır.
+       * Harekette müdür unvanı yazılmış ama kayıtlı EG (eski veya yeni) müdür cetvelinin
+       * altındaysa vekalet / hatalı İlk Atanma satırı sayılır; cetvelden 3600’e zorlanmaz.
+       * Ör. Yusuf Gümüş: Destek Hizmetleri Müdürü + EG 1700 (asil Eğitmen 1700).
+       * EG tamamen boşsa gerçek müdür kariyeri varsayılır ve cetvel uygulanır.
        */
-      if (kayitli != null && mudurPuan != null && kayitli < mudurPuan) continue
+      if (hareketEgPuan != null && mudurPuan != null && hareketEgPuan < mudurPuan) continue
       taban = ekGostergeMax(taban, mudurCetvel)
     }
   }
