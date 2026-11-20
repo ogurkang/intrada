@@ -225,6 +225,14 @@ export async function ppPerformansExcelOlustur(
  * Referans Excel (satır 61–70): A:I birleştirmeleri, mavi kenarlık,
  * bilgi satırları A:B | C:I, açıklama yüksek, tutar #.##0,00.
  */
+const MALIYET_MAVI = 'FF9DC3E6'
+const MALIYET_YESIL = 'FFC6EFCE'
+const MALIYET_GRI = 'FFF2F2F2'
+
+function dolgu(hucre: ExcelJS.Cell, argb: string) {
+  hucre.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } }
+}
+
 function faaliyetMaliyetYaz(
   ws: ExcelJS.Worksheet,
   basSatir: number,
@@ -238,11 +246,12 @@ function faaliyetMaliyetYaz(
   ws.mergeCells(r, 1, r, 9)
   const baslik = ws.getCell(r, 1)
   baslik.value = 'FAALİYET MALİYETLERİ TABLOSU'
-  baslik.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' }, name: 'Calibri' }
-  baslik.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } }
+  baslik.font = { bold: true, size: 11, name: 'Calibri' }
+  dolgu(baslik, MALIYET_MAVI)
   baslik.alignment = { horizontal: 'center', vertical: 'middle' }
   ws.getRow(r).height = 19.5
   kenarlik9(ws, r)
+  for (let c = 1; c <= 9; c++) dolgu(ws.getCell(r, c), MALIYET_MAVI)
   r += 1
 
   const bilgi = (etiket: string, deger: string) => {
@@ -256,6 +265,8 @@ function faaliyetMaliyetYaz(
     d.font = { size: 10, name: 'Calibri' }
     e.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
     d.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+    for (let c = 1; c <= 2; c++) dolgu(ws.getCell(r, c), MALIYET_YESIL)
+    for (let c = 3; c <= 9; c++) dolgu(ws.getCell(r, c), MALIYET_GRI)
     ws.getRow(r).height = 13.5
     kenarlik9(ws, r)
     r += 1
@@ -272,6 +283,7 @@ function faaliyetMaliyetYaz(
   acik.value = tablo.aciklama || null
   acik.font = { size: 10, name: 'Calibri' }
   acik.alignment = { horizontal: 'left', vertical: 'top', wrapText: true }
+  for (let c = 1; c <= 9; c++) dolgu(ws.getCell(r, c), MALIYET_GRI)
   ws.getRow(r).height = Math.max(45, Math.min(120, 15 + Math.ceil((tablo.aciklama || '').length / 80) * 15))
   kenarlik9(ws, r)
   r += 1
@@ -286,7 +298,7 @@ function faaliyetMaliyetYaz(
   })
   for (let c = 1; c <= 9; c++) {
     const h = ws.getCell(r, c)
-    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6EAF8' } }
+    dolgu(h, MALIYET_MAVI)
     h.font = { bold: true, size: 9, name: 'Calibri' }
     h.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
   }
@@ -296,27 +308,23 @@ function faaliyetMaliyetYaz(
   r += 1
 
   const toplam: PpRaporSayi[] = [null, null, null, null, null, null]
-  if (!tablo.satirlar.length) {
-    ws.mergeCells(r, 1, r, 9)
-    yazi(ws.getCell(r, 1), 'Bu faaliyet için 1. düzey ekonomik ödenek teklifi yok.')
+  for (const s of tablo.satirlar) {
+    ws.mergeCells(r, 1, r, 2)
+    ws.mergeCells(r, 7, r, 8)
+    yazi(ws.getCell(r, 1), s.ekonomikAd)
+    s.tutarlar.forEach((t, i) => {
+      tutarYaz(ws.getCell(r, TUTAR_KOLON[i]), t)
+      if (t != null) toplam[i] = (toplam[i] ?? 0) + t
+    })
+    for (let c = 1; c <= 2; c++) {
+      dolgu(ws.getCell(r, c), MALIYET_YESIL)
+      ws.getCell(r, c).font = { bold: true, size: 10, name: 'Calibri' }
+    }
+    for (let c = 3; c <= 9; c++) dolgu(ws.getCell(r, c), MALIYET_GRI)
+    ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
     ws.getRow(r).height = 13.5
     kenarlik9(ws, r)
     r += 1
-  } else {
-    for (const s of tablo.satirlar) {
-      ws.mergeCells(r, 1, r, 2)
-      ws.mergeCells(r, 7, r, 8)
-      yazi(ws.getCell(r, 1), s.ekonomikAd)
-      s.tutarlar.forEach((t, i) => {
-        tutarYaz(ws.getCell(r, TUTAR_KOLON[i]), t)
-        if (t != null) toplam[i] = (toplam[i] ?? 0) + t
-      })
-      ws.getCell(r, 1).font = { size: 10, name: 'Calibri' }
-      ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
-      ws.getRow(r).height = 13.5
-      kenarlik9(ws, r)
-      r += 1
-    }
   }
 
   ws.mergeCells(r, 1, r, 2)
@@ -325,6 +333,7 @@ function faaliyetMaliyetYaz(
   toplam.forEach((t, i) => tutarYaz(ws.getCell(r, TUTAR_KOLON[i]), t))
   for (let c = 1; c <= 9; c++) {
     const h = ws.getCell(r, c)
+    dolgu(h, MALIYET_YESIL)
     h.font = { bold: true, size: 10, name: 'Calibri' }
   }
   ws.getCell(r, 1).alignment = { horizontal: 'left', vertical: 'middle' }

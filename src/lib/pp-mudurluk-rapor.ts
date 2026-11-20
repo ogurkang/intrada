@@ -149,6 +149,29 @@ export function ppRaporGosterge(n: PpRaporSayi): string {
   return n.toLocaleString('tr-TR', { maximumFractionDigits: 2 })
 }
 
+/** Zengin metin gerekçeyi düz metne çevirir; boşsa boş string. */
+export function ppGerekceMetin(html: string | null | undefined): string {
+  const raw = String(html ?? '').trim()
+  if (!raw) return ''
+  return raw
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+export const PP_GEREKCE_BOS = 'Gerekçe ve Açıklama girişi yok.'
+
+export function ppGerekceGoster(html: string | null | undefined): string {
+  return ppGerekceMetin(html) || PP_GEREKCE_BOS
+}
+
 export function ppGostergeBaslik(yil: number): string[] {
   return [
     `${yil - 2} Gerçekleşme`,
@@ -232,9 +255,9 @@ export async function ppPerformansRaporYili(
     : { data: [] }
   const altlar = (altRaw ?? []) as { id: number; program_id: number; alt_program_adi: string; gerekce: string | null }[]
   const altIds = altlar.map(a => a.id)
-  type Bag = { id: number; alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null }
+  type Bag = { id: number; alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null; gerekce: string | null }
   const { data: bagRaw } = altIds.length
-    ? await sb.from('performans_programi_alt_program_hedef').select('id, alt_program_id, alt_hedef_id, secilen_mudurluk').in('alt_program_id', altIds)
+    ? await sb.from('performans_programi_alt_program_hedef').select('id, alt_program_id, alt_hedef_id, secilen_mudurluk, gerekce').in('alt_program_id', altIds)
     : { data: [] }
   const baglar = (bagRaw ?? []) as Bag[]
   const hedefIdSet = [...new Set(baglar.map(b => b.alt_hedef_id))]
@@ -444,39 +467,47 @@ export async function ppPerformansRaporYili(
       })
     }
 
-    const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe.map(f => {
-      const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
-      const grup = new Map<string, PpRaporSayi[]>()
-      for (const o of pfOdenekler.filter(r => r.pf_faaliyet_id === f.id)) {
-        const adim = ppEkonomik1Kod(butceKodById.get(o.butce_kodu_id)?.adim_1)
-        if (!adim) continue
-        const once = grup.get(adim) ?? [null, null, null, null, null, null]
-        const ekle = (i: number, v: PpRaporSayi) => {
-          if (v == null) return
-          once[i] = (once[i] ?? 0) + v
+    const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe
+      .map(f => {
+        const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
+        const grup = new Map<string, PpRaporSayi[]>()
+        for (const o of pfOdenekler.filter(r => r.pf_faaliyet_id === f.id)) {
+          const adim = ppEkonomik1Kod(butceKodById.get(o.butce_kodu_id)?.adim_1)
+          if (!adim) continue
+          const once = grup.get(adim) ?? [null, null, null, null, null, null]
+          const ekle = (i: number, v: PpRaporSayi) => {
+            if (v == null) return
+            once[i] = (once[i] ?? 0) + v
+          }
+          ekle(0, sayi(o.t1_butce))
+          ekle(1, sayi(o.t1_haziran))
+          ekle(2, sayi(o.t1_yil_sonu))
+          ekle(3, sayi(o.t_butce))
+          ekle(4, sayi(o.t1_tahmin))
+          ekle(5, sayi(o.t2_tahmin))
+          grup.set(adim, once)
         }
-        ekle(0, sayi(o.t1_butce))
-        ekle(1, sayi(o.t1_haziran))
-        ekle(2, sayi(o.t1_yil_sonu))
-        ekle(3, sayi(o.t_butce))
-        ekle(4, sayi(o.t1_tahmin))
-        ekle(5, sayi(o.t2_tahmin))
-        grup.set(adim, once)
-      }
-      const satirlar: PpFaaliyetMaliyetSatir[] = [...grup.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
-        .map(([ekonomikKod, tutarlar]) => ({
-          ekonomikKod,
-          ekonomikAd: ppEkonomik1Ad(ekonomikKod),
-          tutarlar,
-        }))
-      return {
-        kod,
-        ad: f.faaliyet_adi,
-        aciklama: String(f.aciklama ?? '').trim(),
-        satirlar,
-      }
-    })
+        const satirlar: PpFaaliyetMaliyetSatir[] = [...grup.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
+          .map(([ekonomikKod, tutarlar]) => ({
+            ekonomikKod,
+            ekonomikAd: ppEkonomik1Ad(ekonomikKod),
+            tutarlar,
+          }))
+        return {
+          kod,
+          ad: f.faaliyet_adi,
+          aciklama: String(f.aciklama ?? '').trim(),
+          satirlar,
+        }
+      })
+      .filter(t => t.satirlar.length > 0)
+
+    const bagGerekce = baglar
+      .filter(b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && ppNorm(bagMudurluk(b)) === norm)
+      .map(b => ppGerekceMetin(b.gerekce))
+      .find(g => !!g)
+    const altGerekce = ppGerekceMetin(alt.gerekce)
 
     return {
       tabloKey: ppIdareTabloKey(alt.id, h.id),
@@ -486,7 +517,7 @@ export async function ppPerformansRaporYili(
       hedefAd: h.alt_hedef_adi,
       programAdi: program?.program_adi ?? '',
       altProgramAdi: alt.alt_program_adi,
-      gerekce: String(alt.gerekce ?? '').trim(),
+      gerekce: bagGerekce || altGerekce || PP_GEREKCE_BOS,
       hedef: `PH ${phKod} ${h.alt_hedef_adi}`.trim(),
       veriKaynagi: ad,
       gostergeler: gostergeSatir,
@@ -562,7 +593,7 @@ export async function ppPerformansRaporYili(
       hedefAd: tek?.alt_hedef_adi,
       programAdi: program?.program_adi ?? '',
       altProgramAdi: alt.alt_program_adi,
-      gerekce: String(alt.gerekce ?? '').trim(),
+      gerekce: ppGerekceMetin(alt.gerekce) || PP_GEREKCE_BOS,
       hedef: hedefSirali.map((x, i) => `PH ${kodlar[i]} ${x.alt_hedef_adi}`.trim()).join('\n'),
       veriKaynagi: ad,
       gostergeler: gostergeSatir,

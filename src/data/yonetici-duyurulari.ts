@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-pp-gerekce-maliyet-pdf',
+    baslik: '20 Kasım 2026 — İdare gerekçe, maliyet renkleri ve kazanç PDF',
+    maddeler: [
+      'İdare Performans Bilgisi’nde gerekçe ve açıklamalar hedef kaydından okunur; boşsa “Gerekçe ve Açıklama girişi yok.” yazılır.',
+      'Faaliyet Maliyetleri Tablosu ekran ve Excel’de ana tabloyla aynı mavi–yeşil–gri renklere sahiptir; ödenek teklifi olmayan faaliyetler listelenmez.',
+      'Personel Kazanç Bilgileri PDF’inde mevzuat hükümleri sonraki sayfaya taşınca bölüm başlığı yeni sayfada yeniden yazılır.',
+    ],
+  },
+  {
     id: '2026-11-20-kazanc-43b-vekalet-eg',
     baslik: '20 Kasım 2026 — 43/b vekalet müdür EG zorlaması',
     maddeler: [

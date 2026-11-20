@@ -3,8 +3,11 @@
 import type { PpFaaliyetMaliyetTablo, PpPerformansBlok } from '@/lib/pp-mudurluk-rapor'
 import { ppMaliyetBaslik, ppRaporPara } from '@/lib/pp-mudurluk-rapor'
 
-const HUCRE = 'px-3 py-2.5 align-top text-slate-700'
-const BASLIK = 'bg-slate-50/70 px-3 py-3 font-semibold text-slate-600'
+const BASLIK = 'border border-slate-300 bg-[#9DC3E6] px-3 py-3 font-bold text-slate-900'
+const ETIKET = 'border border-slate-300 bg-[#C6EFCE] px-3 py-2.5 font-bold text-slate-900'
+const DEGER = 'border border-slate-300 bg-[#F2F2F2] px-3 py-2.5 text-slate-800'
+const SATIR = 'border border-slate-300 bg-[#F2F2F2] px-3 py-2.5 text-slate-800'
+const TOPLAM = 'border border-slate-300 bg-[#C6EFCE] px-3 py-2.5 font-bold text-slate-900'
 
 export default function PpFaaliyetMaliyetTabloGorunum({
   blok,
@@ -22,11 +25,11 @@ export default function PpFaaliyetMaliyetTabloGorunum({
   })
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <table className="w-full min-w-[1100px] border-collapse text-sm">
-        <tbody className="divide-y divide-slate-100/80">
+        <tbody>
           <tr>
-            <td colSpan={7} className="bg-slate-50 px-3 py-3 text-center font-semibold text-slate-700">
+            <td colSpan={7} className={`${BASLIK} text-center`}>
               FAALİYET MALİYETLERİ TABLOSU
             </td>
           </tr>
@@ -36,7 +39,7 @@ export default function PpFaaliyetMaliyetTabloGorunum({
           <Bilgi etiket="Alt Program Hedefi" deger={blok.hedef} />
           <Bilgi etiket="Faaliyet Adı" deger={`PH ${tablo.kod} ${tablo.ad}`.trim()} />
           <tr>
-            <td colSpan={7} className={`${HUCRE} whitespace-pre-wrap text-slate-800`}>
+            <td colSpan={7} className={`${DEGER} whitespace-pre-wrap`}>
               {tablo.aciklama || '—'}
             </td>
           </tr>
@@ -46,24 +49,18 @@ export default function PpFaaliyetMaliyetTabloGorunum({
               <td key={i} className={`${BASLIK} text-center text-xs`}>{b}</td>
             ))}
           </tr>
-          {tablo.satirlar.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                Bu faaliyet için 1. düzey ekonomik ödenek teklifi yok.
-              </td>
-            </tr>
-          ) : tablo.satirlar.map(s => (
-            <tr key={s.ekonomikKod} className="hover:bg-slate-50/80">
-              <td className={`${HUCRE} font-medium text-slate-800`}>{s.ekonomikAd}</td>
+          {tablo.satirlar.map(s => (
+            <tr key={s.ekonomikKod}>
+              <td className={`${ETIKET}`}>{s.ekonomikAd}</td>
               {s.tutarlar.map((t, i) => (
-                <td key={i} className={`${HUCRE} text-right tabular-nums`}>{ppRaporPara(t)}</td>
+                <td key={i} className={`${SATIR} text-right tabular-nums`}>{ppRaporPara(t)}</td>
               ))}
             </tr>
           ))}
-          <tr className="bg-slate-50">
-            <td className={`${HUCRE} font-semibold text-slate-800`}>FAALİYET MALİYETİ TOPLAMI</td>
+          <tr>
+            <td className={TOPLAM}>FAALİYET MALİYETİ TOPLAMI</td>
             {toplam.map((t, i) => (
-              <td key={i} className={`${HUCRE} text-right font-semibold tabular-nums text-slate-800`}>{ppRaporPara(t)}</td>
+              <td key={i} className={`${TOPLAM} text-right tabular-nums`}>{ppRaporPara(t)}</td>
             ))}
           </tr>
         </tbody>
@@ -75,8 +72,8 @@ export default function PpFaaliyetMaliyetTabloGorunum({
 function Bilgi({ etiket, deger }: { etiket: string; deger: string }) {
   return (
     <tr>
-      <td className={`${HUCRE} w-48 whitespace-nowrap font-semibold text-slate-700`}>{etiket}</td>
-      <td colSpan={6} className={`${HUCRE} whitespace-pre-wrap text-slate-800`}>{deger}</td>
+      <td className={`${ETIKET} w-48 whitespace-nowrap`}>{etiket}</td>
+      <td colSpan={6} className={`${DEGER} whitespace-pre-wrap`}>{deger}</td>
     </tr>
   )
 }
