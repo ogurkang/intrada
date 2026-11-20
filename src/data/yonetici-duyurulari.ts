@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-kazanc-43b-vekalet-eg',
+    baslik: '20 Kasım 2026 — 43/b vekalet müdür EG zorlaması',
+    maddeler: [
+      'Tanımdan sapan personelde 657 md. 43/b: harekette müdür unvanı olup kayıtlı ek gösterge müdür cetvelinin altındaysa (vekalet vb.) EG 3600’e yükseltilmez.',
+      'Asıl teknik unvan + vekil müdür örneklerinde (ör. Mesut Özdemir) sapma, Süleyman Durmaz ile aynı uyum mantığına gelir.',
+    ],
+  },
+  {
     id: '2026-11-20-pp-rapor-renk-yil',
     baslik: '20 Kasım 2026 — PP raporları yıl+2 ve tablo renkleri',
     maddeler: [

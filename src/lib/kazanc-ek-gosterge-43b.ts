@@ -95,10 +95,18 @@ export function oncekiMudurKariyerEgTabani(input: {
       const uid = unvanIdBul(unvan, input.unvanlar)
       if (uid == null) continue
       const cetvel = doluMetin(input.lookup(uid, input.ogrenimId, egDerece)?.ek_gosterge)
-      taban = ekGostergeMax(taban, cetvel)
       // 1. derece müdür satırı (3600) — KHA/kadro yüksek derecesi farklı olsa da kariyer tavanı
       const bir = doluMetin(input.lookup(uid, input.ogrenimId, 1)?.ek_gosterge)
-      taban = ekGostergeMax(taban, bir)
+      const mudurCetvel = ekGostergeMax(cetvel, bir)
+      const kayitli = parseKazancPuan(kayitliEg)
+      const mudurPuan = parseKazancPuan(mudurCetvel)
+      /**
+       * Harekette müdür unvanı yazılmış ama kayıtlı EG müdür cetvelinin altında ise
+       * (ör. vekalet / yer değiştirmede 2800) cetvelden 3600’e zorlanmaz.
+       * Asıl müdür kariyerinde EG boşsa veya cetvel seviyesindeyse yükseltme uygulanır.
+       */
+      if (kayitli != null && mudurPuan != null && kayitli < mudurPuan) continue
+      taban = ekGostergeMax(taban, mudurCetvel)
     }
   }
   return taban
