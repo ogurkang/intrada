@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-faaliyet-duzeyi-maliyet',
+    baslik: '20 Kasım 2026 — Faaliyetler Düzeyinde İdare PP Maliyeti',
+    maddeler: [
+      'Raporlar → Faaliyetler Düzeyinde İdare Performans Programı Maliyeti Tablosu açıldı.',
+      'Program, alt program ve faaliyet başlıkları yıl / yıl+1 BÜTÇE İÇİ toplamlarıyla listelenir; faaliyet tutarları yukarı toplanır.',
+      'Varsayılan yıl bir sonraki takvim yılıdır; göz ile ekran, indir ile şablon biçimli Excel alınır.',
+    ],
+  },
+  {
     id: '2026-11-19-idare-maliyet-bicim',
     baslik: '19 Kasım 2026 — Faaliyet maliyet biçimi',
     maddeler: [

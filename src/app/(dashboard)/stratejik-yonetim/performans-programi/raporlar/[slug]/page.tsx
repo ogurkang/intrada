@@ -5,8 +5,13 @@ import PpMudurlukPerformansClient from '@/components/stratejik/PpMudurlukPerform
 import { ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
 import { ppRaporBul, PP_RAPORLAR, PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 
+const OZEL_SLUG = new Set([
+  'idare-performans-bilgisi',
+  'faaliyetler-duzeyinde-idare-pp-maliyeti',
+])
+
 export function generateStaticParams() {
-  return PP_RAPORLAR.filter(r => r.slug !== 'idare-performans-bilgisi').map(r => ({ slug: r.slug }))
+  return PP_RAPORLAR.filter(r => !OZEL_SLUG.has(r.slug)).map(r => ({ slug: r.slug }))
 }
 
 export default async function PerformansProgramiRaporSayfa({
@@ -17,7 +22,7 @@ export default async function PerformansProgramiRaporSayfa({
   searchParams: Promise<{ y?: string }>
 }) {
   const { slug } = await params
-  if (slug === 'idare-performans-bilgisi') notFound()
+  if (OZEL_SLUG.has(slug)) notFound()
   const rapor = ppRaporBul(slug)
   if (!rapor) notFound()
 
