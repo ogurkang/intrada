@@ -22,20 +22,20 @@ export const PP_RAPORLAR: PpRaporKayit[] = [
   {
     slug: 'ekonomik-siniflandirma-duzeyinde-pp-maliyeti',
     baslik: 'Ekonomik Sınıflandırma Düzeyinde Performans Programı Maliyeti Tablosu',
-    aciklama: 'Ekonomik sınıflandırma düzeyinde performans programı maliyetleri.',
-    hazir: false,
+    aciklama: 'Hizmet / yönetim-destek / genel; yıl / yıl+1 / yıl+2. Varsayılan yıl CY+1.',
+    hazir: true,
   },
   {
     slug: 'faaliyetlerden-sorumlu-harcama-birimleri',
     baslik: 'Faaliyetlerden Sorumlu Harcama Birimleri Tablosu',
-    aciklama: 'Faaliyetlere bağlı harcama birimleri.',
-    hazir: false,
+    aciklama: 'Program başına tablo; faaliyet kodu-adı ve seçilen müdürlük (sorumlu birim).',
+    hazir: true,
   },
   {
     slug: 'performans-gostergeleri-izleme-birimleri',
     baslik: 'Performans Göstergelerinin İzlenmesi ve Takibinden Sorumlu Birimler Tablosu',
-    aciklama: 'Gösterge izleme ve takip sorumlusu birimler.',
-    hazir: false,
+    aciklama: 'Program / alt program / gösterge ve ilgili müdürlük; tek tabloda alt alta.',
+    hazir: true,
   },
   {
     slug: 'mudurluklerin-performans-programi',

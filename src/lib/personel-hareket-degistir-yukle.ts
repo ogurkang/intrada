@@ -6,11 +6,21 @@ type KH = Tables<'kadro_hareketleri'>
 type TH = Tables<'terfi_hareketleri'>
 export type BosKadroSecenek = Pick<
   KH,
-  'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'statu' | 'durumu'
+  | 'id'
+  | 'kadro_sira_no'
+  | 'kadro_derecesi'
+  | 'kadro_unvan_id'
+  | 'gorev_unvan_id'
+  | 'kadro_unvani'
+  | 'gorev_unvani'
+  | 'kadro_mudurlugu'
+  | 'gorev_mudurlugu'
+  | 'statu'
+  | 'durumu'
 >
 
 const BOS_KADRO_SELECT =
-  'id, kadro_sira_no, kadro_derecesi, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu'
+  'id, kadro_sira_no, kadro_derecesi, kadro_unvan_id, gorev_unvan_id, kadro_unvani, gorev_unvani, kadro_mudurlugu, gorev_mudurlugu, statu, durumu'
 
 async function yukleBosKadrolar(
   supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>,

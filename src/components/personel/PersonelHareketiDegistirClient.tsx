@@ -350,7 +350,7 @@ export default function PersonelHareketiDegistirClient({
     })
   }, [bosKadrolarSirali, kadroArama])
 
-  function kadroSec(kadro: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvan_id' | 'gorev_unvan_id' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
+  function kadroSec(kadro: BosKadroSecenek | Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvan_id' | 'gorev_unvan_id' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
     const unvan = kadro.kadro_unvani ?? kadro.gorev_unvani ?? ''
     const sinif = unvanSinifBul(unvanlar, kadro)
     setKadroBosaltildi(false)

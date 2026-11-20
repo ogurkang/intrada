@@ -306,7 +306,7 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
       vekil: [...degerler.vekil].sort((a, b) => a.localeCompare(b, 'tr')),
       durumu: [...degerler.durumu].sort((a, b) => a.localeCompare(b, 'tr')),
     }
-  }, [data, adMap, unvanSinifMap])
+  }, [data, adMap, unvanSinifById, unvanSinifByAdTek])
 
   function toggleKolonFiltre(key: ColumnFilterKey, value: string) {
     setKolonFiltre(prev => {

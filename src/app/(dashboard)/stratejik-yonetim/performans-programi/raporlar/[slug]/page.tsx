@@ -8,6 +8,9 @@ import { ppRaporBul, PP_RAPORLAR, PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listes
 const OZEL_SLUG = new Set([
   'idare-performans-bilgisi',
   'faaliyetler-duzeyinde-idare-pp-maliyeti',
+  'ekonomik-siniflandirma-duzeyinde-pp-maliyeti',
+  'faaliyetlerden-sorumlu-harcama-birimleri',
+  'performans-gostergeleri-izleme-birimleri',
 ])
 
 export function generateStaticParams() {

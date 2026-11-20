@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-pp-t3-t4-t5',
+    baslik: '20 Kasım 2026 — PP ekonomik maliyet ve birim tabloları',
+    maddeler: [
+      'Ekonomik Sınıflandırma Düzeyinde PP Maliyeti: hizmet programları (yönetim-destek hariç), yönetim ve destek programı ve genel toplam; yıl / yıl+1 / yıl+2.',
+      'Faaliyetlerden Sorumlu Harcama Birimleri: her program ayrı tablo (boş satır + başlık); ekran renkleri idare tablosuyla aynı.',
+      'Gösterge İzleme Sorumlu Birimleri: programlar tek tabloda alt alta. Excel tutarları nokta binlik / virgül küsür (2 basamak).',
+    ],
+  },
+  {
     id: '2026-11-20-kadro-sinif-excel',
     baslik: '20 Kasım 2026 — Kadro sınıfı Excel eşlemesi',
     maddeler: [
