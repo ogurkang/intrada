@@ -187,12 +187,30 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
     return m
   }, [personeller])
 
-  const unvanSinifMap = useMemo(() => {
-    const m = new Map<string, string>()
+  /** Aynı unvan adı TH/SH gibi birden fazla sınıfta olabilir; sınıf unvan id ile okunur. */
+  const unvanSinifById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const u of unvanlar) {
+      const sinif = txt(u.sinif_adi)
+      if (sinif) m.set(u.id, sinif)
+    }
+    return m
+  }, [unvanlar])
+
+  /** Id yoksa yalnızca adı tek sınıfa bağlı unvanlarda kullanılır. */
+  const unvanSinifByAdTek = useMemo(() => {
+    const groups = new Map<string, Set<string>>()
     for (const u of unvanlar) {
       const ad = txt(u.unvan_adi)
       const sinif = txt(u.sinif_adi)
-      if (ad && sinif) m.set(ad, sinif)
+      if (!ad || !sinif) continue
+      const set = groups.get(ad) ?? new Set<string>()
+      set.add(sinif)
+      groups.set(ad, set)
+    }
+    const m = new Map<string, string>()
+    for (const [ad, set] of groups) {
+      if (set.size === 1) m.set(ad, [...set][0]!)
     }
     return m
   }, [unvanlar])
@@ -221,8 +239,16 @@ export default function KadroListClient({ data, personeller, statuler, mudurlule
   }
 
   function kadroSinifMetni(k: Kadro): string {
+    if (k.kadro_unvan_id != null) {
+      const s = unvanSinifById.get(k.kadro_unvan_id)
+      if (s) return s
+    }
+    if (k.gorev_unvan_id != null) {
+      const s = unvanSinifById.get(k.gorev_unvan_id)
+      if (s) return s
+    }
     const unvan = kadroUnvanMetni(k)
-    return unvanSinifMap.get(unvan.unvan) ?? unvanSinifMap.get(unvan.gorevUnvan) ?? '—'
+    return unvanSinifByAdTek.get(unvan.unvan) ?? unvanSinifByAdTek.get(unvan.gorevUnvan) ?? '—'
   }
 
   function kadroMudurlukMetni(k: Kadro): { mudurluk: string; gorevMudurluk: string } {

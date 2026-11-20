@@ -49,9 +49,22 @@ function isciKadroStatuMu(k: Kadro): boolean {
 
 function ozetle(kadrolar: Kadro[], unvanlar: KadroDbUnvan[], statu: 'Memur' | 'İşçi'): Ozet[] {
   const byId = new Map(unvanlar.map(u => [u.id, u]))
-  const byAd = new Map(
-    unvanlar.map(u => [temiz(u.unvan_adi).toLocaleLowerCase('tr-TR'), u]),
-  )
+  /** Aynı ad birden fazla sınıfta olabilir; ad ile yalnızca tek eşleşme varsa kullanılır. */
+  const byAdTek = (() => {
+    const groups = new Map<string, KadroDbUnvan[]>()
+    for (const u of unvanlar) {
+      const key = temiz(u.unvan_adi).toLocaleLowerCase('tr-TR')
+      if (!key) continue
+      const list = groups.get(key) ?? []
+      list.push(u)
+      groups.set(key, list)
+    }
+    const m = new Map<string, KadroDbUnvan>()
+    for (const [key, list] of groups) {
+      if (list.length === 1) m.set(key, list[0]!)
+    }
+    return m
+  })()
   const map = new Map<string, Ozet>()
 
   for (const k of kadrolar) {
@@ -59,7 +72,7 @@ function ozetle(kadrolar: Kadro[], unvanlar: KadroDbUnvan[], statu: 'Memur' | '�
     if (!aktifKadro(k) || !statuUygun) continue
     const unvan =
       (k.kadro_unvan_id != null ? byId.get(k.kadro_unvan_id) : undefined) ??
-      byAd.get(temiz(k.kadro_unvani).toLocaleLowerCase('tr-TR'))
+      byAdTek.get(temiz(k.kadro_unvani).toLocaleLowerCase('tr-TR'))
     const unvanAdi = temiz(unvan?.unvan_adi || k.kadro_unvani) || 'Tanımsız Unvan'
     const kod = temiz(unvan?.unvan_kodu)
     const sinif = temiz(unvan?.sinif_adi)

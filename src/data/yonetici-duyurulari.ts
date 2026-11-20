@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-20-kadro-sinif-excel',
+    baslik: '20 Kasım 2026 — Kadro sınıfı Excel eşlemesi',
+    maddeler: [
+      'Kadro hareketleri listesi ve Excel indirmede sınıf, unvan adına değil kayıtlı unvan kimliğine göre okunur.',
+      'Aynı unvan adı birden fazla sınıfta (ör. TH/SH Kimyager) olsa da ekrandaki ve Excel’deki sınıf kayıtla aynıdır.',
+    ],
+  },
+  {
     id: '2026-11-20-pp-gerekce-maliyet-pdf',
     baslik: '20 Kasım 2026 — İdare gerekçe, maliyet renkleri ve kazanç PDF',
     maddeler: [

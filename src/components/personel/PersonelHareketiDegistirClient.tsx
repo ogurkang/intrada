@@ -69,6 +69,29 @@ const BOS_DURUM: DurumBilgi = {
   sds_orani: '',
 }
 
+function unvanSinifBul(
+  unvanlar: { id: number; ad: string; sinif: string | null }[],
+  k: {
+    kadro_unvan_id?: number | null
+    gorev_unvan_id?: number | null
+    kadro_unvani?: string | null
+    gorev_unvani?: string | null
+  },
+): string {
+  if (k.kadro_unvan_id != null) {
+    const s = unvanlar.find(u => u.id === k.kadro_unvan_id)?.sinif
+    if (s) return s
+  }
+  if (k.gorev_unvan_id != null) {
+    const s = unvanlar.find(u => u.id === k.gorev_unvan_id)?.sinif
+    if (s) return s
+  }
+  const ad = (k.kadro_unvani ?? k.gorev_unvani ?? '').trim()
+  if (!ad) return ''
+  const ayniAd = unvanlar.filter(u => u.ad === ad && u.sinif)
+  return ayniAd.length === 1 ? (ayniAd[0]!.sinif ?? '') : ''
+}
+
 function durumTerfiAlanlari(t: TH | null): Partial<DurumBilgi> {
   if (!t) return {}
   return {
@@ -165,7 +188,12 @@ export default function PersonelHareketiDegistirClient({
 
     const mud = k?.gorev_mudurlugu ?? k?.kadro_mudurlugu ?? ''
     const unvan = k?.gorev_unvani ?? k?.kadro_unvani ?? ''
-    const sinif = unvanlar.find(u => u.ad === (k?.kadro_unvani ?? k?.gorev_unvani ?? ''))?.sinif ?? ''
+    const sinif = unvanSinifBul(unvanlar, {
+      kadro_unvan_id: k?.kadro_unvan_id,
+      gorev_unvan_id: k?.gorev_unvan_id,
+      kadro_unvani: k?.kadro_unvani,
+      gorev_unvani: k?.gorev_unvani,
+    })
     const derece = String(k?.kadro_derecesi ?? '')
     const siraNo = String(k?.kadro_sira_no ?? '')
     const kadroDurumu = k?.durumu ?? ''
@@ -322,9 +350,9 @@ export default function PersonelHareketiDegistirClient({
     })
   }, [bosKadrolarSirali, kadroArama])
 
-  function kadroSec(kadro: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
+  function kadroSec(kadro: Pick<KH, 'id' | 'kadro_sira_no' | 'kadro_derecesi' | 'kadro_unvan_id' | 'gorev_unvan_id' | 'kadro_unvani' | 'gorev_unvani' | 'kadro_mudurlugu' | 'gorev_mudurlugu' | 'durumu'>) {
     const unvan = kadro.kadro_unvani ?? kadro.gorev_unvani ?? ''
-    const sinif = unvanlar.find(u => u.ad === unvan)?.sinif ?? ''
+    const sinif = unvanSinifBul(unvanlar, kadro)
     setKadroBosaltildi(false)
     setYeniKadroIdState(kadro.id)
     setYeniKadroSiraNoState(kadro.kadro_sira_no ?? '')
