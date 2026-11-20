@@ -36,7 +36,9 @@ export default function PpIdareTabloGorClient({
               { baslik: 'Excel İndir', metin: 'İdare tablosu ile faaliyet maliyet tablolarını birlikte indirir.' },
             ]} />
           </div>
-          <p className="mt-1 text-sm text-slate-600">{mudurluk}</p>
+          <p className="mt-1 whitespace-pre-line text-sm text-slate-600">
+            {blok.veriKaynagi || mudurluk}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Link

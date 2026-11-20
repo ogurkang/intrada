@@ -26,10 +26,10 @@ function BaslikSatirlari() {
 
 function BlokGovde({ satirlar }: { satirlar: PpFaaliyetBirimSatir[] }) {
   const programSpan = ppSatirSpanlari(satirlar, s => s.programAdi)
-  const hedefSpan = ppSatirSpanlari(satirlar, s => `${s.programAdi}\0${s.hedefAdi}`)
+  const hedefSpan = ppSatirSpanlari(satirlar, s => `${s.programAdi}\0${s.hedefKodu}\0${s.hedefAdi}`)
   const sorumluSpan = ppSatirSpanlari(
     satirlar,
-    s => `${s.programAdi}\0${s.hedefAdi}\0${s.sorumluBirim}`,
+    s => `${s.programAdi}\0${s.hedefKodu}\0${s.hedefAdi}\0${s.sorumluBirim}`,
   )
 
   return (
@@ -40,7 +40,9 @@ function BlokGovde({ satirlar }: { satirlar: PpFaaliyetBirimSatir[] }) {
             <td rowSpan={programSpan[i]} className={ETIKET}>{s.programAdi}</td>
           ) : null}
           {hedefSpan[i]! > 0 ? (
-            <td rowSpan={hedefSpan[i]} className={ETIKET}>{s.hedefAdi}</td>
+            <td rowSpan={hedefSpan[i]} className={ETIKET}>
+              {s.hedefKodu ? `${s.hedefKodu} ${s.hedefAdi}`.trim() : s.hedefAdi}
+            </td>
           ) : null}
           <td className={`${DEGER} whitespace-nowrap text-center font-mono text-xs`}>{s.faaliyetKodu}</td>
           <td className={DEGER}>{s.faaliyetAdi}</td>

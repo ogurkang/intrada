@@ -72,7 +72,9 @@ export async function ppFaaliyetBirimExcelOlustur(rapor: PpFaaliyetBirimRapor): 
     const dataBas = satir
     for (const s of blok.satirlar) {
       ws.getCell(satir, 1).value = s.programAdi
-      ws.getCell(satir, 2).value = s.hedefAdi
+      ws.getCell(satir, 2).value = s.hedefKodu
+        ? `${s.hedefKodu} ${s.hedefAdi}`.trim()
+        : s.hedefAdi
       ws.getCell(satir, 3).value = s.faaliyetKodu
       ws.getCell(satir, 4).value = s.faaliyetAdi
       ws.getCell(satir, 5).value = s.sorumluBirim || null

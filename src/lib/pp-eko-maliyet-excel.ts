@@ -10,11 +10,7 @@ const YESIL = 'FFC6EFCE'
 const GRI = 'FFF2F2F2'
 
 function tutarYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
-  if (deger == null) {
-    hucre.value = null
-    return
-  }
-  hucre.value = deger
+  hucre.value = deger ?? 0
   hucre.numFmt = TUTAR_FORMAT
   hucre.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
 }

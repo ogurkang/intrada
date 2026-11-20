@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ppPfOdenekKaydet, type PpOdenekKalem } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/odenek-actions'
+import { ppPfKurumIciKaydet, ppPfOdenekKaydet, type PpOdenekKalem } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/odenek-actions'
 import { ppParaOku, ppParaYaz } from '@/lib/pp-iliski'
 
 export type PpOdenekKodSatir = PpOdenekKalem & { ekonomik_kod: string; hesap_adi: string }
@@ -23,15 +23,18 @@ export default function PpPfOdenekClient({
   faaliyetId,
   baslik,
   kodlar,
+  kurumIciBaslangic = false,
 }: {
   yil: number
   faaliyetId: number
   baslik: string
   kodlar: PpOdenekKodSatir[]
+  kurumIciBaslangic?: boolean
 }) {
   const router = useRouter()
   const [ara, setAra] = useState('')
   const [hata, setHata] = useState<string | null>(null)
+  const [kurumIci, setKurumIci] = useState(kurumIciBaslangic)
   const [bekliyor, start] = useTransition()
   const [degerler, setDegerler] = useState<Record<number, Record<Alan, string>>>(() => {
     const m: Record<number, Record<Alan, string>> = {}
@@ -86,15 +89,45 @@ export default function PpPfOdenekClient({
     })
   }
 
+  function kurumIciIsle() {
+    setHata(null)
+    const sonraki = !kurumIci
+    start(async () => {
+      const s = await ppPfKurumIciKaydet(faaliyetId, sonraki)
+      if (s.hata) {
+        setHata(s.hata)
+        return
+      }
+      setKurumIci(sonraki)
+      try { window.opener?.location.reload() } catch { /* ignore */ }
+      router.refresh()
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-800">{baslik}</h1>
-        <button type="button" onClick={kaydet} disabled={bekliyor} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {bekliyor ? 'Kaydediliyor…' : 'Kaydet'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={kurumIciIsle}
+            disabled={bekliyor}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+              kurumIci ? 'bg-orange-700 hover:bg-orange-600' : 'bg-orange-500 hover:bg-orange-400'
+            }`}
+          >
+            {kurumIci ? 'Kurum İçi (aktif)' : 'Kurum İçi'}
+          </button>
+          <button type="button" onClick={kaydet} disabled={bekliyor} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            {bekliyor ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-slate-600">4. düzey ekonomik kodlara ödenek teklifi. t yılı {yil}.</p>
+      <p className="text-sm text-slate-600">
+        4. düzey ekonomik kodlara ödenek teklifi. t yılı {yil}.
+        {kurumIci ? ' Bu faaliyet İdare Performans Bilgisi maliyet satırlarında «Kurum İçi» olarak gösterilir.' : ''}
+      </p>
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}
       <input value={ara} onChange={e => setAra(e.target.value)} placeholder="Kod veya hesap adı ara" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

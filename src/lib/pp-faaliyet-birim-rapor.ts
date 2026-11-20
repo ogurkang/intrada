@@ -4,6 +4,7 @@ import { ppRaporVarsayilanYil } from './pp-mudurluk-rapor'
 
 export type PpFaaliyetBirimSatir = {
   programAdi: string
+  hedefKodu: string
   hedefAdi: string
   faaliyetKodu: string
   faaliyetAdi: string
@@ -169,6 +170,7 @@ export async function ppFaaliyetBirimRaporYili(
       for (const f of faaliyetler) {
         satirlar.push({
           programAdi: program.program_adi,
+          hedefKodu: phKod,
           hedefAdi: h.alt_hedef_adi,
           faaliyetKodu: ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0),
           faaliyetAdi: f.faaliyet_adi,

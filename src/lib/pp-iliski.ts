@@ -60,7 +60,7 @@ export function ppParaOku(raw: string): number | null {
 
 export function ppParaYaz(n: number | null): string {
   if (n == null) return ''
-  return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n)
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
 
 export function ppZenginMetinTemiz(html: string): string {

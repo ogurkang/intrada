@@ -18,6 +18,8 @@ export type PpPerformansFaaliyet = {
   kod: string
   ad: string
   tutarlar: PpRaporSayi[]
+  /** Ödenek yerine «Kurum İçi» yazılır */
+  kurumIci?: boolean
 }
 
 /** Ödenek teklifinin 1. düzey ekonomik sınıflandırmaya göre satırı. */
@@ -142,6 +144,11 @@ export function ppRaporVarsayilanYil(yillar: number[], istenen: number | null): 
 export function ppRaporPara(n: PpRaporSayi): string {
   if (n == null) return ''
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Excel / boş tutar alanları için her zaman 2 küsür basamaklı TR biçimi. */
+export function ppRaporParaVeyaSifir(n: PpRaporSayi): string {
+  return (n ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export function ppRaporGosterge(n: PpRaporSayi): string {
@@ -280,7 +287,14 @@ export async function ppPerformansRaporYili(
   const altHedefById = new Map(altHedefler.map(h => [h.id, h]))
   const gecerliHedefIds = altHedefler.map(h => h.id)
 
-  type PfFaaliyet = { id: number; bag_id: number; sira_no: number | null; faaliyet_adi: string; aciklama: string | null }
+  type PfFaaliyet = {
+    id: number
+    bag_id: number
+    sira_no: number | null
+    faaliyet_adi: string
+    aciklama: string | null
+    kurum_ici: boolean
+  }
   type PfGosterge = {
     faaliyet_id: number
     sira_no: number | null
@@ -320,12 +334,16 @@ export async function ppPerformansRaporYili(
 
   if (hedefBasinaBlok) {
     const aciklamali = bagIds.length
-      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi, aciklama').in('bag_id', bagIds).order('sira_no')
+      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi, aciklama, kurum_ici').in('bag_id', bagIds).order('sira_no')
       : { data: [], error: null }
     const pfRaw = aciklamali.error
       ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi').in('bag_id', bagIds).order('sira_no')
       : aciklamali
-    pfFaaliyetler = ((pfRaw.data ?? []) as PfFaaliyet[]).map(f => ({ ...f, aciklama: f.aciklama ?? null }))
+    pfFaaliyetler = ((pfRaw.data ?? []) as PfFaaliyet[]).map(f => ({
+      ...f,
+      aciklama: f.aciklama ?? null,
+      kurum_ici: Boolean((f as { kurum_ici?: boolean }).kurum_ici),
+    }))
     const pfIds = pfFaaliyetler.map(f => f.id)
     const [{ data: pfGRaw }, { data: pfORaw }] = await Promise.all([
       pfIds.length
@@ -404,16 +422,16 @@ export async function ppPerformansRaporYili(
   function blokOlusturIdare(
     alt: { id: number; program_id: number; alt_program_adi: string; gerekce: string | null },
     h: AltHedef,
-    norm: string,
-    ad: string,
   ): PpPerformansBlok {
     const program = programlar.find(p => p.id === alt.program_id)
     const phKod = hedefKodu(h)
-    const ilgiliBagIds = new Set(
-      baglar
-        .filter(b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && ppNorm(bagMudurluk(b)) === norm)
-        .map(b => b.id),
+    const ilgiliBags = baglar.filter(
+      b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && String(bagMudurluk(b)).trim() !== '',
     )
+    const mudurlukler = [...new Set(ilgiliBags.map(b => bagMudurluk(b).trim()))]
+      .sort((a, b) => a.localeCompare(b, 'tr'))
+    const sorumluMetin = mudurlukler.join('\n')
+    const ilgiliBagIds = new Set(ilgiliBags.map(b => b.id))
     const pfListe = pfFaaliyetler
       .filter(f => ilgiliBagIds.has(f.bag_id))
       .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.faaliyet_adi.localeCompare(b.faaliyet_adi, 'tr'))
@@ -429,14 +447,17 @@ export async function ppPerformansRaporYili(
       return {
         kod,
         ad: f.faaliyet_adi,
-        tutarlar: [
-          topla('t1_butce'),
-          topla('t1_haziran'),
-          topla('t1_yil_sonu'),
-          topla('t_butce'),
-          topla('t1_tahmin'),
-          topla('t2_tahmin'),
-        ],
+        kurumIci: f.kurum_ici,
+        tutarlar: f.kurum_ici
+          ? [null, null, null, null, null, null]
+          : [
+            topla('t1_butce'),
+            topla('t1_haziran'),
+            topla('t1_yil_sonu'),
+            topla('t_butce'),
+            topla('t1_tahmin'),
+            topla('t2_tahmin'),
+          ],
       }
     })
 
@@ -462,12 +483,13 @@ export async function ppPerformansRaporYili(
           ],
           aciklama: String(g.aciklama ?? '').trim(),
           hesaplama: String(g.hesaplama_yontemi ?? '').trim(),
-          sorumlu: ad,
+          sorumlu: sorumluMetin,
         })
       })
     }
 
     const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe
+      .filter(f => !f.kurum_ici)
       .map(f => {
         const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
         const grup = new Map<string, PpRaporSayi[]>()
@@ -503,8 +525,7 @@ export async function ppPerformansRaporYili(
       })
       .filter(t => t.satirlar.length > 0)
 
-    const bagGerekce = baglar
-      .filter(b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && ppNorm(bagMudurluk(b)) === norm)
+    const bagGerekce = ilgiliBags
       .map(b => ppGerekceMetin(b.gerekce))
       .find(g => !!g)
     const altGerekce = ppGerekceMetin(alt.gerekce)
@@ -519,7 +540,7 @@ export async function ppPerformansRaporYili(
       altProgramAdi: alt.alt_program_adi,
       gerekce: bagGerekce || altGerekce || PP_GEREKCE_BOS,
       hedef: `PH ${phKod} ${h.alt_hedef_adi}`.trim(),
-      veriKaynagi: ad,
+      veriKaynagi: sorumluMetin,
       gostergeler: gostergeSatir,
       faaliyetler,
       maliyetTablolari,
@@ -627,7 +648,8 @@ export async function ppPerformansRaporYili(
         }
         if (hedefBasinaBlok) {
           for (const h of hedefSirali) {
-            bloklar.push(blokOlusturIdare(alt, h, norm, ad))
+            // Aynı hedef birden fazla müdürlükte olsa da tek tablo; tüm müdürlükler veri kaynağında.
+            bloklar.push(blokOlusturIdare(alt, h))
           }
         } else {
           bloklar.push(blokOlustur(alt, hedefSirali, norm, ad))

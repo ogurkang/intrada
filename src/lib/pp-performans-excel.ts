@@ -58,20 +58,22 @@ function sayiYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
 }
 
 function tutarYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
-  if (deger == null) {
-    hucre.value = null
+  hucre.value = deger ?? 0
+  hucre.numFmt = TUTAR_FORMAT
+  hucre.alignment = { ...(hucre.alignment ?? {}), horizontal: 'center', vertical: 'middle', wrapText: true }
+}
+
+function tutarVeyaKurumIci(hucre: ExcelJS.Cell, deger: PpRaporSayi, kurumIci?: boolean) {
+  if (kurumIci) {
+    hucre.value = 'Kurum İçi'
+    hucre.numFmt = undefined
+    hucre.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     return
   }
-  hucre.value = deger
-  hucre.numFmt = TUTAR_FORMAT
-  hucre.alignment = { ...(hucre.alignment ?? {}), horizontal: 'center', vertical: 'middle' }
+  tutarYaz(hucre, deger)
 }
 
 const TUTAR_KOLON = [3, 4, 5, 6, 7, 9]
-
-function sutunHarf(col: number): string {
-  return String.fromCharCode(64 + col)
-}
 
 function kenarlik9(ws: ExcelJS.Worksheet, satirNo: number) {
   for (let c = 1; c <= 9; c++) {
@@ -159,38 +161,25 @@ export async function ppPerformansExcelOlustur(
     })
 
     const toplam: PpRaporSayi[] = [null, null, null, null, null, null]
-    const faaliyetSatirlari: number[] = []
     for (const f of blok.faaliyetler) {
       const r = damga(79, 80)
-      faaliyetSatirlari.push(r)
       yazi(ws.getCell(r, 1), `${f.kod} ${f.ad}`.trim())
+      yazi(ws.getCell(r + 1, 1), 'Bütçe İçi')
       f.tutarlar.forEach((t, i) => {
-        toplam[i] = t == null ? toplam[i] : (toplam[i] ?? 0) + t
+        if (!f.kurumIci && t != null) toplam[i] = (toplam[i] ?? 0) + t
         const col = TUTAR_KOLON[i]
-        tutarYaz(ws.getCell(r, col), t)
-        tutarYaz(ws.getCell(r + 1, col), t)
+        tutarVeyaKurumIci(ws.getCell(r, col), t, f.kurumIci)
+        tutarVeyaKurumIci(ws.getCell(r + 1, col), t, f.kurumIci)
       })
     }
     const toplamSatir = damga(93, 94)
+    yazi(ws.getCell(toplamSatir, 1), 'Toplam')
+    yazi(ws.getCell(toplamSatir + 1, 1), 'Bütçe İçi Toplam')
     toplam.forEach((t, i) => {
       const col = TUTAR_KOLON[i]
-      const harf = sutunHarf(col)
-      const kaynaklar = faaliyetSatirlari.map(r => `${harf}${r}`)
-      const hucre = ws.getCell(toplamSatir, col)
-      if (!kaynaklar.length || t == null) {
-        hucre.value = null
-      } else {
-        hucre.value = { formula: kaynaklar.join('+'), result: t }
-        hucre.numFmt = TUTAR_FORMAT
-      }
-      const alt = ws.getCell(toplamSatir + 1, col)
-      if (t == null) alt.value = null
-      else {
-        alt.value = { formula: `${harf}${toplamSatir}`, result: t }
-        alt.numFmt = TUTAR_FORMAT
-      }
+      tutarYaz(ws.getCell(toplamSatir, col), t)
+      tutarYaz(ws.getCell(toplamSatir + 1, col), t)
     })
-    yazi(ws.getCell(toplamSatir + 1, 8), null)
     damga(95, 95)
     if (!blok.faaliyetler.length) damga(96, 96)
     blok.faaliyetler.forEach((f, i) => {

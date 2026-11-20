@@ -10,10 +10,10 @@ const DEGER = 'border border-slate-300 bg-[#F2F2F2] px-3 py-2.5 text-slate-800'
 
 export default function PpGostergeBirimTablo({ satirlar }: { satirlar: PpGostergeBirimSatir[] }) {
   const programSpan = ppSatirSpanlari(satirlar, s => s.programAdi)
-  const altSpan = ppSatirSpanlari(satirlar, s => `${s.programAdi}\0${s.altProgramAdi}`)
+  const altSpan = ppSatirSpanlari(satirlar, s => `${s.programAdi}\0${s.altProgramKodu}\0${s.altProgramAdi}`)
   const mudSpan = ppSatirSpanlari(
     satirlar,
-    s => `${s.programAdi}\0${s.altProgramAdi}\0${s.ilgiliMudurluk}`,
+    s => `${s.programAdi}\0${s.altProgramKodu}\0${s.altProgramAdi}\0${s.ilgiliMudurluk}`,
   )
 
   return (
@@ -44,7 +44,9 @@ export default function PpGostergeBirimTablo({ satirlar }: { satirlar: PpGosterg
                 <td rowSpan={programSpan[i]} className={ETIKET}>{s.programAdi}</td>
               ) : null}
               {altSpan[i]! > 0 ? (
-                <td rowSpan={altSpan[i]} className={ETIKET}>{s.altProgramAdi}</td>
+                <td rowSpan={altSpan[i]} className={ETIKET}>
+                  {s.altProgramKodu ? `${s.altProgramKodu} ${s.altProgramAdi}`.trim() : s.altProgramAdi}
+                </td>
               ) : null}
               <td className={`${DEGER} whitespace-nowrap text-center font-mono text-xs`}>{s.gostergeKodu}</td>
               <td className={DEGER}>{s.gostergeAdi}</td>

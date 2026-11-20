@@ -48,11 +48,7 @@ function yazi(hucre: ExcelJS.Cell, deger: string | number | null) {
 }
 
 function tutarYaz(hucre: ExcelJS.Cell, deger: PpRaporSayi) {
-  if (deger == null) {
-    hucre.value = null
-    return
-  }
-  hucre.value = deger
+  hucre.value = deger ?? 0
   hucre.numFmt = TUTAR_FORMAT
   hucre.alignment = { ...(hucre.alignment ?? {}), horizontal: 'center', vertical: 'middle', wrapText: true }
 }

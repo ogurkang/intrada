@@ -19,6 +19,31 @@ function dolu(k: PpOdenekKalem) {
   return [k.t1Butce, k.t1Haziran, k.t1YilSonu, k.tButce, k.t1Tahmin, k.t2Tahmin].some(n => n != null)
 }
 
+export async function ppPfKurumIciKaydet(pfFaaliyetId: number, kurumIci: boolean): Promise<{ hata?: string }> {
+  if (!Number.isFinite(pfFaaliyetId)) return { hata: 'Faaliyet bulunamadı.' }
+  const supabase = await createClient()
+  if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { error } = await sb.from('performans_programi_pf_faaliyet').update({ kurum_ici: kurumIci }).eq('id', pfFaaliyetId)
+  if (error) {
+    if (String(error.message).includes('kurum_ici')) {
+      return { hata: 'Kurum İçi için 20261120140000_pp_pf_kurum_ici.sql dosyasını çalıştırın.' }
+    }
+    return { hata: error.message }
+  }
+  await ppSatirLogYaz(supabase, {
+    tablo: 'performans_faaliyet',
+    kayitId: pfFaaliyetId,
+    islem: 'Ödenek',
+    ozet: kurumIci ? 'Kurum İçi işaretlendi' : 'Kurum İçi kaldırıldı',
+  })
+  const { data: faaliyet } = await sb.from('performans_programi_pf_faaliyet').select('bag_id').eq('id', pfFaaliyetId).maybeSingle()
+  if (faaliyet?.bag_id) revalidatePath(`/stratejik-yonetim/performans-programi/hedef/${faaliyet.bag_id}`)
+  revalidatePath(`/stratejik-yonetim/performans-programi/pf/${pfFaaliyetId}/odenek`)
+  return {}
+}
+
 export async function ppPfOdenekKaydet(pfFaaliyetId: number, kalemler: PpOdenekKalem[]): Promise<{ hata?: string }> {
   if (!Number.isFinite(pfFaaliyetId)) return { hata: 'Faaliyet bulunamadı.' }
   const supabase = await createClient()

@@ -26,7 +26,10 @@ export default function PpPerformansBlokTablo({
   const gBaslik = ppGostergeBaslik(yil)
   const mBaslik = ppMaliyetBaslik(yil)
   const toplam = mBaslik.map((_, i) => {
-    const dolu = blok.faaliyetler.map(f => f.tutarlar[i]).filter((n): n is number => n != null)
+    const dolu = blok.faaliyetler
+      .filter(f => !f.kurumIci)
+      .map(f => f.tutarlar[i])
+      .filter((n): n is number => n != null)
     return dolu.length ? dolu.reduce((a, b) => a + b, 0) : null
   })
   return (
@@ -69,12 +72,12 @@ export default function PpPerformansBlokTablo({
               <tr><td colSpan={9} className={`${SATIR} py-8 text-center text-slate-500`}>Bu hedefe bağlı performans faaliyeti yok.</td></tr>
             ) : blok.faaliyetler.map(f => (
               <Fragment key={`${f.kod}-${f.ad}`}>
-                <MaliyetSatir ad={`${f.kod} ${f.ad}`.trim()} tutarlar={f.tutarlar} />
-                <MaliyetSatir ad="Bütçe İçi" tutarlar={f.tutarlar} />
+                <MaliyetSatir ad={`${f.kod} ${f.ad}`.trim()} tutarlar={f.tutarlar} kurumIci={f.kurumIci} />
+                <MaliyetSatir ad="Bütçe İçi" tutarlar={f.tutarlar} kurumIci={f.kurumIci} />
               </Fragment>
             ))}
             <MaliyetSatir ad="Toplam" tutarlar={toplam} kalin />
-            <MaliyetSatir ad="Bütçe Dışı" tutarlar={[null, null, null, null, null, null]} />
+            <MaliyetSatir ad="Bütçe İçi Toplam" tutarlar={toplam} kalin />
             <tr>
               <td colSpan={9} className={`${BASLIK} text-center`}>Faaliyetlere İlişkin Açıklamalar</td>
             </tr>
@@ -124,15 +127,26 @@ function GostergeGrup({ g }: { g: PpPerformansBlok['gostergeler'][number] }) {
   )
 }
 
-function MaliyetSatir({ ad, tutarlar, kalin = false }: { ad: string; tutarlar: (number | null)[]; kalin?: boolean }) {
+function MaliyetSatir({
+  ad,
+  tutarlar,
+  kalin = false,
+  kurumIci = false,
+}: {
+  ad: string
+  tutarlar: (number | null)[]
+  kalin?: boolean
+  kurumIci?: boolean
+}) {
   const adCls = kalin ? TOPLAM : ETIKET
   const sayCls = `${kalin ? TOPLAM : SATIR} text-right tabular-nums`
+  const hucre = (t: number | null | undefined) => (kurumIci ? 'Kurum İçi' : ppRaporPara(t ?? null))
   return (
     <tr>
       <td colSpan={2} className={adCls}>{ad}</td>
-      {tutarlar.slice(0, 4).map((t, i) => <td key={i} className={sayCls}>{ppRaporPara(t)}</td>)}
-      <td colSpan={2} className={sayCls}>{ppRaporPara(tutarlar[4])}</td>
-      <td className={sayCls}>{ppRaporPara(tutarlar[5])}</td>
+      {tutarlar.slice(0, 4).map((t, i) => <td key={i} className={sayCls}>{hucre(t)}</td>)}
+      <td colSpan={2} className={sayCls}>{hucre(tutarlar[4])}</td>
+      <td className={sayCls}>{hucre(tutarlar[5])}</td>
     </tr>
   )
 }

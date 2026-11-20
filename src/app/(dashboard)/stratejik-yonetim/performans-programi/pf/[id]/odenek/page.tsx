@@ -17,9 +17,14 @@ export default async function PpPfOdenekPage({
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { data: faaliyet } = await sb.from('performans_programi_pf_faaliyet').select('id, faaliyet_adi, bag_id').eq('id', faaliyetId).maybeSingle()
+  const kurumlu = await sb.from('performans_programi_pf_faaliyet').select('id, faaliyet_adi, bag_id, kurum_ici').eq('id', faaliyetId).maybeSingle()
+  const faaliyetRes = kurumlu.error
+    ? await sb.from('performans_programi_pf_faaliyet').select('id, faaliyet_adi, bag_id').eq('id', faaliyetId).maybeSingle()
+    : kurumlu
+  const faaliyet = faaliyetRes.data as { id: number; faaliyet_adi: string; bag_id: number; kurum_ici?: boolean } | null
   const bagId = Number(faaliyet?.bag_id)
   if (!faaliyet || !Number.isFinite(bagId)) notFound()
+  const kurumIci = Boolean(faaliyet.kurum_ici)
   const { data: bag } = await sb.from('performans_programi_alt_program_hedef').select('id, alt_program_id, faaliyet_id').eq('id', bagId).maybeSingle()
   if (!bag) notFound()
   const { data: alt } = await sb.from('performans_programi_alt_program').select('id, program_id').eq('id', bag.alt_program_id).maybeSingle()
@@ -75,7 +80,13 @@ export default async function PpPfOdenekPage({
         { label: 'Ödenek' },
       ]} />
       {odenekHata ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Ödenek tablosu için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.</p> : null}
-      <PpPfOdenekClient yil={yil} faaliyetId={faaliyetId} baslik={String(faaliyet.faaliyet_adi ?? 'Ödenek teklifi')} kodlar={kodlar} />
+      <PpPfOdenekClient
+        yil={yil}
+        faaliyetId={faaliyetId}
+        baslik={String(faaliyet.faaliyet_adi ?? 'Ödenek teklifi')}
+        kodlar={kodlar}
+        kurumIciBaslangic={kurumIci}
+      />
     </div>
   )
 }
