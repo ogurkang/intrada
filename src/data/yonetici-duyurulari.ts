@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-t6-mudurluk-program-fix',
+    baslik: '23 Kasım 2026 — Müdürlük t6 tablosu veri düzeltmesi',
+    maddeler: [
+      'Müdürlüklerin Performans Programı Tablosu’nda sınıflandırma faaliyeti yanlış tablodan okunduğu için ekran boş kalıyordu; düzeltildi.',
+      't6 hiyerarşisi: Stratejik Amaç → Program → Alt Program → Faaliyet → Stratejik Hedef → Müdürlük → Performans Hedefi → Performans Faaliyeti → Gösterge / BÜTÇE.',
+    ],
+  },
+  {
     id: '2026-11-23-pp-t6-mudurluk-program',
     baslik: '23 Kasım 2026 — Müdürlük performans programı (t6)',
     maddeler: [

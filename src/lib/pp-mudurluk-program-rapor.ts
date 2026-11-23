@@ -183,9 +183,10 @@ export async function ppMudurlukProgramRaporYili(
   const sinifIds = [...new Set(baglar.map(b => Number(b.faaliyet_id)).filter(Number.isFinite))]
   const phIds = [...new Set(baglar.map(b => b.alt_hedef_id))]
 
+  /** Sınıflandırma faaliyeti: bag.faaliyet_id → pf_faaliyet (alt_program_id dolu, bag_id boş). */
   const { data: sinifRaw } = sinifIds.length
     ? await sb
-      .from('performans_programi_faaliyet')
+      .from('performans_programi_pf_faaliyet')
       .select('id, alt_program_id, faaliyet_adi, kodu, sira_no')
       .in('id', sinifIds)
     : { data: [] }
