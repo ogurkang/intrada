@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-t6-mudurluk-filtre-renk',
+    baslik: '23 Kasım 2026 — Müdürlük t6 filtre, renk ve Excel',
+    maddeler: [
+      'Müdürlüklerin Performans Programı’nda Yıl + Müdürlük (Seçiniz) filtresi vardır; sekmeler kaldırıldı.',
+      'Stratejik Amaç/Hedef ile Program/Alt Program/Performans Hedefi uyumlu renklerle ayrılır; Excel indirme Türkçe dosya adında hata vermez.',
+    ],
+  },
+  {
     id: '2026-11-23-pp-t6-mudurluk-program-fix',
     baslik: '23 Kasım 2026 — Müdürlük t6 tablosu veri düzeltmesi',
     maddeler: [

@@ -22,7 +22,7 @@ export default async function PerformansProgramiRaporSayfa({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ y?: string }>
+  searchParams: Promise<{ y?: string; m?: string }>
 }) {
   const { slug } = await params
   if (OZEL_SLUG.has(slug)) notFound()
@@ -30,10 +30,17 @@ export default async function PerformansProgramiRaporSayfa({
   if (!rapor) notFound()
 
   if (slug === 'mudurluklerin-performans-programi') {
-    const y = Number.parseInt((await searchParams).y ?? '', 10)
+    const sp = await searchParams
+    const y = Number.parseInt(sp.y ?? '', 10)
     const supabase = await createClient()
     const veri = await ppMudurlukProgramRaporYili(supabase, Number.isFinite(y) ? y : null)
-    return <PpMudurlukPerformansClient key={veri.yil} rapor={veri} />
+    return (
+      <PpMudurlukPerformansClient
+        key={`${veri.yil}-${sp.m ?? ''}`}
+        rapor={veri}
+        secilenMudurluk={(sp.m ?? '').trim()}
+      />
+    )
   }
 
   return (

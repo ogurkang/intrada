@@ -16,11 +16,12 @@ export async function GET(req: Request) {
   if (!sekme) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
 
   const buf = await ppMudurlukProgramExcelOlustur(sekme, rapor.yil)
-  const guvenli = sekme.mudurluk.replace(/[^\wçğıöşüÇĞİÖŞÜ\- ]+/gi, '').slice(0, 40).trim().replace(/\s+/g, '_')
+  const ascii = `Mudurluk_PP_${rapor.yil}.xlsx`
+  const utf8 = `Müdürlük_PP_${rapor.yil}_${sekme.mudurluk}.xlsx`
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="Mudurluk_PP_${rapor.yil}_${guvenli || 'rapor'}.xlsx"`,
+      'Content-Disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(utf8)}`,
     },
   })
 }
