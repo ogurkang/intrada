@@ -7,12 +7,20 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-gosterge-kod-sira',
+    baslik: '23 Kasım 2026 — Gösterge birim kod sıralaması',
+    maddeler: [
+      'Gösterge İzleme Sorumlu Birimleri’nde alt program kodu gösterilmez; yalnızca alt program adı yazılır.',
+      'Gösterge (ve faaliyet birim) satırları noktalı koda göre sayısal sıralanır: 1.1.1.1.1 → 1.1.1.1.2 → 1.1.2.1.1.',
+    ],
+  },
+  {
     id: '2026-11-20-pp-idare-kurum-ici',
     baslik: '20 Kasım 2026 — İdare çoklu müdürlük, Kurum İçi ve Excel tutarları',
     maddeler: [
       'İdare Performans Bilgisi’nde aynı alt program hedefi birden fazla müdürlükle bağlıysa tek tabloda kod sırasıyla listelenir; Verinin Kaynağı/Sorumlu Birim’de tüm müdürlükler yer alır.',
       'Ödenek teklifi ekranında turuncu Kurum İçi düğmesi vardır; işaretlenince maliyet satırlarında tutar yerine «Kurum İçi» yazılır.',
-      'Faaliyet maliyetlerinde «Bütçe Dışı» satırı «Bütçe İçi Toplam» oldu ve Toplam ile aynı tutarları gösterir. t4/t5’te hedef ve alt program kodları eklenir; boş tutarlar 0,00 (nokta binlik / virgül küsür) yazılır.',
+      'Faaliyet maliyetlerinde «Bütçe Dışı» satırı «Bütçe İçi Toplam» oldu ve Toplam ile aynı tutarları gösterir. t4’te hedef kodları eklenir; boş tutarlar 0,00 (nokta binlik / virgül küsür) yazılır.',
     ],
   },
   {

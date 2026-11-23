@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ppFaaliyetKodu, ppPerformansYol } from '@/lib/pp-iliski'
+import { ppFaaliyetKodu, ppKodSirala, ppPerformansYol } from '@/lib/pp-iliski'
 import { ppRaporVarsayilanYil } from './pp-mudurluk-rapor'
 
 export type PpFaaliyetBirimSatir = {
@@ -180,6 +180,8 @@ export async function ppFaaliyetBirimRaporYili(
     }
 
     if (!satirlar.length) continue
+    satirlar.sort((a, b) => ppKodSirala(a.faaliyetKodu, b.faaliyetKodu)
+      || a.faaliyetAdi.localeCompare(b.faaliyetAdi, 'tr'))
     bloklar.push({ programAdi: program.program_adi, satirlar })
   }
 

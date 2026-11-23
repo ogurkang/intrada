@@ -51,6 +51,19 @@ export function ppGostergeKodu(faaliyetKodu: string, sira: number): string {
   return `${faaliyetKodu}.${sira}`
 }
 
+/** Noktalı kodları sayısal parçalara göre karşılaştırır: 1.1.1.1.1 < 1.1.1.1.2 < 1.1.2.1.1 */
+export function ppKodSirala(a: string | null | undefined, b: string | null | undefined): number {
+  const pa = ppKodTemiz(String(a ?? '')).split('.').filter(Boolean).map(n => Number(n))
+  const pb = ppKodTemiz(String(b ?? '')).split('.').filter(Boolean).map(n => Number(n))
+  const len = Math.max(pa.length, pb.length)
+  for (let i = 0; i < len; i++) {
+    const x = Number.isFinite(pa[i]) ? pa[i]! : -1
+    const y = Number.isFinite(pb[i]) ? pb[i]! : -1
+    if (x !== y) return x - y
+  }
+  return 0
+}
+
 export function ppParaOku(raw: string): number | null {
   const t = raw.trim().replace(/\s/g, '')
   if (!t) return null

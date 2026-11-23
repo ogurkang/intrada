@@ -60,9 +60,7 @@ export async function ppGostergeBirimExcelOlustur(rapor: PpGostergeBirimRapor): 
   let satir = 3
   for (const s of rapor.satirlar) {
     ws.getCell(satir, 1).value = s.programAdi
-    ws.getCell(satir, 2).value = s.altProgramKodu
-      ? `${s.altProgramKodu} ${s.altProgramAdi}`.trim()
-      : s.altProgramAdi
+    ws.getCell(satir, 2).value = s.altProgramAdi
     ws.getCell(satir, 3).value = s.gostergeKodu
     ws.getCell(satir, 4).value = s.gostergeAdi
     ws.getCell(satir, 5).value = s.ilgiliMudurluk || null

@@ -1,10 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ppFaaliyetKodu, ppGostergeKodu, ppPerformansYol } from '@/lib/pp-iliski'
+import { ppFaaliyetKodu, ppGostergeKodu, ppKodSirala, ppPerformansYol } from '@/lib/pp-iliski'
 import { ppRaporVarsayilanYil } from './pp-mudurluk-rapor'
 
 export type PpGostergeBirimSatir = {
   programAdi: string
-  altProgramKodu: string
   altProgramAdi: string
   gostergeKodu: string
   gostergeAdi: string
@@ -62,7 +61,7 @@ export async function ppGostergeBirimRaporYili(
   const { data: altRaw } = programIds.length
     ? await sb
       .from('performans_programi_alt_program')
-      .select('id, program_id, alt_program_adi, kodu, sira_no')
+      .select('id, program_id, alt_program_adi, sira_no')
       .in('program_id', programIds)
       .order('sira_no', { ascending: true, nullsFirst: false })
     : { data: [] }
@@ -70,7 +69,6 @@ export async function ppGostergeBirimRaporYili(
     id: number
     program_id: number
     alt_program_adi: string
-    kodu: string | null
     sira_no: number | null
   }[]
   const altIds = altlar.map(a => a.id)
@@ -189,7 +187,6 @@ export async function ppGostergeBirimRaporYili(
             const sira = Number(g.sira_no ?? 0) || i + 1
             satirlar.push({
               programAdi: program.program_adi,
-              altProgramKodu: String(alt.kodu ?? '').trim(),
               altProgramAdi: alt.alt_program_adi,
               gostergeKodu: ppGostergeKodu(fKod, sira),
               gostergeAdi: g.gosterge_adi,
@@ -200,6 +197,9 @@ export async function ppGostergeBirimRaporYili(
       }
     }
   }
+
+  satirlar.sort((a, b) => ppKodSirala(a.gostergeKodu, b.gostergeKodu)
+    || a.gostergeAdi.localeCompare(b.gostergeAdi, 'tr'))
 
   return { yil, yillar, satirlar }
 }
