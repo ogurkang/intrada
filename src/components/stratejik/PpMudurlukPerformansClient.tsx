@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { PpPerformansRaporYil } from '@/lib/pp-mudurluk-rapor'
+import type { PpMudurlukProgramRapor } from '@/lib/pp-mudurluk-program-rapor'
 import { PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 import PpEkranBilgi from '@/components/stratejik/PpEkranBilgi'
-import PpPerformansBlokTablo from '@/components/stratejik/PpPerformansBlokTablo'
+import PpMudurlukProgramTablo from '@/components/stratejik/PpMudurlukProgramTablo'
 
-export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerformansRaporYil }) {
+export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpMudurlukProgramRapor }) {
   const router = useRouter()
   const [sekme, setSekme] = useState(0)
   const aktif = rapor.sekmeler[sekme] ?? rapor.sekmeler[0]
@@ -24,11 +24,12 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
             <h1 className="text-2xl font-bold text-slate-800">Müdürlüklerin Performans Programı Tablosu</h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Yıl', metin: 'Raporun bütçe yılını değiştirir. Kayıt girişi yapmaz.' },
-              { baslik: 'Müdürlük sekmesi', metin: 'Seçilen müdürlüğün alt program bloklarını açar.' },
-              { baslik: 'Excel İndir', metin: 'Açık müdürlüğün tablosunu örnek formun düzeniyle indirir.' },
+              { baslik: 'Müdürlük sekmesi', metin: 'Seçilen müdürlüğün t6 hiyerarşik performans programı tablosunu açar.' },
+              { baslik: 'Hiyerarşi', metin: 'Stratejik Amaç → Program → Alt Program → Faaliyet → Stratejik Hedef → Müdürlük → Performans Hedefi → Performans Faaliyeti → Gösterge / BÜTÇE.' },
+              { baslik: 'Excel İndir', metin: 'Açık müdürlüğün tablosunu t6 şablon düzeniyle indirir.' },
             ]} />
           </div>
-          <p className="text-sm text-slate-600 mt-1">Seçilen yıl ve müdürlüğün performans programı tablosu.</p>
+          <p className="text-sm text-slate-600 mt-1">Seçilen yıl ve müdürlüğün performans programı tablosu (t6).</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <Link
@@ -75,14 +76,7 @@ export default function PpMudurlukPerformansClient({ rapor }: { rapor: PpPerform
               ))}
             </nav>
           </div>
-          {aktif?.bloklar.map(blok => (
-            <PpPerformansBlokTablo
-              key={`${blok.programAdi}-${blok.altProgramAdi}-${blok.hedefKod ?? blok.hedef}`}
-              blok={blok}
-              yil={rapor.yil}
-              tabloBaslik="MÜDÜRLÜK PERFORMANS BİLGİSİ"
-            />
-          ))}
+          {aktif ? <PpMudurlukProgramTablo satirlar={aktif.satirlar} /> : null}
         </>
       )}
     </div>

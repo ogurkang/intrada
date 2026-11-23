@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PpMudurlukPerformansClient from '@/components/stratejik/PpMudurlukPerformansClient'
-import { ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
+import { ppMudurlukProgramRaporYili } from '@/lib/pp-mudurluk-program-rapor'
 import { ppRaporBul, PP_RAPORLAR, PP_RAPORLAR_BASE } from '@/lib/pp-rapor-listesi'
 
 const OZEL_SLUG = new Set([
@@ -32,7 +32,7 @@ export default async function PerformansProgramiRaporSayfa({
   if (slug === 'mudurluklerin-performans-programi') {
     const y = Number.parseInt((await searchParams).y ?? '', 10)
     const supabase = await createClient()
-    const veri = await ppPerformansRaporYili(supabase, Number.isFinite(y) ? y : null)
+    const veri = await ppMudurlukProgramRaporYili(supabase, Number.isFinite(y) ? y : null)
     return <PpMudurlukPerformansClient key={veri.yil} rapor={veri} />
   }
 

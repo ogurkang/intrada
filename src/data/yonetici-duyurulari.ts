@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-t6-mudurluk-program',
+    baslik: '23 Kasım 2026 — Müdürlük performans programı (t6)',
+    maddeler: [
+      'Müdürlüklerin Performans Programı Tablosu t6 şablonuna göre yenilendi: Stratejik Amaç → Program → Alt Program → Faaliyet → Stratejik Hedef → Müdürlük → Performans Hedefi → Performans Faaliyeti → Gösterge / BÜTÇE.',
+      'Müdürlük sekmeleri ve Excel indirme t6 düzenindedir; tutarlar performans faaliyeti ödeneklerinden (t bütçe) gelir.',
+    ],
+  },
+  {
     id: '2026-11-23-pp-idare-listeleme-turu',
     baslik: '23 Kasım 2026 — İdare listeleme türü (hedef / müdürlük)',
     maddeler: [
