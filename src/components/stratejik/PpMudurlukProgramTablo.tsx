@@ -91,7 +91,9 @@ export default function PpMudurlukProgramTablo({
           <td className={`${DEGER} ${ORTA} font-mono text-xs`}>{s.kod}</td>
           <td className={`${DEGER} ${SOL}`}>{s.aciklama}</td>
           <td className={`${DEGER} ${ORTA} tabular-nums`}>
-            {s.tutar != null ? ppRaporPara(s.tutar) : ''}
+            {s.tutar != null
+              ? Math.round(s.tutar).toLocaleString('tr-TR', { maximumFractionDigits: 0 })
+              : ''}
           </td>
         </tr>,
       )

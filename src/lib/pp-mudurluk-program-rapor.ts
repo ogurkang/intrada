@@ -481,6 +481,7 @@ export async function ppMudurlukProgramRaporYili(
             tur: 'mudurluk',
             etiket: 'Müdürlük',
             aciklama: d.mudurluk,
+            tutar: pafToplam,
           })
         }
 

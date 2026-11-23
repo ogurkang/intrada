@@ -4,7 +4,10 @@ import type { PpMudSatir, PpMudSatirTur, PpMudurlukProgramSekme } from './pp-mud
 import type { PpRaporSayi } from './pp-mudurluk-rapor'
 
 const SABLON = path.join(process.cwd(), 'src/lib/pp/sablon/t6-mud-per.xlsx')
-const TUTAR_FORMAT = '#.##0,00'
+/** Excel format kodu her zaman ABD sözdizimlidir; TR Excel’de 6.925.000,00 görünür. */
+const TUTAR_FORMAT = '#,##0.00'
+/** Gösterge hedefi: tam sayı, binlik ayraçlı (TR’de 1.234). */
+const HEDEF_FORMAT = '#,##0'
 const CIZGI = { style: 'thin' as const, color: { argb: 'FF94A3B8' } }
 
 const RENK: Record<string, string> = {
@@ -44,6 +47,15 @@ function tutarYaz(h: ExcelJS.Cell, v: PpRaporSayi) {
   }
   h.value = v
   h.numFmt = TUTAR_FORMAT
+}
+
+function hedefYaz(h: ExcelJS.Cell, v: PpRaporSayi) {
+  if (v == null) {
+    h.value = null
+    return
+  }
+  h.value = Math.round(v)
+  h.numFmt = HEDEF_FORMAT
 }
 
 function stilOrta(h: ExcelJS.Cell, wrap = false, bold = false) {
@@ -107,7 +119,8 @@ function satirYaz(ws: ExcelJS.Worksheet, r: number, s: PpMudSatir) {
     for (let c = 2; c <= 7; c++) yazi(ws.getCell(r, c), 'Gösterge')
     yazi(ws.getCell(r, 8), s.kod ?? '')
     yazi(ws.getCell(r, 9), s.aciklama)
-    tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
+    if (s.tur === 'gosterge') hedefYaz(ws.getCell(r, 10), s.tutar ?? null)
+    else tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
     stilSol(ws.getCell(r, 1), false, true)
     for (let c = 2; c <= 7; c++) stilSol(ws.getCell(r, c), false)
     stilOrta(ws.getCell(r, 8))
