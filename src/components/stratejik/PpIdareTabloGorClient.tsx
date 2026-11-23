@@ -14,14 +14,15 @@ export default function PpIdareTabloGorClient({
   blok,
   yil,
   mudurluk,
+  listeTur = 'hedef',
 }: {
   blok: PpPerformansBlok
   yil: number
   mudurluk: string
+  listeTur?: 'hedef' | 'mudurluk'
 }) {
-  const listeQ = new URLSearchParams({ y: String(yil) })
-  if (mudurluk) listeQ.set('m', mudurluk)
-  if (blok.tabloKey) listeQ.set('h', blok.tabloKey)
+  const listeQ = new URLSearchParams({ y: String(yil), t: listeTur })
+  if (listeTur === 'mudurluk' && mudurluk) listeQ.set('m', mudurluk)
   const excelQ = new URLSearchParams({
     yil: String(yil),
     ap: String(blok.altProgramId ?? ''),
@@ -38,13 +39,13 @@ export default function PpIdareTabloGorClient({
               {blok.hedefKod ? `${blok.hedefKod} — ` : ''}{blok.hedefAd ?? 'İdare Performans Bilgisi'}
             </h1>
             <PpEkranBilgi maddeler={[
-              { baslik: 'Tablo', metin: 'Seçilen müdürlük ve performans hedefine özel İdare Performans Bilgisi tablosu.' },
+              { baslik: 'Tablo', metin: 'Seçilen performans hedefine özel İdare Performans Bilgisi tablosu. Aynı hedefe bağlı müdürlükler birleştirilir.' },
               { baslik: 'Faaliyet maliyeti', metin: 'Her performans faaliyetinin ödenek teklifi, ekonomik sınıflandırmanın 1. düzeyinde ayrıca listelenir.' },
               { baslik: 'Excel İndir', metin: 'İdare tablosu ile faaliyet maliyet tablolarını birlikte indirir.' },
             ]} />
           </div>
-          <p className="mt-1 whitespace-pre-line text-sm text-slate-600">
-            {blok.veriKaynagi || mudurluk}
+          <p className="mt-1 text-sm text-slate-600">
+            {blok.veriKaynagi || mudurluk || '—'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -67,7 +68,7 @@ export default function PpIdareTabloGorClient({
 
       {(blok.maliyetTablolari ?? []).map(t => (
         <PpFaaliyetMaliyetTabloGorunum
-          key={t.kod}
+          key={`${t.kod}-${t.ad}`}
           blok={blok}
           tablo={t}
           yil={yil}

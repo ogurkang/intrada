@@ -7,12 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
-    id: '2026-11-23-pp-idare-hedef-filtre',
-    baslik: '23 Kasım 2026 — İdare hedef filtresi ve ALT PROGRAM rengi',
+    id: '2026-11-23-pp-idare-listeleme-turu',
+    baslik: '23 Kasım 2026 — İdare listeleme türü (hedef / müdürlük)',
     maddeler: [
-      'İdare Performans Bilgisi’nde filtrede Müdürlük (Tümü) ve Performans Hedefi seçimi vardır; hedef seçilince aynı hedefe bağlı müdürlükler tek tabloda birleşir.',
-      'Verinin Kaynağı / Sorumlu Birim’de müdürlükler «A, B» biçiminde virgülle yazılır; kodlar noktalı sayısal sıraya göre listelenir.',
-      'Faaliyetler Düzeyinde İdare PP Maliyeti’nde ALT PROGRAM satırı daha açık yeşille vurgulanır (ekran ve Excel).',
+      'İdare Performans Bilgisi’nde Listeleme Türü: Seçiniz / Performans Hedefi / Müdürlük. Hedef seçilince Liste’de tüm hedefler çıkar; tıklanınca aynı hedefe bağlı müdürlükler birleşik tabloda görünür.',
+      'İdare/Birim Adı ve Verinin Kaynağı/Sorumlu Birim’de müdürlükler «A, B» biçiminde yazılır; faaliyet ve göstergeler tek tabloda toplanır.',
+      'Müdürlük türünde Liste’den müdürlük seçilir; o müdürlüğün hedefleri listelenir, göz/Excel ile açılır.',
+      'Faaliyetler Düzeyinde İdare PP Maliyeti’nde ALT PROGRAM satırı daha açık yeşille vurgulanır.',
     ],
   },
   {

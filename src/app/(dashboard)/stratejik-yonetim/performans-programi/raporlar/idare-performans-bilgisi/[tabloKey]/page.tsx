@@ -2,14 +2,13 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PpIdareTabloGorClient from '@/components/stratejik/PpIdareTabloGorClient'
 import { ppIdareBloklariTekil, ppIdareTabloKeyCoz, ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
-import { ppNorm } from '@/lib/pp-erisim'
 
 export default async function IdarePerformansBilgisiGorPage({
   params,
   searchParams,
 }: {
   params: Promise<{ tabloKey: string }>
-  searchParams: Promise<{ y?: string; m?: string }>
+  searchParams: Promise<{ y?: string; m?: string; t?: string }>
 }) {
   const { tabloKey: ham } = await params
   const tabloKey = decodeURIComponent(ham)
@@ -19,6 +18,7 @@ export default async function IdarePerformansBilgisiGorPage({
   const sp = await searchParams
   const y = Number.parseInt(sp.y ?? '', 10)
   const mudurluk = (sp.m ?? '').trim()
+  const listeTur = sp.t === 'hedef' || sp.t === 'mudurluk' ? sp.t : (mudurluk ? 'mudurluk' : 'hedef')
   const supabase = await createClient()
   const rapor = await ppPerformansRaporYili(supabase, Number.isFinite(y) ? y : null, { mudurlukKaynak: 'secilen' })
 
@@ -29,15 +29,12 @@ export default async function IdarePerformansBilgisiGorPage({
   )
   if (!blok) notFound()
 
-  const sekmeMudurluk = mudurluk
-    ? (rapor.sekmeler.find(s => ppNorm(s.mudurluk) === ppNorm(mudurluk))?.mudurluk ?? mudurluk)
-    : (blok.veriKaynagi.split(',')[0]?.trim() || '')
-
   return (
     <PpIdareTabloGorClient
       blok={blok}
       yil={rapor.yil}
-      mudurluk={sekmeMudurluk}
+      mudurluk={mudurluk}
+      listeTur={listeTur}
     />
   )
 }

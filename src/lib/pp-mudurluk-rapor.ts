@@ -432,13 +432,43 @@ export async function ppPerformansRaporYili(
       .sort((a, b) => a.localeCompare(b, 'tr'))
     const sorumluMetin = mudurlukler.join(', ')
     const ilgiliBagIds = new Set(ilgiliBags.map(b => b.id))
-    const pfListe = pfFaaliyetler
+    const pfHam = pfFaaliyetler
       .filter(f => ilgiliBagIds.has(f.bag_id))
       .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.faaliyet_adi.localeCompare(b.faaliyet_adi, 'tr'))
 
-    const faaliyetler: PpPerformansFaaliyet[] = pfListe.map(f => {
-      const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
-      const satirlar = pfOdenekler.filter(o => o.pf_faaliyet_id === f.id)
+    /** Aynı hedefte birden fazla müdürlük bag’i varsa aynı adlı faaliyetleri tek satırda birleştir. */
+    type PfGrup = {
+      sira: number
+      ad: string
+      kurumIci: boolean
+      aciklama: string
+      ids: number[]
+    }
+    const pfGrupMap = new Map<string, PfGrup>()
+    for (const f of pfHam) {
+      const sira = Number(f.sira_no ?? 0) || 0
+      const key = `${sira}|${ppNorm(f.faaliyet_adi)}`
+      const once = pfGrupMap.get(key)
+      if (once) {
+        once.ids.push(f.id)
+        once.kurumIci = once.kurumIci || f.kurum_ici
+        if (!once.aciklama) once.aciklama = String(f.aciklama ?? '').trim()
+      } else {
+        pfGrupMap.set(key, {
+          sira,
+          ad: f.faaliyet_adi,
+          kurumIci: f.kurum_ici,
+          aciklama: String(f.aciklama ?? '').trim(),
+          ids: [f.id],
+        })
+      }
+    }
+    const pfGruplar = [...pfGrupMap.values()]
+      .sort((a, b) => a.sira - b.sira || a.ad.localeCompare(b.ad, 'tr'))
+
+    const faaliyetler: PpPerformansFaaliyet[] = pfGruplar.map((f, idx) => {
+      const kod = ppFaaliyetKodu(phKod, f.sira || idx + 1)
+      const satirlar = pfOdenekler.filter(o => f.ids.includes(o.pf_faaliyet_id))
       const topla = (alan: keyof PfOdenek) => {
         if (alan === 'pf_faaliyet_id' || alan === 'butce_kodu_id') return null
         const dolu = satirlar.map(r => sayi(r[alan])).filter((n): n is number => n != null)
@@ -446,9 +476,9 @@ export async function ppPerformansRaporYili(
       }
       return {
         kod,
-        ad: f.faaliyet_adi,
-        kurumIci: f.kurum_ici,
-        tutarlar: f.kurum_ici
+        ad: f.ad,
+        kurumIci: f.kurumIci,
+        tutarlar: f.kurumIci
           ? [null, null, null, null, null, null]
           : [
             topla('t1_butce'),
@@ -462,12 +492,16 @@ export async function ppPerformansRaporYili(
     })
 
     const gostergeSatir: PpPerformansGosterge[] = []
-    for (const f of pfListe) {
-      const fKod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
-      const gs = pfGostergeler
-        .filter(g => g.faaliyet_id === f.id)
+    for (const [fi, f] of pfGruplar.entries()) {
+      const fKod = ppFaaliyetKodu(phKod, f.sira || fi + 1)
+      const gsHam = pfGostergeler
+        .filter(g => f.ids.includes(g.faaliyet_id))
         .sort((a, b) => (a.sira_no ?? 0) - (b.sira_no ?? 0) || a.gosterge_adi.localeCompare(b.gosterge_adi, 'tr'))
-      gs.forEach((g, i) => {
+      const gsGorulen = new Set<string>()
+      gsHam.forEach((g, i) => {
+        const gKey = `${Number(g.sira_no ?? 0)}|${ppNorm(g.gosterge_adi)}`
+        if (gsGorulen.has(gKey)) return
+        gsGorulen.add(gKey)
         const sira = Number(g.sira_no ?? 0) || i + 1
         gostergeSatir.push({
           kod: ppGostergeKodu(fKod, sira),
@@ -491,12 +525,12 @@ export async function ppPerformansRaporYili(
     faaliyetler.sort((a, b) => ppKodSirala(a.kod, b.kod) || a.ad.localeCompare(b.ad, 'tr'))
     gostergeSatir.sort((a, b) => ppKodSirala(a.kod, b.kod) || a.ad.localeCompare(b.ad, 'tr'))
 
-    const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe
-      .filter(f => !f.kurum_ici)
-      .map(f => {
-        const kod = ppFaaliyetKodu(phKod, Number(f.sira_no ?? 0) || 0)
+    const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfGruplar
+      .filter(f => !f.kurumIci)
+      .map((f, idx) => {
+        const kod = ppFaaliyetKodu(phKod, f.sira || idx + 1)
         const grup = new Map<string, PpRaporSayi[]>()
-        for (const o of pfOdenekler.filter(r => r.pf_faaliyet_id === f.id)) {
+        for (const o of pfOdenekler.filter(r => f.ids.includes(r.pf_faaliyet_id))) {
           const adim = ppEkonomik1Kod(butceKodById.get(o.butce_kodu_id)?.adim_1)
           if (!adim) continue
           const once = grup.get(adim) ?? [null, null, null, null, null, null]
@@ -521,8 +555,8 @@ export async function ppPerformansRaporYili(
           }))
         return {
           kod,
-          ad: f.faaliyet_adi,
-          aciklama: String(f.aciklama ?? '').trim(),
+          ad: f.ad,
+          aciklama: f.aciklama,
           satirlar,
         }
       })
