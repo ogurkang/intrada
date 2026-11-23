@@ -19,8 +19,15 @@ export default function PpIdareTabloGorClient({
   yil: number
   mudurluk: string
 }) {
-  const listeQ = new URLSearchParams({ y: String(yil), m: mudurluk })
-  const excel = `${EXCEL}?yil=${yil}&m=${encodeURIComponent(mudurluk)}&ap=${blok.altProgramId}&ah=${blok.altHedefId}`
+  const listeQ = new URLSearchParams({ y: String(yil) })
+  if (mudurluk) listeQ.set('m', mudurluk)
+  if (blok.tabloKey) listeQ.set('h', blok.tabloKey)
+  const excelQ = new URLSearchParams({
+    yil: String(yil),
+    ap: String(blok.altProgramId ?? ''),
+    ah: String(blok.altHedefId ?? ''),
+  })
+  const excel = `${EXCEL}?${excelQ}`
 
   return (
     <div className="space-y-6">

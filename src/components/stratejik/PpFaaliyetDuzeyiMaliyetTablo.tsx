@@ -8,6 +8,7 @@ const BASLIK = 'border border-slate-300 bg-[#9DC3E6] px-3 py-2.5 text-center tex
 
 function satirSinif(tur: PpFaaliyetMaliyetSatir['tur']): string {
   if (tur === 'program') return 'bg-[#C6EFCE] font-bold text-slate-900'
+  if (tur === 'alt_program') return 'bg-[#E2F0D9] font-bold text-slate-900'
   return 'bg-[#F2F2F2] font-semibold text-slate-800'
 }
 

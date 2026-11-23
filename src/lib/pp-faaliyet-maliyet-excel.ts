@@ -109,6 +109,12 @@ export async function ppFaaliyetMaliyetExcelOlustur(rapor: PpFaaliyetMaliyetRapo
     tutarYaz(ws.getCell(r, 7), s.yilTutar)
     tutarYaz(ws.getCell(r, 8), s.sonrakiTutar)
     tutarYaz(ws.getCell(r, 9), s.sonraki2Tutar)
+    if (s.tur === 'alt_program') {
+      for (let c = 1; c <= 9; c++) {
+        const h = ws.getCell(r, c)
+        h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0D9' } }
+      }
+    }
   }
 
   const son = Math.max(satir - 1, 2)

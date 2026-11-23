@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
-import { ppFaaliyetKodu, ppGostergeKodu, ppPerformansYol } from '@/lib/pp-iliski'
+import { ppFaaliyetKodu, ppGostergeKodu, ppKodSirala, ppPerformansYol } from '@/lib/pp-iliski'
 
 export type PpRaporSayi = number | null
 
@@ -428,9 +428,9 @@ export async function ppPerformansRaporYili(
     const ilgiliBags = baglar.filter(
       b => b.alt_program_id === alt.id && b.alt_hedef_id === h.id && String(bagMudurluk(b)).trim() !== '',
     )
-    const mudurlukler = [...new Set(ilgiliBags.map(b => bagMudurluk(b).trim()))]
+    const mudurlukler = [...new Set(ilgiliBags.map(b => bagMudurluk(b).trim()).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'tr'))
-    const sorumluMetin = mudurlukler.join('\n')
+    const sorumluMetin = mudurlukler.join(', ')
     const ilgiliBagIds = new Set(ilgiliBags.map(b => b.id))
     const pfListe = pfFaaliyetler
       .filter(f => ilgiliBagIds.has(f.bag_id))
@@ -487,6 +487,9 @@ export async function ppPerformansRaporYili(
         })
       })
     }
+
+    faaliyetler.sort((a, b) => ppKodSirala(a.kod, b.kod) || a.ad.localeCompare(b.ad, 'tr'))
+    gostergeSatir.sort((a, b) => ppKodSirala(a.kod, b.kod) || a.ad.localeCompare(b.ad, 'tr'))
 
     const maliyetTablolari: PpFaaliyetMaliyetTablo[] = pfListe
       .filter(f => !f.kurum_ici)
@@ -655,10 +658,24 @@ export async function ppPerformansRaporYili(
           bloklar.push(blokOlustur(alt, hedefSirali, norm, ad))
         }
       }
-      bloklar.sort((a, b) => (a.hedefKod ?? a.hedef).localeCompare(b.hedefKod ?? b.hedef, 'tr'))
+      bloklar.sort((a, b) => ppKodSirala(a.hedefKod, b.hedefKod)
+        || (a.hedefAd ?? a.hedef).localeCompare(b.hedefAd ?? b.hedef, 'tr'))
       return { mudurluk: ad, bloklar }
     })
     .filter(s => s.bloklar.length)
 
   return { yil, yillar, sekmeler }
+}
+
+/** İdare listesi: tüm sekmelerdeki blokları tabloKey’e göre tekilleştirir (kod sırası). */
+export function ppIdareBloklariTekil(rapor: PpPerformansRaporYil): PpPerformansBlok[] {
+  const map = new Map<string, PpPerformansBlok>()
+  for (const s of rapor.sekmeler) {
+    for (const b of s.bloklar) {
+      const key = b.tabloKey ?? `${b.altProgramId}_${b.altHedefId}`
+      if (!map.has(key)) map.set(key, b)
+    }
+  }
+  return [...map.values()].sort((a, b) => ppKodSirala(a.hedefKod, b.hedefKod)
+    || (a.hedefAd ?? a.hedef).localeCompare(b.hedefAd ?? b.hedef, 'tr'))
 }

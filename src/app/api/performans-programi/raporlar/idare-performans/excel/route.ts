@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ppIdareTabloKey, ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
+import { ppIdareBloklariTekil, ppIdareTabloKey, ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
 import { ppPerformansExcelOlustur } from '@/lib/pp-performans-excel'
-import { ppNorm } from '@/lib/pp-erisim'
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -10,17 +9,16 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 })
   const url = new URL(req.url)
   const yil = Number.parseInt(url.searchParams.get('yil') ?? '', 10)
-  const mudurluk = (url.searchParams.get('m') ?? '').trim()
   const ap = Number.parseInt(url.searchParams.get('ap') ?? '', 10)
   const ah = Number.parseInt(url.searchParams.get('ah') ?? '', 10)
   const rapor = await ppPerformansRaporYili(supabase, Number.isFinite(yil) ? yil : null, { mudurlukKaynak: 'secilen' })
-  const sekme = rapor.sekmeler.find(s => ppNorm(s.mudurluk) === ppNorm(mudurluk)) ?? rapor.sekmeler[0]
-  if (!sekme) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
+  const tum = ppIdareBloklariTekil(rapor)
+  if (!tum.length) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
 
-  let bloklar = sekme.bloklar
+  let bloklar = tum
   if (Number.isFinite(ap) && Number.isFinite(ah)) {
     const key = ppIdareTabloKey(ap, ah)
-    const tek = sekme.bloklar.find(
+    const tek = tum.find(
       b => b.tabloKey === key || (b.altProgramId === ap && b.altHedefId === ah),
     )
     if (!tek) return NextResponse.json({ error: 'Tablo bulunamadı' }, { status: 404 })
