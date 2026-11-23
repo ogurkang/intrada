@@ -13,6 +13,7 @@ import { IntradaLoader } from '@/components/ui/IntradaLoader'
 
 const LISTE_YOL = `${PP_RAPORLAR_BASE}/idare-performans-bilgisi`
 const EXCEL = '/api/performans-programi/raporlar/idare-performans/excel'
+const TUR_UYARI = 'Önce Listeleme Türünü belirleyiniz.'
 
 export type PpIdareListeTur = '' | 'hedef' | 'mudurluk'
 
@@ -20,10 +21,12 @@ export default function PpIdarePerformansListeClient({
   rapor,
   listeTur,
   secilenMudurluk,
+  secilenHedefKey,
 }: {
   rapor: PpPerformansRaporYil
   listeTur: PpIdareListeTur
   secilenMudurluk: string
+  secilenHedefKey: string
 }) {
   const router = useRouter()
   const [yukleniyor, setYukleniyor] = useState(false)
@@ -37,24 +40,48 @@ export default function PpIdarePerformansListeClient({
     ? (mudurlukler.find(m => ppNorm(m) === ppNorm(secilenMudurluk)) ?? '')
     : ''
 
+  const hedefAktif = listeTur === 'hedef'
+    && Boolean(secilenHedefKey)
+    && tumBloklar.some(b => (b.tabloKey ?? '') === secilenHedefKey)
+  const aktifHedefKey = hedefAktif ? secilenHedefKey : ''
+
   const mudurlukHedefleri: PpPerformansBlok[] = useMemo(() => {
     if (!aktifMudurluk) return []
     const sekme = rapor.sekmeler.find(s => ppNorm(s.mudurluk) === ppNorm(aktifMudurluk))
     return sekme?.bloklar ?? []
   }, [aktifMudurluk, rapor.sekmeler])
 
+  /** Performans Hedefi türünde: tüm hedefler birer kez; Seçim doluysa yalnızca o hedef. */
+  const hedefListesi: PpPerformansBlok[] = useMemo(() => {
+    if (listeTur !== 'hedef') return []
+    if (aktifHedefKey) return tumBloklar.filter(b => b.tabloKey === aktifHedefKey)
+    return tumBloklar
+  }, [listeTur, aktifHedefKey, tumBloklar])
+
   useEffect(() => {
     setYukleniyor(false)
-  }, [rapor.yil, listeTur, aktifMudurluk, tumBloklar.length, mudurlukHedefleri.length])
+  }, [rapor.yil, listeTur, aktifMudurluk, aktifHedefKey, tumBloklar.length, mudurlukHedefleri.length])
 
-  function git(opts: { y?: string; t?: PpIdareListeTur; m?: string }) {
+  function turYoksaUyar(): boolean {
+    if (listeTur) return false
+    window.alert(TUR_UYARI)
+    return true
+  }
+
+  function git(opts: { y?: string; t?: PpIdareListeTur; m?: string; h?: string }) {
     setYukleniyor(true)
     const q = new URLSearchParams()
     q.set('y', opts.y ?? String(rapor.yil))
     const t = opts.t !== undefined ? opts.t : listeTur
-    const m = opts.m !== undefined ? opts.m : (t === 'mudurluk' ? aktifMudurluk : '')
     if (t) q.set('t', t)
-    if (t === 'mudurluk' && m) q.set('m', m)
+    if (t === 'mudurluk') {
+      const m = opts.m !== undefined ? opts.m : aktifMudurluk
+      if (m) q.set('m', m)
+    }
+    if (t === 'hedef') {
+      const h = opts.h !== undefined ? opts.h : aktifHedefKey
+      if (h) q.set('h', h)
+    }
     router.push(`${LISTE_YOL}?${q}`)
   }
 
@@ -80,6 +107,18 @@ export default function PpIdarePerformansListeClient({
     return `${EXCEL}?${q}`
   }
 
+  function hedefEtiket(b: PpPerformansBlok): string {
+    return b.hedefKod
+      ? `${b.hedefKod} — ${b.hedefAd ?? b.hedef}`
+      : (b.hedefAd ?? b.hedef)
+  }
+
+  const secimValue = listeTur === 'mudurluk'
+    ? aktifMudurluk
+    : listeTur === 'hedef'
+      ? aktifHedefKey
+      : ''
+
   return (
     <div className="space-y-6 relative">
       {yukleniyor ? (
@@ -98,13 +137,13 @@ export default function PpIdarePerformansListeClient({
             <h1 className="text-2xl font-bold text-slate-800">İdare Performans Bilgisi Tablosu</h1>
             <PpEkranBilgi maddeler={[
               { baslik: 'Yıl', metin: 'Varsayılan olarak bir sonraki takvim yılıdır. Kayıt girişi yapmaz.' },
-              { baslik: 'Listeleme Türü', metin: 'Performans Hedefi veya Müdürlük’e göre listeler.' },
-              { baslik: 'Liste', metin: 'Tür Performans Hedefi ise hedefleri; Müdürlük ise müdürlükleri listeler.' },
-              { baslik: 'Hedef görünümü', metin: 'Aynı hedefe bağlı tüm müdürlükler İdare/Birim Adı ve Verinin Kaynağı’nda virgülle birleşir; faaliyet ve göstergeler tek tabloda yer alır.' },
+              { baslik: 'Listeleme Türü', metin: 'Önce bunu seçin: Performans Hedefi veya Müdürlük.' },
+              { baslik: 'Seçim', metin: 'Tür seçilmeden kullanılırsa uyarı çıkar. Hedef türünde filtre; müdürlük türünde müdürlük seçimi.' },
+              { baslik: 'Hedef listesi', metin: 'Her performans hedefi bir kez listelenir; birden fazla müdürlük virgülle yazılır. Göz/Excel birleşik tabloyu açar.' },
             ]} />
           </div>
           <p className="mt-1 text-sm text-slate-600">
-            Önce listeleme türünü seçin; listeden hedef veya müdürlük ile tabloya gidin / Excel indirin.
+            Önce Listeleme Türü’nü seçin; ardından Seçim ile ilerleyin.
           </p>
         </div>
         <Link
@@ -130,7 +169,7 @@ export default function PpIdarePerformansListeClient({
           <span className="mb-1 block font-medium">Listeleme Türü</span>
           <select
             value={listeTur}
-            onChange={e => git({ t: e.target.value as PpIdareListeTur, m: '' })}
+            onChange={e => git({ t: e.target.value as PpIdareListeTur, m: '', h: '' })}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
           >
             <option value="">Seçiniz</option>
@@ -138,34 +177,57 @@ export default function PpIdarePerformansListeClient({
             <option value="mudurluk">Müdürlük</option>
           </select>
         </label>
-        {listeTur === 'mudurluk' ? (
-          <label className="text-sm text-slate-700 min-w-[16rem] flex-1">
-            <span className="mb-1 block font-medium">Liste</span>
-            <select
-              value={aktifMudurluk}
-              onChange={e => git({ t: 'mudurluk', m: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              disabled={mudurlukler.length === 0}
-            >
-              <option value="">Seçiniz</option>
-              {mudurlukler.map(m => (
+
+        <label className="text-sm text-slate-700 min-w-[16rem] flex-1">
+          <span className="mb-1 block font-medium">Seçim</span>
+          <select
+            value={secimValue}
+            onMouseDown={e => {
+              if (!listeTur) {
+                e.preventDefault()
+                window.alert(TUR_UYARI)
+              }
+            }}
+            onFocus={() => {
+              if (!listeTur) window.alert(TUR_UYARI)
+            }}
+            onChange={e => {
+              if (turYoksaUyar()) return
+              const v = e.target.value
+              if (listeTur === 'mudurluk') git({ t: 'mudurluk', m: v })
+              else if (listeTur === 'hedef') git({ t: 'hedef', h: v })
+            }}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">Seçiniz</option>
+            {listeTur === 'mudurluk'
+              ? mudurlukler.map(m => (
                 <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+              ))
+              : null}
+            {listeTur === 'hedef'
+              ? tumBloklar.map(b => {
+                const key = b.tabloKey ?? `${b.altProgramId}_${b.altHedefId}`
+                return (
+                  <option key={key} value={key}>{hedefEtiket(b)}</option>
+                )
+              })
+              : null}
+          </select>
+        </label>
       </div>
 
       {listeTur === '' ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500">
-          Listelemek için Listeleme Türü’nden Performans Hedefi veya Müdürlük seçin.
+          Listelemek için önce Listeleme Türü’nü belirleyin.
         </div>
       ) : null}
 
       {listeTur === 'hedef' ? (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700">
-            Liste — Performans Hedefleri
+            Performans Hedefleri
+            {aktifHedefKey ? ' (filtrelendi)' : ''}
           </div>
           <table className="w-full text-sm">
             <thead>
@@ -180,13 +242,13 @@ export default function PpIdarePerformansListeClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {tumBloklar.length === 0 ? (
+              {hedefListesi.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                     Bu yıl için performans hedefi yok.
                   </td>
                 </tr>
-              ) : tumBloklar.map((b, i) => {
+              ) : hedefListesi.map((b, i) => {
                 const key = b.tabloKey ?? `${b.altProgramId}_${b.altHedefId}`
                 const gor = hedefGorHref(b)
                 return (
@@ -207,7 +269,7 @@ export default function PpIdarePerformansListeClient({
                         <a
                           href={excelHref(b)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50"
-                          title="Excel indir"
+                          title="Excel indir (tüm sorumlu müdürlükler birleşik)"
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -226,12 +288,12 @@ export default function PpIdarePerformansListeClient({
       {listeTur === 'mudurluk' ? (
         !aktifMudurluk ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-500">
-            Liste’den bir müdürlük seçin.
+            Seçim’den bir müdürlük seçin.
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700">
-              Liste — {aktifMudurluk}
+              Seçim — {aktifMudurluk}
             </div>
             <table className="w-full text-sm">
               <thead>

@@ -46,26 +46,26 @@ export const PP_RAPORLAR: PpRaporKayit[] = [
   {
     slug: 'mudurluklerin-faaliyet-maliyetleri',
     baslik: 'Müdürlüklerin Faaliyet Maliyetleri Tablosu',
-    aciklama: 'Müdürlük bazında faaliyet maliyetleri.',
-    hazir: false,
+    aciklama: 'Müdürlük adı ve toplam performans bütçesi; sıralı liste ve Excel.',
+    hazir: true,
   },
   {
     slug: 'harcama-birim-yetkilileri',
     baslik: 'Harcama Birim Yetkilileri Tablosu',
-    aciklama: 'Harcama birimi yetkilileri listesi.',
-    hazir: false,
+    aciklama: 'Müdür unvanlı harcama yetkilileri; Kaydet / Güncelle ile sabitlenir.',
+    hazir: true,
   },
   {
     slug: 'program-alt-program-stratejik-plan',
     baslik: 'Program-Alt Program Stratejik Plan Tablosu',
-    aciklama: 'Program ve alt programın stratejik plan ilişkisi.',
-    hazir: false,
+    aciklama: 'Program, alt program, performans hedefi ve stratejik amaç.',
+    hazir: true,
   },
   {
     slug: 'mudurluklerin-program-alt-program-stratejik-plan',
     baslik: 'Müdürlüklerin Program-Alt Program Stratejik Plan Tablosu',
-    aciklama: 'Müdürlük bazında program–alt program stratejik plan ilişkisi.',
-    hazir: false,
+    aciklama: 'Kod, program, faaliyet, stratejik amaç/hedef ve ilgili müdürlük.',
+    hazir: true,
   },
 ]
 

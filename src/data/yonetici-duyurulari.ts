@@ -7,6 +7,17 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-raporlar-tamamlama',
+    baslik: '23 Kasım 2026 — Performans programı raporları tamamlandı',
+    maddeler: [
+      'İdare Performans Bilgisi’nde Performans Hedefi türü PH koduna göre birleşir; müdürlükler ve tablolar tek satırda toplanır.',
+      'Müdürlüklerin Faaliyet Maliyetleri: Sıra No / Müdürlük / Performans Bütçesi, sıralama, TOPLAM satırı ve Excel (binlik ayraçlı).',
+      'Harcama Birim Yetkilileri: kadrodaki «müdürü» unvanlı asil/vekil hazır gelir; Kaydet mühürler, Güncelle kadroyu yeniler; alfabetik sıralama ve Excel.',
+      'Program-Alt Program SP ve Müdürlüklerin Program-Alt Program SP tabloları (STRATEJİK AMAÇ X- öneki, görüntüleme ve Excel) hazırdır.',
+      'Harcama yetkilileri için Supabase’te 20261123190000_pp_harcama_yetkilileri.sql bir kez çalıştırılmalıdır.',
+    ],
+  },
+  {
     id: '2026-11-23-pp-t6-mudurluk-toplam-hedef',
     baslik: '23 Kasım 2026 — Müdürlük t6 tek müdürlük satırı ve toplamlar',
     maddeler: [

@@ -10,7 +10,7 @@ function turOku(raw: string | undefined): PpIdareListeTur {
 export default async function IdarePerformansBilgisiListePage({
   searchParams,
 }: {
-  searchParams: Promise<{ y?: string; t?: string; m?: string }>
+  searchParams: Promise<{ y?: string; t?: string; m?: string; h?: string }>
 }) {
   const sp = await searchParams
   const y = Number.parseInt(sp.y ?? '', 10)
@@ -19,10 +19,11 @@ export default async function IdarePerformansBilgisiListePage({
   const rapor = await ppPerformansRaporYili(supabase, Number.isFinite(y) ? y : null, { mudurlukKaynak: 'secilen' })
   return (
     <PpIdarePerformansListeClient
-      key={`${rapor.yil}-${listeTur}-${sp.m ?? ''}`}
+      key={`${rapor.yil}-${listeTur}-${sp.m ?? ''}-${sp.h ?? ''}`}
       rapor={rapor}
       listeTur={listeTur}
       secilenMudurluk={(sp.m ?? '').trim()}
+      secilenHedefKey={(sp.h ?? '').trim()}
     />
   )
 }

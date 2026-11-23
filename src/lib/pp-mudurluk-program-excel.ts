@@ -107,6 +107,7 @@ function satirYaz(ws: ExcelJS.Worksheet, r: number, s: PpMudSatir) {
     const h = ws.getCell(r, 2)
     yazi(h, s.aciklama)
     stilOrta(h, false, true)
+    tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
     stilOrta(ws.getCell(r, 10))
     satiraDolgu(ws, r, renk)
     kenarlik(ws, r)

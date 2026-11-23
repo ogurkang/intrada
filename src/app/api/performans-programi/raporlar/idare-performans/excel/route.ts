@@ -1,7 +1,36 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ppIdareBloklariTekil, ppIdareTabloKey, ppPerformansRaporYili } from '@/lib/pp-mudurluk-rapor'
+import { ppKodTemiz } from '@/lib/pp-iliski'
+import { ppIdareBloklariTekil, ppPerformansRaporYili, type PpPerformansBlok } from '@/lib/pp-mudurluk-rapor'
 import { ppPerformansExcelOlustur } from '@/lib/pp-performans-excel'
+
+function blokBul(
+  rapor: Awaited<ReturnType<typeof ppPerformansRaporYili>>,
+  tum: PpPerformansBlok[],
+  ap: number,
+  ah: number,
+): PpPerformansBlok | undefined {
+  const direkt = tum.find(b => b.altHedefId === ah)
+  if (direkt) return direkt
+
+  let kod = ''
+  for (const s of rapor.sekmeler) {
+    const ham = s.bloklar.find(b => b.altHedefId === ah)
+    if (ham?.hedefKod) {
+      kod = ppKodTemiz(ham.hedefKod)
+      break
+    }
+  }
+  if (kod) {
+    const kodla = tum.find(b => ppKodTemiz(b.hedefKod ?? '') === kod)
+    if (kodla) return kodla
+  }
+
+  if (Number.isFinite(ap)) {
+    return tum.find(b => b.altProgramId === ap && b.altHedefId === ah)
+  }
+  return undefined
+}
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -16,11 +45,8 @@ export async function GET(req: Request) {
   if (!tum.length) return NextResponse.json({ error: 'Rapor bulunamadı' }, { status: 404 })
 
   let bloklar = tum
-  if (Number.isFinite(ap) && Number.isFinite(ah)) {
-    const key = ppIdareTabloKey(ap, ah)
-    const tek = tum.find(
-      b => b.tabloKey === key || (b.altProgramId === ap && b.altHedefId === ah),
-    )
+  if (Number.isFinite(ah)) {
+    const tek = blokBul(rapor, tum, ap, ah)
     if (!tek) return NextResponse.json({ error: 'Tablo bulunamadı' }, { status: 404 })
     bloklar = [tek]
   }

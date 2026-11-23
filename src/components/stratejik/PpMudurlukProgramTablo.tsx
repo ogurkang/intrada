@@ -75,7 +75,9 @@ export default function PpMudurlukProgramTablo({
         <tr key={`m-${i}`}>
           <td className={`${zemin} ${SOL} font-bold whitespace-nowrap`}>{s.etiket}</td>
           <td colSpan={8} className={`${zemin} ${ORTA} font-semibold`}>{s.aciklama}</td>
-          <td className={zemin} />
+          <td className={`${zemin} ${ORTA} tabular-nums font-semibold`}>
+            {s.tutar != null ? ppRaporPara(s.tutar) : ''}
+          </td>
         </tr>,
       )
       continue

@@ -11,6 +11,10 @@ const OZEL_SLUG = new Set([
   'ekonomik-siniflandirma-duzeyinde-pp-maliyeti',
   'faaliyetlerden-sorumlu-harcama-birimleri',
   'performans-gostergeleri-izleme-birimleri',
+  'mudurluklerin-faaliyet-maliyetleri',
+  'harcama-birim-yetkilileri',
+  'program-alt-program-stratejik-plan',
+  'mudurluklerin-program-alt-program-stratejik-plan',
 ])
 
 export function generateStaticParams() {

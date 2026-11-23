@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
-import { ppFaaliyetKodu, ppGostergeKodu, ppKodSirala, ppPerformansYol } from '@/lib/pp-iliski'
+import { ppFaaliyetKodu, ppGostergeKodu, ppKodSirala, ppKodTemiz, ppPerformansYol } from '@/lib/pp-iliski'
 
 export type PpRaporSayi = number | null
 
@@ -701,15 +701,179 @@ export async function ppPerformansRaporYili(
   return { yil, yillar, sekmeler }
 }
 
-/** İdare listesi: tüm sekmelerdeki blokları tabloKey’e göre tekilleştirir (kod sırası). */
-export function ppIdareBloklariTekil(rapor: PpPerformansRaporYil): PpPerformansBlok[] {
-  const map = new Map<string, PpPerformansBlok>()
-  for (const s of rapor.sekmeler) {
-    for (const b of s.bloklar) {
-      const key = b.tabloKey ?? `${b.altProgramId}_${b.altHedefId}`
-      if (!map.has(key)) map.set(key, b)
+function tutarlariTopla(a: PpRaporSayi[], b: PpRaporSayi[]): PpRaporSayi[] {
+  const len = Math.max(a.length, b.length)
+  const out: PpRaporSayi[] = []
+  for (let i = 0; i < len; i++) {
+    const x = a[i]
+    const y = b[i]
+    if (x == null && y == null) out.push(null)
+    else out.push((x ?? 0) + (y ?? 0))
+  }
+  return out
+}
+
+/** Aynı PH koduna sahip blokları tek kayıtta birleştirir (müdürlük / çift alt_hedef kayıtları). */
+function ppIdareBloklariBirlestir(bloklar: PpPerformansBlok[]): PpPerformansBlok {
+  const sirali = [...bloklar].sort((a, b) =>
+    (a.altHedefId ?? 0) - (b.altHedefId ?? 0)
+    || (a.altProgramId ?? 0) - (b.altProgramId ?? 0),
+  )
+  const ilk = sirali[0]!
+  if (sirali.length === 1) return ilk
+
+  const mudSet = new Set<string>()
+  for (const b of sirali) {
+    for (const m of String(b.veriKaynagi ?? '').split(',').map(s => s.trim()).filter(Boolean)) {
+      mudSet.add(m)
     }
   }
-  return [...map.values()].sort((a, b) => ppKodSirala(a.hedefKod, b.hedefKod)
-    || (a.hedefAd ?? a.hedef).localeCompare(b.hedefAd ?? b.hedef, 'tr'))
+  const sorumlu = [...mudSet].sort((a, b) => a.localeCompare(b, 'tr')).join(', ')
+
+  const programlar = [...new Set(sirali.map(b => b.programAdi).filter(Boolean))]
+  const altProgramlar = [...new Set(sirali.map(b => b.altProgramAdi).filter(Boolean))]
+
+  const fMap = new Map<string, PpPerformansFaaliyet>()
+  for (const b of sirali) {
+    for (const f of b.faaliyetler) {
+      const k = `${f.kod}\0${ppNorm(f.ad)}`
+      const once = fMap.get(k)
+      if (!once) {
+        fMap.set(k, { ...f, tutarlar: [...f.tutarlar] })
+      } else {
+        once.tutarlar = tutarlariTopla(once.tutarlar, f.tutarlar)
+        once.kurumIci = Boolean(once.kurumIci || f.kurumIci)
+      }
+    }
+  }
+  const faaliyetler = [...fMap.values()].sort((a, b) => ppKodSirala(a.kod, b.kod)
+    || a.ad.localeCompare(b.ad, 'tr'))
+
+  const gMap = new Map<string, PpPerformansGosterge>()
+  for (const b of sirali) {
+    for (const g of b.gostergeler) {
+      const k = `${g.kod}\0${ppNorm(g.ad)}`
+      if (!gMap.has(k)) {
+        // Gösterge satırındaki sorumlu birim kendi müdürlüğünde kalır; üst başlık birleşiktir.
+        gMap.set(k, { ...g, degerler: [...g.degerler] })
+      }
+    }
+  }
+  const gostergeler = [...gMap.values()].sort((a, b) => ppKodSirala(a.kod, b.kod)
+    || a.ad.localeCompare(b.ad, 'tr'))
+
+  const mMap = new Map<string, PpFaaliyetMaliyetTablo>()
+  for (const b of sirali) {
+    for (const t of b.maliyetTablolari ?? []) {
+      const k = `${t.kod}\0${ppNorm(t.ad)}`
+      const once = mMap.get(k)
+      if (!once) {
+        mMap.set(k, {
+          ...t,
+          satirlar: t.satirlar.map(s => ({ ...s, tutarlar: [...s.tutarlar] })),
+        })
+      } else {
+        for (const s of t.satirlar) {
+          const mevcut = once.satirlar.find(x => x.ekonomikKod === s.ekonomikKod)
+          if (!mevcut) {
+            once.satirlar.push({ ...s, tutarlar: [...s.tutarlar] })
+          } else {
+            mevcut.tutarlar = tutarlariTopla(mevcut.tutarlar, s.tutarlar)
+          }
+        }
+      }
+    }
+  }
+  const maliyetTablolari = [...mMap.values()]
+    .map(t => ({
+      ...t,
+      satirlar: t.satirlar.slice().sort((a, b) => a.ekonomikKod.localeCompare(b.ekonomikKod, 'tr')),
+    }))
+    .sort((a, b) => ppKodSirala(a.kod, b.kod) || a.ad.localeCompare(b.ad, 'tr'))
+
+  const gerekceler = [...new Set(
+    sirali.map(b => b.gerekce).filter(g => g && g !== PP_GEREKCE_BOS),
+  )]
+  const gerekce = gerekceler.join('\n\n') || ilk.gerekce
+  const hedefKod = ilk.hedefKod || sirali.find(b => b.hedefKod)?.hedefKod
+  const hedefAd = ilk.hedefAd || sirali.find(b => b.hedefAd)?.hedefAd
+
+  return {
+    ...ilk,
+    tabloKey: ilk.altHedefId != null
+      ? ppIdareTabloKey(Number(ilk.altProgramId ?? 0), ilk.altHedefId)
+      : ilk.tabloKey,
+    hedefKod,
+    hedefAd,
+    hedef: hedefKod ? `PH ${hedefKod} ${hedefAd ?? ''}`.trim() : ilk.hedef,
+    programAdi: programlar.join(', '),
+    altProgramAdi: altProgramlar.join(', '),
+    veriKaynagi: sorumlu,
+    gerekce,
+    faaliyetler,
+    gostergeler,
+    maliyetTablolari: maliyetTablolari.length ? maliyetTablolari : undefined,
+  }
+}
+
+/**
+ * İdare listesi: Alt Program Hedefi koduna (PH, örn. 2.5.1) göre tekilleştirir.
+ * Aynı kod farklı alt_hedef id / müdürlük / alt program bağlarında olsa da bir satır.
+ */
+export function ppIdareBloklariTekil(rapor: PpPerformansRaporYil): PpPerformansBlok[] {
+  const byTablo = new Map<string, PpPerformansBlok>()
+  for (const s of rapor.sekmeler) {
+    for (const b of s.bloklar) {
+      const tk = b.tabloKey ?? `${b.altProgramId}_${b.altHedefId}`
+      if (!byTablo.has(tk)) byTablo.set(tk, b)
+    }
+  }
+
+  const grup = new Map<string, PpPerformansBlok[]>()
+  for (const b of byTablo.values()) {
+    const kod = ppKodTemiz(b.hedefKod ?? '')
+    const key = kod
+      ? `k:${kod}`
+      : (b.altHedefId != null ? `h:${b.altHedefId}` : (b.tabloKey ?? `${b.altProgramId}`))
+    const liste = grup.get(key) ?? []
+    liste.push(b)
+    grup.set(key, liste)
+  }
+  return [...grup.values()]
+    .map(ppIdareBloklariBirlestir)
+    .sort((a, b) => ppKodSirala(a.hedefKod, b.hedefKod)
+      || (a.hedefAd ?? a.hedef).localeCompare(b.hedefAd ?? b.hedef, 'tr'))
+}
+
+/** Excel / detay: ah veya hedef kodu ile birleşik bloğu bulur. */
+export function ppIdareBlokBul(
+  rapor: PpPerformansRaporYil,
+  opts: { tabloKey?: string; altProgramId?: number; altHedefId?: number },
+): PpPerformansBlok | undefined {
+  const tum = ppIdareBloklariTekil(rapor)
+  const { tabloKey, altProgramId, altHedefId } = opts
+  if (tabloKey) {
+    const direkt = tum.find(b => b.tabloKey === tabloKey)
+    if (direkt) return direkt
+  }
+  if (altHedefId != null && Number.isFinite(altHedefId)) {
+    const direkt = tum.find(b => b.altHedefId === altHedefId)
+    if (direkt) return direkt
+    let kod = ''
+    for (const s of rapor.sekmeler) {
+      const ham = s.bloklar.find(b => b.altHedefId === altHedefId)
+      if (ham?.hedefKod) {
+        kod = ppKodTemiz(ham.hedefKod)
+        break
+      }
+    }
+    if (kod) {
+      const kodla = tum.find(b => ppKodTemiz(b.hedefKod ?? '') === kod)
+      if (kodla) return kodla
+    }
+  }
+  if (altProgramId != null && altHedefId != null) {
+    return tum.find(b => b.altProgramId === altProgramId && b.altHedefId === altHedefId)
+  }
+  return undefined
 }
