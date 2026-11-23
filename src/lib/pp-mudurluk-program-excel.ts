@@ -107,8 +107,7 @@ function satirYaz(ws: ExcelJS.Worksheet, r: number, s: PpMudSatir) {
     for (let c = 2; c <= 7; c++) yazi(ws.getCell(r, c), 'Gösterge')
     yazi(ws.getCell(r, 8), s.kod ?? '')
     yazi(ws.getCell(r, 9), s.aciklama)
-    if (s.tur === 'butce') tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
-    else yazi(ws.getCell(r, 10), null)
+    tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
     stilSol(ws.getCell(r, 1), false, true)
     for (let c = 2; c <= 7; c++) stilSol(ws.getCell(r, c), false)
     stilOrta(ws.getCell(r, 8))
@@ -134,6 +133,7 @@ function satirYaz(ws: ExcelJS.Worksheet, r: number, s: PpMudSatir) {
   }
   yazi(ws.getCell(r, 9), s.aciklama)
   stilSol(ws.getCell(r, 9), true)
+  tutarYaz(ws.getCell(r, 10), s.tutar ?? null)
   stilOrta(ws.getCell(r, 10))
   satiraDolgu(ws, r, renk)
   kenarlik(ws, r)

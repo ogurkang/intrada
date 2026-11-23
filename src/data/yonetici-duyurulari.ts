@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-23-pp-t6-mudurluk-toplam-hedef',
+    baslik: '23 Kasım 2026 — Müdürlük t6 tek müdürlük satırı ve toplamlar',
+    maddeler: [
+      'Aynı program/alt program/faaliyet altında müdürlük bir kez yazılır; stratejik hedefler (ör. 5.3 sonra 5.4) alt alta devam eder.',
+      'Gösterge satırında seçili yıl hedefi (t hedef) yer alır; ödenekler üst başlıklarda toplanır. Excel tutarları 1.234,56 biçimindedir.',
+    ],
+  },
+  {
     id: '2026-11-23-pp-t6-mudurluk-filtre-renk',
     baslik: '23 Kasım 2026 — Müdürlük t6 filtre, renk ve Excel',
     maddeler: [

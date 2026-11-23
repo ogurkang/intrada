@@ -90,7 +90,9 @@ export default function PpMudurlukProgramTablo({
           </td>
           <td className={`${DEGER} ${ORTA} font-mono text-xs`}>{s.kod}</td>
           <td className={`${DEGER} ${SOL}`}>{s.aciklama}</td>
-          <td className={DEGER} />
+          <td className={`${DEGER} ${ORTA} tabular-nums`}>
+            {s.tutar != null ? ppRaporPara(s.tutar) : ''}
+          </td>
         </tr>,
       )
       rows.push(

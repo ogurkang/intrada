@@ -64,6 +64,11 @@ function sayi(v: unknown): PpRaporSayi {
   return Number.isFinite(n) ? n : null
 }
 
+function tutarTopla(...degerler: PpRaporSayi[]): PpRaporSayi {
+  const dolu = degerler.filter((n): n is number => n != null)
+  return dolu.length ? dolu.reduce((a, b) => a + b, 0) : null
+}
+
 function sayiParcasi(kodu: string | null | undefined, sira: number | null | undefined): string {
   const son = String(kodu ?? '').split('.').map(s => s.trim()).filter(Boolean).pop() ?? ''
   const sayiK = son.replace(/sa|sh/gi, '').trim()
@@ -103,14 +108,14 @@ type Dal = {
     ad: string
     kod: string
     tutar: PpRaporSayi
-    gostergeler: { kod: string; ad: string; birim: string }[]
+    gostergeler: { kod: string; ad: string; birim: string; hedef: PpRaporSayi }[]
   }[]
 }
 
 /**
  * Müdürlüklerin Performans Programı — t6 şablon hiyerarşisi.
- * Stratejik Amaç → Program → Alt Program → Faaliyet → Stratejik Hedef → Müdürlük
- * → Performans Hedefi → Performans Faaliyeti → Gösterge / BÜTÇE
+ * Stratejik Amaç → Program → Alt Program → Faaliyet → Müdürlük (bir kez)
+ * → Stratejik Hedef… → Performans Hedefi → Performans Faaliyeti → Gösterge (yıl hedefi) / BÜTÇE
  */
 export async function ppMudurlukProgramRaporYili(
   supabase: SupabaseClient,
@@ -251,6 +256,7 @@ export async function ppMudurlukProgramRaporYili(
     sira_no: number | null
     gosterge_adi: string
     birim: string
+    t_hedef: number | null
   }
   type PfO = { pf_faaliyet_id: number; t_butce: number | null }
 
@@ -278,7 +284,7 @@ export async function ppMudurlukProgramRaporYili(
     pfIds.length
       ? sb
         .from('performans_programi_pf_gosterge')
-        .select('faaliyet_id, sira_no, gosterge_adi, birim')
+        .select('faaliyet_id, sira_no, gosterge_adi, birim, t_hedef')
         .in('faaliyet_id', pfIds)
         .order('sira_no')
       : Promise.resolve({ data: [] }),
@@ -354,7 +360,7 @@ export async function ppMudurlukProgramRaporYili(
             const ad = birim && !g.gosterge_adi.toLowerCase().includes(birim.toLowerCase())
               ? `${g.gosterge_adi} (${birim})`
               : g.gosterge_adi
-            return { kod: ppGostergeKodu(kod, gs), ad, birim }
+            return { kod: ppGostergeKodu(kod, gs), ad, birim, hedef: sayi(g.t_hedef) }
           })
         return { id: f.id, sira, ad: f.faaliyet_adi, kod, tutar, gostergeler }
       })
@@ -401,18 +407,24 @@ export async function ppMudurlukProgramRaporYili(
     if (!mudurlukAd.has(n)) mudurlukAd.set(n, d.mudurluk)
   }
 
+  function dalOdenek(d: Dal): PpRaporSayi {
+    return tutarTopla(...d.pfListe.map(f => f.tutar))
+  }
+
   const sekmeler: PpMudurlukProgramSekme[] = [...mudurlukAd.entries()]
     .sort((a, b) => a[1].localeCompare(b[1], 'tr'))
     .map(([norm, mudurluk]) => {
       const liste = dallar.filter(d => ppNorm(d.mudurluk) === norm)
       const satirlar: PpMudSatir[] = []
       let oncekiAmac = -1
-      let oncekiDal = ''
+      let oncekiPaf = ''
+      let oncekiHedef = -1
 
       for (const d of liste) {
         if (d.amacId !== oncekiAmac) {
           oncekiAmac = d.amacId
-          oncekiDal = ''
+          oncekiPaf = ''
+          oncekiHedef = -1
           satirlar.push({
             tur: 'amac_baslik',
             etiket: amacEtiket(d.amacKodu, d.amacSira),
@@ -430,15 +442,24 @@ export async function ppMudurlukProgramRaporYili(
           })
         }
 
-        const dalKey = `${d.programId}|${d.altId}|${d.sinifFaaliyetId}|${d.hedefId}|${d.phId}`
-        if (dalKey !== oncekiDal) {
-          oncekiDal = dalKey
+        const pafKey = `${d.programId}|${d.altId}|${d.sinifFaaliyetId}`
+        if (pafKey !== oncekiPaf) {
+          oncekiPaf = pafKey
+          oncekiHedef = -1
+          const pafDallar = liste.filter(
+            x => x.amacId === d.amacId
+              && x.programId === d.programId
+              && x.altId === d.altId
+              && x.sinifFaaliyetId === d.sinifFaaliyetId,
+          )
+          const pafToplam = tutarTopla(...pafDallar.map(dalOdenek))
           satirlar.push({
             tur: 'program',
             etiket: 'Program',
             kodCol: 2,
             kod: d.programKodu,
             aciklama: d.programAdi,
+            tutar: pafToplam,
           })
           satirlar.push({
             tur: 'alt_program',
@@ -446,6 +467,7 @@ export async function ppMudurlukProgramRaporYili(
             kodCol: 3,
             kod: d.altKodu,
             aciklama: d.altAdi,
+            tutar: pafToplam,
           })
           satirlar.push({
             tur: 'faaliyet',
@@ -453,27 +475,43 @@ export async function ppMudurlukProgramRaporYili(
             kodCol: 4,
             kod: d.sinifFaaliyetKodu,
             aciklama: d.sinifFaaliyetAdi,
-          })
-          satirlar.push({
-            tur: 'stratejik_hedef',
-            etiket: 'Stratejik Hedef',
-            kodCol: 5,
-            kod: d.hedefKodu,
-            aciklama: d.hedefAdi,
+            tutar: pafToplam,
           })
           satirlar.push({
             tur: 'mudurluk',
             etiket: 'Müdürlük',
             aciklama: d.mudurluk,
           })
+        }
+
+        if (d.hedefId !== oncekiHedef) {
+          oncekiHedef = d.hedefId
+          const hedefDallar = liste.filter(
+            x => x.amacId === d.amacId
+              && x.programId === d.programId
+              && x.altId === d.altId
+              && x.sinifFaaliyetId === d.sinifFaaliyetId
+              && x.hedefId === d.hedefId,
+          )
           satirlar.push({
-            tur: 'performans_hedefi',
-            etiket: 'Performans Hedefi',
-            kodCol: 6,
-            kod: d.phKodu,
-            aciklama: d.phAdi,
+            tur: 'stratejik_hedef',
+            etiket: 'Stratejik Hedef',
+            kodCol: 5,
+            kod: d.hedefKodu,
+            aciklama: d.hedefAdi || d.hedefKodu,
+            tutar: tutarTopla(...hedefDallar.map(dalOdenek)),
           })
         }
+
+        const phToplam = dalOdenek(d)
+        satirlar.push({
+          tur: 'performans_hedefi',
+          etiket: 'Performans Hedefi',
+          kodCol: 6,
+          kod: d.phKodu,
+          aciklama: d.phAdi,
+          tutar: phToplam,
+        })
 
         for (const pf of d.pfListe) {
           satirlar.push({
@@ -482,6 +520,7 @@ export async function ppMudurlukProgramRaporYili(
             kodCol: 7,
             kod: pf.kod,
             aciklama: pf.ad,
+            tutar: pf.tutar,
           })
           for (const g of pf.gostergeler) {
             satirlar.push({
@@ -490,6 +529,7 @@ export async function ppMudurlukProgramRaporYili(
               kodCol: 8,
               kod: g.kod,
               aciklama: g.ad,
+              tutar: g.hedef,
             })
             satirlar.push({
               tur: 'butce',
