@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import Modal from '@/components/ui/Modal'
+import SutunAciklama from '@/components/ui/SutunAciklama'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import { trNormalize } from '@/lib/turkce-search'
 import type { UnvanTopluSatir } from '@/app/(dashboard)/tanimlar/unvan/actions'
@@ -16,7 +17,22 @@ type TopluDraft = {
   sinif_adi: string
   arazi: boolean
   destek_yardimci_birim: boolean
+  mudur_mu: boolean
+  kadro_turu: string
   kat_sayi: string
+}
+
+const KADRO_TURU_SEC = [
+  { value: '', label: '—' },
+  { value: 'diger', label: 'Diğer' },
+  { value: 'idari', label: 'İdari' },
+  { value: 'zorunlu', label: 'Zorunlu' },
+] as const
+
+const KADRO_TURU_ETIKET: Record<string, string> = {
+  diger: 'Diğer',
+  idari: 'İdari',
+  zorunlu: 'Zorunlu',
 }
 
 interface Props {
@@ -37,6 +53,8 @@ function draftFrom(u: Unvan): TopluDraft {
     sinif_adi: u.sinif_adi ?? '',
     arazi: u.arazi === true,
     destek_yardimci_birim: u.destek_yardimci_birim === true,
+    mudur_mu: u.mudur_mu === true,
+    kadro_turu: u.kadro_turu ?? '',
     kat_sayi: u.kat_sayi != null ? String(u.kat_sayi) : '',
   }
 }
@@ -50,6 +68,8 @@ function draftDegisti(u: Unvan, d: TopluDraft): boolean {
     o.sinif_adi !== d.sinif_adi ||
     o.arazi !== d.arazi ||
     o.destek_yardimci_birim !== d.destek_yardimci_birim ||
+    o.mudur_mu !== d.mudur_mu ||
+    o.kadro_turu !== d.kadro_turu ||
     o.kat_sayi !== d.kat_sayi
   )
 }
@@ -123,6 +143,8 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
         sinif_adi: d.sinif_adi.trim() || null,
         arazi: d.arazi,
         destek_yardimci_birim: d.destek_yardimci_birim,
+        mudur_mu: d.mudur_mu,
+        kadro_turu: d.kadro_turu.trim() || null,
         kat_sayi: kat ? Number(kat) : null,
       })
     }
@@ -204,7 +226,7 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
 
       {sekme === 'toplu' && (
         <p className="mb-3 text-sm text-slate-500">
-          Tabloda değiştirdiğiniz satırlar Toplu Kaydet ile yazılır. Destek/Yardımcı Birim tiki müdür yan ödeme kuralını etkiler.
+          Tabloda değiştirdiğiniz satırlar Toplu Kaydet ile yazılır. Sütun başlıklarına gelince açıklama görünür.
         </p>
       )}
 
@@ -227,18 +249,55 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-12">#</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Kod</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unvan Adı</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">Sınıf</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">Arazi</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">Destek/Yrd.</th>
-                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">Katsayı</th>
-                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">Durum</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-20">
+                  <SutunAciklama
+                    baslik="Sınıf"
+                    aciklama="Memuriyet sınıfı (GİH, TH, SHS…). Kazanç ve terfi kurallarında kullanılır."
+                  />
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600 w-28">
+                  <SutunAciklama
+                    baslik="Kadro Durumu"
+                    aciklama="Diğer, İdari veya Zorunlu. İdari: yönetmelik eki (IV) sayılı liste — idari personel kadro unvanları (GİH idari kadrolar). Sınıf (GİH/TH/…) ayrı sütundadır."
+                  />
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-20">
+                  <SutunAciklama
+                    baslik="Arazi"
+                    aciklama="Arazi tazminatı var mı? Unvana bağlı arazi hakkı işareti."
+                  />
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">
+                  <SutunAciklama
+                    baslik="Müdür mü?"
+                    aciklama="Birim amiri / harcama yetkilisi adayı müdür unvanı. Artık «adında müdürü geçen» demek yerine bu işaret kullanılır."
+                  />
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-28">
+                  <SutunAciklama
+                    baslik="Destek/Yrd."
+                    aciklama="Destek veya yardımcı birim unvanı. Evet ise TH kariyerli müdüre +1300 yan ödeme eklenmez (kazanç kuralı)."
+                  />
+                </th>
+                <th className="text-right px-4 py-3 font-semibold text-slate-600 w-24">
+                  <SutunAciklama
+                    baslik="Katsayı"
+                    aciklama="Unvana bağlı katsayı alanı (varsa hesaplamalarda kullanılır)."
+                  />
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600 w-24">
+                  <SutunAciklama
+                    baslik="Durum"
+                    aciklama="Aktif unvanlar seçim listelerinde görünür; pasif olanlar kullanılmaz."
+                  />
+                </th>
                 <th className="text-right px-4 py-3 font-semibold text-slate-600 w-28">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtreli.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                  <td colSpan={11} className="text-center py-12 text-slate-400">
                     {data.length === 0 ? 'Henüz unvan kaydı yok.' : 'Aramaya uyan unvan yok.'}
                   </td>
                 </tr>
@@ -291,6 +350,19 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
                       </select>
                     ) : (u.sinif_adi ?? '—')}
                   </td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">
+                    {sekme === 'toplu' ? (
+                      <select
+                        value={d.kadro_turu}
+                        onChange={e => topluAlan(u.id, { kadro_turu: e.target.value })}
+                        className={inputSinif}
+                      >
+                        {KADRO_TURU_SEC.map(o => (
+                          <option key={o.value || 'bos'} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    ) : (u.kadro_turu ? (KADRO_TURU_ETIKET[u.kadro_turu] ?? u.kadro_turu) : '—')}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     {sekme === 'toplu' ? (
                       <select
@@ -303,6 +375,22 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
                       </select>
                     ) : u.arazi ? (
                       <span className="text-green-600 text-xs font-medium">✓ Var</span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {sekme === 'toplu' ? (
+                      <select
+                        value={d.mudur_mu ? 'true' : 'false'}
+                        onChange={e => topluAlan(u.id, { mudur_mu: e.target.value === 'true' })}
+                        className={inputSinif}
+                      >
+                        <option value="false">Hayır</option>
+                        <option value="true">Evet</option>
+                      </select>
+                    ) : u.mudur_mu ? (
+                      <span className="text-teal-700 text-xs font-medium">✓ Evet</span>
                     ) : (
                       <span className="text-slate-400 text-xs">—</span>
                     )}
@@ -418,17 +506,32 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Sınıf</label>
-            <select
-              name="sinif_adi"
-              defaultValue={secili?.sinif_adi ?? ''}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
-            >
-              <option value="">— Seçin —</option>
-              {SINIFLAR.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sınıf</label>
+              <select
+                name="sinif_adi"
+                defaultValue={secili?.sinif_adi ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+              >
+                <option value="">— Seçin —</option>
+                {SINIFLAR.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Kadro Durumu</label>
+              <select
+                name="kadro_turu"
+                defaultValue={secili?.kadro_turu ?? ''}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+              >
+                {KADRO_TURU_SEC.map(o => (
+                  <option key={o.value || 'bos'} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -456,20 +559,37 @@ export default function UnvanClient({ data, onAdd, onUpdate, onToggle, onTopluKa
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Destek/Yardımcı Birim</label>
-            <select
-              name="destek_yardimci_birim"
-              defaultValue={secili?.destek_yardimci_birim ? 'true' : 'false'}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
-            >
-              <option value="false">Hayır</option>
-              <option value="true">Evet</option>
-            </select>
-            <p className="mt-1 text-xs text-slate-500">
-              Evet ise TH kariyerli müdüre +1300 yan ödeme uygulanmaz.
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Müdür mü?</label>
+              <select
+                name="mudur_mu"
+                defaultValue={secili?.mudur_mu ? 'true' : 'false'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+              >
+                <option value="false">Hayır</option>
+                <option value="true">Evet</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Birim amiri / harcama yetkilisi adayı. Org şeması ve raporlar bu işareti kullanır.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Destek/Yardımcı Birim</label>
+              <select
+                name="destek_yardimci_birim"
+                defaultValue={secili?.destek_yardimci_birim ? 'true' : 'false'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+              >
+                <option value="false">Hayır</option>
+                <option value="true">Evet</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Evet ise TH kariyerli müdüre +1300 yan ödeme uygulanmaz.
+              </p>
+            </div>
           </div>
 
           {sunuciHata && (

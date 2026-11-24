@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-unvan-mudur-org-surum',
+    baslik: '24 Kasım 2026 — Unvan / müdürlük ve organizasyon şema sürümü',
+    maddeler: [
+      'Unvan tanımlarında «Müdür mü?» ve «Kadro Durumu» (Diğer / İdari / Zorunlu) alanları vardır; sütun başlıklarında hover açıklama bulunur.',
+      'Müdürlüklerde «Zorunlu mu?» ve eşleşen müdür unvanından gelen «Kadro Durumu» sütunu yer alır.',
+      'Temmuz 2026 sonrası müdür kadro değişiminde organizasyon şeması «Organizasyon Şeması - YYYY/sıra» olarak kopyalanır; önceki pasif kalır ve o tarihteki müdürler snapshot ile görülür.',
+      'Supabase’te sırayla 20261124100000, 20261124101000 ve 20261124110000 migration dosyalarını bir kez çalıştırın (henüz uygulanmadıysa).',
+    ],
+  },
+  {
     id: '2026-11-23-pp-raporlar-tamamlama',
     baslik: '23 Kasım 2026 — Performans programı raporları tamamlandı',
     maddeler: [

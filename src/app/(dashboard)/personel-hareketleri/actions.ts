@@ -39,6 +39,10 @@ import { kazancLookupOzelKalemIle, ozelKalemUnvanIdleri } from '@/lib/kazanc-oze
 import { yuruttuguUnvanKolonuYokMu } from '@/lib/kazanc-yuruttugu-unvan'
 import { gorevYeriListeSicilSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
 import { uygulaVekilMudurFarkSicil } from '@/lib/kazanc-vekil-mudur-fark-uygula'
+import {
+  personelHareketiOncesiOrgSemaDondur,
+  personelHareketiSonrasiOrgSemaSurumu,
+} from '@/lib/organizasyon-sema-surum'
 
 const HAREKET_ALAN_ETIKETLERI: Record<string, string> = {
   hareket_tipi:         'Hareket Tipi',
@@ -456,6 +460,15 @@ export async function personelHareketiGuncelle(
     }
   }
 
+  const orgSurumOpts = {
+    yururlukTarihi: tarihStr(formData, 'yururluk_tarihi'),
+    oncekiKadroId: onceki_kadro_id,
+    yeniKadroId: yeni_kadro_id,
+    eskiUnvan: str(formData, 'eski_unvan'),
+    yeniUnvan: kadro_bosalt ? null : str(formData, 'yeni_unvan'),
+  }
+  const orgDonduruldu = await personelHareketiOncesiOrgSemaDondur(supabase, orgSurumOpts)
+
   const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
   if (pasif && sicil_no && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
@@ -512,11 +525,17 @@ export async function personelHareketiGuncelle(
 
   await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
 
+  await personelHareketiSonrasiOrgSemaSurumu(supabase, {
+    ...orgSurumOpts,
+    donduruldu: orgDonduruldu,
+  })
+
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')
   revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
   revalidatePath('/terfi/bilgiler')
+  revalidatePath('/tanimlar/organizasyon')
   if (updated?.public_id) revalidatePath(`/link/${updated.public_id}`)
   if (sicil_no) await revalidatePersonelDetayPaths(sicil_no)
   return {}
@@ -661,6 +680,15 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
     },
   })
 
+  const orgSurumOpts = {
+    yururlukTarihi: tarihStr(formData, 'yururluk_tarihi'),
+    oncekiKadroId: onceki_kadro_id,
+    yeniKadroId: yeni_kadro_id,
+    eskiUnvan: str(formData, 'eski_unvan'),
+    yeniUnvan: kadro_bosalt ? null : str(formData, 'yeni_unvan'),
+  }
+  const orgDonduruldu = await personelHareketiOncesiOrgSemaDondur(supabase, orgSurumOpts)
+
   const pasif = personelPasifMi({ ayrilis_tarihi, ayrilis_nedeni })
   if (pasif && ayrilis_tarihi && ayrilis_nedeni) {
     const kadroAyrilis = await kadroPasifeAlPersonelIcin(supabase, sicil_no, ayrilis_tarihi, ayrilis_nedeni)
@@ -716,11 +744,17 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
 
   await gorevYeriListeSicilSenkronizeEt(supabase, sicil_no)
 
+  await personelHareketiSonrasiOrgSemaSurumu(supabase, {
+    ...orgSurumOpts,
+    donduruldu: orgDonduruldu,
+  })
+
   revalidatePath('/personel-hareketleri')
   revalidatePath('/personel')
   revalidatePath('/personel/ayrilanlar')
   revalidatePath('/kadro')
   revalidatePath('/terfi/bilgiler')
+  revalidatePath('/tanimlar/organizasyon')
   if (inserted?.public_id) revalidatePath(`/link/${inserted.public_id}`)
   await revalidatePersonelDetayPaths(sicil_no)
   return {}

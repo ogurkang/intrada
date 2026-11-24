@@ -69,9 +69,10 @@ export async function mudurlukEkle(
   if (!parsed.ok) return { hata: parsed.hata }
 
   const supabase = await createClient()
+  const zorunlu_mu = formData.get('zorunlu_mu') === 'true'
   const { data: inserted, error } = await supabase
     .from('tanim_mudurluk')
-    .insert({ mudurluk_adi, tehlike_sinifi, aktif: true })
+    .insert({ mudurluk_adi, tehlike_sinifi, zorunlu_mu, aktif: true })
     .select('id')
     .single()
 
@@ -100,9 +101,10 @@ export async function mudurlukGuncelle(
   if (!parsed.ok) return { hata: parsed.hata }
 
   const supabase = await createClient()
+  const zorunlu_mu = formData.get('zorunlu_mu') === 'true'
   const { error } = await supabase
     .from('tanim_mudurluk')
-    .update({ mudurluk_adi, tehlike_sinifi })
+    .update({ mudurluk_adi, tehlike_sinifi, zorunlu_mu })
     .eq('id', id)
 
   if (error) return { hata: error.message }

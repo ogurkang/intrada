@@ -470,24 +470,27 @@ export interface Database {
         Row: {
           id: number; sira_no: number | null; unvan_kodu: string | null; unvan_adi: string
           sinif_adi: string | null; arazi: boolean | null; destek_yardimci_birim: boolean; kat_sayi: number | null
+          mudur_mu: boolean; kadro_turu: string | null
           aktif: boolean; created_at: string
         }
         Insert: {
           id?: number; sira_no?: number | null; unvan_kodu?: string | null; unvan_adi: string
           sinif_adi?: string | null; arazi?: boolean | null; destek_yardimci_birim?: boolean; kat_sayi?: number | null
+          mudur_mu?: boolean; kadro_turu?: string | null
           aktif?: boolean; created_at?: string
         }
         Update: {
           id?: number; sira_no?: number | null; unvan_kodu?: string | null; unvan_adi?: string
           sinif_adi?: string | null; arazi?: boolean | null; destek_yardimci_birim?: boolean; kat_sayi?: number | null
+          mudur_mu?: boolean; kadro_turu?: string | null
           aktif?: boolean; created_at?: string
         }
         Relationships: []
       }
       tanim_mudurluk: {
-        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; tehlike_sinifi: string; aktif: boolean; created_at: string }
-        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
-        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; tehlike_sinifi?: string; aktif?: boolean; created_at?: string }
+        Row:    { id: number; sira_no: number | null; mudurluk_adi: string; tehlike_sinifi: string; zorunlu_mu: boolean; aktif: boolean; created_at: string }
+        Insert: { id?: number; sira_no?: number | null; mudurluk_adi: string; tehlike_sinifi?: string; zorunlu_mu?: boolean; aktif?: boolean; created_at?: string }
+        Update: { id?: number; sira_no?: number | null; mudurluk_adi?: string; tehlike_sinifi?: string; zorunlu_mu?: boolean; aktif?: boolean; created_at?: string }
         Relationships: []
       }
       tanim_mudurluk_yerleske: {

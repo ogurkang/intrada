@@ -64,6 +64,7 @@ export default async function OrganizasyonDetayPage({
   ])
 
   const indeks = organizasyonPersonelIndeksKur((kadroRaw ?? []) as unknown as KadroUnvanSatir[])
+  const snapshotKullan = organizasyon.aktif !== true
 
   const birimler: OrganizasyonBirim[] = ((birimRaw ?? []) as unknown as BirimRow[]).map(b => {
     const birim_turu = (b.birim_turu as BirimTuru) ?? 'mudurluk'
@@ -76,7 +77,13 @@ export default async function OrganizasyonDetayPage({
       mudurluk_id: b.mudurluk_id,
       personel_sicil_no: b.personel_sicil_no,
       ad,
-      personel_adi: birimPersonelMetni(indeks, birim_turu, mudurlukAdi, b.personel_sicil_no),
+      personel_adi: birimPersonelMetni(
+        indeks,
+        birim_turu,
+        mudurlukAdi,
+        b.personel_sicil_no,
+        snapshotKullan,
+      ),
       personel_telefon: '',
       ust_birim_id: b.ust_birim_id,
       sira_no: b.sira_no ?? 0,

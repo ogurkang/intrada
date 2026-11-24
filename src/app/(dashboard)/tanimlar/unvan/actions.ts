@@ -6,6 +6,13 @@ import { requireTanimlarYazma } from '@/lib/tanimlar-yazma-guard'
 
 const SAYFA = '/tanimlar/unvan'
 
+const KADRO_TURU = new Set(['diger', 'idari', 'zorunlu'])
+
+function kadroTuruOku(v: FormDataEntryValue | null): string | null {
+  const t = String(v ?? '').trim()
+  return KADRO_TURU.has(t) ? t : null
+}
+
 export async function unvanEkle(
   formData: FormData
 ): Promise<{ hata?: string }> {
@@ -20,6 +27,8 @@ export async function unvanEkle(
     sinif_adi:  String(formData.get('sinif_adi')  ?? '').trim() || null,
     arazi:      formData.get('arazi') === 'true',
     destek_yardimci_birim: formData.get('destek_yardimci_birim') === 'true',
+    mudur_mu: formData.get('mudur_mu') === 'true',
+    kadro_turu: kadroTuruOku(formData.get('kadro_turu')),
     kat_sayi:   formData.get('kat_sayi')   ? Number(formData.get('kat_sayi'))   : null,
     aktif:      true,
   })
@@ -46,6 +55,8 @@ export async function unvanGuncelle(
     sinif_adi:  String(formData.get('sinif_adi')  ?? '').trim() || null,
     arazi:      formData.get('arazi') === 'true',
     destek_yardimci_birim: formData.get('destek_yardimci_birim') === 'true',
+    mudur_mu: formData.get('mudur_mu') === 'true',
+    kadro_turu: kadroTuruOku(formData.get('kadro_turu')),
     kat_sayi:   formData.get('kat_sayi')   ? Number(formData.get('kat_sayi'))   : null,
   }).eq('id', id)
 
@@ -79,6 +90,8 @@ export type UnvanTopluSatir = {
   sinif_adi: string | null
   arazi: boolean
   destek_yardimci_birim: boolean
+  mudur_mu: boolean
+  kadro_turu: string | null
   kat_sayi: number | null
 }
 
@@ -94,6 +107,7 @@ export async function unvanTopluGuncelle(
   for (const s of satirlar) {
     const unvan_adi = String(s.unvan_adi ?? '').trim()
     if (!unvan_adi) return { hata: `Unvan adı boş olamaz (id ${s.id}).` }
+    const kadro = String(s.kadro_turu ?? '').trim()
     const { error } = await supabase.from('tanim_unvan').update({
       sira_no: s.sira_no,
       unvan_kodu: String(s.unvan_kodu ?? '').trim() || null,
@@ -101,6 +115,8 @@ export async function unvanTopluGuncelle(
       sinif_adi: String(s.sinif_adi ?? '').trim() || null,
       arazi: s.arazi === true,
       destek_yardimci_birim: s.destek_yardimci_birim === true,
+      mudur_mu: s.mudur_mu === true,
+      kadro_turu: KADRO_TURU.has(kadro) ? kadro : null,
       kat_sayi: s.kat_sayi,
     }).eq('id', s.id)
     if (error) return { hata: error.message }

@@ -3,12 +3,22 @@ import MudurlukTanimClient from '@/components/tanimlar/MudurlukTanimClient'
 import { mudurlukEkle, mudurlukGuncelle, mudurlukToggleAktif } from './actions'
 import type { Tables } from '@/types/database'
 import type { MudurlukYerleskeEsleme } from '@/components/tanimlar/MudurlukTanimClient'
+import { mudurlukEslesmeBaz, mudurlukBazTamEslesir } from '@/lib/organizasyon-birim'
 
 type MudurlukRow = Tables<'tanim_mudurluk'>
+
+const KADRO_DURUMU_ETIKET: Record<string, string> = {
+  diger: 'Diğer',
+  idari: 'İdari',
+  zorunlu: 'Zorunlu',
+}
 
 export type MudurlukKayit = MudurlukRow & {
   yerleske_eslemeleri: MudurlukYerleskeEsleme[]
   yerleske_adi_goster: string
+  /** Eşleşen müdür unvanındaki Kadro Durumu (kadro_turu). */
+  kadro_durumu: string | null
+  kadro_durumu_etiket: string
 }
 
 type YerleskeLinkRow = {
@@ -33,7 +43,7 @@ function yerleskeGosterim(links: YerleskeLinkRow[]): string {
 export default async function MudurlukPage() {
   const supabase = await createClient()
 
-  const [{ data, error }, { data: yerleskeRaw }] = await Promise.all([
+  const [{ data, error }, { data: yerleskeRaw }, { data: unvanRaw }] = await Promise.all([
     supabase
       .from('tanim_mudurluk')
       .select(`
@@ -50,7 +60,29 @@ export default async function MudurlukPage() {
       .select('id, yerleske_adi')
       .eq('aktif', true)
       .order('yerleske_adi'),
+    supabase
+      .from('tanim_unvan')
+      .select('unvan_adi, kadro_turu')
+      .eq('aktif', true),
   ])
+
+  const unvanKadroByBaz = new Map<string, string>()
+  for (const u of unvanRaw ?? []) {
+    const tur = String(u.kadro_turu ?? '').trim()
+    if (!tur) continue
+    const baz = mudurlukEslesmeBaz(u.unvan_adi)
+    if (!baz) continue
+    if (!unvanKadroByBaz.has(baz)) unvanKadroByBaz.set(baz, tur)
+  }
+
+  function kadroDurumuBul(mudurlukAdi: string): string | null {
+    const baz = mudurlukEslesmeBaz(mudurlukAdi)
+    if (!baz) return null
+    for (const [k, v] of unvanKadroByBaz) {
+      if (mudurlukBazTamEslesir(baz, k)) return v
+    }
+    return null
+  }
 
   const kayitlar: MudurlukKayit[] = (data ?? []).map((row) => {
     const links = (row.tanim_mudurluk_yerleske ?? []) as YerleskeLinkRow[]
@@ -64,10 +96,15 @@ export default async function MudurlukPage() {
         yerleske_adi: l.tanim_yerleske_adresi!.yerleske_adi,
         konum: l.konum === 'Dış' ? 'Dış' : 'İç',
       }))
+    const kadro_durumu = kadroDurumuBul(rest.mudurluk_adi)
     return {
       ...rest,
       yerleske_eslemeleri,
       yerleske_adi_goster: yerleskeGosterim(links),
+      kadro_durumu,
+      kadro_durumu_etiket: kadro_durumu
+        ? (KADRO_DURUMU_ETIKET[kadro_durumu] ?? kadro_durumu)
+        : '—',
     }
   })
 

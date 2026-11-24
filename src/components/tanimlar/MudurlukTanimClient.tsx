@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from 'react'
 import Modal from '@/components/ui/Modal'
+import SutunAciklama from '@/components/ui/SutunAciklama'
 import { useTanimlarSaltOkunur } from '@/components/tanimlar/TanimlarSaltOkunurContext'
 import type { MudurlukKayit } from '@/app/(dashboard)/tanimlar/mudurluk/page'
 
@@ -155,6 +156,18 @@ export default function MudurlukTanimClient({
               <th className="text-left px-5 py-3 font-semibold text-slate-600">Müdürlük Adı</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600">Yerleşke Adresi (Konum)</th>
               <th className="text-left px-5 py-3 font-semibold text-slate-600 w-36">Tehlike Sınıfı</th>
+              <th className="text-center px-5 py-3 font-semibold text-slate-600 w-32">
+                <SutunAciklama
+                  baslik="Kadro Durumu"
+                  aciklama="Aynı adlı müdür unvanındaki Kadro Durumu (Diğer / İdari / Zorunlu). Unvan tanımlarından okunur; burada düzenlenmez."
+                />
+              </th>
+              <th className="text-center px-5 py-3 font-semibold text-slate-600 w-28">
+                <SutunAciklama
+                  baslik="Zorunlu mu?"
+                  aciklama="Norm kadro yönetmeliğindeki zorunlu müdürlük / birim. Evet ise zorunlu birim olarak işaretlenir."
+                />
+              </th>
               <th className="text-center px-5 py-3 font-semibold text-slate-600 w-28">Durum</th>
               <th className="text-right px-5 py-3 font-semibold text-slate-600 w-36">İşlem</th>
             </tr>
@@ -162,7 +175,7 @@ export default function MudurlukTanimClient({
           <tbody className="divide-y divide-slate-100">
             {data.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-slate-400">
+                <td colSpan={8} className="text-center py-12 text-slate-400">
                   Henüz kayıt yok. &ldquo;Yeni Ekle&rdquo; butonu ile başlayın.
                 </td>
               </tr>
@@ -173,6 +186,16 @@ export default function MudurlukTanimClient({
                 <td className="px-5 py-3 font-medium text-slate-800">{item.mudurluk_adi}</td>
                 <td className="px-5 py-3 text-slate-600">{item.yerleske_adi_goster}</td>
                 <td className="px-5 py-3 text-slate-600">{item.tehlike_sinifi}</td>
+                <td className="px-5 py-3 text-center text-slate-700 text-xs font-medium">
+                  {item.kadro_durumu_etiket}
+                </td>
+                <td className="px-5 py-3 text-center">
+                  {item.zorunlu_mu ? (
+                    <span className="text-teal-700 text-xs font-medium">✓ Evet</span>
+                  ) : (
+                    <span className="text-slate-400 text-xs">Hayır</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-center">
                   <button
                     onClick={() => handleToggle(item)}
@@ -274,18 +297,34 @@ export default function MudurlukTanimClient({
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tehlike Sınıfı</label>
-            <select
-              name="tehlike_sinifi"
-              required
-              defaultValue={secili?.tehlike_sinifi ?? 'Az Tehlikeli'}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-            >
-              {TEHLIKE_SEC.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Tehlike Sınıfı</label>
+              <select
+                name="tehlike_sinifi"
+                required
+                defaultValue={secili?.tehlike_sinifi ?? 'Az Tehlikeli'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+              >
+                {TEHLIKE_SEC.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Zorunlu mu?</label>
+              <select
+                name="zorunlu_mu"
+                defaultValue={secili?.zorunlu_mu ? 'true' : 'false'}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+              >
+                <option value="false">Hayır</option>
+                <option value="true">Evet</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Norm kadro yönetmeliğindeki zorunlu müdürlük işareti.
+              </p>
+            </div>
           </div>
 
           {sunuciHata && (
