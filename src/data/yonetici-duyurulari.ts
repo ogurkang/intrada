@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-pp-odenek-gosterge',
+    baslik: '24 Kasım 2026 — Ödenek teklifi göstergeye bağlandı',
+    maddeler: [
+      'Ödenek teklifi artık performans faaliyeti yerine her gösterge için girilir; gösterge formunda hedefler üstte, ödenek tablosu altta.',
+      'Faaliyet listesindeki ödenek düğmesi göstergeler ekranına gider; Gösterge Ekle / Düzenle ile teklif yazılır. Faaliyet maliyeti göstergelerin toplamıdır.',
+      'Supabase’te 20261124180000_pp_odenek_gosterge.sql dosyasını bir kez çalıştırın (mevcut ödenekler ilk göstergeye taşınır).',
+    ],
+  },
+  {
     id: '2026-11-24-pp-pf-251-makine-ikmal',
     baslik: '24 Kasım 2026 — PP 2.5.1.6–10 Makine İkmal’e taşındı',
     maddeler: [

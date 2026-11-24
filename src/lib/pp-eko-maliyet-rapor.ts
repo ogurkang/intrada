@@ -6,6 +6,7 @@ import {
   ppRaporVarsayilanYil,
   type PpRaporSayi,
 } from './pp-mudurluk-rapor'
+import { ppPfOdenekSatirlariYukle } from '@/lib/pp-pf-odenek'
 
 export type PpEkoYilHucre = {
   hizmet: PpRaporSayi
@@ -139,19 +140,20 @@ export async function ppEkoMaliyetRaporYili(
   }
   const pfIds = [...pfMap.keys()]
 
-  const { data: odenekRaw } = pfIds.length
-    ? await sb
-      .from('performans_programi_pf_odenek')
-      .select('pf_faaliyet_id, butce_kodu_id, t_butce, t1_tahmin, t2_tahmin')
-      .in('pf_faaliyet_id', pfIds)
-    : { data: [] }
-  const odenekler = (odenekRaw ?? []) as {
-    pf_faaliyet_id: number
-    butce_kodu_id: number
-    t_butce: number | null
-    t1_tahmin: number | null
-    t2_tahmin: number | null
-  }[]
+  const { data: odenekHam } = await ppPfOdenekSatirlariYukle(
+    sb as never,
+    pfIds,
+    't_butce, t1_tahmin, t2_tahmin',
+  )
+  const odenekler = odenekHam
+    .filter(o => o.butce_kodu_id != null)
+    .map(o => ({
+      pf_faaliyet_id: o.pf_faaliyet_id,
+      butce_kodu_id: o.butce_kodu_id as number,
+      t_butce: o.t_butce,
+      t1_tahmin: o.t1_tahmin,
+      t2_tahmin: o.t2_tahmin,
+    }))
   const kodIds = [...new Set(odenekler.map(o => o.butce_kodu_id).filter(Number.isFinite))]
   const { data: kodRaw } = kodIds.length
     ? await sb.from('performans_programi_butce_kodu').select('id, adim_1').in('id', kodIds)

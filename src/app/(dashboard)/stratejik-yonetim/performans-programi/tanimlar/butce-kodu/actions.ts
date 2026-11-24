@@ -86,20 +86,23 @@ async function butceKoduKullanimYerleri(sb: Sb, id: number): Promise<string[]> {
 
   const { data: pf, error: pfHata } = await sb
     .from('performans_programi_pf_odenek')
-    .select('pf_faaliyet_id')
+    .select('pf_gosterge_id')
     .eq('butce_kodu_id', id)
     .limit(limit)
   if (!pfHata && (pf?.length ?? 0) > 0) {
-    const ids = [...new Set((pf as { pf_faaliyet_id: number }[]).map(r => Number(r.pf_faaliyet_id)).filter(Number.isFinite))]
+    const gIds = [...new Set((pf as { pf_gosterge_id: number }[]).map(r => Number(r.pf_gosterge_id)).filter(Number.isFinite))]
     const adMap = new Map<number, string>()
-    if (ids.length) {
-      const { data: adlar } = await sb.from('performans_programi_pf_faaliyet').select('id, faaliyet_adi').in('id', ids)
-      for (const a of adlar ?? []) adMap.set(Number(a.id), String(a.faaliyet_adi ?? ''))
+    if (gIds.length) {
+      const { data: adlar } = await sb
+        .from('performans_programi_pf_gosterge')
+        .select('id, gosterge_adi')
+        .in('id', gIds)
+      for (const a of adlar ?? []) adMap.set(Number(a.id), String(a.gosterge_adi ?? ''))
     }
-    for (const fid of ids) {
-      yerler.push(`Performans faaliyeti ödenek teklifi: ${adMap.get(fid) || `#${fid}`}`)
+    for (const gid of gIds) {
+      yerler.push(`Performans göstergesi ödenek teklifi: ${adMap.get(gid) || `#${gid}`}`)
     }
-    if ((pf as unknown[]).length >= limit) yerler.push('Performans faaliyeti ödenek teklifi: … diğer kayıtlar')
+    if ((pf as unknown[]).length >= limit) yerler.push('Performans göstergesi ödenek teklifi: … diğer kayıtlar')
   }
 
   const { data: mm, error: mmHata } = await sb.from('hesaplama_memur_maas').select('belge').eq('id', 1).maybeSingle()

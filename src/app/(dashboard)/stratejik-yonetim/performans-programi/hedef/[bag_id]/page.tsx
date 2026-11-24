@@ -4,6 +4,7 @@ import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcr
 import PpPerformansFaaliyetListeClient, { type PpMaliyetToplam, type PpPerformansFaaliyetSatir } from '@/components/stratejik/PpPerformansFaaliyetListeClient'
 import { ppIliskiSecenekleri } from '../../islemler/[donem_id]/[program_id]/iliski-actions'
 import { ppFaaliyetKodu } from '@/lib/pp-iliski'
+import { ppPfOdenekSatirlariYukle } from '@/lib/pp-pf-odenek'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,14 +43,11 @@ export default async function PpPerformansFaaliyetPage({
     const id = Number((g as { faaliyet_id?: number }).faaliyet_id)
     if (Number.isFinite(id)) gostergeSay.set(id, (gostergeSay.get(id) ?? 0) + 1)
   }
-  const odenekSorgu = ids.length
-    ? await sb.from('performans_programi_pf_odenek').select('pf_faaliyet_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin').in('pf_faaliyet_id', ids)
-    : { data: [] as unknown[], error: null }
+  const odenekSorgu = await ppPfOdenekSatirlariYukle(sb, ids)
   const maliyet = new Map<number, PpMaliyetToplam>()
   const bos = (): PpMaliyetToplam => ({ t1Butce: 0, t1Haziran: 0, t1YilSonu: 0, tButce: 0, t1Tahmin: 0, t2Tahmin: 0 })
   if (!odenekSorgu.error) {
-    for (const r of odenekSorgu.data ?? []) {
-      const satir = r as { pf_faaliyet_id?: number; t1_butce?: number | null; t1_haziran?: number | null; t1_yil_sonu?: number | null; t_butce?: number | null; t1_tahmin?: number | null; t2_tahmin?: number | null }
+    for (const satir of odenekSorgu.data) {
       const id = Number(satir.pf_faaliyet_id)
       if (!Number.isFinite(id)) continue
       const toplam = maliyet.get(id) ?? bos()

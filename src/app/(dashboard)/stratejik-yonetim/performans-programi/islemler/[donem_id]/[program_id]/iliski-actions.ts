@@ -435,15 +435,12 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
   bagId: number
   ad: string
   aciklama: string
-  gostergeler: PpGostergeGirdi[]
-}): Promise<{ hata?: string }> {
+  /** Eski form uyumu; göstergeler artık ayrı ekrandan kaydedilir, burada yok sayılır. */
+  gostergeler?: PpGostergeGirdi[]
+}): Promise<{ hata?: string; id?: number }> {
   const faaliyetAdi = girdi.ad.trim()
   if (!Number.isFinite(girdi.bagId) || girdi.bagId <= 0) return { hata: 'Kayıt bulunamadı.' }
   if (!faaliyetAdi) return { hata: 'Performans faaliyeti adı girin.' }
-  const birimler = new Set<string>(PP_BIRIMLER)
-  for (const g of girdi.gostergeler) {
-    if (!g.ad.trim() || !birimler.has(g.birim)) return { hata: 'Gösterge adı ve ölçü birimi zorunludur.' }
-  }
   const supabase = await createClient()
   if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -455,8 +452,6 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
       aciklama: girdi.aciklama.trim(),
     }).eq('id', faaliyetId).eq('bag_id', girdi.bagId)
     if (error) return { hata: error.message.includes('aciklama') ? 'Faaliyet açıklaması için 20261106140000_pp_faaliyet_aciklama_odenek.sql dosyasını çalıştırın.' : error.message }
-    const { error: silHata } = await sb.from('performans_programi_pf_gosterge').delete().eq('faaliyet_id', faaliyetId)
-    if (silHata) return { hata: silHata.message }
     await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: faaliyetId, islem: 'Güncelleme', ozet: faaliyetAdi })
   } else {
     const sira = await sonrakiPhFaaliyetSira(sb, girdi.bagId)
@@ -470,25 +465,8 @@ export async function ppPerformansFaaliyetFormKaydet(girdi: {
     faaliyetId = Number(faaliyet.id)
     await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: faaliyetId, islem: 'Ekleme', ozet: faaliyetAdi })
   }
-  if (girdi.gostergeler.length) {
-    const { error: gHata } = await sb.from('performans_programi_pf_gosterge').insert(girdi.gostergeler.map((g, gi) => ({
-      faaliyet_id: faaliyetId,
-      sira_no: gi + 1,
-      gosterge_adi: g.ad.trim(),
-      birim: g.birim,
-      aciklama: g.aciklama.trim(),
-      hesaplama_yontemi: g.hesaplama.trim(),
-      t2_gerceklesme: g.t2,
-      t1_planlanan: g.t1plan,
-      t1_yil_sonu: g.t1son,
-      t_hedef: g.thedef,
-      t1_tahmin: g.t1tahmin,
-      t2_tahmin: g.t2tahmin,
-    })))
-    if (gHata) return { hata: gHata.message }
-  }
   revalidatePath(`/stratejik-yonetim/performans-programi/hedef/${girdi.bagId}`)
-  return {}
+  return { id: faaliyetId }
 }
 
 export async function ppPerformansFaaliyetEkle(bagId: number, ad: string): Promise<{ hata?: string }> {
@@ -532,9 +510,6 @@ export async function ppPerformansFaaliyetSatirSil(id: number, bagId: number): P
   const { count, error: sayHata } = await sb.from('performans_programi_pf_gosterge').select('id', { count: 'exact', head: true }).eq('faaliyet_id', id)
   if (sayHata) return { hata: sayHata.message }
   if ((count ?? 0) > 0) return { hata: BAGLI_KAYIT }
-  const { count: odenekSay, error: odenekHata } = await sb.from('performans_programi_pf_odenek').select('id', { count: 'exact', head: true }).eq('pf_faaliyet_id', id)
-  if (odenekHata && !String(odenekHata.message).includes('pf_odenek')) return { hata: odenekHata.message }
-  if ((odenekSay ?? 0) > 0) return { hata: BAGLI_KAYIT }
   const { error } = await sb.from('performans_programi_pf_faaliyet').delete().eq('id', id).eq('bag_id', bagId)
   if (error) return { hata: error.message }
   await ppSatirLogYaz(supabase, { tablo: 'performans_faaliyet', kayitId: id, islem: 'Silme', ozet: `Performans faaliyeti #${id}` })

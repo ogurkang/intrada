@@ -8,6 +8,7 @@ import {
   ppPerformansYol,
 } from '@/lib/pp-iliski'
 import { ppRaporVarsayilanYil, type PpRaporSayi } from './pp-mudurluk-rapor'
+import { ppPfOdenekSatirlariYukle } from '@/lib/pp-pf-odenek'
 
 export type PpMudSatirTur =
   | 'amac_baslik'
@@ -280,7 +281,7 @@ export async function ppMudurlukProgramRaporYili(
   }))
   const pfIds = pfFaaliyetler.map(f => f.id)
 
-  const [{ data: pfGRaw }, { data: pfORaw }] = await Promise.all([
+  const [{ data: pfGRaw }, odenekYukle] = await Promise.all([
     pfIds.length
       ? sb
         .from('performans_programi_pf_gosterge')
@@ -288,15 +289,10 @@ export async function ppMudurlukProgramRaporYili(
         .in('faaliyet_id', pfIds)
         .order('sira_no')
       : Promise.resolve({ data: [] }),
-    pfIds.length
-      ? sb
-        .from('performans_programi_pf_odenek')
-        .select('pf_faaliyet_id, t_butce')
-        .in('pf_faaliyet_id', pfIds)
-      : Promise.resolve({ data: [] }),
+    ppPfOdenekSatirlariYukle(sb as never, pfIds, 't_butce'),
   ])
   const pfGostergeler = (pfGRaw ?? []) as PfG[]
-  const pfOdenekler = (pfORaw ?? []) as PfO[]
+  const pfOdenekler = odenekYukle.data as PfO[]
 
   const programById = new Map(programlar.map(p => [p.id, p]))
   const altById = new Map(altlar.map(a => [a.id, a]))

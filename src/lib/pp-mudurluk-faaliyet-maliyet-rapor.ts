@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
 import { ppRaporVarsayilanYil, type PpRaporSayi } from '@/lib/pp-mudurluk-rapor'
+import { ppPfOdenekSatirlariYukle } from '@/lib/pp-pf-odenek'
 
 export type PpMudurlukFaaliyetMaliyetSatir = {
   mudurluk: string
@@ -106,13 +107,7 @@ export async function ppMudurlukFaaliyetMaliyetRaporYili(
   }))
   const pfIds = pfFaaliyetler.map(f => f.id)
 
-  const { data: odenekRaw } = pfIds.length
-    ? await sb
-      .from('performans_programi_pf_odenek')
-      .select('pf_faaliyet_id, t_butce')
-      .in('pf_faaliyet_id', pfIds)
-    : { data: [] }
-  const odenekler = (odenekRaw ?? []) as { pf_faaliyet_id: number; t_butce: number | null }[]
+  const { data: odenekler } = await ppPfOdenekSatirlariYukle(sb as never, pfIds, 't_butce')
 
   const odenekByPf = new Map<number, number>()
   for (const o of odenekler) {

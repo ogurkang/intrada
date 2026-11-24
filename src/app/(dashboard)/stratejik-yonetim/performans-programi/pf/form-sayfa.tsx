@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcrumb'
 import PpPerformansFaaliyetClient, { type PpPerformansFormBaslangic } from '@/components/stratejik/PpPerformansFaaliyetClient'
 import { ppIliskiSecenekleri } from '../islemler/[donem_id]/[program_id]/iliski-actions'
-import { ppParaYaz } from '@/lib/pp-iliski'
 
 export default async function PpPerformansFaaliyetFormSayfa({
   bagId,
@@ -35,35 +34,16 @@ export default async function PpPerformansFaaliyetFormSayfa({
   const kayitlar = (siraSorgu.data ?? []) as { id: number; sira_no: number; faaliyet_adi: string; aciklama?: string | null }[]
   const kayit = faaliyetId ? kayitlar.find(f => f.id === faaliyetId) : undefined
   if (faaliyetId && !kayit) notFound()
-  const { data: gostergeRaw } = kayit
-    ? await sb.from('performans_programi_pf_gosterge').select('sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin').eq('faaliyet_id', kayit.id).order('sira_no')
-    : { data: [] }
-  const yaz = (n: number | null) => ppParaYaz(n == null ? null : Number(n))
-  const gostergeler = ((gostergeRaw ?? []) as {
-    sira_no: number
-    gosterge_adi: string
-    birim: string
-    aciklama: string
-    hesaplama_yontemi: string
-    t2_gerceklesme: number | null
-    t1_planlanan: number | null
-    t1_yil_sonu: number | null
-    t_hedef: number | null
-    t1_tahmin: number | null
-    t2_tahmin: number | null
-  }[]).map(g => ({
-    anahtar: `g-${kayit?.id}-${g.sira_no}`,
-    ad: g.gosterge_adi,
-    birim: g.birim,
-    aciklama: g.aciklama ?? '',
-    hesaplama: g.hesaplama_yontemi ?? '',
-    t2: yaz(g.t2_gerceklesme),
-    t1plan: yaz(g.t1_planlanan),
-    t1son: yaz(g.t1_yil_sonu),
-    thedef: yaz(g.t_hedef),
-    t1tahmin: yaz(g.t1_tahmin),
-    t2tahmin: yaz(g.t2_tahmin),
-  }))
+
+  let gostergeSayisi = 0
+  if (kayit) {
+    const { count } = await sb
+      .from('performans_programi_pf_gosterge')
+      .select('id', { count: 'exact', head: true })
+      .eq('faaliyet_id', kayit.id)
+    gostergeSayisi = count ?? 0
+  }
+
   let sira = kayit?.sira_no ?? 0
   if (!kayit) {
     const altHedefId = Number(bag.alt_hedef_id)
@@ -82,7 +62,7 @@ export default async function PpPerformansFaaliyetFormSayfa({
     ad: kayit?.faaliyet_adi ?? '',
     aciklama: kayit?.aciklama ?? '',
     sira,
-    gostergeler,
+    gostergeSayisi,
   }
   const ph = sec.secenekler.find(s => s.id === Number(bag.alt_hedef_id))
   return (

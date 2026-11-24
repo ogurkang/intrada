@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ppNorm } from '@/lib/pp-erisim'
 import { ppFaaliyetKodu, ppGostergeKodu, ppKodSirala, ppKodTemiz, ppPerformansYol } from '@/lib/pp-iliski'
+import { ppPfOdenekSatirlariYukle } from '@/lib/pp-pf-odenek'
 
 export type PpRaporSayi = number | null
 
@@ -345,16 +346,29 @@ export async function ppPerformansRaporYili(
       kurum_ici: Boolean((f as { kurum_ici?: boolean }).kurum_ici),
     }))
     const pfIds = pfFaaliyetler.map(f => f.id)
-    const [{ data: pfGRaw }, { data: pfORaw }] = await Promise.all([
+    const [{ data: pfGRaw }, odenekYukle] = await Promise.all([
       pfIds.length
         ? sb.from('performans_programi_pf_gosterge').select('faaliyet_id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin').in('faaliyet_id', pfIds).order('sira_no')
         : Promise.resolve({ data: [] }),
-      pfIds.length
-        ? sb.from('performans_programi_pf_odenek').select('pf_faaliyet_id, butce_kodu_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin').in('pf_faaliyet_id', pfIds)
-        : Promise.resolve({ data: [] }),
+      ppPfOdenekSatirlariYukle(
+        sb as never,
+        pfIds,
+        't1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin',
+      ),
     ])
     pfGostergeler = (pfGRaw ?? []) as PfGosterge[]
-    pfOdenekler = (pfORaw ?? []) as PfOdenek[]
+    pfOdenekler = odenekYukle.data
+      .filter(o => o.butce_kodu_id != null)
+      .map(o => ({
+        pf_faaliyet_id: o.pf_faaliyet_id,
+        butce_kodu_id: o.butce_kodu_id as number,
+        t1_butce: o.t1_butce,
+        t1_haziran: o.t1_haziran,
+        t1_yil_sonu: o.t1_yil_sonu,
+        t_butce: o.t_butce,
+        t1_tahmin: o.t1_tahmin,
+        t2_tahmin: o.t2_tahmin,
+      })) as PfOdenek[]
     const kodIds = [...new Set(pfOdenekler.map(o => o.butce_kodu_id).filter(Number.isFinite))]
     const { data: kodRaw } = kodIds.length
       ? await sb.from('performans_programi_butce_kodu').select('id, adim_1').in('id', kodIds)
