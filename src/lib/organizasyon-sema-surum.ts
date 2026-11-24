@@ -54,12 +54,11 @@ export async function personelHareketiMudurKadroDegistiMi(
       .from('kadro_hareketleri')
       .select('id, kadro_unvan_id, gorev_unvan_id, kadro_unvani, gorev_unvani')
       .in('id', ids)
-    const unvanIds = [...new Set(
-      (kadrolar ?? [])
-        .flatMap((k: { kadro_unvan_id: number | null; gorev_unvan_id: number | null }) =>
-          [k.kadro_unvan_id, k.gorev_unvan_id])
-        .filter((n): n is number => n != null),
-    )]
+    const unvanIdAdaylari: Array<number | null> = (kadrolar ?? []).flatMap(
+      (k: { kadro_unvan_id: number | null; gorev_unvan_id: number | null }) =>
+        [k.kadro_unvan_id, k.gorev_unvan_id],
+    )
+    const unvanIds = [...new Set(unvanIdAdaylari.filter((n): n is number => n != null))]
     if (unvanIds.length) {
       const { data: unvanlar } = await supabase
         .from('tanim_unvan')
