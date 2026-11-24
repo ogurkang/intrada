@@ -503,14 +503,21 @@ function kartCizV2(doc: PdfDoc, kart: PersonelKazancBilgiKart) {
       font(doc, true)
       doc.fontSize(8).fillColor('#64748b').text(`${t.rol}${t.unvan_adi ? ` · ${t.unvan_adi}` : ''}`, MARGIN, y)
       y = doc.y + 4
-      y = alanTablosu(doc, y, [
-        { etiket: 'Kadro Derecesi', deger: metin(t.kadro_derecesi) },
-        { etiket: 'Görev Aylığı', deger: dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe) },
-        { etiket: 'KHA', deger: `${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}` },
-        { etiket: 'EKEA', deger: `${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}` },
-        { etiket: 'Kıdem', deger: `${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}` },
-        { etiket: 'İyi Hal', deger: tarihGoster(t.iyi_hal_terfi_tarihi) },
-      ])
+      const alanlar =
+        t.rol === 'Vekil'
+          ? [
+            { etiket: 'Kadro Derecesi', deger: metin(t.kadro_derecesi) },
+            { etiket: 'Görev Aylığı', deger: dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe) },
+          ]
+          : [
+            { etiket: 'Kadro Derecesi', deger: metin(t.kadro_derecesi) },
+            { etiket: 'Görev Aylığı', deger: dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe) },
+            { etiket: 'KHA', deger: `${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}` },
+            { etiket: 'EKEA', deger: `${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}` },
+            { etiket: 'Kıdem', deger: `${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}` },
+            { etiket: 'İyi Hal', deger: tarihGoster(t.iyi_hal_terfi_tarihi) },
+          ]
+      y = alanTablosu(doc, y, alanlar)
     }
   }
 

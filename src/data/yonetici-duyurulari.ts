@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-pkb-pdf-vekil-terfi',
+    baslik: '24 Kasım 2026 — Personel Kazanç Bilgileri PDF ve vekil terfi',
+    maddeler: [
+      'Tek «PDF indir» düğmesi kaldı (eski PDF 2 düzeni); Türkçe karakterli dosya adında oluşan hata giderildi.',
+      'Terfi Bilgileri’nde vekil satırında KHA, EKEA, Kıdem ve İyi Hal alanları kaldırıldı (ekran ve PDF).',
+    ],
+  },
+  {
     id: '2026-11-24-pp-gosterge-hedef-sira-sp',
     baslik: '24 Kasım 2026 — Gösterge ödenek, hedef açıklaması, PF sıra ve SP sıralama',
     maddeler: [

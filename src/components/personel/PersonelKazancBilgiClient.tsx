@@ -156,7 +156,7 @@ function UnvanFiltre({
 export default function PersonelKazancBilgiClient({ kartlar }: Props) {
   const [arama, setArama] = useState('')
   const [unvanFiltre, setUnvanFiltre] = useState<string[]>([])
-  const [pdfYukleniyor, setPdfYukleniyor] = useState<'1' | '2' | null>(null)
+  const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
   const [pdfHata, setPdfHata] = useState<string | null>(null)
 
   const unvanSecenekleri = useMemo(() => {
@@ -178,20 +178,19 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
     })
   }, [kartlar, arama, unvanFiltre])
 
-  async function pdfIndir(varyant: '1' | '2') {
+  async function pdfIndir() {
     setPdfHata(null)
     if (!filtreli.length) {
       setPdfHata('İndirilecek personel yok.')
       return
     }
-    setPdfYukleniyor(varyant)
+    setPdfYukleniyor(true)
     try {
       const res = await fetch('/api/personel/kazanc-bilgileri/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           siciller: filtreli.map(k => k.sicil_no),
-          varyant: varyant === '2' ? 2 : 1,
         }),
       })
       if (!res.ok) {
@@ -202,14 +201,10 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      if (varyant === '2') {
-        a.download =
-          filtreli.length === 1
-            ? `${dosyaAdGuvenli(filtreli[0].ad_soyad)}-PKB.pdf`
-            : 'Personel_Kazanc_Bilgileri-PKB.pdf'
-      } else {
-        a.download = 'Personel_Kazanc_Bilgileri.pdf'
-      }
+      a.download =
+        filtreli.length === 1
+          ? `${dosyaAdGuvenli(filtreli[0].ad_soyad)}-PKB.pdf`
+          : 'Personel_Kazanc_Bilgileri-PKB.pdf'
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -217,7 +212,7 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
     } catch (e) {
       setPdfHata(e instanceof Error ? e.message : 'PDF oluşturulamadı.')
     } finally {
-      setPdfYukleniyor(null)
+      setPdfYukleniyor(false)
     }
   }
 
@@ -248,19 +243,11 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
         />
         <button
           type="button"
-          onClick={() => pdfIndir('1')}
-          disabled={pdfYukleniyor != null || filtreli.length === 0}
+          onClick={() => pdfIndir()}
+          disabled={pdfYukleniyor || filtreli.length === 0}
           className="text-sm rounded-lg px-3 py-2 bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
         >
-          {pdfYukleniyor === '1' ? 'PDF hazırlanıyor…' : 'PDF indir'}
-        </button>
-        <button
-          type="button"
-          onClick={() => pdfIndir('2')}
-          disabled={pdfYukleniyor != null || filtreli.length === 0}
-          className="text-sm rounded-lg px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-        >
-          {pdfYukleniyor === '2' ? 'PDF 2 hazırlanıyor…' : 'PDF 2 indir'}
+          {pdfYukleniyor ? 'PDF hazırlanıyor…' : 'PDF indir'}
         </button>
         <span className="text-sm text-slate-500">{filtreli.length} personel</span>
         {pdfHata ? <span className="text-sm text-red-600">{pdfHata}</span> : null}
@@ -438,10 +425,6 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
                         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                           <Alan etiket="Kadro Derecesi" deger={metin(t.kadro_derecesi)} />
                           <Alan etiket="Görev Aylığı" deger={dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe)} />
-                          <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`} />
-                          <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`} />
-                          <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`} />
-                          <Alan etiket="İyi Hal" deger={tarihGoster(t.iyi_hal_terfi_tarihi)} />
                         </div>
                       </div>
                     ))}

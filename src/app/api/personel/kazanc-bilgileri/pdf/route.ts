@@ -3,10 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAppAccess, isAdminLike } from '@/lib/app-access'
 import { kullaniciPathAllowed } from '@/lib/menu-yetki'
 import { yuklePersonelKazancBilgiKartlari } from '@/lib/personel-kazanc-bilgi-yukle'
-import {
-  personelKazancBilgiPdfBuffer,
-  type PersonelKazancBilgiPdfVaryant,
-} from '@/lib/personel-kazanc-bilgi-pdf'
+import { personelKazancBilgiPdfBuffer } from '@/lib/personel-kazanc-bilgi-pdf'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,6 +15,19 @@ function dosyaAdGuvenli(ad: string): string {
     .replace(/[\\/:*?"<>|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/** HTTP Content-Disposition filename= yalnızca ASCII kabul eder. */
+function dosyaAdAscii(ad: string): string {
+  const harita: Record<string, string> = {
+    ç: 'c', Ç: 'C', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ş: 's', Ş: 'S', ü: 'u', Ü: 'U',
+  }
+  return ad
+    .replace(/[çÇğĞıİöÖşŞüÜ]/g, c => harita[c] ?? c)
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Personel_Kazanc_Bilgileri'
 }
 
 export async function POST(req: Request) {
@@ -38,7 +48,6 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => null)) as {
       siciller?: unknown
-      varyant?: unknown
     } | null
     const siciller = Array.isArray(body?.siciller)
       ? body.siciller.map(s => String(s).trim()).filter(Boolean)
@@ -47,26 +56,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Personel seçilmedi.' }, { status: 400 })
     }
 
-    const varyant: PersonelKazancBilgiPdfVaryant = body?.varyant === 2 || body?.varyant === '2' ? 2 : 1
-
     const kartlar = await yuklePersonelKazancBilgiKartlari(siciller)
     const sirali = siciller
       .map(s => kartlar.find(k => k.sicil_no === s))
       .filter((k): k is NonNullable<typeof k> => !!k)
 
-    const pdf = await personelKazancBilgiPdfBuffer(sirali, varyant)
-    let filename = 'Personel_Kazanc_Bilgileri.pdf'
-    if (varyant === 2) {
-      filename =
-        sirali.length === 1
-          ? `${dosyaAdGuvenli(sirali[0].ad_soyad)}-PKB.pdf`
-          : 'Personel_Kazanc_Bilgileri-PKB.pdf'
-    }
+    const pdf = await personelKazancBilgiPdfBuffer(sirali, 2)
+    const filenameUtf8 =
+      sirali.length === 1
+        ? `${dosyaAdGuvenli(sirali[0].ad_soyad)}-PKB.pdf`
+        : 'Personel_Kazanc_Bilgileri-PKB.pdf'
+    const filenameAscii =
+      sirali.length === 1
+        ? `${dosyaAdAscii(sirali[0].ad_soyad)}-PKB.pdf`
+        : 'Personel_Kazanc_Bilgileri-PKB.pdf'
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        'Content-Disposition': `attachment; filename="${filenameAscii}"; filename*=UTF-8''${encodeURIComponent(filenameUtf8)}`,
       },
     })
   } catch (e) {
