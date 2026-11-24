@@ -20,14 +20,31 @@ export default async function PpFaaliyetHedefleriPage({
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const [{ data: faaliyet }, { data: bagRaw }, { data: mudRaw }, sec] = await Promise.all([
+  const bagSorgu = await sb
+    .from('performans_programi_alt_program_hedef')
+    .select('id, alt_hedef_id, secilen_mudurluk, gerekce, hedef_aciklama')
+    .eq('faaliyet_id', faaliyetId)
+    .order('id')
+  const bagFallback = bagSorgu.error
+    ? await sb
+        .from('performans_programi_alt_program_hedef')
+        .select('id, alt_hedef_id, secilen_mudurluk, gerekce')
+        .eq('faaliyet_id', faaliyetId)
+        .order('id')
+    : bagSorgu
+  const [{ data: faaliyet }, { data: mudRaw }, sec] = await Promise.all([
     sb.from('performans_programi_pf_faaliyet').select('id, faaliyet_adi, alt_program_id').eq('id', faaliyetId).eq('alt_program_id', altId).maybeSingle(),
-    sb.from('performans_programi_alt_program_hedef').select('id, alt_hedef_id, secilen_mudurluk, gerekce').eq('faaliyet_id', faaliyetId).order('id'),
     sb.from('tanim_mudurluk').select('mudurluk_adi').eq('aktif', true).order('mudurluk_adi'),
     ppIliskiSecenekleri(),
   ])
   if (!faaliyet) notFound()
-  const baglar = (bagRaw ?? []) as { id: number; alt_hedef_id: number; secilen_mudurluk: string | null; gerekce?: string | null }[]
+  const baglar = (bagFallback.data ?? []) as {
+    id: number
+    alt_hedef_id: number
+    secilen_mudurluk: string | null
+    gerekce?: string | null
+    hedef_aciklama?: string | null
+  }[]
   const secenekById = new Map(sec.secenekler.map(s => [s.id, s]))
   const bagIds = baglar.map(b => b.id)
   const { data: pfRaw } = bagIds.length
@@ -47,6 +64,7 @@ export default async function PpFaaliyetHedefleriPage({
       altHedefId: b.alt_hedef_id,
       mudurluk: b.secilen_mudurluk ?? '',
       gerekce: b.gerekce ?? '',
+      hedefAciklama: b.hedef_aciklama ?? '',
       faaliyetSayisi: pfSay.get(b.id) ?? 0,
     }
   })

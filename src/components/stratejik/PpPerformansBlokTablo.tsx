@@ -45,6 +45,7 @@ export default function PpPerformansBlokTablo({
             <Bilgi etiket="ALT PROGRAM ADI:" deger={blok.altProgramAdi} />
             <Bilgi etiket="GEREKÇE ve AÇIKLAMALAR" deger={blok.gerekce} />
             <Bilgi etiket="ALT PROGRAMIN HEDEFİ" deger={blok.hedef} />
+            <Bilgi etiket="ALT PROGRAM HEDEFİ AÇIKLAMASI" deger={blok.hedefAciklama ?? ''} />
             <Bilgi etiket="VERİNİN KAYNAĞI/ SORUMLU BİRİM" deger={blok.veriKaynagi} />
             <tr>
               <td colSpan={9} className={`${BASLIK} text-center`}>PERFORMANS GÖSTERGELERİ</td>

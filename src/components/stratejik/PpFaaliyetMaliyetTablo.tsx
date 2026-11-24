@@ -37,6 +37,7 @@ export default function PpFaaliyetMaliyetTabloGorunum({
           <Bilgi etiket="Program Adı" deger={blok.programAdi} />
           <Bilgi etiket="Alt Program Adı" deger={blok.altProgramAdi} />
           <Bilgi etiket="Alt Program Hedefi" deger={blok.hedef} />
+          <Bilgi etiket="Alt Program Hedefi Açıklaması" deger={blok.hedefAciklama ?? ''} />
           <Bilgi etiket="Faaliyet Adı" deger={`PH ${tablo.kod} ${tablo.ad}`.trim()} />
           <tr>
             <td colSpan={7} className={`${DEGER} whitespace-pre-wrap`}>

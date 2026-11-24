@@ -175,10 +175,10 @@ export async function ppProgramSpRaporYili(
   }
 
   const satirlar = [...tekil.values()].sort((a, b) =>
-    a.programAdi.localeCompare(b.programAdi, 'tr')
-    || a.altProgramAdi.localeCompare(b.altProgramAdi, 'tr')
-    || ppKodSirala(a.hedefKod, b.hedefKod)
-    || a.performansHedefi.localeCompare(b.performansHedefi, 'tr'),
+    ppKodSirala(a.hedefKod, b.hedefKod)
+    || a.performansHedefi.localeCompare(b.performansHedefi, 'tr')
+    || a.programAdi.localeCompare(b.programAdi, 'tr')
+    || a.altProgramAdi.localeCompare(b.altProgramAdi, 'tr'),
   )
 
   return { yil, yillar, satirlar }

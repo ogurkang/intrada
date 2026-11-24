@@ -47,9 +47,19 @@ export default async function PpPerformansFaaliyetFormSayfa({
   let sira = kayit?.sira_no ?? 0
   if (!kayit) {
     const altHedefId = Number(bag.alt_hedef_id)
-    const { data: baglar } = Number.isFinite(altHedefId)
-      ? await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_hedef_id', altHedefId)
-      : { data: [] }
+    // Aynı performans programı (programId) içindeki bag’ler; diğer yıllar sayılmaz.
+    const { data: ayniProgramAlt } = await sb
+      .from('performans_programi_alt_program')
+      .select('id')
+      .eq('program_id', programId)
+    const altIds = ((ayniProgramAlt ?? []) as { id: number }[])
+      .map(a => Number(a.id))
+      .filter(n => Number.isFinite(n) && n > 0)
+    let bagSorgu = Number.isFinite(altHedefId)
+      ? sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_hedef_id', altHedefId)
+      : null
+    if (bagSorgu && altIds.length) bagSorgu = bagSorgu.in('alt_program_id', altIds)
+    const { data: baglar } = bagSorgu ? await bagSorgu : { data: [] }
     const bagIds = ((baglar ?? []) as { id: number }[]).map(b => Number(b.id)).filter(Number.isFinite)
     const { data: tum } = bagIds.length
       ? await sb.from('performans_programi_pf_faaliyet').select('sira_no').in('bag_id', bagIds)

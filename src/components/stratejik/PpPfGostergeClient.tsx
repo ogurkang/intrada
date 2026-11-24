@@ -3,7 +3,10 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ppPfGostergeFormKaydet } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/gosterge-actions'
-import type { PpOdenekKalem } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/odenek-actions'
+import {
+  ppPfKurumIciKaydet,
+  type PpOdenekKalem,
+} from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/odenek-actions'
 import { PP_BIRIMLER, ppGostergeKodu, ppParaOku, ppParaYaz } from '@/lib/pp-iliski'
 
 export type PpGostergeOdenekKod = PpOdenekKalem & { ekonomik_kod: string; hesap_adi: string }
@@ -55,6 +58,7 @@ export default function PpPfGostergeClient({
   fKod,
   baslangic,
   kodlar,
+  kurumIciBaslangic = false,
 }: {
   yil: number
   faaliyetId: number
@@ -62,6 +66,7 @@ export default function PpPfGostergeClient({
   fKod: string
   baslangic: PpPfGostergeBaslangic
   kodlar: PpGostergeOdenekKod[]
+  kurumIciBaslangic?: boolean
 }) {
   const router = useRouter()
   const [ad, setAd] = useState(baslangic.ad)
@@ -78,6 +83,7 @@ export default function PpPfGostergeClient({
   })
   const [ara, setAra] = useState('')
   const [hata, setHata] = useState<string | null>(null)
+  const [kurumIci, setKurumIci] = useState(kurumIciBaslangic)
   const [bekliyor, start] = useTransition()
   const [degerler, setDegerler] = useState<Record<number, Record<Alan, string>>>(() => {
     const m: Record<number, Record<Alan, string>> = {}
@@ -104,6 +110,25 @@ export default function PpPfGostergeClient({
       : kodlar
     return [...liste].sort((a, b) => a.ekonomik_kod.localeCompare(b.ekonomik_kod, 'tr'))
   }, [ara, kodlar])
+
+  function kurumIciIsle() {
+    setHata(null)
+    const sonraki = !kurumIci
+    start(async () => {
+      const s = await ppPfKurumIciKaydet(faaliyetId, sonraki)
+      if (s.hata) {
+        setHata(s.hata)
+        return
+      }
+      setKurumIci(sonraki)
+      try {
+        window.opener?.location.reload()
+      } catch {
+        /* ignore */
+      }
+      router.refresh()
+    })
+  }
 
   function kaydet() {
     if (!ad.trim()) {
@@ -175,11 +200,23 @@ export default function PpPfGostergeClient({
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-xs text-slate-500">Performans faaliyeti</p>
-        <p className="text-sm font-medium text-slate-800">
-          <span className="font-mono text-slate-600">{fKod}</span> · {faaliyetAd}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-slate-500">Performans faaliyeti</p>
+          <p className="text-sm font-medium text-slate-800">
+            <span className="font-mono text-slate-600">{fKod}</span> · {faaliyetAd}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={kurumIciIsle}
+          disabled={bekliyor}
+          className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+            kurumIci ? 'bg-orange-700 hover:bg-orange-600' : 'bg-orange-500 hover:bg-orange-400'
+          }`}
+        >
+          {kurumIci ? 'Kurum İçi (aktif)' : 'Kurum İçi'}
+        </button>
       </div>
 
       <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">

@@ -49,6 +49,8 @@ export type PpPerformansBlok = {
   altProgramAdi: string
   gerekce: string
   hedef: string
+  /** Alt program hedefi (bag) serbest açıklama metni */
+  hedefAciklama?: string
   veriKaynagi: string
   gostergeler: PpPerformansGosterge[]
   faaliyetler: PpPerformansFaaliyet[]
@@ -263,11 +265,27 @@ export async function ppPerformansRaporYili(
     : { data: [] }
   const altlar = (altRaw ?? []) as { id: number; program_id: number; alt_program_adi: string; gerekce: string | null }[]
   const altIds = altlar.map(a => a.id)
-  type Bag = { id: number; alt_program_id: number; alt_hedef_id: number; secilen_mudurluk: string | null; gerekce: string | null }
-  const { data: bagRaw } = altIds.length
-    ? await sb.from('performans_programi_alt_program_hedef').select('id, alt_program_id, alt_hedef_id, secilen_mudurluk, gerekce').in('alt_program_id', altIds)
-    : { data: [] }
-  const baglar = (bagRaw ?? []) as Bag[]
+  type Bag = {
+    id: number
+    alt_program_id: number
+    alt_hedef_id: number
+    secilen_mudurluk: string | null
+    gerekce: string | null
+    hedef_aciklama?: string | null
+  }
+  const bagSorgu = altIds.length
+    ? await sb
+        .from('performans_programi_alt_program_hedef')
+        .select('id, alt_program_id, alt_hedef_id, secilen_mudurluk, gerekce, hedef_aciklama')
+        .in('alt_program_id', altIds)
+    : { data: [] as Bag[], error: null }
+  const bagFallback = bagSorgu.error
+    ? await sb
+        .from('performans_programi_alt_program_hedef')
+        .select('id, alt_program_id, alt_hedef_id, secilen_mudurluk, gerekce')
+        .in('alt_program_id', altIds)
+    : bagSorgu
+  const baglar = (bagFallback.data ?? []) as Bag[]
   const hedefIdSet = [...new Set(baglar.map(b => b.alt_hedef_id))]
   /** İdare: her performans hedefi ayrı tablo; PF faaliyet/gösterge bag üzerinden. */
   const hedefBasinaBlok = mudurlukKaynak === 'secilen'
@@ -580,6 +598,9 @@ export async function ppPerformansRaporYili(
       .map(b => ppGerekceMetin(b.gerekce))
       .find(g => !!g)
     const altGerekce = ppGerekceMetin(alt.gerekce)
+    const bagHedefAciklama = ilgiliBags
+      .map(b => ppGerekceMetin(b.hedef_aciklama))
+      .find(g => !!g) ?? ''
 
     return {
       tabloKey: ppIdareTabloKey(alt.id, h.id),
@@ -591,6 +612,7 @@ export async function ppPerformansRaporYili(
       altProgramAdi: alt.alt_program_adi,
       gerekce: bagGerekce || altGerekce || PP_GEREKCE_BOS,
       hedef: `PH ${phKod} ${h.alt_hedef_adi}`.trim(),
+      hedefAciklama: bagHedefAciklama,
       veriKaynagi: sorumluMetin,
       gostergeler: gostergeSatir,
       faaliyetler,
@@ -809,6 +831,10 @@ function ppIdareBloklariBirlestir(bloklar: PpPerformansBlok[]): PpPerformansBlok
     sirali.map(b => b.gerekce).filter(g => g && g !== PP_GEREKCE_BOS),
   )]
   const gerekce = gerekceler.join('\n\n') || ilk.gerekce
+  const hedefAciklamalar = [...new Set(
+    sirali.map(b => String(b.hedefAciklama ?? '').trim()).filter(Boolean),
+  )]
+  const hedefAciklama = hedefAciklamalar.join('\n\n') || ilk.hedefAciklama || ''
   const hedefKod = ilk.hedefKod || sirali.find(b => b.hedefKod)?.hedefKod
   const hedefAd = ilk.hedefAd || sirali.find(b => b.hedefAd)?.hedefAd
 
@@ -820,6 +846,7 @@ function ppIdareBloklariBirlestir(bloklar: PpPerformansBlok[]): PpPerformansBlok
     hedefKod,
     hedefAd,
     hedef: hedefKod ? `PH ${hedefKod} ${hedefAd ?? ''}`.trim() : ilk.hedef,
+    hedefAciklama,
     programAdi: programlar.join(', '),
     altProgramAdi: altProgramlar.join(', '),
     veriKaynagi: sorumlu,

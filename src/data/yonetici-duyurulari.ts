@@ -7,6 +7,17 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-pp-gosterge-hedef-sira-sp',
+    baslik: '24 Kasım 2026 — Gösterge ödenek, hedef açıklaması, PF sıra ve SP sıralama',
+    maddeler: [
+      'Gösterge listesinde ödenek teklifi sütunları yeniden renklidir; göz ikonu ile göstergeye bağlı ödenekler popup’ta görülür.',
+      'Alt program hedefi eklerken «Gerekçe ve Açıklamalar»dan sonra «Alt Program Hedefi Açıklaması» alanı vardır; İdare Performans Bilgisi (ekran ve Excel) ile faaliyet maliyetlerinde hedef altında görünür.',
+      'Performans faaliyeti sıra numarası artık her performans programında (yıl) baştan başlar; önceki yılların 2.5.2.1 kaydı yeni yılda 2.5.2.2 üretmez.',
+      'Program–Alt Program SP tablosu Performans Hedefi koduna göre; Müdürlüklerin Program–Alt Program SP tablosu STRATEJİK AMAÇ numarasına göre sıralanır.',
+      'Supabase’te 20261124200000_pp_hedef_aciklama.sql dosyasını bir kez çalıştırın (hedef_aciklama sütunu). Ödenek gösterge bağını için 20261124180000 henüz uygulanmadıysa onu da çalıştırın.',
+    ],
+  },
+  {
     id: '2026-11-24-pp-odenek-gosterge',
     baslik: '24 Kasım 2026 — Ödenek teklifi göstergeye bağlandı',
     maddeler: [

@@ -66,7 +66,10 @@ async function yazabilir(altHedefId: number): Promise<{ hata?: string }> {
 }
 
 function tabloYok(mesaj: string): boolean {
-  return mesaj.includes('performans_programi_pf_') || mesaj.includes('schema cache') || mesaj.includes('gerekce')
+  return mesaj.includes('performans_programi_pf_')
+    || mesaj.includes('schema cache')
+    || mesaj.includes('gerekce')
+    || mesaj.includes('hedef_aciklama')
 }
 
 export async function ppIliskiKaydet(girdi: {
@@ -248,6 +251,7 @@ export async function ppAltProgramHedefiEkle(
   altHedefId: number,
   mudurluk: string,
   gerekce = '',
+  hedefAciklama = '',
 ): Promise<{ hata?: string }> {
   const mud = mudurluk.trim()
   if (!Number.isFinite(altHedefId)) return { hata: 'Performans hedefi seçin.' }
@@ -258,13 +262,25 @@ export async function ppAltProgramHedefiEkle(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud)) return { hata: HEDEF_MUDURLUK }
-  const { data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
+  const gerekceTemiz = ppZenginMetinTemiz(gerekce)
+  const aciklamaTemiz = ppZenginMetinTemiz(hedefAciklama)
+  let { data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
     alt_program_id: altProgramId,
     alt_hedef_id: altHedefId,
     faaliyet_id: faaliyetId,
     secilen_mudurluk: mud,
-    gerekce: ppZenginMetinTemiz(gerekce),
+    gerekce: gerekceTemiz,
+    hedef_aciklama: aciklamaTemiz,
   }).select('id').single()
+  if (error && tabloYok(String(error.message))) {
+    ;({ data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
+      alt_program_id: altProgramId,
+      alt_hedef_id: altHedefId,
+      faaliyet_id: faaliyetId,
+      secilen_mudurluk: mud,
+      gerekce: gerekceTemiz,
+    }).select('id').single())
+  }
   if (error) {
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
     return { hata: error.message }
@@ -283,6 +299,7 @@ export async function ppAltProgramHedefiGuncelle(
   altHedefId: number,
   mudurluk: string,
   gerekce = '',
+  hedefAciklama = '',
 ): Promise<{ hata?: string }> {
   const mud = mudurluk.trim()
   if (!Number.isFinite(id) || id <= 0) return { hata: 'Kayıt bulunamadı.' }
@@ -294,11 +311,21 @@ export async function ppAltProgramHedefiGuncelle(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
   if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud, id)) return { hata: HEDEF_MUDURLUK }
-  const { error } = await sb.from('performans_programi_alt_program_hedef').update({
+  const gerekceTemiz = ppZenginMetinTemiz(gerekce)
+  const aciklamaTemiz = ppZenginMetinTemiz(hedefAciklama)
+  let { error } = await sb.from('performans_programi_alt_program_hedef').update({
     alt_hedef_id: altHedefId,
     secilen_mudurluk: mud,
-    gerekce: ppZenginMetinTemiz(gerekce),
+    gerekce: gerekceTemiz,
+    hedef_aciklama: aciklamaTemiz,
   }).eq('id', id).eq('faaliyet_id', faaliyetId).eq('alt_program_id', altProgramId)
+  if (error && tabloYok(String(error.message))) {
+    ;({ error } = await sb.from('performans_programi_alt_program_hedef').update({
+      alt_hedef_id: altHedefId,
+      secilen_mudurluk: mud,
+      gerekce: gerekceTemiz,
+    }).eq('id', id).eq('faaliyet_id', faaliyetId).eq('alt_program_id', altProgramId))
+  }
   if (error) {
     if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
     return { hata: error.message }
@@ -311,19 +338,45 @@ export async function ppAltProgramHedefiGuncelle(
 const BAGLI_KAYIT = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
 const HEDEF_MUDURLUK = 'Bu performans hedefi bu müdürlükle zaten bağlı.'
 
-/** Aynı performans hedefine (alt_hedef) bağlı tüm müdürlük bag’lerindeki en yüksek sıra + 1. */
+/**
+ * Aynı performans hedefine (alt_hedef) bağlı, aynı performans programı (yıl/program)
+ * içindeki müdürlük bag’lerindeki en yüksek sıra + 1. Diğer yılların programları sayılmaz.
+ */
 async function sonrakiPhFaaliyetSira(sb: { from: (t: string) => any }, bagId: number): Promise<number> {
   const { data: bag } = await sb
     .from('performans_programi_alt_program_hedef')
-    .select('alt_hedef_id')
+    .select('alt_hedef_id, alt_program_id')
     .eq('id', bagId)
     .maybeSingle()
   const altHedefId = Number((bag as { alt_hedef_id?: number } | null)?.alt_hedef_id)
+  const altProgramId = Number((bag as { alt_program_id?: number } | null)?.alt_program_id)
   if (!Number.isFinite(altHedefId) || altHedefId <= 0) return 1
-  const { data: baglar } = await sb
+
+  let altIds: number[] = Number.isFinite(altProgramId) && altProgramId > 0 ? [altProgramId] : []
+  if (altIds.length) {
+    const { data: alt } = await sb
+      .from('performans_programi_alt_program')
+      .select('program_id')
+      .eq('id', altProgramId)
+      .maybeSingle()
+    const programId = Number((alt as { program_id?: number } | null)?.program_id)
+    if (Number.isFinite(programId) && programId > 0) {
+      const { data: ayniProgram } = await sb
+        .from('performans_programi_alt_program')
+        .select('id')
+        .eq('program_id', programId)
+      altIds = ((ayniProgram ?? []) as { id: number }[])
+        .map(a => Number(a.id))
+        .filter(n => Number.isFinite(n) && n > 0)
+    }
+  }
+
+  let bagSorgu = sb
     .from('performans_programi_alt_program_hedef')
     .select('id')
     .eq('alt_hedef_id', altHedefId)
+  if (altIds.length) bagSorgu = bagSorgu.in('alt_program_id', altIds)
+  const { data: baglar } = await bagSorgu
   const bagIds = ((baglar ?? []) as { id: number }[]).map(b => Number(b.id)).filter(n => Number.isFinite(n))
   if (!bagIds.length) return 1
   const { data: varOlan } = await sb

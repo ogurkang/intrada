@@ -20,12 +20,27 @@ export default async function PpPfGostergeFormSayfa({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
-  const { data: faaliyet } = await sb
+  const kurumlu = await sb
     .from('performans_programi_pf_faaliyet')
-    .select('id, bag_id, sira_no, faaliyet_adi')
+    .select('id, bag_id, sira_no, faaliyet_adi, kurum_ici')
     .eq('id', faaliyetId)
     .maybeSingle()
+  const faaliyetRes = kurumlu.error
+    ? await sb
+        .from('performans_programi_pf_faaliyet')
+        .select('id, bag_id, sira_no, faaliyet_adi')
+        .eq('id', faaliyetId)
+        .maybeSingle()
+    : kurumlu
+  const faaliyet = faaliyetRes.data as {
+    id: number
+    bag_id: number
+    sira_no: number
+    faaliyet_adi: string
+    kurum_ici?: boolean
+  } | null
   if (!faaliyet) notFound()
+  const kurumIci = Boolean(faaliyet.kurum_ici)
   const bagId = Number(faaliyet.bag_id)
   const { data: bag } = await sb
     .from('performans_programi_alt_program_hedef')
@@ -190,6 +205,7 @@ export default async function PpPfGostergeFormSayfa({
         fKod={fKod}
         baslangic={baslangic}
         kodlar={kodlar}
+        kurumIciBaslangic={kurumIci}
       />
     </div>
   )

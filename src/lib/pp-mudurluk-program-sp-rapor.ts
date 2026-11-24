@@ -15,6 +15,7 @@ export type PpMudurlukProgramSpSatir = {
   performansHedefi: string
   mudurluk: string
   hedefKod: string
+  amacNo: number
 }
 
 export type PpMudurlukProgramSpRapor = {
@@ -219,14 +220,16 @@ export async function ppMudurlukProgramSpRaporYili(
         : ph.alt_hedef_adi,
       mudurluk,
       hedefKod,
+      amacNo,
     })
   }
 
   satirlar.sort((a, b) =>
     a.mudurluk.localeCompare(b.mudurluk, 'tr')
+    || (a.amacNo - b.amacNo)
+    || ppKodSirala(a.hedefKod, b.hedefKod)
     || a.programAdi.localeCompare(b.programAdi, 'tr')
     || a.altProgramAdi.localeCompare(b.altProgramAdi, 'tr')
-    || ppKodSirala(a.hedefKod, b.hedefKod)
     || a.faaliyetAdi.localeCompare(b.faaliyetAdi, 'tr'),
   )
 

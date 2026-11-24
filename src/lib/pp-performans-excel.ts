@@ -126,7 +126,9 @@ export async function ppPerformansExcelOlustur(
     yazi(ws.getCell(bas + 4, 3), blok.altProgramAdi)
     yazi(ws.getCell(bas + 5, 3), blok.gerekce)
     yazi(ws.getCell(bas + 6, 3), blok.hedef)
-    yazi(ws.getCell(bas + 7, 1), null)
+    // Hedef altındaki satır: Alt Program Hedefi Açıklaması
+    yazi(ws.getCell(bas + 7, 1), 'ALT PROGRAM HEDEFİ AÇIKLAMASI')
+    yazi(ws.getCell(bas + 7, 3), blok.hedefAciklama ?? '')
     yazi(ws.getCell(bas + 8, 3), blok.veriKaynagi)
     gBaslik.forEach((b, i) => yazi(ws.getCell(bas + 10, 4 + i), b))
 
@@ -264,6 +266,7 @@ function faaliyetMaliyetYaz(
   bilgi('Program Adı', blok.programAdi)
   bilgi('Alt Program Adı', blok.altProgramAdi)
   bilgi('Alt Program Hedefi', blok.hedef)
+  bilgi('Alt Program Hedefi Açıklaması', blok.hedefAciklama ?? '')
   bilgi('Faaliyet Adı', `PH ${tablo.kod} ${tablo.ad}`.trim())
 
   // Açıklama — tam birleşik, ~3 satır yüksekliği

@@ -4,6 +4,7 @@ import StratejikPlanBreadcrumb from '@/components/stratejik/StratejikPlanBreadcr
 import PpPfGostergeListeClient, {
   type PpPfGostergeListeSatir,
   type PpMaliyetToplam,
+  type PpGostergeOdenekOzet,
 } from '@/components/stratejik/PpPfGostergeListeClient'
 import { ppIliskiSecenekleri } from '../../../islemler/[donem_id]/[program_id]/iliski-actions'
 import { ppFaaliyetKodu, ppGostergeKodu } from '@/lib/pp-iliski'
@@ -22,27 +23,12 @@ export default async function PpPfGostergeListePage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
-  const kurumlu = await sb
+  const { data: faaliyet } = await sb
     .from('performans_programi_pf_faaliyet')
-    .select('id, bag_id, sira_no, faaliyet_adi, kurum_ici')
+    .select('id, bag_id, sira_no, faaliyet_adi')
     .eq('id', faaliyetId)
     .maybeSingle()
-  const faaliyetRes = kurumlu.error
-    ? await sb
-        .from('performans_programi_pf_faaliyet')
-        .select('id, bag_id, sira_no, faaliyet_adi')
-        .eq('id', faaliyetId)
-        .maybeSingle()
-    : kurumlu
-  const faaliyet = faaliyetRes.data as {
-    id: number
-    bag_id: number
-    sira_no: number
-    faaliyet_adi: string
-    kurum_ici?: boolean
-  } | null
   if (!faaliyet) notFound()
-  const kurumIci = Boolean(faaliyet.kurum_ici)
   const bagId = Number(faaliyet.bag_id)
   const { data: bag } = await sb
     .from('performans_programi_alt_program_hedef')
@@ -75,12 +61,38 @@ export default async function PpPfGostergeListePage({
   const gostergeler = (gRaw ?? []) as { id: number; sira_no: number; gosterge_adi: string }[]
   const gIds = gostergeler.map(g => g.id)
 
+  type OdenekHam = {
+    pf_gosterge_id?: number
+    butce_kodu_id?: number
+    t1_butce?: number | null
+    t1_haziran?: number | null
+    t1_yil_sonu?: number | null
+    t_butce?: number | null
+    t1_tahmin?: number | null
+    t2_tahmin?: number | null
+  }
+
   const odenekSorgu = gIds.length
     ? await sb
         .from('performans_programi_pf_odenek')
-        .select('pf_gosterge_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin')
+        .select('pf_gosterge_id, butce_kodu_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin')
         .in('pf_gosterge_id', gIds)
-    : { data: [] as unknown[], error: null }
+    : { data: [] as OdenekHam[], error: null }
+
+  const odenekler = !odenekSorgu.error
+    ? ((odenekSorgu.data ?? []) as OdenekHam[])
+    : []
+  const kodIds = [...new Set(odenekler.map(o => Number(o.butce_kodu_id)).filter(n => Number.isFinite(n) && n > 0))]
+  const kodMap = new Map<number, { ekonomik_kod: string; hesap_adi: string }>()
+  if (kodIds.length) {
+    const { data: kodRaw } = await sb
+      .from('performans_programi_butce_kodu')
+      .select('id, ekonomik_kod, hesap_adi')
+      .in('id', kodIds)
+    for (const k of (kodRaw ?? []) as { id: number; ekonomik_kod: string; hesap_adi: string }[]) {
+      kodMap.set(Number(k.id), { ekonomik_kod: k.ekonomik_kod, hesap_adi: k.hesap_adi })
+    }
+  }
 
   const bos = (): PpMaliyetToplam => ({
     t1Butce: 0,
@@ -91,37 +103,47 @@ export default async function PpPfGostergeListePage({
     t2Tahmin: 0,
   })
   const maliyet = new Map<number, PpMaliyetToplam>()
-  if (!odenekSorgu.error) {
-    for (const r of odenekSorgu.data ?? []) {
-      const satir = r as {
-        pf_gosterge_id?: number
-        t1_butce?: number | null
-        t1_haziran?: number | null
-        t1_yil_sonu?: number | null
-        t_butce?: number | null
-        t1_tahmin?: number | null
-        t2_tahmin?: number | null
-      }
-      const id = Number(satir.pf_gosterge_id)
-      if (!Number.isFinite(id)) continue
-      const toplam = maliyet.get(id) ?? bos()
-      toplam.t1Butce += Number(satir.t1_butce ?? 0)
-      toplam.t1Haziran += Number(satir.t1_haziran ?? 0)
-      toplam.t1YilSonu += Number(satir.t1_yil_sonu ?? 0)
-      toplam.tButce += Number(satir.t_butce ?? 0)
-      toplam.t1Tahmin += Number(satir.t1_tahmin ?? 0)
-      toplam.t2Tahmin += Number(satir.t2_tahmin ?? 0)
-      maliyet.set(id, toplam)
-    }
+  const odenekByGosterge = new Map<number, PpGostergeOdenekOzet[]>()
+  for (const satir of odenekler) {
+    const id = Number(satir.pf_gosterge_id)
+    if (!Number.isFinite(id)) continue
+    const toplam = maliyet.get(id) ?? bos()
+    toplam.t1Butce += Number(satir.t1_butce ?? 0)
+    toplam.t1Haziran += Number(satir.t1_haziran ?? 0)
+    toplam.t1YilSonu += Number(satir.t1_yil_sonu ?? 0)
+    toplam.tButce += Number(satir.t_butce ?? 0)
+    toplam.t1Tahmin += Number(satir.t1_tahmin ?? 0)
+    toplam.t2Tahmin += Number(satir.t2_tahmin ?? 0)
+    maliyet.set(id, toplam)
+
+    const kod = kodMap.get(Number(satir.butce_kodu_id))
+    const liste = odenekByGosterge.get(id) ?? []
+    liste.push({
+      ekonomik_kod: kod?.ekonomik_kod ?? String(satir.butce_kodu_id ?? ''),
+      hesap_adi: kod?.hesap_adi ?? '',
+      t1Butce: satir.t1_butce ?? null,
+      t1Haziran: satir.t1_haziran ?? null,
+      t1YilSonu: satir.t1_yil_sonu ?? null,
+      tButce: satir.t_butce ?? null,
+      t1Tahmin: satir.t1_tahmin ?? null,
+      t2Tahmin: satir.t2_tahmin ?? null,
+    })
+    odenekByGosterge.set(id, liste)
   }
 
-  const satirlar: PpPfGostergeListeSatir[] = gostergeler.map(g => ({
-    id: g.id,
-    sira: g.sira_no,
-    kod: ppGostergeKodu(fKod, g.sira_no),
-    ad: g.gosterge_adi,
-    maliyet: maliyet.get(g.id) ?? bos(),
-  }))
+  const satirlar: PpPfGostergeListeSatir[] = gostergeler.map(g => {
+    const odeneklerSatir = [...(odenekByGosterge.get(g.id) ?? [])].sort((a, b) =>
+      a.ekonomik_kod.localeCompare(b.ekonomik_kod, 'tr'),
+    )
+    return {
+      id: g.id,
+      sira: g.sira_no,
+      kod: ppGostergeKodu(fKod, g.sira_no),
+      ad: g.gosterge_adi,
+      maliyet: maliyet.get(g.id) ?? bos(),
+      odenekler: odeneklerSatir,
+    }
+  })
 
   return (
     <div className="space-y-4">
@@ -152,7 +174,6 @@ export default async function PpPfGostergeListePage({
         faaliyetId={faaliyetId}
         baslik={`${fKod} · ${faaliyet.faaliyet_adi}`}
         satirlar={satirlar}
-        kurumIciBaslangic={kurumIci}
       />
     </div>
   )
