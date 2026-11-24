@@ -7,6 +7,13 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-pkb-mevzuat-sayfa',
+    baslik: '24 Kasım 2026 — PKB PDF mevzuat sayfa düzeni',
+    maddeler: [
+      'Personel Kazanç Bilgileri PDF’te Mevzuat Hükümleri bloğu mevcut sayfaya sığmazsa bütünü sonraki sayfada başlar; başlık yalnızca bir kez yazılır.',
+    ],
+  },
+  {
     id: '2026-11-24-pkb-pdf-vekil-terfi',
     baslik: '24 Kasım 2026 — Personel Kazanç Bilgileri PDF ve vekil terfi',
     maddeler: [

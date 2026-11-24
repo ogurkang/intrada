@@ -316,23 +316,36 @@ function kazancKatsayiTablosu(doc: PdfDoc, y: number, terfiler: PersonelKazancBi
   return y + th + 8
 }
 
-function mevzuatBaslik(doc: PdfDoc, y: number): number {
-  y = sayfaBasi(doc, y, 20)
-  font(doc, true)
-  doc.fontSize(10).fillColor('#334155').text('Mevzuat Hükümleri', MARGIN, y, { width: CONTENT_W })
-  return doc.y + 6
-}
-
-function mevzuatTablosu(doc: PdfDoc, y: number, kalemler: { baslik: string; aciklama: string }[]): number {
+function mevzuatBolumuCiz(doc: PdfDoc, y: number, kalemler: { baslik: string; aciklama: string }[]): number {
   const etiketW = 100
   const degerW = CONTENT_W - etiketW
-  for (const k of kalemler) {
+  const baslikH = 20
+  const yukseklikler = kalemler.map(k => {
     const hE = hucreYukseklik(doc, k.baslik, etiketW, 8, true)
     const hD = hucreYukseklik(doc, k.aciklama, degerW, 8)
-    const h = Math.max(hE, hD, 20)
+    return Math.max(hE, hD, 20)
+  })
+  const tabloH = yukseklikler.reduce((a, b) => a + b, 0)
+  const toplamH = baslikH + tabloH + 6
+  const sayfaIci = PAGE_H - MARGIN * 2
+
+  // Tek sayfaya sığacaksa ve mevcut sayfada yer yoksa bütünü sonraki sayfaya al; başlık bir kez yazılır.
+  if (toplamH <= sayfaIci && y + toplamH > PAGE_H - MARGIN && y > MARGIN + 1) {
+    doc.addPage()
+    y = MARGIN
+  }
+
+  font(doc, true)
+  doc.fontSize(10).fillColor('#334155').text('Mevzuat Hükümleri', MARGIN, y, { width: CONTENT_W })
+  y = doc.y + 6
+
+  for (let i = 0; i < kalemler.length; i++) {
+    const k = kalemler[i]
+    const h = yukseklikler[i]
+    // Tek satır bile sığmazsa (çok uzun metin) sayfa kır; başlığı tekrarlama.
     if (y + h > PAGE_H - MARGIN) {
       doc.addPage()
-      y = mevzuatBaslik(doc, MARGIN)
+      y = MARGIN
     }
     hucre(doc, MARGIN, y, etiketW, h, k.baslik, { bold: true, size: 8, zemin: '#f8fafc' })
     hucre(doc, MARGIN + etiketW, y, degerW, h, k.aciklama, { size: 8, renk: '#334155' })
@@ -399,8 +412,7 @@ function mevzuatBolumu(doc: PdfDoc, y: number, kart: PersonelKazancBilgiKart): n
     y = bolumBaslik(doc, y, 'Mevzuat Hükümleri')
     return bosSatir(doc, y, 'Mevzuat kaydı yok.')
   }
-  y = mevzuatBaslik(doc, y)
-  return mevzuatTablosu(
+  return mevzuatBolumuCiz(
     doc,
     y,
     kart.mevzuat.map(m => ({ baslik: m.baslik, aciklama: m.aciklama })),
