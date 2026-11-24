@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { trNormalize } from '@/lib/turkce-search'
 import { toGgAayyyy } from '@/lib/tarih'
-import type { PersonelKazancBilgiKart } from '@/lib/personel-kazanc-bilgi'
+import type { PersonelKazancBilgiKart, PersonelKazancBilgiTerfi } from '@/lib/personel-kazanc-bilgi'
 
 interface Props {
   kartlar: PersonelKazancBilgiKart[]
@@ -22,6 +22,27 @@ function tarihGoster(v: string | null | undefined): string {
 function dk(d: string | null | undefined, k: string | null | undefined): string {
   if (!d && !k) return '—'
   return `${metin(d)}/${metin(k)}`
+}
+
+function sayiParse(v: string | null | undefined): number {
+  const ham = String(v ?? '').trim()
+  if (!ham) return 0
+  const temiz = ham.replace(/%/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const n = Number.parseFloat(temiz)
+  return Number.isFinite(n) ? n : 0
+}
+
+function sayiGoster(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '0'
+  return String(Math.round(n * 100) / 100)
+}
+
+function dosyaAdGuvenli(ad: string): string {
+  return ad
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function Alan({ etiket, deger }: { etiket: string; deger: string }) {
@@ -43,6 +64,20 @@ function EvetHayir({ deger }: { deger: boolean }) {
       Hayır
     </span>
   )
+}
+
+function kazancSatirlari(terfiler: PersonelKazancBilgiTerfi[]) {
+  const asiller = terfiler.filter(t => t.rol === 'Asil')
+  const vekiller = terfiler.filter(t => t.rol === 'Vekil')
+  const satirlar = [...asiller, ...vekiller]
+  const toplam = {
+    ek_gosterge: satirlar.reduce((a, t) => a + sayiParse(t.ek_gosterge), 0),
+    ek_odeme: satirlar.reduce((a, t) => a + sayiParse(t.ek_odeme), 0),
+    oht: satirlar.reduce((a, t) => a + sayiParse(t.oht), 0),
+    yan_odeme: satirlar.reduce((a, t) => a + sayiParse(t.yan_odeme), 0),
+    sds_orani: satirlar.reduce((a, t) => a + sayiParse(t.sds_orani), 0),
+  }
+  return { satirlar, toplam }
 }
 
 function UnvanFiltre({
@@ -121,7 +156,7 @@ function UnvanFiltre({
 export default function PersonelKazancBilgiClient({ kartlar }: Props) {
   const [arama, setArama] = useState('')
   const [unvanFiltre, setUnvanFiltre] = useState<string[]>([])
-  const [pdfYukleniyor, setPdfYukleniyor] = useState(false)
+  const [pdfYukleniyor, setPdfYukleniyor] = useState<'1' | '2' | null>(null)
   const [pdfHata, setPdfHata] = useState<string | null>(null)
 
   const unvanSecenekleri = useMemo(() => {
@@ -143,18 +178,21 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
     })
   }, [kartlar, arama, unvanFiltre])
 
-  async function pdfIndir() {
+  async function pdfIndir(varyant: '1' | '2') {
     setPdfHata(null)
     if (!filtreli.length) {
       setPdfHata('İndirilecek personel yok.')
       return
     }
-    setPdfYukleniyor(true)
+    setPdfYukleniyor(varyant)
     try {
       const res = await fetch('/api/personel/kazanc-bilgileri/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siciller: filtreli.map(k => k.sicil_no) }),
+        body: JSON.stringify({
+          siciller: filtreli.map(k => k.sicil_no),
+          varyant: varyant === '2' ? 2 : 1,
+        }),
       })
       if (!res.ok) {
         const j = (await res.json().catch(() => null)) as { error?: string } | null
@@ -164,7 +202,14 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'Personel_Kazanc_Bilgileri.pdf'
+      if (varyant === '2') {
+        a.download =
+          filtreli.length === 1
+            ? `${dosyaAdGuvenli(filtreli[0].ad_soyad)}-PKB.pdf`
+            : 'Personel_Kazanc_Bilgileri-PKB.pdf'
+      } else {
+        a.download = 'Personel_Kazanc_Bilgileri.pdf'
+      }
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -172,7 +217,7 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
     } catch (e) {
       setPdfHata(e instanceof Error ? e.message : 'PDF oluşturulamadı.')
     } finally {
-      setPdfYukleniyor(false)
+      setPdfYukleniyor(null)
     }
   }
 
@@ -203,11 +248,19 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
         />
         <button
           type="button"
-          onClick={pdfIndir}
-          disabled={pdfYukleniyor || filtreli.length === 0}
+          onClick={() => pdfIndir('1')}
+          disabled={pdfYukleniyor != null || filtreli.length === 0}
           className="text-sm rounded-lg px-3 py-2 bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
         >
-          {pdfYukleniyor ? 'PDF hazırlanıyor…' : 'PDF indir'}
+          {pdfYukleniyor === '1' ? 'PDF hazırlanıyor…' : 'PDF indir'}
+        </button>
+        <button
+          type="button"
+          onClick={() => pdfIndir('2')}
+          disabled={pdfYukleniyor != null || filtreli.length === 0}
+          className="text-sm rounded-lg px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {pdfYukleniyor === '2' ? 'PDF 2 hazırlanıyor…' : 'PDF 2 indir'}
         </button>
         <span className="text-sm text-slate-500">{filtreli.length} personel</span>
         {pdfHata ? <span className="text-sm text-red-600">{pdfHata}</span> : null}
@@ -219,139 +272,260 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
             Aramaya veya unvan filtresine uyan personel yok.
           </p>
         )}
-        {filtreli.map(k => (
-          <article key={k.sicil_no} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <header className="mb-4 pb-4 border-b border-slate-100">
-              <p className="text-xs text-slate-400 tabular-nums">{k.sicil_no}</p>
-              <h2 className="text-lg font-semibold text-slate-800">{k.ad_soyad}</h2>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                <p>
-                  <span className="text-slate-500">Asil unvan:</span>{' '}
-                  <span className="font-medium text-slate-800">{k.asilUnvan ?? '—'}</span>
-                </p>
-                <p>
-                  <span className="text-slate-500">Vekil unvan:</span>{' '}
-                  <span className="font-medium text-slate-800">
-                    {k.vekilUnvanlar.length ? k.vekilUnvanlar.join(', ') : '—'}
-                  </span>
-                </p>
-              </div>
-            </header>
+        {filtreli.map(k => {
+          const asilTerfi = k.terfiler.filter(t => t.rol === 'Asil')
+          const vekilTerfi = k.terfiler.filter(t => t.rol === 'Vekil')
+          const { satirlar: katsayiSatirlar, toplam } = kazancSatirlari(k.terfiler)
 
-            <section className="mb-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Öğrenim Bilgileri</h3>
-              {k.ogrenimler.length === 0 ? (
-                <p className="text-sm text-slate-400">Öğrenim kaydı yok.</p>
-              ) : (
+          return (
+            <article key={k.sicil_no} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <header className="mb-4 pb-4 border-b border-slate-100">
+                <p className="text-xs text-slate-400 tabular-nums">{k.sicil_no}</p>
+                <h2 className="text-lg font-semibold text-slate-800">{k.ad_soyad}</h2>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                  <p>
+                    <span className="text-slate-500">Asil unvan:</span>{' '}
+                    <span className="font-medium text-slate-800">{k.asilUnvan ?? '—'}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Vekil unvan:</span>{' '}
+                    <span className="font-medium text-slate-800">
+                      {k.vekilUnvanlar.length ? k.vekilUnvanlar.join(', ') : '—'}
+                    </span>
+                  </p>
+                </div>
+              </header>
+
+              <section className="mb-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Öğrenim Bilgileri</h3>
+                {k.ogrenimler.length === 0 ? (
+                  <p className="text-sm text-slate-400">Öğrenim kaydı yok.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-slate-100">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Öğrenim Türü</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Mesleği</th>
+                          <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
+                          <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Kadrosu İle İlgili</th>
+                          <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Teknik Öğrenim</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {k.ogrenimler.map((o, i) => (
+                          <tr key={`${k.sicil_no}-ogrenim-${i}`} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 text-slate-700">{metin(o.ogrenim_turu)}</td>
+                            <td className="px-4 py-3 text-slate-600">{metin(o.meslegi)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <EvetHayir deger={o.varsayilan} />
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <EvetHayir deger={o.kadrosu_ile_ilgili} />
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <EvetHayir deger={o.teknik_ogrenim} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section className="mb-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Aile Bilgileri</h3>
                 <div className="overflow-x-auto rounded-lg border border-slate-100">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Öğrenim Türü</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Mesleği</th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Varsayılan</th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Kadrosu İle İlgili</th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">Teknik Öğrenim</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Medeni Durum</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Eş Durumu</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">
+                          6 Yaşından Küçük Çocuk Sayısı
+                        </th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">
+                          6 Yaşından Büyük Çocuk Sayısı
+                        </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {k.ogrenimler.map((o, i) => (
-                        <tr key={`${k.sicil_no}-ogrenim-${i}`} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 text-slate-700">{metin(o.ogrenim_turu)}</td>
-                          <td className="px-4 py-3 text-slate-600">{metin(o.meslegi)}</td>
-                          <td className="px-4 py-3 text-center">
-                            <EvetHayir deger={o.varsayilan} />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <EvetHayir deger={o.kadrosu_ile_ilgili} />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <EvetHayir deger={o.teknik_ogrenim} />
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody>
+                      <tr className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-slate-700">{metin(k.aile?.medeni_hal)}</td>
+                        <td className="px-4 py-3 text-slate-700">{metin(k.aile?.es_durumu)}</td>
+                        <td className="px-4 py-3 text-center tabular-nums text-slate-700">
+                          {k.aile ? k.aile.cocuk_6_kucuk : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums text-slate-700">
+                          {k.aile ? k.aile.cocuk_6_buyuk : '—'}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-              )}
-            </section>
+              </section>
 
-            <section className="mb-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Kadro Bilgileri</h3>
-              {k.kadrolar.length === 0 ? (
-                <p className="text-sm text-slate-400">Kadro kaydı yok.</p>
-              ) : (
-                <div className="space-y-3">
-                  {k.kadrolar.map((kd, i) => (
-                    <div
-                      key={`${k.sicil_no}-kadro-${i}`}
-                      className="rounded-lg border border-slate-100 bg-slate-50/70 p-4"
-                    >
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-                        {kd.rol} kadro
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <Alan etiket="Kadro Sıra No" deger={metin(kd.kadro_sira_no)} />
-                        <Alan etiket="Kadro Ünvanı" deger={metin(kd.kadro_unvani)} />
-                        <Alan etiket="Görev Ünvanı" deger={metin(kd.gorev_unvani)} />
-                        <Alan etiket="Kadro Müdürlüğü" deger={metin(kd.kadro_mudurlugu)} />
-                        <Alan etiket="Görev Müdürlüğü" deger={metin(kd.gorev_mudurlugu)} />
-                        <Alan etiket="Statü" deger={metin(kd.statu)} />
-                        <Alan etiket="Kadro Derecesi" deger={metin(kd.kadro_derecesi)} />
+              <section className="mb-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Kadro Bilgileri</h3>
+                {k.kadrolar.length === 0 ? (
+                  <p className="text-sm text-slate-400">Kadro kaydı yok.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {k.kadrolar.map((kd, i) => (
+                      <div
+                        key={`${k.sicil_no}-kadro-${i}`}
+                        className="rounded-lg border border-slate-100 bg-slate-50/70 p-4"
+                      >
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                          {kd.rol} kadro
+                        </p>
+                        {kd.rol === 'Asil' ? (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Alan etiket="Kadro Ünvanı" deger={metin(kd.kadro_unvani)} />
+                            <Alan etiket="Kadro Müdürlüğü" deger={metin(kd.kadro_mudurlugu)} />
+                            <Alan etiket="Statü" deger={metin(kd.statu)} />
+                            <Alan etiket="Kadro Derecesi" deger={metin(kd.kadro_derecesi)} />
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Alan etiket="Görev Ünvanı" deger={metin(kd.gorev_unvani)} />
+                            <Alan etiket="Görev Müdürlüğü" deger={metin(kd.gorev_mudurlugu)} />
+                            <Alan etiket="Statü" deger={metin(kd.statu)} />
+                            <Alan etiket="Kadro Derecesi" deger={metin(kd.kadro_derecesi)} />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="mb-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Terfi Bilgileri</h3>
-              {k.terfiler.length === 0 ? (
-                <p className="text-sm text-slate-400">Terfi kaydı yok.</p>
-              ) : (
-                <div className="space-y-3">
-                  {k.terfiler.map((t, i) => (
-                    <div
-                      key={`${k.sicil_no}-terfi-${i}`}
-                      className="rounded-lg border border-slate-100 bg-slate-50/70 p-4"
-                    >
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-                        {t.rol}
-                        {t.unvan_adi ? ` · ${t.unvan_adi}` : ''}
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <Alan etiket="Kadro Derecesi" deger={metin(t.kadro_derecesi)} />
-                        <Alan etiket="Görev Aylığı" deger={dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe)} />
-                        <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`} />
-                        <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`} />
-                        <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`} />
-                        <Alan etiket="İyi Hal" deger={tarihGoster(t.iyi_hal_terfi_tarihi)} />
-                        <Alan etiket="Ek Gösterge" deger={metin(t.ek_gosterge)} />
-                        <Alan etiket="Ek Ödeme" deger={metin(t.ek_odeme)} />
-                        <Alan etiket="ÖHT" deger={metin(t.oht)} />
-                        <Alan etiket="Yan Ödeme" deger={metin(t.yan_odeme)} />
-                        <Alan etiket="SDS" deger={metin(t.sds_orani)} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Mevzuat Hükümleri</h3>
-              <dl className="space-y-3">
-                {k.mevzuat.map(kalem => (
-                  <div key={kalem.baslik} className="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-1 md:gap-4">
-                    <dt className="text-sm font-semibold text-slate-700 pt-0.5">{kalem.baslik}</dt>
-                    <dd className="text-sm text-slate-600 leading-relaxed">{kalem.aciklama}</dd>
+                    ))}
                   </div>
-                ))}
-              </dl>
-            </section>
-          </article>
-        ))}
+                )}
+              </section>
+
+              <section className="mb-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Terfi Bilgileri</h3>
+                {k.terfiler.length === 0 ? (
+                  <p className="text-sm text-slate-400">Terfi kaydı yok.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {asilTerfi.map((t, i) => (
+                      <div
+                        key={`${k.sicil_no}-terfi-asil-${i}`}
+                        className="rounded-lg border border-slate-100 bg-slate-50/70 p-4"
+                      >
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                          Asil
+                          {t.unvan_adi ? ` · ${t.unvan_adi}` : ''}
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                          <Alan etiket="Kadro Derecesi" deger={metin(t.kadro_derecesi)} />
+                          <Alan etiket="Görev Aylığı" deger={dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe)} />
+                          <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`} />
+                          <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`} />
+                          <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`} />
+                          <Alan etiket="İyi Hal" deger={tarihGoster(t.iyi_hal_terfi_tarihi)} />
+                        </div>
+                      </div>
+                    ))}
+                    {vekilTerfi.map((t, i) => (
+                      <div
+                        key={`${k.sicil_no}-terfi-vekil-${i}`}
+                        className="rounded-lg border border-slate-100 bg-slate-50/70 p-4"
+                      >
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                          Vekil
+                          {t.unvan_adi ? ` · ${t.unvan_adi}` : ''}
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                          <Alan etiket="Kadro Derecesi" deger={metin(t.kadro_derecesi)} />
+                          <Alan etiket="Görev Aylığı" deger={dk(t.gorev_ayligi_derece, t.gorev_ayligi_kademe)} />
+                          <Alan etiket="KHA" deger={`${dk(t.kha_derece, t.kha_kademe)} · ${tarihGoster(t.kha_tarihi)}`} />
+                          <Alan etiket="EKEA" deger={`${dk(t.ekea_derece, t.ekea_kademe)} · ${tarihGoster(t.ekea_tarihi)}`} />
+                          <Alan etiket="Kıdem" deger={`${metin(t.kidem_yili)} yıl · ${tarihGoster(t.kidem_tarihi)}`} />
+                          <Alan etiket="İyi Hal" deger={tarihGoster(t.iyi_hal_terfi_tarihi)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="mb-5">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Kazanç Katsayıları</h3>
+                {katsayiSatirlar.length === 0 ? (
+                  <p className="text-sm text-slate-400">Kazanç katsayısı kaydı yok.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-slate-100">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Rol</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-slate-600">Ek Gösterge</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-slate-600">Ek Ödeme</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-slate-600">ÖHT</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-slate-600">Yan Ödeme</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-slate-600">SDS</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {katsayiSatirlar.map((t, i) => (
+                          <tr key={`${k.sicil_no}-katsayi-${i}`} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 text-slate-700">
+                              {t.rol}
+                              {t.unvan_adi ? ` · ${t.unvan_adi}` : ''}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                              {metin(t.ek_gosterge)}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                              {metin(t.ek_odeme)}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-700">{metin(t.oht)}</td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                              {metin(t.yan_odeme)}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                              {metin(t.sds_orani)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-50 font-semibold">
+                          <td className="px-4 py-3 text-slate-800">Toplam</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-800">
+                            {sayiGoster(toplam.ek_gosterge)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-800">
+                            {sayiGoster(toplam.ek_odeme)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-800">
+                            {sayiGoster(toplam.oht)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-800">
+                            {sayiGoster(toplam.yan_odeme)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-800">
+                            {sayiGoster(toplam.sds_orani)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Mevzuat Hükümleri</h3>
+                <dl className="space-y-3">
+                  {k.mevzuat.map(kalem => (
+                    <div key={kalem.baslik} className="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-1 md:gap-4">
+                      <dt className="text-sm font-semibold text-slate-700 pt-0.5">{kalem.baslik}</dt>
+                      <dd className="text-sm text-slate-600 leading-relaxed">{kalem.aciklama}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            </article>
+          )
+        })}
       </div>
     </div>
   )

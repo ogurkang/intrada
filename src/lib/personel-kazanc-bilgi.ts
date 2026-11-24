@@ -44,6 +44,14 @@ export type PersonelKazancBilgiOgrenim = {
   teknik_ogrenim: boolean
 }
 
+export type PersonelKazancBilgiAile = {
+  medeni_hal: string | null
+  /** Eş iş durumu (aile bildirimi is_durumu) */
+  es_durumu: string | null
+  cocuk_6_kucuk: number
+  cocuk_6_buyuk: number
+}
+
 export type PersonelKazancBilgiKart = {
   sicil_no: string
   ad_soyad: string
@@ -52,6 +60,7 @@ export type PersonelKazancBilgiKart = {
   /** Filtre / PDF için asil + vekil unvan listesi */
   unvanlar: string[]
   ogrenimler: PersonelKazancBilgiOgrenim[]
+  aile: PersonelKazancBilgiAile | null
   kadrolar: PersonelKazancBilgiKadro[]
   terfiler: PersonelKazancBilgiTerfi[]
   mevzuat: PersonelKazancKuralKalem[]
@@ -72,6 +81,7 @@ export function personelKazancBilgiKartlariKur(input: {
   kaynaklar: TerfiKaynak[]
   kadroBySicil: Map<string, PersonelKazancBilgiKadro[]>
   ogrenimBySicil: Map<string, PersonelKazancBilgiOgrenim[]>
+  aileBySicil: Map<string, PersonelKazancBilgiAile>
   gorevAyligiByTerfiId: Map<number, { derece: string | null; kademe: string | null }>
 }): PersonelKazancBilgiKart[] {
   const grup = new Map<string, TerfiKaynak[]>()
@@ -125,6 +135,7 @@ export function personelKazancBilgiKartlariKur(input: {
       vekilUnvanlar,
       unvanlar,
       ogrenimler: input.ogrenimBySicil.get(sicil) ?? [],
+      aile: input.aileBySicil.get(sicil) ?? null,
       kadrolar: input.kadroBySicil.get(sicil) ?? [],
       terfiler,
       mevzuat: kalemleriKur(

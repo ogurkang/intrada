@@ -7,6 +7,16 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-personel-kazanc-pkb',
+    baslik: '24 Kasım 2026 — Personel Kazanç Bilgileri (aile / katsayı / PDF 2)',
+    maddeler: [
+      'Öğrenim Bilgileri’nden sonra aile tablosu gelir: Medeni Durum, Eş Durumu, 6 yaşından küçük/büyük çocuk sayısı (Aile Bildirimi’nden).',
+      'Asil kadroda sıra no, görev unvanı ve görev müdürlüğü; vekil kadroda sıra no, kadro unvanı ve kadro müdürlüğü kaldırıldı.',
+      'Terfi’de Asil satırında Kadro Derecesi, Görev Aylığı, KHA, EKEA, Kıdem ve İyi Hal yan yana; Ek Gösterge / Ek Ödeme / ÖHT / Yan Ödeme / SDS «Kazanç Katsayıları» altında Asil–Vekil–Toplam olarak gösterilir.',
+      '«PDF 2 indir» yeni düzeni indirir; tek personelde dosya adı «Ad Soyad-PKB.pdf» olur.',
+    ],
+  },
+  {
     id: '2026-11-24-personel-yas',
     baslik: '24 Kasım 2026 — Personel Yaş bilgisi',
     maddeler: [

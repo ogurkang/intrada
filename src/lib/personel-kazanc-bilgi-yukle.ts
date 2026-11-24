@@ -6,10 +6,12 @@ import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
 import {
   personelKazancBilgiKartlariKur,
   personelKazancBilgiKapsamindaMi,
+  type PersonelKazancBilgiAile,
   type PersonelKazancBilgiKadro,
   type PersonelKazancBilgiKart,
   type PersonelKazancBilgiOgrenim,
 } from '@/lib/personel-kazanc-bilgi'
+import { altiYasindanKucukMu } from '@/lib/yas'
 import type { Tables } from '@/types/database'
 
 type KadroSatir = Pick<
@@ -197,6 +199,59 @@ async function yukleOgrenimBySicil(
   return map
 }
 
+type AileSatir = {
+  sicil_no: string
+  medeni_hal: string | null
+  is_durumu: string | null
+  cocuklar_json: unknown
+}
+
+function cocukYasSayilari(cocuklarJson: unknown): { kucuk: number; buyuk: number } {
+  const list = Array.isArray(cocuklarJson) ? cocuklarJson : []
+  let kucuk = 0
+  let buyuk = 0
+  for (const c of list) {
+    if (!c || typeof c !== 'object') continue
+    const dogum = String((c as { dogum_tarihi?: unknown }).dogum_tarihi ?? '').trim()
+    if (!dogum) {
+      buyuk += 1
+      continue
+    }
+    if (altiYasindanKucukMu(dogum)) kucuk += 1
+    else buyuk += 1
+  }
+  return { kucuk, buyuk }
+}
+
+async function yukleAileBySicil(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siciller: string[],
+): Promise<Map<string, PersonelKazancBilgiAile>> {
+  const map = new Map<string, PersonelKazancBilgiAile>()
+  if (!siciller.length) return map
+
+  const CHUNK = 80
+  for (let i = 0; i < siciller.length; i += CHUNK) {
+    const chunk = siciller.slice(i, i + CHUNK)
+    const { data } = await supabase
+      .from('aile_bildirimi')
+      .select('sicil_no, medeni_hal, is_durumu, cocuklar_json')
+      .in('sicil_no', chunk)
+    for (const row of (data ?? []) as AileSatir[]) {
+      const sicil = String(row.sicil_no ?? '').trim()
+      if (!sicil) continue
+      const { kucuk, buyuk } = cocukYasSayilari(row.cocuklar_json)
+      map.set(sicil, {
+        medeni_hal: row.medeni_hal ?? null,
+        es_durumu: row.is_durumu ?? null,
+        cocuk_6_kucuk: kucuk,
+        cocuk_6_buyuk: buyuk,
+      })
+    }
+  }
+  return map
+}
+
 export async function yuklePersonelKazancBilgiKartlari(
   sicilFiltre?: string[],
 ): Promise<PersonelKazancBilgiKart[]> {
@@ -224,9 +279,10 @@ export async function yuklePersonelKazancBilgiKartlari(
     ...new Set(kaynakAlt.map(k => k.terfi_id).filter((id): id is number => id != null && id > 0)),
   ]
 
-  const [kadroBySicil, ogrenimBySicil, gorevAyligiByTerfiId] = await Promise.all([
+  const [kadroBySicil, ogrenimBySicil, aileBySicil, gorevAyligiByTerfiId] = await Promise.all([
     yukleKadroBySicil(supabase, siciller),
     yukleOgrenimBySicil(supabase, siciller),
+    yukleAileBySicil(supabase, siciller),
     yukleGorevAyligi(supabase, terfiIds),
   ])
 
@@ -234,6 +290,7 @@ export async function yuklePersonelKazancBilgiKartlari(
     kaynaklar: kaynakAlt,
     kadroBySicil,
     ogrenimBySicil,
+    aileBySicil,
     gorevAyligiByTerfiId,
   })
 }

@@ -1,4 +1,4 @@
-import { thHizmetBilesen, thHizmetSuresiEtiket } from '@/lib/th-hizmet-yili'
+import { thHizmetBilesen, thHizmetSuresiEtiket, thHizmetTamYil } from '@/lib/th-hizmet-yili'
 
 /**
  * Doğum tarihinden bugüne (veya referansa) takvim yılı / ay / gün.
@@ -17,4 +17,21 @@ export function yasEtiket(
   referans?: string | Date | null,
 ): string | null {
   return thHizmetSuresiEtiket(dogumTarihi, referans)
+}
+
+/** Tamamlanan yaş yılı (null = tarih yok). */
+export function yasTamYil(
+  dogumTarihi: string | null | undefined,
+  referans?: string | Date | null,
+): number | null {
+  return thHizmetTamYil(dogumTarihi, referans)
+}
+
+/** 6 yaşından küçük mü? (tam yıl < 6). Tarih yoksa false. */
+export function altiYasindanKucukMu(
+  dogumTarihi: string | null | undefined,
+  referans?: string | Date | null,
+): boolean {
+  const y = yasTamYil(dogumTarihi, referans)
+  return y != null && y < 6
 }
