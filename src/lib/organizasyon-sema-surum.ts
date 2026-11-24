@@ -41,12 +41,10 @@ export async function personelHareketiMudurKadroDegistiMi(
     yeniUnvan: string | null
   },
 ): Promise<boolean> {
-  const t = (opts.yururlukTarihi ?? '').slice(0, 10)
-  if (t && t < ORG_SEMA_SURUM_BASLANGIC) return false
-  if (!t) {
-    const bugun = new Date().toISOString().slice(0, 10)
-    if (bugun < ORG_SEMA_SURUM_BASLANGIC) return false
-  }
+  // Özellik Temmuz 2026’dan itibaren açıktır. Yürürlük tarihi eski olsa bile
+  // (geçmiş atama kaydı), bugün müdür kadrosu değişiyorsa sürüm alınır.
+  const bugun = new Date().toISOString().slice(0, 10)
+  if (bugun < ORG_SEMA_SURUM_BASLANGIC) return false
 
   const ids = [opts.oncekiKadroId, opts.yeniKadroId].filter((n): n is number => n != null && n > 0)
   if (ids.length) {
@@ -295,17 +293,22 @@ export async function personelHareketiSonrasiOrgSemaSurumu(
     /** true ise öncesi dondurma zaten yapıldı; tekrar kontrol etme */
     donduruldu?: boolean
   },
-): Promise<void> {
+): Promise<{ ok: boolean; ad?: string; hata?: string }> {
   try {
     const degisti = opts.donduruldu === true
       ? true
       : await personelHareketiMudurKadroDegistiMi(supabase, opts)
-    if (!degisti) return
+    if (!degisti) return { ok: false, hata: 'müdür-degil' }
     const sonuc = await organizasyonSemaSurumuKaydet(supabase, 'Müdür kadro değişimi (personel hareketi)')
-    if (sonuc.ok) {
-      await organizasyonMudurSnapshotAl(supabase, sonuc.yeniId)
+    if (!sonuc.ok) {
+      console.error('[org-sema-surum]', sonuc.hata)
+      return { ok: false, hata: sonuc.hata }
     }
-  } catch {
-    /* sessiz: hareket kaydı başarılı kalsın */
+    await organizasyonMudurSnapshotAl(supabase, sonuc.yeniId)
+    return { ok: true, ad: sonuc.ad }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'org sürüm hatası'
+    console.error('[org-sema-surum]', msg)
+    return { ok: false, hata: msg }
   }
 }

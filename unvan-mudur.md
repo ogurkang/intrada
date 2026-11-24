@@ -34,13 +34,13 @@ sonra ilgili yerler (harcama yetkilileri, org şeması eşlemesi, vb.) bayrağa 
 - Tanımlar › Müdürlük ekranı + actions + hover açıklama.
 
 ### 4) Organizasyon şeması otomatik sürüm
-- Tetik: Personel hareketi kaydı (ekle/güncelle), hareket tarihi **2026-07-01 ve sonrası**.
+- Tetik: Personel hareketi kaydı (ekle/güncelle), **bugün ≥ 2026-07-01** (yürürlük tarihi eski olsa da).
 - Koşul: Değişen kadro unvanı **Müdür mü? = Evet** (geçişte henüz işaret yoksa adı «müdürü» içeren unvan).
 - İşlem:
-  1. Aktif organizasyonu kopyala (birimler dahil).
-  2. Yeni ad: `Organizasyon Şeması - {yıl}/{sıra}` (o yıldaki otomatik sürüm sayısı + 1).
-  3. Eski aktif → pasif; yeni → aktif.
-- Kadro/unvan eşlemesi org birimlerindeki personel ile güncellenir (mevcut org müdür çözümleme kuralları).
+  1. Aktif şemaya o anki müdürleri snapshot yaz (eski sürüm dondurulur).
+  2. Aktif organizasyonu kopyala → yeni ad `Organizasyon Şeması - {yıl}/{sıra}`.
+  3. Eski aktif → pasif; yeni → aktif; yeniye güncel müdür snapshot.
+- Mevcut tek kayıt «Organizasyon Şeması - 2026» baseline; ilk müdür değişiminde «…/1» oluşur.
 
 ### 5) Sonra (ayrı tur — kontrol ile)
 - Harcama birim yetkilileri, org müdür indeksi, performans amiri vb. yerlerde  
