@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-pp-pf-251-makine-ikmal',
+    baslik: '24 Kasım 2026 — PP 2.5.1.6–10 Makine İkmal’e taşındı',
+    maddeler: [
+      'Performans hedefi 2.5.1 altındaki 2.5.1.6 … 2.5.1.10 kodlu performans faaliyetleri (gösterge ve ödenekleriyle) Makine İkmal Bakım ve Onarım Müdürlüğü’ne taşındı.',
+      'Aynı alt programdaki Destek / Makine hedef bağlarının stratejik plan alt hedef eşlemesi de düzeltildi.',
+      'Canlı veri güncellendi; tekrar için 20261124140000_pp_pf_251_makine_ikmal.sql dosyası idempotenttir.',
+    ],
+  },
+  {
     id: '2026-11-24-personel-kazanc-pkb',
     baslik: '24 Kasım 2026 — Personel Kazanç Bilgileri (aile / katsayı / PDF 2)',
     maddeler: [
