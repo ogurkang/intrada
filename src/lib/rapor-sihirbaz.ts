@@ -6,6 +6,7 @@ import {
   type KadroRaporRow,
 } from '@/lib/rapor-statuye-gore-cinsiyet'
 import { trNormalize } from '@/lib/turkce-search'
+import { yasEtiket } from '@/lib/yas'
 
 export type Istihdam = 'memur' | 'sozlesmeli' | 'isci' | 'adabel' | 'diger'
 export type SayfaYonu = 'yatay' | 'dikey'
@@ -32,6 +33,7 @@ export const SIHIRBAZ_BASLIKLARI: SihirbazBaslik[] = [
   { key: 'tckn', etiket: 'T.C. Kimlik No', grup: 'Kimlik ve iletişim', adabel: true },
   { key: 'sgk_ssk_sicil_no', etiket: 'SGK/SSK Sicil No', grup: 'Kimlik ve iletişim', adabel: false },
   { key: 'dogum_tarihi', etiket: 'Doğum Tarihi', grup: 'Kimlik ve iletişim', adabel: true },
+  { key: 'yas', etiket: 'Yaş', grup: 'Kimlik ve iletişim', adabel: true },
   { key: 'cinsiyet', etiket: 'Cinsiyet', grup: 'Kimlik ve iletişim', adabel: true },
   { key: 'kan_grubu', etiket: 'Kan Grubu', grup: 'Kimlik ve iletişim', adabel: false },
   { key: 'dogum_yeri', etiket: 'Doğum Yeri', grup: 'Kimlik ve iletişim', adabel: false },
@@ -423,6 +425,7 @@ export function raporSihirbazSatirlari(input: {
         tckn: txt(c.tckn),
         sgk_ssk_sicil_no: txt(c.sgk_ssk_sicil_no),
         dogum_tarihi: tarih(c.dogum_tarihi),
+        yas: yasEtiket(c.dogum_tarihi, D) ?? '—',
         cinsiyet: txt(c.cinsiyet),
         kan_grubu: txt(c.kan_grubu),
         dogum_yeri: txt(c.dogum_yeri),
@@ -495,6 +498,7 @@ export function raporSihirbazSatirlari(input: {
         ad_soyad: ad,
         tckn: txt(f.tckn),
         dogum_tarihi: tarih(f.dogum_tarihi),
+        yas: yasEtiket(f.dogum_tarihi, D) ?? '—',
         cinsiyet: txt(f.cinsiyet),
         telefon: txt(f.telefon),
         e_posta: txt(f.e_posta),

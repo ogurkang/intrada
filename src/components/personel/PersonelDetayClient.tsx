@@ -7,6 +7,7 @@ import type { Tables } from '@/types/database'
 import { useIntradaTabRefresh } from '@/lib/intrada-tab-sync'
 import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { hizmetSuresiEtiket360 } from '@/lib/hizmet-suresi-360'
+import { yasEtiket } from '@/lib/yas'
 import { GOREV_TURU_OPTIONS, gorevTuruAciklamaGoster, gorevTuruYemekHakkiGoster } from '@/lib/gorev-bilgileri'
 import { TASINIR_GOREVI_OPTIONS } from '@/lib/tasinir-gorevi'
 import { tasinirTutarBul, yanOdemeTasinirToplamGoster } from '@/lib/kazanc-tasinir-yetkili'
@@ -136,6 +137,7 @@ function KisiselTab({ calisan }: { calisan: Calisan }) {
           <Alan etiket="TCKN"            deger={calisan.tckn} />
           <Alan etiket="SGK/SSK Sicil No" deger={(calisan as typeof calisan & { sgk_ssk_sicil_no?: string | null }).sgk_ssk_sicil_no ?? null} />
           <Alan etiket="Doğum Tarihi"    deger={tarihFormatla(calisan.dogum_tarihi)} />
+          <Alan etiket="Yaş"             deger={yasEtiket(calisan.dogum_tarihi) ?? '—'} />
           <Alan etiket="Doğum Yeri"      deger={calisan.dogum_yeri} />
           <Alan etiket="Cinsiyet"        deger={calisan.cinsiyet} />
           <Alan etiket="Kan Grubu"       deger={calisan.kan_grubu} />

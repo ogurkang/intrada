@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-personel-yas',
+    baslik: '24 Kasım 2026 — Personel Yaş bilgisi',
+    maddeler: [
+      'Personel detayında Kişisel Bilgiler’de Doğum Tarihi’nden sonra Yaş (yıl / ay / gün) dinamik hesaplanır.',
+      'Rapor Sihirbazı’nda «Yaş» veri başlığı seçilebilir; her gün güncel değeri gösterir.',
+    ],
+  },
+  {
     id: '2026-11-24-org-sema-islem-tarihi',
     baslik: '24 Kasım 2026 — Organizasyon şeması sürümleri (işlem tarihi)',
     maddeler: [
