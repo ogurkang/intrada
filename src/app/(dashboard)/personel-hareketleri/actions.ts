@@ -461,7 +461,7 @@ export async function personelHareketiGuncelle(
   }
 
   const orgSurumOpts = {
-    yururlukTarihi: tarihStr(formData, 'yururluk_tarihi'),
+    islemTarihi: new Date().toISOString(),
     oncekiKadroId: onceki_kadro_id,
     yeniKadroId: yeni_kadro_id,
     eskiUnvan: str(formData, 'eski_unvan'),
@@ -681,7 +681,7 @@ export async function personelHareketiEkle(formData: FormData): Promise<{ hata?:
   })
 
   const orgSurumOpts = {
-    yururlukTarihi: tarihStr(formData, 'yururluk_tarihi'),
+    islemTarihi: new Date().toISOString(),
     oncekiKadroId: onceki_kadro_id,
     yeniKadroId: yeni_kadro_id,
     eskiUnvan: str(formData, 'eski_unvan'),

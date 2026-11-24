@@ -7,12 +7,21 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-24-org-sema-islem-tarihi',
+    baslik: '24 Kasım 2026 — Organizasyon şeması sürümleri (işlem tarihi)',
+    maddeler: [
+      'Ağustos 2026 sonrası müdür personel hareketlerinde (işlem / kayıt zamanı) her değişim için «Organizasyon Şeması - 2026/sıra» kaydı oluşur; yürürlük tarihi kullanılmaz.',
+      'Eski sürümler pasif kalır; müdürler o anki snapshot ile görünür (canlı kadro otomatik ezmez).',
+      'Mevcut loglardan geriye dönük /1–/4 sürümleri oluşturuldu; bundan sonra yeni müdür hareketi yeni sıra üretir.',
+    ],
+  },
+  {
     id: '2026-11-24-unvan-mudur-org-surum',
     baslik: '24 Kasım 2026 — Unvan / müdürlük ve organizasyon şema sürümü',
     maddeler: [
       'Unvan tanımlarında «Müdür mü?» ve «Kadro Durumu» (Diğer / İdari / Zorunlu) alanları vardır; sütun başlıklarında hover açıklama bulunur.',
       'Müdürlüklerde «Zorunlu mu?» ve eşleşen müdür unvanından gelen «Kadro Durumu» sütunu yer alır.',
-      'Temmuz 2026 sonrası müdür kadro değişiminde organizasyon şeması «Organizasyon Şeması - YYYY/sıra» olarak kopyalanır; önceki pasif kalır ve o tarihteki müdürler snapshot ile görülür.',
+      'Ağustos 2026 sonrası müdür kadro değişiminde (işlem tarihi) organizasyon şeması «Organizasyon Şeması - YYYY/sıra» olarak kopyalanır.',
       'Supabase’te sırayla 20261124100000, 20261124101000 ve 20261124110000 migration dosyalarını bir kez çalıştırın (henüz uygulanmadıysa).',
     ],
   },

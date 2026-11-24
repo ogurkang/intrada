@@ -225,21 +225,21 @@ function sicilListesi(personelSicil?: string | null): string[] {
 /**
  * Bir birime karşılık gelen personel ad-soyad metni (virgülle birleşik).
  * Başkan yardımcısı için belirli bir kişi seçildiyse yalnızca o kişinin adı döner.
- * `snapshotKullan`: pasif org sürümlerinde kayıtlı sicil snapshot’ı tercih edilir.
+ * Kayıtlı sicil snapshot varsa onu kullanır (canlı kadro otomatik ezmesin).
+ * Snapshot yoksa canlı indekse düşer.
  */
 export function birimPersonelMetni(
   indeks: OrganizasyonPersonelIndeks,
   birimTuru: BirimTuru,
   mudurlukAdi: string | null | undefined,
   personelSicil?: string | null,
-  snapshotKullan = false,
+  _snapshotKullan = true,
 ): string {
+  void _snapshotKullan
   if (birimTuru === 'baskan') {
-    if (snapshotKullan) {
-      const siciller = sicilListesi(personelSicil)
-      if (siciller.length) {
-        return siciller.map(s => indeks.sicilAdHaritasi.get(s) ?? s).join(', ')
-      }
+    const siciller = sicilListesi(personelSicil)
+    if (siciller.length) {
+      return siciller.map(s => indeks.sicilAdHaritasi.get(s) ?? s).join(', ')
     }
     return indeks.baskanlar.join(', ')
   }
@@ -248,11 +248,9 @@ export function birimPersonelMetni(
     if (sicil) return indeks.sicilAdHaritasi.get(sicil) ?? ''
     return indeks.baskanYardimcilari.join(', ')
   }
-  if (snapshotKullan) {
-    const siciller = sicilListesi(personelSicil)
-    if (siciller.length) {
-      return siciller.map(s => indeks.sicilAdHaritasi.get(s) ?? s).join(', ')
-    }
+  const siciller = sicilListesi(personelSicil)
+  if (siciller.length) {
+    return siciller.map(s => indeks.sicilAdHaritasi.get(s) ?? s).join(', ')
   }
   return maptenEslesen(indeks.mudurByBaz, mudurlukAdi).join(', ')
 }
@@ -263,28 +261,25 @@ export function birimPersonelTelefonMetni(
   birimTuru: BirimTuru,
   mudurlukAdi: string | null | undefined,
   personelSicil?: string | null,
-  snapshotKullan = false,
+  _snapshotKullan = true,
 ): string {
+  void _snapshotKullan
   const tel = (sicil: string) => String(sicilTelefon.get(sicil) ?? '').trim()
   const birlestir = (siciller: string[]) => {
     const phones = [...new Set(siciller.map(tel).filter(Boolean))]
     return phones.join(', ')
   }
   if (birimTuru === 'baskan') {
-    if (snapshotKullan) {
-      const siciller = sicilListesi(personelSicil)
-      if (siciller.length) return birlestir(siciller)
-    }
+    const siciller = sicilListesi(personelSicil)
+    if (siciller.length) return birlestir(siciller)
     return birlestir(indeks.baskanSicilleri)
   }
   if (birimTuru === 'baskan_yardimcisi') {
     const sicil = String(personelSicil ?? '').trim()
     return sicil ? tel(sicil) : ''
   }
-  if (snapshotKullan) {
-    const siciller = sicilListesi(personelSicil)
-    if (siciller.length) return birlestir(siciller)
-  }
+  const siciller = sicilListesi(personelSicil)
+  if (siciller.length) return birlestir(siciller)
   return birlestir(maptenEslesen(indeks.mudurSicilByBaz, mudurlukAdi))
 }
 
