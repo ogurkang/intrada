@@ -223,7 +223,7 @@ export function kalemleriKur(
   else if (fark) eoParcalar.push(fark.trim())
 
   const ohtParcalar: string[] = [
-    '657 sayılı Kanun md. 152; 17/4/2006 tarihli ve 2006/10344 sayılı Bakanlar Kurulu Kararı I sayılı cetvel (özel hizmet tazminatı).',
+    '657 sayılı Kanun md. 152; 17/4/2006 tarihli ve 2006/10344 sayılı Bakanlar Kurulu Kararı II sayılı cetvel (özel hizmet tazminatı).',
   ]
   if (birinci && !bby) {
     ohtParcalar.push(
@@ -232,7 +232,9 @@ export function kalemleriKur(
         : 'Özel Kalem Müdürü ÖHT’si 1. derece tanımdan alınır.',
     )
   } else if (bby) {
-    ohtParcalar.push('Belediye Başkan Yardımcısı tabanı 1. derece tanımdandır.')
+    ohtParcalar.push(
+      'Belediye Başkan Yardımcısı tabanı 1. derece tanımdandır (II sayılı cetvel A grup 6 %200; 8. Dönem Toplu Sözleşme md. 55/2 ile +20 → %220).',
+    )
   } else if (yuksek1_5 && yuksekDerece != null && kha != null && yuksekDerece !== kha) {
     ohtParcalar.push(
       ekranYollari
@@ -258,15 +260,19 @@ export function kalemleriKur(
   }
   if (kariyer === 'muhendis') {
     ohtParcalar.push(
-      'TH kariyer mühendis/mimar/şehir plancısı: ÖHT = max(unvan, %195 — 2006/10344 I sayılı cetvel grup 8 + 40).',
+      bby
+        ? 'TH kariyer mühendis/mimar/şehir plancısı: ÖHT = max(unvan, %220 — 2006/10344 II sayılı cetvel grup 6 + 20; 8. Dönem Toplu Sözleşme md. 55/2).'
+        : 'TH kariyer mühendis/mimar/şehir plancısı: ÖHT = max(unvan, %195 — 2006/10344 II sayılı cetvel grup 8 + 40; 8. Dönem Toplu Sözleşme md. 55/1).',
     )
   } else if (kariyer === 'kimyager') {
-    ohtParcalar.push('TH kariyer kimyager: ÖHT = max(unvan, %185 — 2006/10344 I sayılı cetvel grup 9 + 40).')
+    ohtParcalar.push(
+      'TH kariyer kimyager: ÖHT = max(unvan, %185 — 2006/10344 II sayılı cetvel grup 9 + 40; 8. Dönem Toplu Sözleşme md. 55/1).',
+    )
   } else if (kariyer === 'icmimar') {
-    ohtParcalar.push('İç mimar öğrenimi: ÖHT İç Mimar kazanç satırından; %195 uygulanmaz.')
+    ohtParcalar.push('İç mimar öğrenimi: ÖHT İç Mimar kazanç satırından; kariyer %195/%220 uygulanmaz.')
   } else if (kariyer === 'peyzajmimar') {
     ohtParcalar.push(
-      'Peyzaj mimarı öğrenimi: ÖHT müdür unvanının yüksek 657 derecesindeki satırından; Peyzaj Mimarı tanımı ve %195 kullanılmaz.',
+      'Peyzaj mimarı öğrenimi: ÖHT müdür unvanının yüksek 657 derecesindeki satırından; Peyzaj Mimarı tanımı ve kariyer %195/%220 kullanılmaz.',
     )
   }
   if (bby && kariyer) {

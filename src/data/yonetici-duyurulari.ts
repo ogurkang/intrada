@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-25-pkb-bby-oht-grup6',
+    baslik: '25 Kasım 2026 — BBY ÖHT ifadesi grup 6 + 20',
+    maddeler: [
+      'Personel Kazanç Bilgileri’nde Belediye Başkan Yardımcısı ÖHT açıklaması düzeltildi: 2006/10344 II sayılı cetvel A grup 6 (%200) + 8. Dönem Toplu Sözleşme md. 55/2 (+20) → %220 (eski yanlış: grup 8 + 40 / %195).',
+      'TH kariyer mühendis/mimar/şehir plancısı BBY’de ÖHT tabanı artık max(unvan, %220); asil müdür kariyer tabanı (%195 = grup 8 + 40) aynı kaldı. ÖHT dayanağı metinde I değil II sayılı cetvel olarak yazılır.',
+    ],
+  },
+  {
     id: '2026-11-25-pp-sil-2522-2027',
     baslik: '25 Kasım 2026 — 2027 PP 2.5.2.2 kaydı silindi',
     maddeler: [

@@ -15,9 +15,19 @@ export const MUDUR_KARIYER_YAN_TAVAN = 2400
 export const BBY_KARIYER_IGZ = 800
 export const BBY_KARIYER_TGZ = 1800
 export const BBY_KARIYER_YAN = BBY_KARIYER_IGZ + BBY_KARIYER_TGZ
-/** Grup 8 + 40 (mühendis/mimar/şehir plancısı). TH Mühendis satırındaki %160 kopyalanmaz. İç / peyzaj mimar dahil değil. */
+/**
+ * Asil müdür TH kariyer tabanı: 2006/10344 II sayılı cetvel A grup 8 (%155)
+ * + 8. Dönem Toplu Sözleşme md. 55/1 (+40) → %195.
+ * TH Mühendis satırındaki %160 kopyalanmaz. İç / peyzaj mimar dahil değil.
+ */
 export const MUDUR_KARIYER_OHT_MUHENDIS = '195'
-/** Grup 9 + 40 (kimyager). */
+/**
+ * Belediye Başkan Yardımcısı (nüfus ≥ 250.000 merkez ilçe) TH kariyer tabanı:
+ * 2006/10344 II sayılı cetvel A grup 6 (%200) + 8. Dönem Toplu Sözleşme md. 55/2 (+20) → %220.
+ * Grup 5–6 için +40 (md. 55/1) uygulanmaz; md. 55/1 yalnızca 7 nci ve daha alt gruplaradır.
+ */
+export const BBY_KARIYER_OHT_MUHENDIS = '220'
+/** Grup 9 + 40 (kimyager; asil müdür). */
 export const MUDUR_KARIYER_OHT_KIMYAGER = '185'
 
 export type MudurKariyerTuru = 'muhendis' | 'kimyager' | 'icmimar' | 'peyzajmimar'
@@ -181,10 +191,10 @@ export function mudurOhtYuksekDerecedenUygula<T extends { oht?: string | null }>
  * ek gösterge = max(unvan, kariyer TH). Müdürde kariyer satırı yüksek 657 derecesinden;
  * BBY’de kariyer satırı KHA’dan (kadro 1 olsa da 4200 ancak KHA 1 iken).
  * Yan ödeme: müdürde destek tiki yoksa min(müdür+1300, 2400); BBY’de 2600 (İGZ 800 + TG 1800).
- * ÖHT = max(unvan, 195 mühendis / 185 kimyager).
- * İç mimar: 195 / kariyer yan uygulanmaz; ÖHT İç Mimar kazanç satırından alınır.
+ * ÖHT = max(unvan, müdürde %195 / BBY’de %220 mühendis; kimyager %185).
+ * İç mimar: kariyer yan uygulanmaz; ÖHT İç Mimar kazanç satırından alınır.
  * Peyzaj mimarı: ek gösterge ve yan ödeme mühendis grubu gibi kalır; ÖHT unvan tanımının
- * yüksek 657 derecesinden alınır (Peyzaj Mimarı satırı ve %195 kullanılmaz).
+ * yüksek 657 derecesinden alınır (Peyzaj Mimarı satırı ve kariyer %195/%220 kullanılmaz).
  * Vekil ve müdür yardımcısı uygulanmaz. Ek ödeme / SDS unvan tanımında kalır.
  * Özel Kalem Müdürü bu overlay’e girmez.
  */
@@ -237,7 +247,7 @@ export function mudurThKariyerUygula<
   } else if (kariyer === 'kimyager') {
     oht = ohtMax(puan.oht, MUDUR_KARIYER_OHT_KIMYAGER)
   } else {
-    oht = ohtMax(puan.oht, MUDUR_KARIYER_OHT_MUHENDIS)
+    oht = ohtMax(puan.oht, bbyMi ? BBY_KARIYER_OHT_MUHENDIS : MUDUR_KARIYER_OHT_MUHENDIS)
   }
 
   let sonraki: T = {
