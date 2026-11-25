@@ -15,7 +15,11 @@ import {
 import { type TeknisyenEkGostergeBaglam } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 import { puanSdsYuruttuguUnvanIle, yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
-import { vekilMudurFarkHesapla } from '@/lib/kazanc-vekil-mudur-fark'
+import {
+  vekilMudurFarkBirincilIndex,
+  vekilMudurFarkHesapla,
+  vekilMudurFarkSifirPuan,
+} from '@/lib/kazanc-vekil-mudur-fark'
 
 export type TerfiEttirDurumEtiket =
   | 'Derece İlerledi'
@@ -391,6 +395,61 @@ export function buildTerfiEttirOnizleme(
   const sonrakiYilBas = birYilIleri(terfiBas)
   const sonrakiYilBit = birYilIleri(terfiBit)
 
+  /** Sicil başına yalnızca bir vekil müdür satırı fark alır. */
+  const vekilBirincilTerfiIds = new Set<number>()
+  {
+    const bySicil = new Map<string, TerfiKaynak[]>()
+    for (const r of kaynaklar) {
+      if (!r.vekil_mudur_fark_mi) continue
+      const list = bySicil.get(r.sicil_no) ?? []
+      list.push(r)
+      bySicil.set(r.sicil_no, list)
+    }
+    for (const [, list] of bySicil) {
+      const aday: { terfiId: number; fark: ReturnType<typeof vekilMudurFarkSifirPuan> }[] = []
+      for (const r of list) {
+        if (r.terfi_id == null) continue
+        const kha = parseNum(r.kha_derece)
+        const fark = vekilMudurFarkHesapla({
+          lookup: kazancLookup,
+          khaDerece: kha,
+          ogrenimTuru: r.ogrenim_turu,
+          kendiOpts: terfiKaynaktanKuralOpts(
+            {
+              unvan_id: r.asil_unvan_id ?? null,
+              ogrenim_id: r.ogrenim_id,
+              unvan_adi: r.asil_unvan_adi ?? null,
+              kadro_derecesi: r.asil_kadro_derecesi ?? null,
+              kha_derece: r.kha_derece,
+              yuksek_ogrenim_var: r.yuksek_ogrenim_var,
+              kadrosu_ile_ilgili: r.kadrosu_ile_ilgili,
+              teknisyen_kariyer: r.teknisyen_kariyer ?? null,
+              teknik_ogrenim: r.teknik_ogrenim,
+              asil_mi: true,
+              destek_yardimci_birim: r.asil_destek_yardimci_birim === true,
+              ogrenim_meslegi: r.ogrenim_meslegi,
+              ogrenim_bolum: r.ogrenim_bolum,
+            },
+            kha,
+            teknisyenEkGosterge,
+          ),
+          mudurOpts: terfiKaynaktanKuralOpts(r, kha, teknisyenEkGosterge),
+          yanCtx: {
+            kidemYili: r.kidem_yili,
+            thHizmetBaslangic: r.th_hizmet_baslangic,
+            bilgisayarKullaniyor: r.bilgisayar_kullaniyor,
+            kendiSinif: r.asil_unvan_sinif ?? null,
+            mudurSinif: r.unvan_sinif,
+          },
+        })
+        if (!fark) continue
+        aday.push({ terfiId: r.terfi_id, fark: fark.fark })
+      }
+      const idx = vekilMudurFarkBirincilIndex(aday.map(a => a.fark))
+      if (idx >= 0) vekilBirincilTerfiIds.add(aday[idx].terfiId)
+    }
+  }
+
   for (const r of kaynaklar) {
     const minD = minDereceEgitim(r.ogrenim_turu)
     const khaIn = tarihDahilAralikta(r.kha_tarihi, terfiBas, terfiBit)
@@ -586,7 +645,8 @@ export function buildTerfiEttirOnizleme(
         },
       })
       if (fark) {
-        puanSon = { ...puanSon, ...fark.fark }
+        const birincil = r.terfi_id != null && vekilBirincilTerfiIds.has(r.terfi_id)
+        puanSon = { ...puanSon, ...(birincil ? fark.fark : vekilMudurFarkSifirPuan()) }
         kazancEksik.clear()
       }
     }

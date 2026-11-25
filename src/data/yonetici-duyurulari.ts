@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-25-pkb-aile-coklu-vekil',
+    baslik: '25 Kasım 2026 — PKB aile kaldırıldı, çoklu vekil katsayısı tekleştirildi',
+    maddeler: [
+      'Personel Kazanç Bilgileri ekranından (ve PDF’ten) Aile Bilgileri bölümü geçici olarak kaldırıldı.',
+      'Birden fazla müdürlüğe vekâlet edenlerde kazanç farkı yalnızca en yüksek farkı veren vekil satırına yazılır; diğer vekil satırları 0’dır. PKB katsayı tablosunda tek vekil satırı görünür.',
+    ],
+  },
+  {
     id: '2026-11-25-vekil-mudur-ogrenim-sart',
     baslik: '25 Kasım 2026 — Vekil müdür farkı ve öğrenim şartı',
     maddeler: [

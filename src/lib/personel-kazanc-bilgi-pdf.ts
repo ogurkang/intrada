@@ -178,55 +178,17 @@ function ogrenimTablosu(
   return y + 8
 }
 
-function aileTablosu(
-  doc: PdfDoc,
-  y: number,
-  aile: PersonelKazancBilgiKart['aile'],
-): number {
-  const widths = [CONTENT_W * 0.22, CONTENT_W * 0.22, CONTENT_W * 0.28, CONTENT_W * 0.28]
-  const basliklar = [
-    'Medeni Durum',
-    'Eş Durumu',
-    '6 Yaşından Küçük Çocuk',
-    '6 Yaşından Büyük Çocuk',
-  ]
-  const baslikH = 20
-  y = sayfaBasi(doc, y, baslikH + 18)
-  let x = MARGIN
-  for (let i = 0; i < basliklar.length; i++) {
-    hucre(doc, x, y, widths[i], baslikH, basliklar[i], {
-      bold: true,
-      center: i >= 2,
-      size: 7,
-      zemin: '#f1f5f9',
-      renk: '#475569',
-    })
-    x += widths[i]
-  }
-  y += baslikH
-  const degerler = [
-    metin(aile?.medeni_hal),
-    metin(aile?.es_durumu),
-    aile ? String(aile.cocuk_6_kucuk) : '—',
-    aile ? String(aile.cocuk_6_buyuk) : '—',
-  ]
-  let h = 18
-  for (let i = 0; i < degerler.length; i++) {
-    h = Math.max(h, hucreYukseklik(doc, degerler[i], widths[i], 8))
-  }
-  y = sayfaBasi(doc, y, h)
-  x = MARGIN
-  for (let i = 0; i < degerler.length; i++) {
-    hucre(doc, x, y, widths[i], h, degerler[i], { center: i >= 2, size: 8 })
-    x += widths[i]
-  }
-  return y + h + 8
-}
-
 function kazancKatsayiTablosu(doc: PdfDoc, y: number, terfiler: PersonelKazancBilgiTerfi[]): number {
   const asiller = terfiler.filter(t => t.rol === 'Asil')
   const vekiller = terfiler.filter(t => t.rol === 'Vekil')
-  const satirlar = [...asiller, ...vekiller]
+  const farkToplam = (t: PersonelKazancBilgiTerfi) =>
+    sayiParse(t.ek_odeme) + sayiParse(t.oht) + sayiParse(t.yan_odeme) + sayiParse(t.sds_orani)
+  let vekilTek: PersonelKazancBilgiTerfi | null = null
+  if (vekiller.length === 1) vekilTek = vekiller[0]
+  else if (vekiller.length > 1) {
+    vekilTek = vekiller.reduce((best, t) => (farkToplam(t) > farkToplam(best) ? t : best))
+  }
+  const satirlar = vekilTek ? [...asiller, vekilTek] : [...asiller]
   if (!satirlar.length) return bosSatir(doc, y, 'Kazanç katsayısı kaydı yok.')
 
   const widths = [
@@ -475,9 +437,6 @@ function kartCizV1(doc: PdfDoc, kart: PersonelKazancBilgiKart) {
 function kartCizV2(doc: PdfDoc, kart: PersonelKazancBilgiKart) {
   let y = kartBaslik(doc, kart)
   y = ogrenimBolumu(doc, y, kart)
-
-  y = bolumBaslik(doc, y, 'Aile Bilgileri')
-  y = aileTablosu(doc, y, kart.aile)
 
   y = bolumBaslik(doc, y, 'Kadro Bilgileri')
   if (!kart.kadrolar.length) {

@@ -18,7 +18,9 @@ import type { Database } from '@/types/database'
 import type { KazancPuan } from '@/lib/terfi-ettir-hesap'
 import {
   kazancPuanEsit,
+  vekilMudurFarkBirincilIndex,
   vekilMudurFarkHesapla,
+  vekilMudurFarkSifirPuan,
   vekilMudurUnvaniMi,
 } from '@/lib/kazanc-vekil-mudur-fark'
 
@@ -225,6 +227,14 @@ export async function uygulaVekilMudurFarkSicil(
   let yazildi = false
   let kendiPuan: KazancPuan | null = null
 
+  type VekilAday = {
+    terfiId: number
+    mevcut: KazancPuan
+    fark: KazancPuan
+    kendi: KazancPuan
+  }
+  const adaylar: VekilAday[] = []
+
   for (const vekilKadro of vekilKadrolar) {
     const vekilUnvan = kadroUnvanAdi(vekilKadro)
     const vekilTerfi =
@@ -263,13 +273,24 @@ export async function uygulaVekilMudurFarkSicil(
       },
     })
     if (!sonuc) continue
-    kendiPuan = sonuc.kendi
+    adaylar.push({
+      terfiId: vekilTerfi.id,
+      mevcut: terfiPuan(vekilTerfi),
+      fark: sonuc.fark,
+      kendi: sonuc.kendi,
+    })
+  }
 
-    if (!kazancPuanEsit(terfiPuan(vekilTerfi), sonuc.fark)) {
+  const birincil = vekilMudurFarkBirincilIndex(adaylar.map(a => a.fark))
+  for (let i = 0; i < adaylar.length; i++) {
+    const aday = adaylar[i]
+    kendiPuan = aday.kendi
+    const hedef = i === birincil ? aday.fark : vekilMudurFarkSifirPuan()
+    if (!kazancPuanEsit(aday.mevcut, hedef)) {
       const { error } = await supabase
         .from('terfi_hareketleri')
-        .update(kazancPayload(sonuc.fark))
-        .eq('id', vekilTerfi.id)
+        .update(kazancPayload(hedef))
+        .eq('id', aday.terfiId)
       if (error) return { uygulandi: false, hata: error.message }
       yazildi = true
     }

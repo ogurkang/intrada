@@ -92,6 +92,36 @@ export function vekilMudurFarkSifirPuan(): KazancPuan {
   }
 }
 
+/** Vekalet fark kalemlerinin sayısal toplamı (birincil seçimi için). */
+export function vekilMudurFarkPuaniToplam(p: {
+  ek_odeme?: string | null
+  oht?: string | null
+  yan_odeme?: string | null
+  sds_orani?: string | null
+}): number {
+  return KAZANC_VEKIL_FARK_ALANLARI.reduce((s, a) => s + (parseKazancPuan(p[a]) ?? 0), 0)
+}
+
+/**
+ * Birden fazla vekil müdür farkı adayı varsa en yüksek toplam farkı taşıyan indeks.
+ * Eşitlikte ilk indeks (stabil). Tek satırda fark, diğerlerinde 0 yazılır.
+ */
+export function vekilMudurFarkBirincilIndex(
+  farklar: Array<{ ek_odeme?: string | null; oht?: string | null; yan_odeme?: string | null; sds_orani?: string | null }>,
+): number {
+  if (!farklar.length) return -1
+  let best = 0
+  let bestT = vekilMudurFarkPuaniToplam(farklar[0])
+  for (let i = 1; i < farklar.length; i++) {
+    const t = vekilMudurFarkPuaniToplam(farklar[i])
+    if (t > bestT) {
+      best = i
+      bestT = t
+    }
+  }
+  return best
+}
+
 export function kazancOkMetni(eski: string | null | undefined, yeni: string | null | undefined): string {
   const e = String(eski ?? '').trim() || '—'
   const y = String(yeni ?? '').trim() || '—'

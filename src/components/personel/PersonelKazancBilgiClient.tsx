@@ -66,10 +66,21 @@ function EvetHayir({ deger }: { deger: boolean }) {
   )
 }
 
+function vekilFarkToplam(t: PersonelKazancBilgiTerfi): number {
+  return sayiParse(t.ek_odeme) + sayiParse(t.oht) + sayiParse(t.yan_odeme) + sayiParse(t.sds_orani)
+}
+
+/** Birden fazla vekil müdür satırı varsa yalnızca en yüksek farkı taşıyan tek vekil katsayısı. */
 function kazancSatirlari(terfiler: PersonelKazancBilgiTerfi[]) {
   const asiller = terfiler.filter(t => t.rol === 'Asil')
   const vekiller = terfiler.filter(t => t.rol === 'Vekil')
-  const satirlar = [...asiller, ...vekiller]
+  let vekilTek: PersonelKazancBilgiTerfi | null = null
+  if (vekiller.length === 1) {
+    vekilTek = vekiller[0]
+  } else if (vekiller.length > 1) {
+    vekilTek = vekiller.reduce((best, t) => (vekilFarkToplam(t) > vekilFarkToplam(best) ? t : best))
+  }
+  const satirlar = vekilTek ? [...asiller, vekilTek] : [...asiller]
   const toplam = {
     ek_gosterge: satirlar.reduce((a, t) => a + sayiParse(t.ek_gosterge), 0),
     ek_odeme: satirlar.reduce((a, t) => a + sayiParse(t.ek_odeme), 0),
@@ -319,38 +330,6 @@ export default function PersonelKazancBilgiClient({ kartlar }: Props) {
                     </table>
                   </div>
                 )}
-              </section>
-
-              <section className="mb-5">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Aile Bilgileri</h3>
-                <div className="overflow-x-auto rounded-lg border border-slate-100">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Medeni Durum</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Eş Durumu</th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">
-                          6 Yaşından Küçük Çocuk Sayısı
-                        </th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-slate-600">
-                          6 Yaşından Büyük Çocuk Sayısı
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-slate-700">{metin(k.aile?.medeni_hal)}</td>
-                        <td className="px-4 py-3 text-slate-700">{metin(k.aile?.es_durumu)}</td>
-                        <td className="px-4 py-3 text-center tabular-nums text-slate-700">
-                          {k.aile ? k.aile.cocuk_6_kucuk : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-center tabular-nums text-slate-700">
-                          {k.aile ? k.aile.cocuk_6_buyuk : '—'}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
               </section>
 
               <section className="mb-5">

@@ -18,7 +18,11 @@ import { teknisyenOgrenimUyum, type TeknisyenEkGostergeBaglam, type TeknisyenOgr
 import { kazancTaniminiKuralla, terfiKaynaktanKuralOpts } from '@/lib/kazanc-kural-uygula'
 import { OZEL_KALEM_KAZANC_DERECE, unvanKazancBirinciDereceMi } from '@/lib/kazanc-ozel-kalem'
 import { yuruttuguUnvanSdsAl } from '@/lib/kazanc-yuruttugu-unvan'
-import { vekilMudurFarkHesapla } from '@/lib/kazanc-vekil-mudur-fark'
+import {
+  vekilMudurFarkBirincilIndex,
+  vekilMudurFarkHesapla,
+  vekilMudurFarkSifirPuan,
+} from '@/lib/kazanc-vekil-mudur-fark'
 
 /** Kazanç tanımıyla karşılaştırılan alanlar */
 export const KAZANC_ALANLARI = [
@@ -231,6 +235,65 @@ export function kazancSapmaHesapla(
   const tanimsizlar: KazancTanimsizSatir[] = []
   let kontrolEdilen = 0
 
+  const vekilBirincilTerfiIds = new Set<number>()
+  {
+    const bySicil = new Map<string, TerfiKaynak[]>()
+    for (const r of kaynaklar) {
+      if (!r.vekil_mudur_fark_mi) continue
+      const list = bySicil.get(r.sicil_no) ?? []
+      list.push(r)
+      bySicil.set(r.sicil_no, list)
+    }
+    for (const [, list] of bySicil) {
+      const aday: { terfiId: number; fark: ReturnType<typeof vekilMudurFarkSifirPuan> }[] = []
+      for (const r of list) {
+        if (r.terfi_id == null || r.unvan_id == null || r.ogrenim_id == null) continue
+        const kha = Number.parseInt(norm(r.kha_derece), 10)
+        const khaGecerli = Number.isFinite(kha)
+        const birinciDerece = unvanKazancBirinciDereceMi(r.unvan_adi)
+        if (!birinciDerece && !khaGecerli) continue
+        const derece = birinciDerece ? OZEL_KALEM_KAZANC_DERECE : kha
+        const khaKural = khaGecerli ? kha : derece
+        const fark = vekilMudurFarkHesapla({
+          lookup: kazancLookup,
+          khaDerece: khaKural,
+          ogrenimTuru: r.ogrenim_turu,
+          kendiOpts: terfiKaynaktanKuralOpts(
+            {
+              unvan_id: r.asil_unvan_id ?? null,
+              ogrenim_id: r.ogrenim_id,
+              unvan_adi: r.asil_unvan_adi ?? null,
+              kadro_derecesi: r.asil_kadro_derecesi ?? null,
+              kha_derece: r.kha_derece,
+              yuksek_ogrenim_var: r.yuksek_ogrenim_var,
+              kadrosu_ile_ilgili: r.kadrosu_ile_ilgili,
+              teknisyen_kariyer: r.teknisyen_kariyer ?? null,
+              teknik_ogrenim: r.teknik_ogrenim,
+              asil_mi: true,
+              destek_yardimci_birim: r.asil_destek_yardimci_birim === true,
+              ogrenim_meslegi: r.ogrenim_meslegi,
+              ogrenim_bolum: r.ogrenim_bolum,
+            },
+            khaKural,
+            teknisyenEkGosterge,
+          ),
+          mudurOpts: terfiKaynaktanKuralOpts({ ...r, asil_mi: true }, khaKural, teknisyenEkGosterge),
+          yanCtx: {
+            kidemYili: r.kidem_yili,
+            thHizmetBaslangic: r.th_hizmet_baslangic,
+            bilgisayarKullaniyor: r.bilgisayar_kullaniyor,
+            kendiSinif: r.asil_unvan_sinif ?? null,
+            mudurSinif: r.unvan_sinif,
+          },
+        })
+        if (!fark) continue
+        aday.push({ terfiId: r.terfi_id, fark: fark.fark })
+      }
+      const idx = vekilMudurFarkBirincilIndex(aday.map(a => a.fark))
+      if (idx >= 0) vekilBirincilTerfiIds.add(aday[idx].terfiId)
+    }
+  }
+
   for (const r of kaynaklar) {
     const kha = Number.parseInt(norm(r.kha_derece), 10)
     const khaGecerli = Number.isFinite(kha)
@@ -295,11 +358,14 @@ export function kazancSapmaHesapla(
         )
         continue
       }
-      tanim = fark.fark
+      const birincil = r.terfi_id != null && vekilBirincilTerfiIds.has(r.terfi_id)
+      tanim = birincil ? fark.fark : vekilMudurFarkSifirPuan()
       vekilKendiEg = fark.kendi.ek_gosterge
       vekilFarkKural = fark.ogrenimSartiYok
         ? 'Vekalet farkı yok (0): müdür atanma öğrenim şartı (en az lisans) sağlanmıyor'
-        : 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
+        : birincil
+          ? 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
+          : 'Vekalet farkı 0 (aynı kişinin başka vekil müdür satırında fark uygulanır)'
       kontrolEdilen++
     } else {
       const tanimHam = kazancLookup(r.unvan_id, r.ogrenim_id, derece)
