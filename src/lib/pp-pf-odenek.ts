@@ -1,6 +1,6 @@
 /**
  * Gösterge bazlı ödenek satırlarını faaliyet id’lerine toplar.
- * Rapor / liste kodları faaliyet düzeyinde aggregate etmeye devam eder.
+ * Kurum İçi göstergelerin ödenekleri rapor toplamına girmez.
  */
 
 export type PpPfOdenekSatir = {
@@ -27,21 +27,44 @@ export async function ppPfOdenekSatirlariYukle(
   sb: Sb,
   pfFaaliyetIds: number[],
   sutunlar: string = 't1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin',
-): Promise<{ data: PpPfOdenekSatir[]; error: string | null }> {
+): Promise<{ data: PpPfOdenekSatir[]; kurumIciFaaliyetIds: number[]; error: string | null }> {
   const ids = [...new Set(pfFaaliyetIds.filter(n => Number.isFinite(n) && n > 0))]
-  if (!ids.length) return { data: [], error: null }
+  if (!ids.length) return { data: [], kurumIciFaaliyetIds: [], error: null }
 
-  const { data: gRaw, error: gErr } = await sb
+  const gSorgu = await sb
     .from('performans_programi_pf_gosterge')
-    .select('id, faaliyet_id')
+    .select('id, faaliyet_id, kurum_ici')
     .in('faaliyet_id', ids)
-  if (gErr) return { data: [], error: gErr.message }
+  let gRaw = gSorgu.data
+  let gErr = gSorgu.error
+  if (gErr && String(gErr.message).includes('kurum_ici')) {
+    const yedek = await sb
+      .from('performans_programi_pf_gosterge')
+      .select('id, faaliyet_id')
+      .in('faaliyet_id', ids)
+    gRaw = (yedek.data ?? []).map(g => ({ ...(g as object), kurum_ici: false }))
+    gErr = yedek.error
+  }
+  if (gErr) return { data: [], kurumIciFaaliyetIds: [], error: gErr.message }
 
-  const gostergeler = (gRaw ?? []) as { id: number; faaliyet_id: number }[]
-  if (!gostergeler.length) return { data: [], error: null }
+  const gostergeler = (gRaw ?? []) as { id: number; faaliyet_id: number; kurum_ici?: boolean }[]
+  if (!gostergeler.length) return { data: [], kurumIciFaaliyetIds: [], error: null }
 
   const gToF = new Map(gostergeler.map(g => [Number(g.id), Number(g.faaliyet_id)]))
+  const gKurumIci = new Map(gostergeler.map(g => [Number(g.id), Boolean(g.kurum_ici)]))
   const gIds = gostergeler.map(g => Number(g.id)).filter(Number.isFinite)
+
+  const byFaaliyet = new Map<number, { toplam: number; kurumIci: number }>()
+  for (const g of gostergeler) {
+    const fid = Number(g.faaliyet_id)
+    const once = byFaaliyet.get(fid) ?? { toplam: 0, kurumIci: 0 }
+    once.toplam += 1
+    if (g.kurum_ici) once.kurumIci += 1
+    byFaaliyet.set(fid, once)
+  }
+  const kurumIciFaaliyetIds = [...byFaaliyet.entries()]
+    .filter(([, v]) => v.toplam > 0 && v.kurumIci === v.toplam)
+    .map(([fid]) => fid)
 
   const { data: oRaw, error: oErr } = await sb
     .from('performans_programi_pf_odenek')
@@ -49,9 +72,13 @@ export async function ppPfOdenekSatirlariYukle(
     .in('pf_gosterge_id', gIds)
   if (oErr) {
     if (String(oErr.message).includes('pf_gosterge_id')) {
-      return { data: [], error: 'Ödenek gösterge bağını için 20261124180000_pp_odenek_gosterge.sql dosyasını çalıştırın.' }
+      return {
+        data: [],
+        kurumIciFaaliyetIds,
+        error: 'Ödenek gösterge bağını için 20261124180000_pp_odenek_gosterge.sql dosyasını çalıştırın.',
+      }
     }
-    return { data: [], error: oErr.message }
+    return { data: [], kurumIciFaaliyetIds, error: oErr.message }
   }
 
   const data: PpPfOdenekSatir[] = []
@@ -69,6 +96,8 @@ export async function ppPfOdenekSatirlariYukle(
     const gid = Number(row.pf_gosterge_id)
     const fid = gToF.get(gid)
     if (!fid) continue
+    // Kurum İçi göstergenin ödeneği maliyet / toplam satırlarına girmez.
+    if (gKurumIci.get(gid)) continue
     data.push({
       pf_faaliyet_id: fid,
       pf_gosterge_id: gid,
@@ -81,5 +110,5 @@ export async function ppPfOdenekSatirlariYukle(
       t2_tahmin: row.t2_tahmin ?? null,
     })
   }
-  return { data, error: null }
+  return { data, kurumIciFaaliyetIds, error: null }
 }

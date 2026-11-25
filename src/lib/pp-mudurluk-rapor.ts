@@ -353,7 +353,7 @@ export async function ppPerformansRaporYili(
 
   if (hedefBasinaBlok) {
     const aciklamali = bagIds.length
-      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi, aciklama, kurum_ici').in('bag_id', bagIds).order('sira_no')
+      ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi, aciklama').in('bag_id', bagIds).order('sira_no')
       : { data: [], error: null }
     const pfRaw = aciklamali.error
       ? await sb.from('performans_programi_pf_faaliyet').select('id, bag_id, sira_no, faaliyet_adi').in('bag_id', bagIds).order('sira_no')
@@ -361,7 +361,7 @@ export async function ppPerformansRaporYili(
     pfFaaliyetler = ((pfRaw.data ?? []) as PfFaaliyet[]).map(f => ({
       ...f,
       aciklama: f.aciklama ?? null,
-      kurum_ici: Boolean((f as { kurum_ici?: boolean }).kurum_ici),
+      kurum_ici: false,
     }))
     const pfIds = pfFaaliyetler.map(f => f.id)
     const [{ data: pfGRaw }, odenekYukle] = await Promise.all([
@@ -374,6 +374,8 @@ export async function ppPerformansRaporYili(
         't1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin',
       ),
     ])
+    const kurumIciSet = new Set(odenekYukle.kurumIciFaaliyetIds ?? [])
+    pfFaaliyetler = pfFaaliyetler.map(f => ({ ...f, kurum_ici: kurumIciSet.has(f.id) }))
     pfGostergeler = (pfGRaw ?? []) as PfGosterge[]
     pfOdenekler = odenekYukle.data
       .filter(o => o.butce_kodu_id != null)

@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-25-pp-kurum-ici-gosterge',
+    baslik: '25 Kasım 2026 — Kurum İçi yalnızca ilgili göstergede',
+    maddeler: [
+      'Performans programında «Kurum İçi» düğmesi artık tüm faaliyeti değil, yalnızca açık olan göstergeyi işaretler; kardeş göstergelerin ödenekleri etkilenmez.',
+      'Raporlarda faaliyet satırı «Kurum İçi» görünür yalnızca o faaliyetin tüm göstergeleri kurum içi ise; kısmi işaretlemede kalan göstergelerin ödenekleri toplama girer.',
+      'Supabase’te 20261125120000_pp_gosterge_kurum_ici.sql dosyasını bir kez çalıştırın (gösterge.kurum_ici; eski faaliyet bayrağı göstergelere aktarılır).',
+    ],
+  },
+  {
     id: '2026-11-25-pkb-aile-coklu-vekil',
     baslik: '25 Kasım 2026 — PKB aile kaldırıldı, çoklu vekil katsayısı tekleştirildi',
     maddeler: [

@@ -264,21 +264,11 @@ export async function ppMudurlukProgramRaporYili(
   const pfSorgu = bagIds.length
     ? await sb
       .from('performans_programi_pf_faaliyet')
-      .select('id, bag_id, sira_no, faaliyet_adi, kurum_ici')
-      .in('bag_id', bagIds)
-      .order('sira_no')
-    : { data: [], error: null }
-  const pfRaw = pfSorgu.error
-    ? await sb
-      .from('performans_programi_pf_faaliyet')
       .select('id, bag_id, sira_no, faaliyet_adi')
       .in('bag_id', bagIds)
       .order('sira_no')
-    : pfSorgu
-  const pfFaaliyetler = ((pfRaw.data ?? []) as PfF[]).map(f => ({
-    ...f,
-    kurum_ici: Boolean((f as { kurum_ici?: boolean }).kurum_ici),
-  }))
+    : { data: [], error: null }
+  let pfFaaliyetler = (pfSorgu.data ?? []) as PfF[]
   const pfIds = pfFaaliyetler.map(f => f.id)
 
   const [{ data: pfGRaw }, odenekYukle] = await Promise.all([
@@ -291,6 +281,8 @@ export async function ppMudurlukProgramRaporYili(
       : Promise.resolve({ data: [] }),
     ppPfOdenekSatirlariYukle(sb as never, pfIds, 't_butce'),
   ])
+  const kurumIciSet = new Set(odenekYukle.kurumIciFaaliyetIds ?? [])
+  pfFaaliyetler = pfFaaliyetler.map(f => ({ ...f, kurum_ici: kurumIciSet.has(f.id) }))
   const pfGostergeler = (pfGRaw ?? []) as PfG[]
   const pfOdenekler = odenekYukle.data as PfO[]
 

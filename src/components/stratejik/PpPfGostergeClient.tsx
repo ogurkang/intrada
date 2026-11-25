@@ -113,9 +113,13 @@ export default function PpPfGostergeClient({
 
   function kurumIciIsle() {
     setHata(null)
+    if (!baslangic.gostergeId) {
+      setHata('Kurum İçi için önce göstergeyi kaydedin.')
+      return
+    }
     const sonraki = !kurumIci
     start(async () => {
-      const s = await ppPfKurumIciKaydet(faaliyetId, sonraki)
+      const s = await ppPfKurumIciKaydet(baslangic.gostergeId!, sonraki)
       if (s.hata) {
         setHata(s.hata)
         return
@@ -210,7 +214,8 @@ export default function PpPfGostergeClient({
         <button
           type="button"
           onClick={kurumIciIsle}
-          disabled={bekliyor}
+          disabled={bekliyor || !baslangic.gostergeId}
+          title={!baslangic.gostergeId ? 'Önce göstergeyi kaydedin' : 'Yalnızca bu gösterge için Kurum İçi'}
           className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
             kurumIci ? 'bg-orange-700 hover:bg-orange-600' : 'bg-orange-500 hover:bg-orange-400'
           }`}

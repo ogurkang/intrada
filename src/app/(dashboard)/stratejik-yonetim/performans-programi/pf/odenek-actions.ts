@@ -15,27 +15,46 @@ export type PpOdenekKalem = {
   t2Tahmin: number | null
 }
 
-export async function ppPfKurumIciKaydet(pfFaaliyetId: number, kurumIci: boolean): Promise<{ hata?: string }> {
-  if (!Number.isFinite(pfFaaliyetId)) return { hata: 'Faaliyet bulunamadı.' }
+/** Kurum İçi yalnızca ilgili göstergeye yazılır; diğer göstergeleri / faaliyeti etkilemez. */
+export async function ppPfKurumIciKaydet(pfGostergeId: number, kurumIci: boolean): Promise<{ hata?: string }> {
+  if (!Number.isFinite(pfGostergeId) || pfGostergeId <= 0) {
+    return { hata: 'Önce göstergeyi kaydedin; Kurum İçi ilgili göstergeye bağlanır.' }
+  }
   const supabase = await createClient()
   if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  const { error } = await sb.from('performans_programi_pf_faaliyet').update({ kurum_ici: kurumIci }).eq('id', pfFaaliyetId)
+  const { data: gosterge, error: gHata } = await sb
+    .from('performans_programi_pf_gosterge')
+    .select('id, faaliyet_id')
+    .eq('id', pfGostergeId)
+    .maybeSingle()
+  if (gHata) return { hata: gHata.message }
+  if (!gosterge) return { hata: 'Gösterge bulunamadı.' }
+
+  const { error } = await sb
+    .from('performans_programi_pf_gosterge')
+    .update({ kurum_ici: kurumIci })
+    .eq('id', pfGostergeId)
   if (error) {
     if (String(error.message).includes('kurum_ici')) {
-      return { hata: 'Kurum İçi için 20261120140000_pp_pf_kurum_ici.sql dosyasını çalıştırın.' }
+      return { hata: 'Kurum İçi için 20261125120000_pp_gosterge_kurum_ici.sql dosyasını çalıştırın.' }
     }
     return { hata: error.message }
   }
   await ppSatirLogYaz(supabase, {
-    tablo: 'performans_faaliyet',
-    kayitId: pfFaaliyetId,
+    tablo: 'performans_gosterge',
+    kayitId: pfGostergeId,
     islem: 'Ödenek',
     ozet: kurumIci ? 'Kurum İçi işaretlendi' : 'Kurum İçi kaldırıldı',
   })
-  const { data: faaliyet } = await sb.from('performans_programi_pf_faaliyet').select('bag_id').eq('id', pfFaaliyetId).maybeSingle()
+  const faaliyetId = Number(gosterge.faaliyet_id)
+  const { data: faaliyet } = await sb
+    .from('performans_programi_pf_faaliyet')
+    .select('bag_id')
+    .eq('id', faaliyetId)
+    .maybeSingle()
   if (faaliyet?.bag_id) revalidatePath(`/stratejik-yonetim/performans-programi/hedef/${faaliyet.bag_id}`)
-  revalidatePath(`/stratejik-yonetim/performans-programi/pf/${pfFaaliyetId}/gostergeler`)
+  revalidatePath(`/stratejik-yonetim/performans-programi/pf/${faaliyetId}/gostergeler`)
   return {}
 }

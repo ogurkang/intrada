@@ -20,27 +20,12 @@ export default async function PpPfGostergeFormSayfa({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
 
-  const kurumlu = await sb
+  const { data: faaliyet } = await sb
     .from('performans_programi_pf_faaliyet')
-    .select('id, bag_id, sira_no, faaliyet_adi, kurum_ici')
+    .select('id, bag_id, sira_no, faaliyet_adi')
     .eq('id', faaliyetId)
     .maybeSingle()
-  const faaliyetRes = kurumlu.error
-    ? await sb
-        .from('performans_programi_pf_faaliyet')
-        .select('id, bag_id, sira_no, faaliyet_adi')
-        .eq('id', faaliyetId)
-        .maybeSingle()
-    : kurumlu
-  const faaliyet = faaliyetRes.data as {
-    id: number
-    bag_id: number
-    sira_no: number
-    faaliyet_adi: string
-    kurum_ici?: boolean
-  } | null
   if (!faaliyet) notFound()
-  const kurumIci = Boolean(faaliyet.kurum_ici)
   const bagId = Number(faaliyet.bag_id)
   const { data: bag } = await sb
     .from('performans_programi_alt_program_hedef')
@@ -78,19 +63,32 @@ export default async function PpPfGostergeFormSayfa({
     t_hedef: number | null
     t1_tahmin: number | null
     t2_tahmin: number | null
+    kurum_ici?: boolean
   } | null = null
+  let kurumIci = false
 
   if (gostergeId) {
-    const { data } = await sb
+    const kurumlu = await sb
       .from('performans_programi_pf_gosterge')
       .select(
-        'id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin',
+        'id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin, kurum_ici',
       )
       .eq('id', gostergeId)
       .eq('faaliyet_id', faaliyetId)
       .maybeSingle()
-    if (!data) notFound()
-    kayit = data
+    const gostergeRes = kurumlu.error
+      ? await sb
+          .from('performans_programi_pf_gosterge')
+          .select(
+            'id, sira_no, gosterge_adi, birim, aciklama, hesaplama_yontemi, t2_gerceklesme, t1_planlanan, t1_yil_sonu, t_hedef, t1_tahmin, t2_tahmin',
+          )
+          .eq('id', gostergeId)
+          .eq('faaliyet_id', faaliyetId)
+          .maybeSingle()
+      : kurumlu
+    if (!gostergeRes.data) notFound()
+    kayit = gostergeRes.data
+    kurumIci = Boolean(kayit?.kurum_ici)
   }
 
   let sira = kayit?.sira_no ?? 0

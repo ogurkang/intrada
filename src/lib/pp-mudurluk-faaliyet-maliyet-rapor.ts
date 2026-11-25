@@ -93,21 +93,13 @@ export async function ppMudurlukFaaliyetMaliyetRaporYili(
   type PfF = { id: number; bag_id: number; kurum_ici?: boolean }
   const pfSorgu = await sb
     .from('performans_programi_pf_faaliyet')
-    .select('id, bag_id, kurum_ici')
+    .select('id, bag_id')
     .in('bag_id', bagIds)
-  const pfRaw = pfSorgu.error
-    ? await sb
-      .from('performans_programi_pf_faaliyet')
-      .select('id, bag_id')
-      .in('bag_id', bagIds)
-    : pfSorgu
-  const pfFaaliyetler = ((pfRaw.data ?? []) as PfF[]).map(f => ({
-    ...f,
-    kurum_ici: Boolean((f as { kurum_ici?: boolean }).kurum_ici),
-  }))
+  const pfFaaliyetler = (pfSorgu.data ?? []) as PfF[]
   const pfIds = pfFaaliyetler.map(f => f.id)
 
-  const { data: odenekler } = await ppPfOdenekSatirlariYukle(sb as never, pfIds, 't_butce')
+  const { data: odenekler, kurumIciFaaliyetIds } = await ppPfOdenekSatirlariYukle(sb as never, pfIds, 't_butce')
+  const kurumIciSet = new Set(kurumIciFaaliyetIds ?? [])
 
   const odenekByPf = new Map<number, number>()
   for (const o of odenekler) {
@@ -123,7 +115,7 @@ export async function ppMudurlukFaaliyetMaliyetRaporYili(
     const key = ppNorm(mudurluk)
     const once = mudMap.get(key) ?? { mudurluk, tutar: 0 }
     for (const f of pfFaaliyetler) {
-      if (f.bag_id !== bag.id || f.kurum_ici) continue
+      if (f.bag_id !== bag.id || kurumIciSet.has(f.id)) continue
       once.tutar += odenekByPf.get(f.id) ?? 0
     }
     mudMap.set(key, once)
