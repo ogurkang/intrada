@@ -203,6 +203,7 @@ export function personelHareketKazancKiyasHesapla(input: {
     const fark = vekilMudurFarkHesapla({
       lookup: kazancLookup,
       khaDerece: Number.isFinite(khaDerece) ? khaDerece : derece,
+      ogrenimTuru: kazancOg?.ogrenim_turu ?? null,
       kendiOpts: {
         unvanId: kendiUnvan.id,
         ogrenimId,
@@ -257,9 +258,10 @@ export function personelHareketKazancKiyasHesapla(input: {
       yan_odeme: fark.fark.yan_odeme,
       sds_orani: fark.fark.sds_orani,
     }
-    aciklama =
-      `Vekalet farkı (asil müdür − ${kendiUnvan.unvan_adi}; ek gösterge hariç). ` +
-      'Girişte ek ödeme, ÖHT, yan ödeme ve SDS asil müdür ile kendi unvan kazancı farkı olmalıdır; ek gösterge 0 kalır.'
+    aciklama = fark.ogrenimSartiYok
+      ? 'Vekalet farkı yazılmaz (0): müdür kadrosuna atanma öğrenim şartı (en az lisans) sağlanmıyor. 657 md. 86.'
+      : `Vekalet farkı (asil müdür − ${kendiUnvan.unvan_adi}; ek gösterge hariç). ` +
+        'Girişte ek ödeme, ÖHT, yan ödeme ve SDS asil müdür ile kendi unvan kazancı farkı olmalıdır; ek gösterge 0 kalır.'
   }
 
   const satirlar = KIYAS_ALANLARI.map(({ key, etiket }) => {

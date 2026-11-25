@@ -10,6 +10,7 @@ import { unvanBelediyeBaskanYardimcisiMi, unvanKazancBirinciDereceMi } from '@/l
 import { mudurKariyerTuru, unvanMuduruMi } from '@/lib/kazanc-mudur-th-overlay'
 import { unvanSinifiThMi, unvanYanOdemeBilgisayarMi } from '@/lib/kazanc-yan-odeme'
 import { kadroDerecesi1Ile4Mu } from '@/lib/kazanc-ek-gosterge-43b'
+import { vekilMudurAtanmaOgrenimSartiSaglanirMi } from '@/lib/kazanc-vekil-mudur-fark'
 
 export type PersonelKazancKuralKalem = {
   baslik: string
@@ -42,8 +43,15 @@ export type PersonelKazancKuralOpts = {
   ekranYollari?: boolean
 }
 
-function vekilFarkNotu(vekilVar: boolean, ekran: boolean): string {
+function vekilFarkNotu(vekilVar: boolean, ekran: boolean, ogrenimSartiYok: boolean): string {
   if (!vekilVar) return ''
+  if (ogrenimSartiYok) {
+    const temel =
+      ' Vekil müdür kaydı olsa da müdür kadrosuna atanma için aranan öğrenim şartı (en az lisans) sağlanmadığı için ' +
+      'ek ödeme / ÖHT / yan ödeme / SDS farkı yazılmaz (0). 657 md. 86; atanma şartını taşımayanlara üst kadro mali hakları uygulanmaz.'
+    if (!ekran) return temel
+    return `${temel} Terfi › Terfi Bilgileri vekil satırı 0 görünür.`
+  }
   const temel =
     ' Vekil müdür kaydında bu kalem, asil bir müdürün alacağı ile kendi unvan kazancı arasındaki farktır; ' +
     'negatif tutar 0 yazılır.'
@@ -130,7 +138,8 @@ export function kalemleriKur(
   const yurut = metin(r.yuruttugu_unvan_adi)
   const ekranTanim = `Tanımlar › Kazanç Bilgileri › ${unvan} › ${ogrenim}`
   const ekranTerfi = 'Terfi › Terfi Bilgileri'
-  const fark = vekilFarkNotu(vekilMudurVar, ekranYollari)
+  const ogrenimSartiYok = vekilMudurVar && !vekilMudurAtanmaOgrenimSartiSaglanirMi(r.ogrenim_turu)
+  const fark = vekilFarkNotu(vekilMudurVar, ekranYollari, ogrenimSartiYok)
 
   const egParcalar: string[] = [
     '657 sayılı Devlet Memurları Kanunu md. 43 ve ek gösterge cetveli.',

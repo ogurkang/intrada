@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-25-vekil-mudur-ogrenim-sart',
+    baslik: '25 Kasım 2026 — Vekil müdür farkı ve öğrenim şartı',
+    maddeler: [
+      'Vekil müdürlükte ek ödeme / ÖHT / yan ödeme / SDS farkı yalnızca müdür atanma öğrenim şartını (en az lisans) sağlayanlara yazılır; önlisans ve altı için fark 0’dır (657 md. 86).',
+      'Kural Terfi Ettir, Personel Hareketi kıyas, sapma / tanımla uyuşan ve Personel Kazanç Bilgileri (mevzuat + katsayı) ekranlarında geçerlidir; PKB açılışında terfi satırları güncellenir.',
+    ],
+  },
+  {
     id: '2026-11-24-pkb-mevzuat-sayfa',
     baslik: '24 Kasım 2026 — PKB PDF mevzuat sayfa düzeni',
     maddeler: [

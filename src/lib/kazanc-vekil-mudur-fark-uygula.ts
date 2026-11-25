@@ -237,6 +237,7 @@ export async function uygulaVekilMudurFarkSicil(
     const sonuc = vekilMudurFarkHesapla({
       lookup,
       khaDerece,
+      ogrenimTuru: kazancOg?.ogrenim_turu ?? null,
       kendiOpts: {
         ...ortak,
         unvanId: asilUnvanId,

@@ -260,6 +260,7 @@ export function kazancSapmaHesapla(
       const fark = vekilMudurFarkHesapla({
         lookup: kazancLookup,
         khaDerece: khaKural,
+        ogrenimTuru: r.ogrenim_turu,
         kendiOpts: terfiKaynaktanKuralOpts(
           {
             unvan_id: r.asil_unvan_id ?? null,
@@ -296,7 +297,9 @@ export function kazancSapmaHesapla(
       }
       tanim = fark.fark
       vekilKendiEg = fark.kendi.ek_gosterge
-      vekilFarkKural = 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
+      vekilFarkKural = fark.ogrenimSartiYok
+        ? 'Vekalet farkı yok (0): müdür atanma öğrenim şartı (en az lisans) sağlanmıyor'
+        : 'Vekalet farkı (ek ödeme / ÖHT / yan ödeme / SDS; ek gösterge hariç)'
       kontrolEdilen++
     } else {
       const tanimHam = kazancLookup(r.unvan_id, r.ogrenim_id, derece)

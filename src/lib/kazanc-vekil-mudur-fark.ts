@@ -4,7 +4,11 @@ import { formatKazancPuan, parseKazancPuan } from '@/lib/kazanc-tasinir-yetkili'
 import type { KazancSatirLookup } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { parseDerece } from '@/lib/kazanc-teknisyen-ek-gosterge'
 import { parseKidemYili, unvanSinifiThMi, yanOdemeTanimdan } from '@/lib/kazanc-yan-odeme'
+import { OGRENIM_TURU_SIRA, ogrenimTuruSiraIndex } from '@/lib/ogrenim-sira'
 import { thYanOdemeYilSec } from '@/lib/th-hizmet-yili'
+
+const LISANS_SIRA = OGRENIM_TURU_SIRA.indexOf('Lisans')
+const BILINMEYEN_OGRENIM_SIRA = 9000
 
 type KazancPuan = {
   ek_gosterge: string | null
@@ -64,6 +68,28 @@ export function vekilMudurFarkKapsamiMi(
 ): boolean {
   const r = String(rol ?? '').trim().toLowerCase()
   return r === 'vekil' && vekilMudurUnvaniMi(unvanAdi)
+}
+
+/**
+ * Müdür kadrosuna atanma öğrenim şartı: en az lisans.
+ * Önlisans ve altı ile vekâlette üst kadro mali hak farkı (ek ödeme / ÖHT / yan / SDS) yazılmaz.
+ * 657 md. 86; atanma şartını taşımayanlara üst kadro mali hakları uygulanmaz.
+ */
+export function vekilMudurAtanmaOgrenimSartiSaglanirMi(ogrenimTuru: string | null | undefined): boolean {
+  const idx = ogrenimTuruSiraIndex(ogrenimTuru)
+  return idx >= LISANS_SIRA && idx < BILINMEYEN_OGRENIM_SIRA
+}
+
+export function vekilMudurFarkSifirPuan(): KazancPuan {
+  return {
+    ek_gosterge: '0',
+    ek_odeme: '0',
+    oht: '0',
+    yan_odeme: '0',
+    yan_odeme_eksi5: '0',
+    yan_odeme_bilgisayarsiz: '0',
+    sds_orani: '0',
+  }
 }
 
 export function kazancOkMetni(eski: string | null | undefined, yeni: string | null | undefined): string {
@@ -177,7 +203,9 @@ export function vekilMudurFarkHesapla(input: {
   kendiOpts: KazancKuralOpts
   mudurOpts: KazancKuralOpts
   yanCtx?: VekilMudurFarkYanCtx
-}): { kendi: KazancPuan; mudur: KazancPuan; fark: KazancPuan } | null {
+  /** Kazanç öğrenimi (varsayılan / lisans eşlemesi); lisans altıysa fark 0. */
+  ogrenimTuru?: string | null
+}): { kendi: KazancPuan; mudur: KazancPuan; fark: KazancPuan; ogrenimSartiYok: boolean } | null {
   const kha = parseDerece(input.khaDerece)
   if (kha == null) return null
   if (!vekilMudurUnvaniMi(input.mudurOpts.unvanAdi)) return null
@@ -190,5 +218,7 @@ export function vekilMudurFarkHesapla(input: {
   if (!kendiHam || !mudurHam) return null
   const kendi = puanYanOdemeIle(kendiHam, input.kendiOpts.unvanAdi, input.yanCtx?.kendiSinif, input.yanCtx)
   const mudur = puanYanOdemeIle(mudurHam, input.mudurOpts.unvanAdi, input.yanCtx?.mudurSinif, input.yanCtx)
-  return { kendi, mudur, fark: kazancVekilMudurFarki(mudur, kendi) }
+  const ogrenimSartiYok = !vekilMudurAtanmaOgrenimSartiSaglanirMi(input.ogrenimTuru)
+  const fark = ogrenimSartiYok ? vekilMudurFarkSifirPuan() : kazancVekilMudurFarki(mudur, kendi)
+  return { kendi, mudur, fark, ogrenimSartiYok }
 }

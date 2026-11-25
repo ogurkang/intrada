@@ -556,6 +556,7 @@ export function buildTerfiEttirOnizleme(
       const fark = vekilMudurFarkHesapla({
         lookup: kazancLookup,
         khaDerece: newKd,
+        ogrenimTuru: r.ogrenim_turu,
         kendiOpts: terfiKaynaktanKuralOpts(
           {
             unvan_id: r.asil_unvan_id ?? null,

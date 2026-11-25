@@ -3,6 +3,7 @@ import { anaKadroSec } from '@/lib/kadro-ana-sicil'
 import { sortCalisanOgrenimByTuru } from '@/lib/ogrenim-sira'
 import { fetchAllCalisanOgrenim } from '@/lib/supabase-sayfala'
 import { yukleTerfiEttirKaynakVeKazanc } from '@/lib/terfi-ettir-data'
+import { uygulaVekilMudurFarkToplu } from '@/lib/kazanc-vekil-mudur-fark-uygula'
 import {
   personelKazancBilgiKartlariKur,
   personelKazancBilgiKapsamindaMi,
@@ -256,6 +257,8 @@ export async function yuklePersonelKazancBilgiKartlari(
   sicilFiltre?: string[],
 ): Promise<PersonelKazancBilgiKart[]> {
   const supabase = await createClient()
+  // Vekil müdür farkını (öğrenim şartı dahil) terfi satırına yansıt.
+  await uygulaVekilMudurFarkToplu(supabase)
   const { kaynaklar } = await yukleTerfiEttirKaynakVeKazanc(supabase)
 
   const grup = new Map<string, typeof kaynaklar>()
