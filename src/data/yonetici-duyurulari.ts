@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-25-pp-sil-2522-2027',
+    baslik: '25 Kasım 2026 — 2027 PP 2.5.2.2 kaydı silindi',
+    maddeler: [
+      '2027 performans programında İnsan Kaynakları ve Eğitim Müdürlüğü / PH 2.5.2 altındaki 2.5.2.2 kodlu performans faaliyeti (ve bağlı göstergeleri) silindi.',
+      'Canlı veri güncellendi; tekrar için 20261125140000_pp_sil_2522_2027.sql dosyası idempotenttir.',
+    ],
+  },
+  {
     id: '2026-11-25-pp-kurum-ici-gosterge',
     baslik: '25 Kasım 2026 — Kurum İçi yalnızca ilgili göstergede',
     maddeler: [
