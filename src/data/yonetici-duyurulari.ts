@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-26-kadro-meclis-karar-no',
+    baslik: '26 Kasım 2026 — Kadro meclis karar no düzeltmesi',
+    maddeler: [
+      'Kadro hareketlerinde Excel kaynaklı meclis karar no hatası giderildi: «Sat Aug 01 2026 00:00:00 GMT+0300…» gibi değerler «1/8» formatına çevrildi (56 kayıt).',
+      'Yeni kayıt / güncellemede aynı tarih string’i tekrar yazılırsa otomatik düzeltilir.',
+    ],
+  },
+  {
     id: '2026-11-26-4c-ikramiye-maas',
     baslik: '26 Kasım 2026 — 4/C ikramiye ve maaş hesaplama',
     maddeler: [

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { Tables } from '@/types/database'
 import KadroGecmisPanel from '@/components/kadro/KadroGecmisPanel'
+import { normalizeMeclisKararNo } from '@/lib/kadro-karar-no'
 
 import type { KadroIsgalKaydi } from '@/lib/kadro-isgal-gecmisi'
 
@@ -107,7 +108,7 @@ export default function KadroDetayClient({
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Meclis Kararı</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="Kadro Sıra No" deger={row.kadro_sira_no} />
-              <Alan etiket="Karar No" deger={row.meclis_karar_no} />
+              <Alan etiket="Karar No" deger={normalizeMeclisKararNo(row.meclis_karar_no)} />
               <Alan etiket="Karar Tarihi" deger={tarih(row.meclis_karar_tarihi)} />
             </div>
           </div>
@@ -135,7 +136,7 @@ export default function KadroDetayClient({
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">İptal</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Alan etiket="İptal Karar Tarihi" deger={tarih(row.iptal_karar_tarihi)} />
-              <Alan etiket="İptal Karar No" deger={row.iptal_karar_no} />
+              <Alan etiket="İptal Karar No" deger={normalizeMeclisKararNo(row.iptal_karar_no)} />
             </div>
           </div>
           {isgalGecmisi.length > 0 && (

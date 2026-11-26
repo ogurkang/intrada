@@ -16,12 +16,17 @@ import {
   degisiklikPayload,
 } from '@/lib/personel-audit'
 import { gorevYeriListeSenkronizeEt } from '@/lib/rapor-gorev-yerine-gore-liste-sync'
+import { normalizeMeclisKararNo } from '@/lib/kadro-karar-no'
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
 function str(fd: FormData, key: string): string | null {
   const v = String(fd.get(key) ?? '').trim()
   return v || null
+}
+
+function kararNo(fd: FormData, key: string): string | null {
+  return normalizeMeclisKararNo(str(fd, key))
 }
 
 /** Formdan seçilen `tanim_unvan.id`; metin alanı geriye dönük uyumluluk için doldurulur. */
@@ -49,7 +54,8 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
   const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
-  const iptalKararNo = str(formData, 'iptal_karar_no')
+  const iptalKararNo = kararNo(formData, 'iptal_karar_no')
+  const meclisKararNo = kararNo(formData, 'meclis_karar_no')
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
 
@@ -68,7 +74,7 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
   const gorevUn = await unvanFormdan(supabase, formData, 'gorev_unvan_id')
   const { data: inserted, error } = await supabase.from('kadro_hareketleri').insert({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
-    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    meclis_karar_no:      meclisKararNo,
     iptal_karar_tarihi:   iptalKararTarihi,
     iptal_karar_no:       iptalKararNo,
     kadro_sira_no,
@@ -95,7 +101,7 @@ export async function kadroEkle(formData: FormData): Promise<{ hata?: string }> 
 
   const sonrakiSnap = kadroAuditSnapshot({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
-    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    meclis_karar_no:      meclisKararNo,
     iptal_karar_tarihi:   iptalKararTarihi,
     iptal_karar_no:       iptalKararNo,
     kadro_sira_no,
@@ -143,7 +149,8 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const asil          = str(formData, 'asil') || null
   const vekil         = str(formData, 'vekil') || null
   const iptalKararTarihi = str(formData, 'iptal_karar_tarihi')
-  const iptalKararNo = str(formData, 'iptal_karar_no')
+  const iptalKararNo = kararNo(formData, 'iptal_karar_no')
+  const meclisKararNo = kararNo(formData, 'meclis_karar_no')
   const iptalMi = Boolean(iptalKararTarihi || iptalKararNo)
   const durumu        = kadroDurumuHesapla(asil, vekil)
 
@@ -166,7 +173,7 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const gorevUn = await unvanFormdan(supabase, formData, 'gorev_unvan_id')
   const { data: updated, error } = await supabase.from('kadro_hareketleri').update({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
-    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    meclis_karar_no:      meclisKararNo,
     iptal_karar_tarihi:   iptalKararTarihi,
     iptal_karar_no:       iptalKararNo,
     kadro_sira_no,
@@ -194,7 +201,7 @@ export async function kadroGuncelle(id: number, formData: FormData): Promise<{ h
   const oncekiSnap = kadroAuditSnapshot(mevcut ?? {})
   const sonrakiSnap = kadroAuditSnapshot({
     meclis_karar_tarihi:  str(formData, 'meclis_karar_tarihi'),
-    meclis_karar_no:      str(formData, 'meclis_karar_no'),
+    meclis_karar_no:      meclisKararNo,
     iptal_karar_tarihi:   iptalKararTarihi,
     iptal_karar_no:       iptalKararNo,
     kadro_sira_no,

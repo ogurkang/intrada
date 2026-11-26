@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { writePersonelAuditLogSafe } from '@/lib/personel-audit'
+import { normalizeMeclisKararNo } from '@/lib/kadro-karar-no'
 
 export const KADRO_ALAN_ETIKETLERI: Record<string, string> = {
   meclis_karar_tarihi: 'Meclis Karar Tarihi',
@@ -59,6 +60,8 @@ function personelGoster(v: unknown, adMap: Record<string, string>): string {
   return ad ? `${ad} (${sicil})` : sicil
 }
 
+const KARAR_NO_ALANLARI = new Set(['meclis_karar_no', 'iptal_karar_no'])
+
 export function kadroAuditDegerGoster(
   alan: string,
   deger: unknown,
@@ -67,6 +70,7 @@ export function kadroAuditDegerGoster(
   if (deger == null || deger === '') return '—'
   if (PERSONEL_ALANLARI.has(alan)) return personelGoster(deger, adMap)
   if (TARIH_ALANLARI.has(alan)) return tarihGoster(deger)
+  if (KARAR_NO_ALANLARI.has(alan)) return normalizeMeclisKararNo(String(deger)) ?? '—'
   return String(deger)
 }
 
