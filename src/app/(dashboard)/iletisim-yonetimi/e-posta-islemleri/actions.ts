@@ -9,6 +9,7 @@ import { epostaAlicilariCoz, epostaKisiAra, type EpostaKisi } from '@/lib/eposta
 import { epostaKlasorListele, epostaMesajOku } from '@/lib/eposta-kutu'
 import type { EpostaKutu, EpostaMesaj, EpostaOzet } from '@/lib/eposta-tipler'
 import { EPOSTA_EK_LIMIT_BAYT, EPOSTA_EK_LIMIT_YAZI, epostaBoyutYazi } from '@/lib/eposta-limit'
+import { storageDosyaAdiGuvenli } from '@/lib/storage-dosya-adi'
 
 async function yetki() {
   const supabase = await createClient()
@@ -112,7 +113,8 @@ export async function epostaEkAdresiAction(
   if (boyut > EPOSTA_EK_LIMIT_BAYT) {
     return { hata: `Ek ${epostaBoyutYazi(boyut)}. Sınır ${EPOSTA_EK_LIMIT_YAZI}.` }
   }
-  const ad = String(dosyaAdi || 'ek').replace(/[\\/]/g, '_').slice(0, 120)
+  // Storage anahtarı ASCII olmalı; alıcıya giden ek adı (ek_ad) orijinal Türkçe adıyla kalır.
+  const ad = storageDosyaAdiGuvenli(dosyaAdi, 'ek')
   const yol = `${g.user.id}/${crypto.randomUUID()}/${ad}`
   const { data, error } = await g.supabase.storage.from('eposta-ek').createSignedUploadUrl(yol)
   if (error || !data) return { hata: error?.message ?? 'Yükleme adresi oluşturulamadı.' }

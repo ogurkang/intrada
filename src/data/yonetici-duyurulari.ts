@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-26-eposta-ek-turkce',
+    baslik: '26 Kasım 2026 — E-posta eklerinde Türkçe dosya adı',
+    maddeler: [
+      'E-posta eklerinde Türkçe karakterli veya boşluklu dosya adları (ör. «Ek Görev … Örnek.docx») artık Invalid key hatası vermez.',
+      'Depolama yolu ASCII’ye çevrilir; alıcıya giden ek adı orijinal Türkçe dosya adıyla kalır.',
+    ],
+  },
+  {
     id: '2026-11-25-pkb-bby-oht-grup6',
     baslik: '25 Kasım 2026 — BBY ÖHT ifadesi grup 6 + 20',
     maddeler: [
