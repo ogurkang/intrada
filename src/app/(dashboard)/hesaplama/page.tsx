@@ -17,6 +17,12 @@ const KARTLAR = [
     aciklama: '375 sayılı KHK m. 1 (D). Memurda gösterge 13.558, işçide 12.105. Kesinti yalnız damga vergisidir.',
   },
   {
+    href: '/hesaplama/emekli-ikramiye-maas',
+    baslik: '4/C İkramiye ve Maaş Hesaplama',
+    aciklama:
+      'SGK 4/C tarzı tahmini emekli ikramiyesi ve 5434 usulü maaş. Derece, kademe, ek gösterge ve katsayı dönemi ile hesaplanır. Bilgi amaçlıdır.',
+  },
+  {
     href: '/hesaplama/olum-yardimi',
     baslik: 'Ölüm Yardımı Hesaplama',
     aciklama: 'Vefat eden memurun varislerine ölüm yardımı. Tutar varis sayısına bölünür.',
@@ -39,7 +45,8 @@ export default function HesaplamaYonetimiPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Hesaplama Yönetimi</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Personel maliyeti, memur maaş, emeklilik tazminatı, memur ölüm yardımı ve kişi borcu hesapları.
+          Personel maliyeti, memur maaş, emeklilik tazminatı, 4/C ikramiye-maaş, memur ölüm yardımı ve kişi borcu
+          hesapları.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

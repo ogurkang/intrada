@@ -18,6 +18,10 @@ import {
   emeklilikAuditDiffSatirlari,
 } from '@/lib/emeklilik-tazminati-hesap'
 import { olumAuditDegerGoster, olumAuditDiffSatirlari } from '@/lib/olum-yardimi-hesap'
+import {
+  emekliIkramiyeAuditDegerGoster,
+  emekliIkramiyeAuditDiffSatirlari,
+} from '@/lib/emekli-ikramiye-maas-hesap'
 import type { Tables } from '@/types/database'
 
 export type HesaplamaListeSatir = {
@@ -51,15 +55,25 @@ export default function HesaplamaKayitListe({
   pdfKok: string
   gecmisBaslik: string
   auditLoglarByRefId: Record<string, Tables<'personel_audit_log'>[]>
-  tur: 'emeklilik' | 'olum'
+  tur: 'emeklilik' | 'olum' | 'ikramiye'
   canDelete?: boolean
   onSil?: (id: number) => Promise<{ hata?: string }>
   imzaPersonel?: IkImzaPersonel[]
 }) {
   const [duzenleyen, setDuzenleyen] = useState('')
   const [gorevli, setGorevli] = useState('')
-  const diffSatirlari = tur === 'emeklilik' ? emeklilikAuditDiffSatirlari : olumAuditDiffSatirlari
-  const degerGoster = tur === 'emeklilik' ? emeklilikAuditDegerGoster : olumAuditDegerGoster
+  const diffSatirlari =
+    tur === 'emeklilik'
+      ? emeklilikAuditDiffSatirlari
+      : tur === 'ikramiye'
+        ? emekliIkramiyeAuditDiffSatirlari
+        : olumAuditDiffSatirlari
+  const degerGoster =
+    tur === 'emeklilik'
+      ? emeklilikAuditDegerGoster
+      : tur === 'ikramiye'
+        ? emekliIkramiyeAuditDegerGoster
+        : olumAuditDegerGoster
   const router = useRouter()
   const [gecmisRefId, setGecmisRefId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

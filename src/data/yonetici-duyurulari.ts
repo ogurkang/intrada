@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-26-4c-ikramiye-maas',
+    baslik: '26 Kasım 2026 — 4/C ikramiye ve maaş hesaplama',
+    maddeler: [
+      'Hesaplama Yönetimi’ne «4/C İkramiye ve Maaş» eklendi: SGK tarzı tahmini emekli ikramiyesi ve 5434 usulü maaş (derece/kademe/ek gösterge/katsayı dönemi).',
+      '5510 seçilince maaş satırı bilgi amaçlı 5434 usulüdür; gerçek 5510 aylığı PEK ile hesaplanır. İkramiye her iki kanunda 5434 emsalidir. Mevcut «Emeklilik Tazminatı» (375 KHK) ayrıdır.',
+      'Supabase’te 20261126120000_emekli_ikramiye_maas.sql dosyasını bir kez çalıştırın.',
+    ],
+  },
+  {
     id: '2026-11-26-eposta-ek-turkce',
     baslik: '26 Kasım 2026 — E-posta eklerinde Türkçe dosya adı',
     maddeler: [
