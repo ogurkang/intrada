@@ -11,7 +11,7 @@ export const yoneticiDuyurulari: YoneticiDuyuru[] = [
     baslik: '27 Kasım 2026 — PP ödenek görüntüleme ve kayıt özeti',
     maddeler: [
       'Gösterge ödenek tekliflerini göz ile açınca popup kaydırma çubuğu olmadan veriye uygun boyutta açılır.',
-      'Gösterge ödenek ekranında arama kutusunun üstünde sütun toplamları vardır; kayıttan sonra eklenen/düzenlenen ödenek satırları «Eklenmiş veya Düzenlenmiş Ödenek Teklifleri» özetinde gösterilir, Tamam ile pencere kapanır.',
+      'Gösterge ödenek tablosunda sütun toplamı «Ekonomik kod / Hesap adı / yıl sütunları» başlığının hemen üstündedir; kayıttan sonra eklenen/düzenlenen ödenek satırları «Eklenmiş veya Düzenlenmiş Ödenek Teklifleri» özetinde gösterilir, Tamam ile pencere kapanır.',
     ],
   },
   {

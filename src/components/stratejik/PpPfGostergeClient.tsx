@@ -407,27 +407,6 @@ export default function PpPfGostergeClient({
           <p className="text-xs text-slate-500">4. düzey ekonomik kodlar · t yılı {yil}</p>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full min-w-[1200px] text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700">
-                  Toplam
-                </th>
-                <th className="bg-slate-50 px-3 py-2 text-left text-xs text-slate-500">Tüm ödenek satırları</th>
-                {SUTUN.map(([alan, renk, kayma, etiket]) => (
-                  <th key={alan} className={`px-2 py-2 text-right text-xs font-semibold tabular-nums ${renk}`}>
-                    <span className="mb-0.5 block font-medium opacity-80">
-                      {yil + kayma} {etiket}
-                    </span>
-                    {ppParaYaz(sutunToplam[alan]) || '—'}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-          </table>
-        </div>
-
         <input
           value={ara}
           onChange={e => setAra(e.target.value)}
@@ -435,8 +414,26 @@ export default function PpPfGostergeClient({
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
         <div className="overflow-x-auto rounded-lg border border-slate-100">
-          <table className="w-full min-w-[1200px] text-sm">
+          <table className="w-full min-w-[1200px] table-fixed text-sm">
+            <colgroup>
+              <col className="w-[9rem]" />
+              <col />
+              {SUTUN.map(([alan]) => (
+                <col key={alan} className="w-[7.5rem]" />
+              ))}
+            </colgroup>
             <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700">
+                  Toplam
+                </th>
+                <th className="bg-slate-50 px-3 py-2 text-left text-xs text-slate-500"> </th>
+                {SUTUN.map(([alan, renk]) => (
+                  <th key={alan} className={`px-2 py-2 text-right text-xs font-semibold tabular-nums ${renk}`}>
+                    {ppParaYaz(sutunToplam[alan]) || '—'}
+                  </th>
+                ))}
+              </tr>
               <tr className="border-b border-slate-200">
                 <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2 text-left">Ekonomik kod</th>
                 <th className="bg-slate-100 px-3 py-2 text-left">Hesap adı</th>
