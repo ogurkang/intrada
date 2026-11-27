@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-27-pp-hedef-mudurluk-tekrar',
+    baslik: '27 Kasım 2026 — PP alt program hedefi tekrar bağlama',
+    maddeler: [
+      'Performans programında alt program hedefi eklerken «Bu performans hedefi bu müdürlükle zaten bağlı» engeli kalktı; aynı performans hedefi farklı faaliyetlerde seçilebilir (faaliyet / gösterge / maliyet için).',
+      'Aynı faaliyet altında aynı hedef + müdürlük ikilisi yine tek kayıttır.',
+      'Supabase’te 20261127120000_pp_hedef_mudurluk_faaliyet.sql dosyasını bir kez çalıştırın.',
+    ],
+  },
+  {
     id: '2026-11-26-kadro-meclis-karar-no',
     baslik: '26 Kasım 2026 — Kadro meclis karar no düzeltmesi',
     maddeler: [

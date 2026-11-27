@@ -261,7 +261,6 @@ export async function ppAltProgramHedefiEkle(
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud)) return { hata: HEDEF_MUDURLUK }
   const gerekceTemiz = ppZenginMetinTemiz(gerekce)
   const aciklamaTemiz = ppZenginMetinTemiz(hedefAciklama)
   let { data, error } = await sb.from('performans_programi_alt_program_hedef').insert({
@@ -282,7 +281,9 @@ export async function ppAltProgramHedefiEkle(
     }).select('id').single())
   }
   if (error) {
-    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
+    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) {
+      return { hata: HEDEF_FAALIYET_MUDURLUK }
+    }
     return { hata: error.message }
   }
   await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: Number(data.id), islem: 'Ekleme', ozet: mud })
@@ -310,7 +311,6 @@ export async function ppAltProgramHedefiGuncelle(
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
-  if (await hedefMudurlukBagli(sb, altProgramId, altHedefId, mud, id)) return { hata: HEDEF_MUDURLUK }
   const gerekceTemiz = ppZenginMetinTemiz(gerekce)
   const aciklamaTemiz = ppZenginMetinTemiz(hedefAciklama)
   let { error } = await sb.from('performans_programi_alt_program_hedef').update({
@@ -327,7 +327,9 @@ export async function ppAltProgramHedefiGuncelle(
     }).eq('id', id).eq('faaliyet_id', faaliyetId).eq('alt_program_id', altProgramId))
   }
   if (error) {
-    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) return { hata: HEDEF_MUDURLUK }
+    if (String(error.code) === '23505' || String(error.message).includes('duplicate')) {
+      return { hata: HEDEF_FAALIYET_MUDURLUK }
+    }
     return { hata: error.message }
   }
   await ppSatirLogYaz(supabase, { tablo: 'hedef', kayitId: id, islem: 'Güncelleme', ozet: mud })
@@ -336,7 +338,7 @@ export async function ppAltProgramHedefiGuncelle(
 }
 
 const BAGLI_KAYIT = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
-const HEDEF_MUDURLUK = 'Bu performans hedefi bu müdürlükle zaten bağlı.'
+const HEDEF_FAALIYET_MUDURLUK = 'Bu faaliyet altında aynı performans hedefi ve müdürlük zaten bağlı.'
 
 /**
  * Aynı performans hedefine (alt_hedef) bağlı, aynı performans programı (yıl/program)
@@ -387,17 +389,6 @@ async function sonrakiPhFaaliyetSira(sb: { from: (t: string) => any }, bagId: nu
     .map(r => Number(r.sira_no))
     .filter(Number.isFinite)
   return (nolar.length ? Math.max(...nolar) : 0) + 1
-}
-
-async function hedefMudurlukBagli(
-  sb: { from: (t: string) => any },
-  altProgramId: number,
-  altHedefId: number,
-  mudurluk: string,
-  haricId?: number,
-): Promise<boolean> {
-  const { data } = await sb.from('performans_programi_alt_program_hedef').select('id').eq('alt_program_id', altProgramId).eq('alt_hedef_id', altHedefId).eq('secilen_mudurluk', mudurluk)
-  return ((data ?? []) as { id: number }[]).some(r => r.id !== haricId)
 }
 
 export async function ppFaaliyetSil(id: number, altProgramId: number, yil: number, programId: number): Promise<{ hata?: string }> {
