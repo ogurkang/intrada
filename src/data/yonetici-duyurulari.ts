@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-27-4c-ek-ilave-odeme',
+    baslik: '27 Kasım 2026 — 4/C maaş ek ödeme ve ilave ödeme',
+    maddeler: [
+      '4/C İkramiye ve Maaş hesabına 5454 sayılı Kanun md. 1 ek ödeme (vergi iadesi yerine; genelde %4, düşük aylıkta %5) eklendi.',
+      '7456 sayılı Kanun / 5434 ek md. 86 ilave ödeme (%6,34; matrah = bağlanmış aylık + ek ödeme) eklendi; toplam ödenecek aylık bu iki kalemle birlikte gösterilir. İkramiye matrahına girmezler.',
+    ],
+  },
+  {
     id: '2026-11-27-pp-odenek-popup-toplam',
     baslik: '27 Kasım 2026 — PP ödenek görüntüleme ve kayıt özeti',
     maddeler: [

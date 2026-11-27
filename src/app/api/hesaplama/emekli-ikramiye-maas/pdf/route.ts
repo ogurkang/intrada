@@ -39,7 +39,22 @@ export async function GET(req: Request) {
   satirlar.push(['Matrah', `${paraTr(belge.matrah)} TL`])
   satirlar.push([`İkramiye (${belge.ikramiyeYili} yıl)`, `${paraTr(belge.ikramiye)} TL`])
   if (belge.maas5434 != null) {
-    satirlar.push([`5434 usulü maaş (%${belge.baglamaOrani})`, `${paraTr(belge.maas5434)} TL`])
+    satirlar.push([`5434 usulü aylık (%${belge.baglamaOrani})`, `${paraTr(belge.maas5434)} TL`])
+  }
+  if (belge.ekOdeme != null) {
+    satirlar.push([
+      `Ek ödeme 5454 (%${belge.ekOdemeOrani ?? 4})`,
+      `${paraTr(belge.ekOdeme)} TL`,
+    ])
+  }
+  if (belge.ilaveOdeme != null) {
+    satirlar.push([
+      `İlave ödeme 7456 / ek md. 86 (%${belge.ilaveOdemeOrani ?? 6.34})`,
+      `${paraTr(belge.ilaveOdeme)} TL`,
+    ])
+  }
+  if (belge.maasToplam != null) {
+    satirlar.push(['Toplam ödenecek aylık', `${paraTr(belge.maasToplam)} TL`])
   }
 
   const notSatirlari = [belge.uyari]

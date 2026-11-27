@@ -1,7 +1,13 @@
 /**
  * 4/C emekli ikramiye + 5434 usulü maaş (tahmini).
- * Dayanak: 5434 md. 89 / ek md. 70 / ek md. 82; 657 md. 43; HMB katsayı genelgeleri.
+ * Dayanak: 5434 md. 89 / ek md. 70 / ek md. 82 / ek md. 86; 5454 md. 1; 7456 md. 2;
+ * 657 md. 43; HMB katsayı genelgeleri.
  * 5510 emekli aylığı bu motorla hesaplanmaz (PEK gerekir); ikramiye 5434 emsalidir.
+ *
+ * Ödenen aylık toplamı:
+ * 1) Bağlanmış aylık (matrah × bağlama oranı)
+ * 2) Ek ödeme — 5454 md. 1 (2006’da kaldırılan vergi iadesi yerine; genelde %4)
+ * 3) İlave ödeme — 5434 ek md. 86 / 7456 md. 2 (%6,34; matrah = aylık + ek ödeme)
  */
 import { EN_YUKSEK_DEVLET_MEMURU_GOSTERGE } from '@/lib/ayliktan-kesme-katsayi'
 import { excelRound2, gostergeBul } from '@/lib/ayliktan-kesme-hesap'
@@ -49,7 +55,22 @@ export const EMEKLI_KATSAYI_DONEMLERI: readonly EmekliKatsayiDonem[] = [
 ] as const
 
 export const EMEKLI_IKRAMIYE_UYARI =
-  'Yapılan maaş ve ikramiye hesaplamaları yalnızca girilen bilgiler baz alınarak yapılmaktadır. Bilgi amaçlıdır; resmiyet arzetmez. 5510 sayılı Kanuna tabi personelde emekli aylığı PEK usulüyle hesaplanır; bu araç 5434 usulü maaş gösterir ve ikramiyeyi 5434 emsaliyle hesaplar.'
+  'Yapılan maaş ve ikramiye hesaplamaları yalnızca girilen bilgiler baz alınarak yapılmaktadır. Bilgi amaçlıdır; resmiyet arzetmez. 5510 sayılı Kanuna tabi personelde emekli aylığı PEK usulüyle hesaplanır; bu araç 5434 usulü maaş gösterir ve ikramiyeyi 5434 emsaliyle hesaplar. Ek ödeme (5454) ve ilave ödeme (7456 / 5434 ek md. 86) ikramiye matrahına girmez.'
+
+/** 5454 md. 1 — 2006 YTL eşik; memur aylık katsayısı artışıyla güncellenir. */
+export const EMEKLI_EK_ODEME_ESIK_2006 = 400
+
+/** 5434 ek md. 86 (7456 md. 2) — ilave ödeme oranı (%). */
+export const EMEKLI_ILAVE_ODEME_ORANI = 6.34
+
+/**
+ * 5454 md. 1 ek ödeme oranı (%): eşik ve altı %5, üzeri %4.
+ * Eşik = 400 × dönem aylık katsayısı.
+ */
+export function emekliEkOdemeOrani(aylikTutar: number, aylikKatsayi: number): number {
+  const esik = excelRound2(EMEKLI_EK_ODEME_ESIK_2006 * aylikKatsayi)
+  return aylikTutar <= esik ? 5 : 4
+}
 
 /** 5434 ek md. 70/b — ek gösterge dilimine göre yansıtma oranı (%). */
 export function emekliTazminatOrani(ekGosterge: number): number {
@@ -116,7 +137,16 @@ export type EmekliIkramiyeSonuc = {
   matrah: number
   ikramiyeYili: number
   ikramiye: number
+  /** Bağlanmış çıplak aylık (matrah × bağlama); ek/ilave hariç. */
   maas5434: number | null
+  /** 5454 md. 1 ek ödeme tutarı. */
+  ekOdeme: number | null
+  ekOdemeOrani: number | null
+  /** 5434 ek md. 86 / 7456 ilave ödeme tutarı. */
+  ilaveOdeme: number | null
+  ilaveOdemeOrani: number
+  /** Aylık + ek ödeme + ilave ödeme. */
+  maasToplam: number | null
   maasUyari: string | null
   uyari: string
 }
@@ -195,6 +225,17 @@ export function emekliIkramiyeMaasHesapla(girdi: EmekliIkramiyeGirdi): EmekliIkr
   const payCarpan = pay / payda
 
   let maas5434: number | null = excelRound2(matrah * (baglama / 100) * payCarpan)
+  const ekOran = maas5434 != null ? emekliEkOdemeOrani(maas5434, aylikK) : null
+  const ekOdeme =
+    maas5434 != null && ekOran != null ? excelRound2(maas5434 * (ekOran / 100)) : null
+  const ilaveOdeme =
+    maas5434 != null && ekOdeme != null
+      ? excelRound2((maas5434 + ekOdeme) * (EMEKLI_ILAVE_ODEME_ORANI / 100))
+      : null
+  const maasToplam =
+    maas5434 != null && ekOdeme != null && ilaveOdeme != null
+      ? excelRound2(maas5434 + ekOdeme + ilaveOdeme)
+      : null
   let maasUyari: string | null = null
   if (girdi.kanun === '5510') {
     maasUyari =
@@ -212,6 +253,11 @@ export function emekliIkramiyeMaasHesapla(girdi: EmekliIkramiyeGirdi): EmekliIkr
     ikramiyeYili: ikrYil,
     ikramiye,
     maas5434,
+    ekOdeme,
+    ekOdemeOrani: ekOran,
+    ilaveOdeme,
+    ilaveOdemeOrani: EMEKLI_ILAVE_ODEME_ORANI,
+    maasToplam,
     maasUyari,
     uyari: EMEKLI_IKRAMIYE_UYARI,
   }
@@ -242,6 +288,11 @@ export type EmekliIkramiyeBelge = {
   matrah: number
   ikramiye: number
   maas5434: number | null
+  ekOdeme?: number | null
+  ekOdemeOrani?: number | null
+  ilaveOdeme?: number | null
+  ilaveOdemeOrani?: number | null
+  maasToplam?: number | null
   maasUyari: string | null
   matrahKalemler: EmekliMatrahKalem[]
   uyari: string
@@ -265,7 +316,10 @@ const AUDIT = [
   { alan: 'ikramiyeYili', etiket: 'İkramiye yılı' },
   { alan: 'matrah', etiket: 'Matrah' },
   { alan: 'ikramiye', etiket: 'İkramiye' },
-  { alan: 'maas5434', etiket: '5434 maaş' },
+  { alan: 'maas5434', etiket: '5434 aylık' },
+  { alan: 'ekOdeme', etiket: 'Ek ödeme (5454)' },
+  { alan: 'ilaveOdeme', etiket: 'İlave ödeme (7456)' },
+  { alan: 'maasToplam', etiket: 'Toplam maaş' },
 ]
 
 export function emekliIkramiyeAuditGovde(belge: EmekliIkramiyeBelge) {
@@ -279,6 +333,9 @@ export function emekliIkramiyeAuditGovde(belge: EmekliIkramiyeBelge) {
     matrah: belge.matrah,
     ikramiye: belge.ikramiye,
     maas5434: belge.maas5434,
+    ekOdeme: belge.ekOdeme ?? null,
+    ilaveOdeme: belge.ilaveOdeme ?? null,
+    maasToplam: belge.maasToplam ?? null,
   }
 }
 

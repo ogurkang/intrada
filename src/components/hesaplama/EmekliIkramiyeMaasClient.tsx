@@ -419,7 +419,7 @@ export default function EmekliIkramiyeMaasClient({
                 </tr>
                 <tr>
                   <td className="pt-1">
-                    5434 usulü maaş
+                    5434 usulü aylık
                     <span className="block text-[11px] text-slate-400">
                       Bağlama %{onizleme.sonuc.baglamaOrani}
                       {kanun === '5510' ? ' · 5510 aylığı değildir' : ''}
@@ -427,6 +427,35 @@ export default function EmekliIkramiyeMaasClient({
                   </td>
                   <td className="pt-1 text-right tabular-nums">
                     {onizleme.sonuc.maas5434 != null ? paraTr(onizleme.sonuc.maas5434) : '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="pt-1">
+                    Ek ödeme
+                    <span className="block text-[11px] text-slate-400">
+                      5454 md. 1 · vergi iadesi yerine · %
+                      {onizleme.sonuc.ekOdemeOrani ?? '—'}
+                    </span>
+                  </td>
+                  <td className="pt-1 text-right tabular-nums">
+                    {onizleme.sonuc.ekOdeme != null ? paraTr(onizleme.sonuc.ekOdeme) : '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="pt-1">
+                    İlave ödeme
+                    <span className="block text-[11px] text-slate-400">
+                      5434 ek md. 86 / 7456 md. 2 · %{onizleme.sonuc.ilaveOdemeOrani}
+                    </span>
+                  </td>
+                  <td className="pt-1 text-right tabular-nums">
+                    {onizleme.sonuc.ilaveOdeme != null ? paraTr(onizleme.sonuc.ilaveOdeme) : '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="pt-2 font-semibold text-slate-800">Toplam ödenecek aylık</td>
+                  <td className="pt-2 text-right font-semibold tabular-nums text-emerald-800">
+                    {onizleme.sonuc.maasToplam != null ? paraTr(onizleme.sonuc.maasToplam) : '—'}
                   </td>
                 </tr>
               </tfoot>

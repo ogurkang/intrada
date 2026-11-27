@@ -90,9 +90,37 @@ export default async function EmekliIkramiyeDetayPage({ params }: { params: Prom
               <td className="py-2 text-right tabular-nums">{paraTr(belge.ikramiye)}</td>
             </tr>
             <tr className="border-b border-slate-100">
-              <td className="py-2">5434 usulü maaş</td>
+              <td className="py-2">5434 usulü aylık</td>
               <td className="py-2 text-right tabular-nums">
                 {belge.maas5434 != null ? paraTr(belge.maas5434) : '—'}
+              </td>
+            </tr>
+            <tr className="border-b border-slate-100">
+              <td className="py-2">
+                Ek ödeme (5454)
+                {belge.ekOdemeOrani != null ? (
+                  <span className="block text-[11px] text-slate-400">%{belge.ekOdemeOrani}</span>
+                ) : null}
+              </td>
+              <td className="py-2 text-right tabular-nums">
+                {belge.ekOdeme != null ? paraTr(belge.ekOdeme) : '—'}
+              </td>
+            </tr>
+            <tr className="border-b border-slate-100">
+              <td className="py-2">
+                İlave ödeme (7456 / ek md. 86)
+                <span className="block text-[11px] text-slate-400">
+                  %{belge.ilaveOdemeOrani ?? 6.34}
+                </span>
+              </td>
+              <td className="py-2 text-right tabular-nums">
+                {belge.ilaveOdeme != null ? paraTr(belge.ilaveOdeme) : '—'}
+              </td>
+            </tr>
+            <tr className="border-b border-slate-100">
+              <td className="py-2 font-medium">Toplam ödenecek aylık</td>
+              <td className="py-2 text-right tabular-nums font-medium text-emerald-800">
+                {belge.maasToplam != null ? paraTr(belge.maasToplam) : '—'}
               </td>
             </tr>
           </tbody>
