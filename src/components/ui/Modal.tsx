@@ -7,8 +7,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
-  /** Modal genişliği: 'sm' = 384px (varsayılan), 'md' = 512px, 'lg' = 640px, 'xl' = 800px */
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** Modal genişliği: 'sm' … 'xl' sabit; 'fit' içerik kadar (yatay taşmayı önlemek için max viewport). */
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'fit'
+  /** false ise dikey kaydırma çubuğu yok; panel içeriğe göre büyür (varsayılan true). */
+  scrollable?: boolean
 }
 
 const boyutlar = {
@@ -16,9 +18,10 @@ const boyutlar = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-2xl',
+  fit: 'max-w-[min(96vw,72rem)] w-max',
 }
 
-export default function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+export default function Modal({ open, onClose, title, children, size = 'md', scrollable = true }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
   // ESC tuşuyla kapatma
@@ -56,7 +59,9 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
       {/* Modal paneli */}
       <div
         ref={panelRef}
-        className={`relative bg-white rounded-2xl shadow-2xl w-full ${boyutlar[size]} flex flex-col max-h-[90vh]`}
+        className={`relative bg-white rounded-2xl shadow-2xl ${size === 'fit' ? '' : 'w-full'} ${boyutlar[size]} flex flex-col ${
+          scrollable ? 'max-h-[90vh]' : 'max-h-none'
+        }`}
       >
         {/* Başlık */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -75,8 +80,7 @@ export default function Modal({ open, onClose, title, children, size = 'md' }: M
           </button>
         </div>
 
-        {/* İçerik (scroll edilebilir) */}
-        <div className="overflow-y-auto flex-1 px-6 py-4">
+        <div className={`flex-1 px-6 py-4 ${scrollable ? 'overflow-y-auto' : 'overflow-visible'}`}>
           {children}
         </div>
       </div>

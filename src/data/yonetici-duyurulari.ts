@@ -7,6 +7,14 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-27-pp-odenek-popup-toplam',
+    baslik: '27 Kasım 2026 — PP ödenek görüntüleme ve kayıt özeti',
+    maddeler: [
+      'Gösterge ödenek tekliflerini göz ile açınca popup kaydırma çubuğu olmadan veriye uygun boyutta açılır.',
+      'Gösterge ödenek ekranında arama kutusunun üstünde sütun toplamları vardır; kayıttan sonra eklenen/düzenlenen ödenek satırları «Eklenmiş veya Düzenlenmiş Ödenek Teklifleri» özetinde gösterilir, Tamam ile pencere kapanır.',
+    ],
+  },
+  {
     id: '2026-11-27-pp-pf-sira-odenek-kurum',
     baslik: '27 Kasım 2026 — PP faaliyet kodu, ödenek ve Kurum İçi',
     maddeler: [

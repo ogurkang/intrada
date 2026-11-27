@@ -7,6 +7,7 @@ import {
   ppPfKurumIciKaydet,
   type PpOdenekKalem,
 } from '@/app/(dashboard)/stratejik-yonetim/performans-programi/pf/odenek-actions'
+import Modal from '@/components/ui/Modal'
 import { PP_BIRIMLER, ppGostergeKodu, ppParaOku, ppParaYaz } from '@/lib/pp-iliski'
 
 export type PpGostergeOdenekKod = PpOdenekKalem & { ekonomik_kod: string; hesap_adi: string }
@@ -40,6 +41,18 @@ const SUTUN = [
 
 type Alan = (typeof SUTUN)[number][0]
 
+type OdenekOzetSatir = {
+  butce_kodu_id: number
+  ekonomik_kod: string
+  hesap_adi: string
+  t1Butce: number | null
+  t1Haziran: number | null
+  t1YilSonu: number | null
+  tButce: number | null
+  t1Tahmin: number | null
+  t2Tahmin: number | null
+}
+
 function yilBasliklari(yil: number): [typeof YIL_ANAHTAR[number], string][] {
   return [
     ['t2', `${yil - 2} Gerçekleşme`],
@@ -49,6 +62,27 @@ function yilBasliklari(yil: number): [typeof YIL_ANAHTAR[number], string][] {
     ['t1tahmin', `${yil + 1} Tahmin`],
     ['t2tahmin', `${yil + 2} Tahmin`],
   ]
+}
+
+function tutarEsit(a: number | null, b: number | null): boolean {
+  if (a == null && b == null) return true
+  if (a == null || b == null) return false
+  return Math.abs(a - b) < 0.000_001
+}
+
+function odenekDegisti(once: PpOdenekKalem, sonra: PpOdenekKalem): boolean {
+  return !(
+    tutarEsit(once.t1Butce, sonra.t1Butce) &&
+    tutarEsit(once.t1Haziran, sonra.t1Haziran) &&
+    tutarEsit(once.t1YilSonu, sonra.t1YilSonu) &&
+    tutarEsit(once.tButce, sonra.tButce) &&
+    tutarEsit(once.t1Tahmin, sonra.t1Tahmin) &&
+    tutarEsit(once.t2Tahmin, sonra.t2Tahmin)
+  )
+}
+
+function odenekDolu(k: PpOdenekKalem): boolean {
+  return [k.t1Butce, k.t1Haziran, k.t1YilSonu, k.tButce, k.t1Tahmin, k.t2Tahmin].some(n => n != null)
 }
 
 export default function PpPfGostergeClient({
@@ -85,6 +119,7 @@ export default function PpPfGostergeClient({
   const [hata, setHata] = useState<string | null>(null)
   const [kurumIci, setKurumIci] = useState(kurumIciBaslangic)
   const [bekliyor, start] = useTransition()
+  const [ozetSatirlar, setOzetSatirlar] = useState<OdenekOzetSatir[] | null>(null)
   const [degerler, setDegerler] = useState<Record<number, Record<Alan, string>>>(() => {
     const m: Record<number, Record<Alan, string>> = {}
     for (const k of kodlar) {
@@ -100,6 +135,22 @@ export default function PpPfGostergeClient({
     return m
   })
 
+  const oncekiOdenek = useMemo(() => {
+    const m = new Map<number, PpOdenekKalem>()
+    for (const k of kodlar) {
+      m.set(k.butce_kodu_id, {
+        butce_kodu_id: k.butce_kodu_id,
+        t1Butce: k.t1Butce,
+        t1Haziran: k.t1Haziran,
+        t1YilSonu: k.t1YilSonu,
+        tButce: k.tButce,
+        t1Tahmin: k.t1Tahmin,
+        t2Tahmin: k.t2Tahmin,
+      })
+    }
+    return m
+  }, [kodlar])
+
   const yilAlan = yilBasliklari(yil)
   const gKod = ppGostergeKodu(fKod, baslangic.sira)
 
@@ -110,6 +161,24 @@ export default function PpPfGostergeClient({
       : kodlar
     return [...liste].sort((a, b) => a.ekonomik_kod.localeCompare(b.ekonomik_kod, 'tr'))
   }, [ara, kodlar])
+
+  const sutunToplam = useMemo(() => {
+    const t: Record<Alan, number> = {
+      t1Butce: 0,
+      t1Haziran: 0,
+      t1YilSonu: 0,
+      tButce: 0,
+      t1Tahmin: 0,
+      t2Tahmin: 0,
+    }
+    for (const k of kodlar) {
+      for (const [alan] of SUTUN) {
+        const n = ppParaOku(degerler[k.butce_kodu_id]?.[alan] ?? '')
+        if (n != null) t[alan] += n
+      }
+    }
+    return t
+  }, [kodlar, degerler])
 
   function kurumIciIsle() {
     setHata(null)
@@ -132,6 +201,23 @@ export default function PpPfGostergeClient({
       }
       router.refresh()
     })
+  }
+
+  function pencereyiKapat() {
+    try {
+      window.opener?.location.reload()
+    } catch {
+      /* ignore */
+    }
+    try {
+      window.close()
+    } catch {
+      /* ignore */
+    }
+    if (!window.closed) {
+      router.push(`/stratejik-yonetim/performans-programi/pf/${faaliyetId}/gostergeler`)
+      router.refresh()
+    }
   }
 
   function kaydet() {
@@ -165,6 +251,36 @@ export default function PpPfGostergeClient({
       t1Tahmin: ppParaOku(degerler[k.butce_kodu_id]?.t1Tahmin ?? ''),
       t2Tahmin: ppParaOku(degerler[k.butce_kodu_id]?.t2Tahmin ?? ''),
     }))
+
+    const degisen: OdenekOzetSatir[] = []
+    for (const k of kodlar) {
+      const sonra = odenekler.find(o => o.butce_kodu_id === k.butce_kodu_id)!
+      const once = oncekiOdenek.get(k.butce_kodu_id) ?? {
+        butce_kodu_id: k.butce_kodu_id,
+        t1Butce: null,
+        t1Haziran: null,
+        t1YilSonu: null,
+        tButce: null,
+        t1Tahmin: null,
+        t2Tahmin: null,
+      }
+      if (!odenekDegisti(once, sonra)) continue
+      if (!odenekDolu(sonra) && !odenekDolu(once)) continue
+      if (!odenekDolu(sonra)) continue
+      degisen.push({
+        butce_kodu_id: k.butce_kodu_id,
+        ekonomik_kod: k.ekonomik_kod,
+        hesap_adi: k.hesap_adi,
+        t1Butce: sonra.t1Butce,
+        t1Haziran: sonra.t1Haziran,
+        t1YilSonu: sonra.t1YilSonu,
+        tButce: sonra.tButce,
+        t1Tahmin: sonra.t1Tahmin,
+        t2Tahmin: sonra.t2Tahmin,
+      })
+    }
+    degisen.sort((a, b) => a.ekonomik_kod.localeCompare(b.ekonomik_kod, 'tr'))
+
     start(async () => {
       const sonuc = await ppPfGostergeFormKaydet({
         id: baslangic.gostergeId,
@@ -190,15 +306,11 @@ export default function PpPfGostergeClient({
       } catch {
         /* ignore */
       }
-      try {
-        window.close()
-      } catch {
-        /* ignore */
+      if (degisen.length > 0) {
+        setOzetSatirlar(degisen)
+        return
       }
-      if (!window.closed) {
-        router.push(`/stratejik-yonetim/performans-programi/pf/${faaliyetId}/gostergeler`)
-        router.refresh()
-      }
+      pencereyiKapat()
     })
   }
 
@@ -294,6 +406,28 @@ export default function PpPfGostergeClient({
           <h2 className="text-lg font-semibold text-slate-800">Ödenek Teklifi</h2>
           <p className="text-xs text-slate-500">4. düzey ekonomik kodlar · t yılı {yil}</p>
         </div>
+
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <table className="w-full min-w-[1200px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="sticky left-0 z-10 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700">
+                  Toplam
+                </th>
+                <th className="bg-slate-50 px-3 py-2 text-left text-xs text-slate-500">Tüm ödenek satırları</th>
+                {SUTUN.map(([alan, renk, kayma, etiket]) => (
+                  <th key={alan} className={`px-2 py-2 text-right text-xs font-semibold tabular-nums ${renk}`}>
+                    <span className="mb-0.5 block font-medium opacity-80">
+                      {yil + kayma} {etiket}
+                    </span>
+                    {ppParaYaz(sutunToplam[alan]) || '—'}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          </table>
+        </div>
+
         <input
           value={ara}
           onChange={e => setAra(e.target.value)}
@@ -359,6 +493,54 @@ export default function PpPfGostergeClient({
 
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}
       <div className="flex justify-end">{kaydetDugmesi}</div>
+
+      <Modal
+        open={ozetSatirlar != null}
+        onClose={pencereyiKapat}
+        title="Eklenmiş veya Düzenlenmiş Ödenek Teklifleri"
+        size="fit"
+        scrollable={false}
+      >
+        {ozetSatirlar && ozetSatirlar.length > 0 ? (
+          <div className="space-y-4">
+            <table className="w-max text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="whitespace-nowrap px-2 py-2 text-left">Ekonomik kod</th>
+                  <th className="whitespace-nowrap px-2 py-2 text-left">Hesap adı</th>
+                  {SUTUN.map(([alan, renk, kayma, etiket]) => (
+                    <th key={alan} className={`whitespace-nowrap px-2 py-2 text-right text-xs font-medium ${renk}`}>
+                      {yil + kayma} {etiket}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {ozetSatirlar.map(o => (
+                  <tr key={o.butce_kodu_id}>
+                    <td className="whitespace-nowrap px-2 py-2 font-mono text-xs">{o.ekonomik_kod}</td>
+                    <td className="whitespace-nowrap px-2 py-2">{o.hesap_adi}</td>
+                    {SUTUN.map(([alan, renk]) => (
+                      <td key={alan} className={`whitespace-nowrap px-2 py-2 text-right tabular-nums text-xs ${renk}`}>
+                        {ppParaYaz(o[alan]) || '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={pencereyiKapat}
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white"
+              >
+                Tamam
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   )
 }

@@ -199,40 +199,39 @@ export default function PpPfGostergeListeClient({
         open={gorunen != null}
         onClose={() => setGorunen(null)}
         title={gorunen ? `${gorunen.kod} · Ödenek Teklifi` : 'Ödenek Teklifi'}
-        size="xl"
+        size="fit"
+        scrollable={false}
       >
         {gorunen ? (
           gorunen.odenekler.length === 0 ? (
             <p className="text-sm text-slate-500">Bu gösterge için ödenek teklifi yok.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="px-2 py-2 text-left">Ekonomik kod</th>
-                    <th className="px-2 py-2 text-left">Hesap adı</th>
-                    {ODENEK_SUTUN.map(([alan, renk, kayma, ad]) => (
-                      <th key={alan} className={`px-2 py-2 text-right text-xs font-medium ${renk}`}>
-                        {yil + kayma} {ad}
-                      </th>
+            <table className="w-max text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="whitespace-nowrap px-2 py-2 text-left">Ekonomik kod</th>
+                  <th className="whitespace-nowrap px-2 py-2 text-left">Hesap adı</th>
+                  {ODENEK_SUTUN.map(([alan, renk, kayma, ad]) => (
+                    <th key={alan} className={`whitespace-nowrap px-2 py-2 text-right text-xs font-medium ${renk}`}>
+                      {yil + kayma} {ad}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {gorunen.odenekler.map(o => (
+                  <tr key={o.ekonomik_kod}>
+                    <td className="whitespace-nowrap px-2 py-2 font-mono text-xs">{o.ekonomik_kod}</td>
+                    <td className="whitespace-nowrap px-2 py-2">{o.hesap_adi}</td>
+                    {ODENEK_SUTUN.map(([alan, renk]) => (
+                      <td key={alan} className={`whitespace-nowrap px-2 py-2 text-right tabular-nums text-xs ${renk}`}>
+                        {ppParaYaz(o[alan]) || '—'}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {gorunen.odenekler.map(o => (
-                    <tr key={o.ekonomik_kod}>
-                      <td className="px-2 py-2 font-mono text-xs">{o.ekonomik_kod}</td>
-                      <td className="px-2 py-2">{o.hesap_adi}</td>
-                      {ODENEK_SUTUN.map(([alan, renk]) => (
-                        <td key={alan} className={`px-2 py-2 text-right tabular-nums text-xs ${renk}`}>
-                          {ppParaYaz(o[alan]) || '—'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )
         ) : null}
       </Modal>
