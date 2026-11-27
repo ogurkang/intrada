@@ -104,9 +104,20 @@ export default async function PpPfGostergeListePage({
   })
   const maliyet = new Map<number, PpMaliyetToplam>()
   const odenekByGosterge = new Map<number, PpGostergeOdenekOzet[]>()
+  const gostergeIdSet = new Set(gIds)
   for (const satir of odenekler) {
     const id = Number(satir.pf_gosterge_id)
-    if (!Number.isFinite(id)) continue
+    // Yalnızca bu faaliyetin göstergeleri; başka gösterge ödeneği karışmaz.
+    if (!Number.isFinite(id) || !gostergeIdSet.has(id)) continue
+    const tutarlar = [
+      satir.t1_butce,
+      satir.t1_haziran,
+      satir.t1_yil_sonu,
+      satir.t_butce,
+      satir.t1_tahmin,
+      satir.t2_tahmin,
+    ]
+    if (tutarlar.every(n => n == null)) continue
     const toplam = maliyet.get(id) ?? bos()
     toplam.t1Butce += Number(satir.t1_butce ?? 0)
     toplam.t1Haziran += Number(satir.t1_haziran ?? 0)

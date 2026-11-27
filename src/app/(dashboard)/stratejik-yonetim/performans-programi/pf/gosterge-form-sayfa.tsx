@@ -126,15 +126,18 @@ export default async function PpPfGostergeFormSayfa({
     { orderColumn: 'ekonomik_kod', apply: q => q.eq('aktif', true) },
   )
 
+  // Yalnızca bu göstergeye ait ödenek; kardeş göstergelerin tutarları yüklenmez.
   const odenek = new Map<number, PpGostergeOdenekKod>()
-  if (kayit) {
+  if (kayit?.id) {
+    const buGostergeId = Number(kayit.id)
     const { data: odenekRaw, error } = await sb
       .from('performans_programi_pf_odenek')
-      .select('butce_kodu_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin')
-      .eq('pf_gosterge_id', kayit.id)
+      .select('pf_gosterge_id, butce_kodu_id, t1_butce, t1_haziran, t1_yil_sonu, t_butce, t1_tahmin, t2_tahmin')
+      .eq('pf_gosterge_id', buGostergeId)
     if (!error) {
       for (const r of odenekRaw ?? []) {
         const satir = r as {
+          pf_gosterge_id?: number
           butce_kodu_id: number
           t1_butce: number | null
           t1_haziran: number | null
@@ -143,6 +146,7 @@ export default async function PpPfGostergeFormSayfa({
           t1_tahmin: number | null
           t2_tahmin: number | null
         }
+        if (Number(satir.pf_gosterge_id) !== buGostergeId) continue
         odenek.set(Number(satir.butce_kodu_id), {
           butce_kodu_id: Number(satir.butce_kodu_id),
           ekonomik_kod: '',

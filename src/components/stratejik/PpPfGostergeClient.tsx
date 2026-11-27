@@ -202,6 +202,17 @@ export default function PpPfGostergeClient({
     })
   }
 
+  const kaydetDugmesi = (
+    <button
+      type="button"
+      onClick={kaydet}
+      disabled={bekliyor}
+      className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+    >
+      {bekliyor ? 'Kaydediliyor…' : 'Kaydet'}
+    </button>
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -211,18 +222,26 @@ export default function PpPfGostergeClient({
             <span className="font-mono text-slate-600">{fKod}</span> · {faaliyetAd}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={kurumIciIsle}
-          disabled={bekliyor || !baslangic.gostergeId}
-          title={!baslangic.gostergeId ? 'Önce göstergeyi kaydedin' : 'Yalnızca bu gösterge için Kurum İçi'}
-          className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-            kurumIci ? 'bg-orange-700 hover:bg-orange-600' : 'bg-orange-500 hover:bg-orange-400'
-          }`}
-        >
-          {kurumIci ? 'Kurum İçi (aktif)' : 'Kurum İçi'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={kurumIciIsle}
+            disabled={bekliyor || !baslangic.gostergeId}
+            title={!baslangic.gostergeId ? 'Önce göstergeyi kaydedin' : 'Yalnızca bu göstergenin ödenek teklifi için Kurum İçi'}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+              kurumIci ? 'bg-orange-700 hover:bg-orange-600' : 'bg-orange-500 hover:bg-orange-400'
+            }`}
+          >
+            {kurumIci ? 'Kurum İçi (aktif)' : 'Kurum İçi'}
+          </button>
+          {kaydetDugmesi}
+        </div>
       </div>
+      {kurumIci ? (
+        <p className="rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-800">
+          Kurum İçi yalnızca bu gösterge için geçerlidir; diğer göstergelerin ödenek tekliflerini etkilemez. Bu göstergenin ödeneği faaliyet maliyet toplamına girmez.
+        </p>
+      ) : null}
 
       <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex items-end gap-3">
@@ -339,16 +358,7 @@ export default function PpPfGostergeClient({
       </div>
 
       {hata ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{hata}</p> : null}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={kaydet}
-          disabled={bekliyor}
-          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {bekliyor ? 'Kaydediliyor…' : 'Kaydet'}
-        </button>
-      </div>
+      <div className="flex justify-end">{kaydetDugmesi}</div>
     </div>
   )
 }

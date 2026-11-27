@@ -13,6 +13,7 @@ import {
   type PpGostergeGirdi,
   type PpPhSecenek,
 } from '@/lib/pp-iliski'
+import { sonrakiPhFaaliyetSira } from '@/lib/pp-pf-sira'
 
 export async function ppIliskiSecenekleri(): Promise<{ secenekler: PpPhSecenek[]; hata?: string }> {
   const supabase = await createClient()
@@ -158,13 +159,15 @@ export async function ppIliskiKaydet(girdi: {
     }
     bagId = Number(bag?.id)
   }
+  let phSira = await sonrakiPhFaaliyetSira(sb, bagId)
   for (let i = 0; i < girdi.faaliyetler.length; i += 1) {
     const f = girdi.faaliyetler[i]
     const { data: faaliyet, error: fHata } = await sb.from('performans_programi_pf_faaliyet').insert({
       bag_id: bagId,
-      sira_no: i + 1,
+      sira_no: phSira,
       faaliyet_adi: f.ad.trim(),
     }).select('id').single()
+    phSira += 1
     if (fHata) return { hata: fHata.message }
     if (!f.gostergeler.length) continue
     const { error: gHata } = await sb.from('performans_programi_pf_gosterge').insert(f.gostergeler.map((g, gi) => ({
@@ -339,57 +342,6 @@ export async function ppAltProgramHedefiGuncelle(
 
 const BAGLI_KAYIT = 'Silmek istediğiniz başlığa bağlı veriler bulunmaktadır.'
 const HEDEF_FAALIYET_MUDURLUK = 'Bu faaliyet altında aynı performans hedefi ve müdürlük zaten bağlı.'
-
-/**
- * Aynı performans hedefine (alt_hedef) bağlı, aynı performans programı (yıl/program)
- * içindeki müdürlük bag’lerindeki en yüksek sıra + 1. Diğer yılların programları sayılmaz.
- */
-async function sonrakiPhFaaliyetSira(sb: { from: (t: string) => any }, bagId: number): Promise<number> {
-  const { data: bag } = await sb
-    .from('performans_programi_alt_program_hedef')
-    .select('alt_hedef_id, alt_program_id')
-    .eq('id', bagId)
-    .maybeSingle()
-  const altHedefId = Number((bag as { alt_hedef_id?: number } | null)?.alt_hedef_id)
-  const altProgramId = Number((bag as { alt_program_id?: number } | null)?.alt_program_id)
-  if (!Number.isFinite(altHedefId) || altHedefId <= 0) return 1
-
-  let altIds: number[] = Number.isFinite(altProgramId) && altProgramId > 0 ? [altProgramId] : []
-  if (altIds.length) {
-    const { data: alt } = await sb
-      .from('performans_programi_alt_program')
-      .select('program_id')
-      .eq('id', altProgramId)
-      .maybeSingle()
-    const programId = Number((alt as { program_id?: number } | null)?.program_id)
-    if (Number.isFinite(programId) && programId > 0) {
-      const { data: ayniProgram } = await sb
-        .from('performans_programi_alt_program')
-        .select('id')
-        .eq('program_id', programId)
-      altIds = ((ayniProgram ?? []) as { id: number }[])
-        .map(a => Number(a.id))
-        .filter(n => Number.isFinite(n) && n > 0)
-    }
-  }
-
-  let bagSorgu = sb
-    .from('performans_programi_alt_program_hedef')
-    .select('id')
-    .eq('alt_hedef_id', altHedefId)
-  if (altIds.length) bagSorgu = bagSorgu.in('alt_program_id', altIds)
-  const { data: baglar } = await bagSorgu
-  const bagIds = ((baglar ?? []) as { id: number }[]).map(b => Number(b.id)).filter(n => Number.isFinite(n))
-  if (!bagIds.length) return 1
-  const { data: varOlan } = await sb
-    .from('performans_programi_pf_faaliyet')
-    .select('sira_no')
-    .in('bag_id', bagIds)
-  const nolar = ((varOlan ?? []) as { sira_no: number | null }[])
-    .map(r => Number(r.sira_no))
-    .filter(Number.isFinite)
-  return (nolar.length ? Math.max(...nolar) : 0) + 1
-}
 
 export async function ppFaaliyetSil(id: number, altProgramId: number, yil: number, programId: number): Promise<{ hata?: string }> {
   const supabase = await createClient()

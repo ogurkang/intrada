@@ -7,6 +7,15 @@ export type YoneticiDuyuru = {
 /** Yeni bir geliştirme canlıya alınırken buraya yeni bir kayıt eklenir. Yönetici her kaydı bir kez görür. */
 export const yoneticiDuyurulari: YoneticiDuyuru[] = [
   {
+    id: '2026-11-27-pp-pf-sira-odenek-kurum',
+    baslik: '27 Kasım 2026 — PP faaliyet kodu, ödenek ve Kurum İçi',
+    maddeler: [
+      'Performans faaliyeti kod sırası artık alt program + performans hedefi koduna göredir; müdürlük başına yeniden 1’den başlamaz (ör. 2.5.1 altında ortak sıra).',
+      'Gösterge ödenek teklifi yalnızca o göstergeye aittir; kardeş göstergelerde görünmez. Faaliyet satırındaki maliyet, göstergelerin (Kurum İçi olmayan) ödenek toplamıdır.',
+      'Gösterge / ödenek ekranında Kaydet hem üstte hem altta. Kurum İçi yalnızca bulunduğu göstergenin ödenek teklifi içindir.',
+    ],
+  },
+  {
     id: '2026-11-27-pp-251-makine-9007',
     baslik: '27 Kasım 2026 — PP 2.5.1 Makine İkmal 9007’ye taşındı',
     maddeler: [

@@ -113,6 +113,13 @@ export async function ppPfGostergeOdenekKaydet(
   if (!(await ppOturum(supabase))) return { hata: 'Oturum gerekli.' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sb = supabase as any
+  const { data: gostergeVar } = await sb
+    .from('performans_programi_pf_gosterge')
+    .select('id')
+    .eq('id', pfGostergeId)
+    .maybeSingle()
+  if (!gostergeVar) return { hata: 'Gösterge bulunamadı.' }
+  // Yalnızca bu gösterge; kardeş göstergelerin ödenek satırlarına dokunulmaz.
   const silinecek = kalemler.filter(k => !dolu(k)).map(k => k.butce_kodu_id)
   const yazilacak = kalemler.filter(dolu)
   if (silinecek.length) {

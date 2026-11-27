@@ -43,21 +43,22 @@ export default async function PpPerformansFaaliyetPage({
     const id = Number((g as { faaliyet_id?: number }).faaliyet_id)
     if (Number.isFinite(id)) gostergeSay.set(id, (gostergeSay.get(id) ?? 0) + 1)
   }
+  // Gösterge ödeneklerinin toplamı → performans faaliyeti satırı (Kurum İçi göstergeler hariç).
   const odenekSorgu = await ppPfOdenekSatirlariYukle(sb, ids)
   const maliyet = new Map<number, PpMaliyetToplam>()
   const bos = (): PpMaliyetToplam => ({ t1Butce: 0, t1Haziran: 0, t1YilSonu: 0, tButce: 0, t1Tahmin: 0, t2Tahmin: 0 })
+  for (const id of ids) maliyet.set(id, bos())
   if (!odenekSorgu.error) {
     for (const satir of odenekSorgu.data) {
       const id = Number(satir.pf_faaliyet_id)
-      if (!Number.isFinite(id)) continue
-      const toplam = maliyet.get(id) ?? bos()
+      if (!Number.isFinite(id) || !maliyet.has(id)) continue
+      const toplam = maliyet.get(id)!
       toplam.t1Butce += Number(satir.t1_butce ?? 0)
       toplam.t1Haziran += Number(satir.t1_haziran ?? 0)
       toplam.t1YilSonu += Number(satir.t1_yil_sonu ?? 0)
       toplam.tButce += Number(satir.t_butce ?? 0)
       toplam.t1Tahmin += Number(satir.t1_tahmin ?? 0)
       toplam.t2Tahmin += Number(satir.t2_tahmin ?? 0)
-      maliyet.set(id, toplam)
     }
   }
   const ph = sec.secenekler.find(s => s.id === Number(bag.alt_hedef_id))
